@@ -1,0 +1,4 @@
+{
+  "extends": "@nexus-tax/config/tsconfig/react-lib.json",
+  "include": ["src"]
+}

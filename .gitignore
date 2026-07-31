@@ -1,0 +1,62 @@
+# ---------------------------------------------------------------------------
+# NexusTax — .gitignore ESTRICTO
+# Objetivo: NUNCA versionar expedientes, documentos tributarios reales,
+# archivos temporales de procesamiento ni exportaciones locales.
+# ---------------------------------------------------------------------------
+
+# Dependencias
+node_modules/
+.pnpm-store/
+
+# Builds / cache
+dist/
+build/
+.next/
+out/
+.turbo/
+*.tsbuildinfo
+coverage/
+.vitest/
+playwright-report/
+test-results/
+.playwright/
+
+# Entornos
+.env
+.env.*
+!.env.example
+
+# ---------------------------------------------------------------------------
+# DATOS SENSIBLES — expedientes y documentos tributarios (NUNCA a Git)
+# ---------------------------------------------------------------------------
+# Documentos reales de información exógena / certificados
+*.xlsx
+*.xls
+*.pdf
+*.p12
+*.csv
+
+# Excepción: fixtures sintéticos generados por el proyecto (seguros)
+!samples/**/*.xlsx
+!samples/**/*.xls
+!samples/**/*.csv
+!apps/web/tests/**/*.xlsx
+!packages/**/tests/**/fixtures/**
+
+# Carpetas de expedientes / exportaciones locales del usuario
+/expedientes/
+/expedientes-local/
+/exports/
+*.nexustax.json
+expediente-*.json
+
+# ---------------------------------------------------------------------------
+# Sistema operativo / editores
+# ---------------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.recommended.json

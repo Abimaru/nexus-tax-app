@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Stack de sistema para evitar dependencias de red en el build. */
+  --font-sans:
+    'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial,
+    sans-serif;
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-surface-base text-slate-200 antialiased;
+    font-family: var(--font-sans);
+    /* Iluminación sutil de fondo: halos de acento sobre superficie profunda. */
+    background-image:
+      radial-gradient(60rem 60rem at 12% -10%, rgba(34, 211, 238, 0.1), transparent 60%),
+      radial-gradient(50rem 50rem at 100% 0%, rgba(139, 92, 246, 0.1), transparent 55%),
+      radial-gradient(70rem 40rem at 50% 120%, rgba(59, 130, 246, 0.08), transparent 60%);
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+
+  /* Foco visible y accesible en toda la app (§14). */
+  :focus-visible {
+    outline: 2px solid theme('colors.accent.cyan');
+    outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-accent-cyan via-accent-blue to-accent-violet bg-clip-text text-transparent;
+  }
+
+  /* Respeta la reducción de movimiento a nivel global (§14). */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
