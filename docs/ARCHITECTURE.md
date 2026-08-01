@@ -70,8 +70,8 @@ El `ProcessingResult` es **determinista**: mismas entradas ⇒ misma salida
 
 - **Zustand** (`workbenchStore.ts`): estado efímero del flujo de carga.
 - **Dexie/IndexedDB** (`db.ts`, `repository.ts`): expedientes, resultados,
-  análisis y biblioteca documental. Los binarios viven separados y solo se
-  guardan por elección explícita del usuario.
+  análisis, biblioteca documental y navegación por expediente. Los binarios
+  viven separados y solo se guardan por elección explícita del usuario.
 
 ## Decisiones clave
 
@@ -103,3 +103,16 @@ eliminar la copia local sin romper versiones, coberturas o hechos.
 El expediente se materializa como una vista agregada desde esas tablas. Las
 sugerencias y métricas viven en funciones puras fuera de React. La interfaz usa
 tokens semánticos compartidos en tema claro y oscuro.
+
+## Sprint 2.0.2: flujo y navegación
+
+`packages/domain/src/navigation.ts` define identificadores y estado persistible.
+`apps/web/src/lib/workflow.ts` decide de forma pura qué etapas y vistas están
+disponibles y cuál es la siguiente acción. Los componentes solo renderizan esa
+decisión.
+
+Dexie v6 agrega `navigationStates`. `StoredResult` conserva metadatos mínimos de
+la fuente (SHA-256 y fecha), nunca el archivo original. Las rutas estables siguen
+`/expedientes/:caseId/:stage/:view`; el destino se valida antes de restaurarlo.
+La eliminación de una fuente borra derivados exógenos de forma selectiva y
+mantiene documentos y hechos manuales.

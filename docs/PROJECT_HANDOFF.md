@@ -348,3 +348,49 @@ Siguiente paso exacto: ejecutar la matriz manual de
 `docs/SPRINT_2_VALIDATION.md` con fixtures sintéticos de uno, dos, tres y cuatro
 empleadores; registrar evidencia local y priorizar cualquier diferencia antes
 de ampliar el límite o diseñar extracción documental.
+
+## 12. Entrega: Sprint 2.0.2 — navegación guiada (2026-08-01)
+
+### Estado inicial
+
+El expediente exponía doce pestañas React en una barra horizontal. No había
+rutas por vista, restauración de navegación, progresión explícita ni un punto de
+entrada claro para un caso nuevo. La carga exógena era efímera, pero la UI no
+diferenciaba con precisión la fuente de sus resultados derivados.
+
+### Implementación
+
+- Seis etapas: Fuente, Extracción, Organización, Conciliación, Declaración y
+  Exportación, con vistas contextuales y estados explicados.
+- Motor puro y determinista para disponibilidad, destino válido y siguiente
+  acción; Formulario 210 e Historial permanecen deshabilitados como futuros.
+- Rutas estables por etapa/vista, breadcrumb, restauración del último destino
+  válido y foco transferido al contenido.
+- Inicio en Fuente, modo manual confirmado, resumen de fuente con SHA-256 local y
+  acciones confirmadas de reemplazo/eliminación.
+- Eliminación selectiva: invalida resultados exógenos, conserva documentos y
+  hechos manuales.
+- Dexie v6 con `navigationStates`; manifiesto 2.0.2 con estado del flujo.
+- Stepper en grilla y selectores móviles, sin carrusel horizontal; estados no
+  dependientes solo del color y respeto por movimiento reducido.
+- Documentación nueva: `EXPEDIENT_WORKFLOW.md` y `NAVIGATION_STAGES.md`.
+
+### Validaciones exactas
+
+| Paso                  | Comando                                             | Resultado                 |
+| --------------------- | --------------------------------------------------- | ------------------------- |
+| Typecheck             | `pnpm typecheck`                                    | OK; 6 proyectos           |
+| Unitarias/integración | `pnpm test`                                         | OK; 122/122 pruebas       |
+| Lint                  | `pnpm lint`                                         | OK; 0 warnings / 0 errors |
+| Producción            | `pnpm build`                                        | OK; 5 páginas generadas   |
+| E2E                   | `pnpm test:e2e -- apps/web/tests-e2e/smoke.spec.ts` | OK; 2/2 Chromium          |
+
+### Riesgos y siguiente paso
+
+El archivo original sigue sin persistirse: al recargar antes de procesar debe
+seleccionarse de nuevo, por diseño de privacidad. El modo manual no habilita
+conclusiones que requieren exógena. Formulario 210 e Historial no tienen lógica.
+
+Siguiente paso exacto: ejecutar la matriz manual actualizada en cinco anchos,
+validar reemplazo/eliminación con datos sintéticos y registrar evidencia antes
+de ampliar reglas, múltiples fuentes o capacidades futuras.

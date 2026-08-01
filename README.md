@@ -11,7 +11,8 @@ extensible. Motor futuro de reglas: **Aegis Engine**.
 
 ## Alcance actual
 
-Crear expediente → cargar Excel de exógena → inspeccionar hojas y **secciones**
+Crear expediente → recorrer las etapas **Fuente, Extracción, Organización,
+Conciliación, Declaración y Exportación** → cargar Excel de exógena → inspeccionar hojas y **secciones**
 (topes/detalle) → normalizar y clasificar registros → extraer la **identidad DIAN**
 → ver resumen y gráficas → revisar la **matriz de análisis** y los hallazgos →
 **resolver** decisiones (con historial) → evaluar de forma orientativa la
@@ -79,6 +80,8 @@ Detalles en `docs/SECURITY_PRIVACY.md`.
 - [Reglas tributarias](docs/TAX_RULES.md)
 - [Conciliación](docs/RECONCILIATION.md)
 - [Expediente tributario](docs/TAX_CASE.md)
+- [Flujo guiado del expediente](docs/EXPEDIENT_WORKFLOW.md)
+- [Navegación por etapas](docs/NAVIGATION_STAGES.md)
 - [Cobertura documental](docs/DOCUMENT_COVERAGE.md)
 - [Hechos documentales](docs/DOCUMENT_FACTS.md)
 - [Conciliación documental](docs/PRELIMINARY_RECONCILIATION.md)

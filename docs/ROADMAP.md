@@ -33,6 +33,11 @@ empleador, deduplicación por entidad, cobertura individual del Formulario 220,
 advertencia para certificados consolidados, migración Dexie v5 y guía de
 validación funcional reproducible.
 
+**Sprint 2.0.2.** Navegación guiada en seis etapas, rutas profundas estables,
+progresión y siguiente acción deterministas, modo manual explícito, resumen de
+fuente con SHA-256, persistencia de navegación y stepper responsive accesible.
+Formulario 210 e historial se muestran únicamente como capacidades futuras.
+
 **Experiencia.** Interfaz con **tema claro y oscuro** conmutable, tokens de color
 semánticos, filtros y detalle de Registros reorganizados, accesibilidad y
 `prefers-reduced-motion`.

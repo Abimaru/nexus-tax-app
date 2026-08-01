@@ -54,6 +54,12 @@ extensos, tablas ilegibles y apariencia genérica de dashboard administrativo.
 
 ## Pantallas
 
+El expediente usa seis etapas visibles en grilla adaptable: **Fuente,
+Extracción, Organización, Conciliación, Declaración y Exportación**. Cada una
+muestra solo sus vistas contextuales, un estado textual y la siguiente acción.
+En móvil se reemplaza la grilla por selectores nativos; nunca se exige desplazar
+horizontalmente una barra de pestañas.
+
 1. **Inicio** — identidad, descripción, expedientes recientes, botón _Crear
    expediente_, aviso de privacidad.
 2. **Crear expediente** — alias, año gravable, notas, validación inmediata (Zod).
@@ -82,6 +88,8 @@ extensos, tablas ilegibles y apariencia genérica de dashboard administrativo.
     y nivel de confianza; **adjuntar PDF** guarda solo metadatos.
 11. **Obligación de declarar** — evaluación orientativa AG 2025: criterios,
     evidencia, condición de IVA, vencimiento, versión y **fuentes DIAN**.
+12. **Exportación** — estado de integridad y manifiesto local; comunica de forma
+    explícita cuando el expediente todavía está incompleto.
 
 ## Accesibilidad (§14)
 
