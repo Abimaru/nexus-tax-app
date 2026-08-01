@@ -96,6 +96,14 @@ reglas: **Aegis Engine** (`packages/aegis-rules`).
    recarga en caliente).
 5. Actualiza `docs/PROJECT_HANDOFF.md` al cerrar un bloque de trabajo.
 
+## Estandar de commits
+
+Los commits deben cumplir `docs/COMMIT_CONVENTIONS.md`: formato
+`ICONO CATEGORIA: descripcion`, categoria oficial, descripcion en presente
+imperativo, una intencion principal, maximo recomendado de 72 caracteres y sin
+punto final. Un cambio incompatible se explica con `BREAKING CHANGE` en el
+cuerpo.
+
 ## Dependencias
 
 No agregar dependencias sin justificar su función. El stack aprobado está en
@@ -113,6 +121,8 @@ pnpm install · pnpm dev · pnpm build · pnpm lint · pnpm typecheck · pnpm te
 `TAX_RULES.md`, `CLASSIFICATION_RESOLUTION.md`, `RECONCILIATION.md`,
 `AEGIS_RULES.md`, `UX_UI.md`, `SECURITY_PRIVACY.md`, `ROADMAP.md`,
 `PROJECT_HANDOFF.md`.
+Convenciones de cambios: `COMMIT_CONVENTIONS.md`. Validacion reproducible:
+`SPRINT_2_VALIDATION.md`.
 
 ## Límite de alcance
 

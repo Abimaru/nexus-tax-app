@@ -111,18 +111,19 @@ humana; no equivale a asesoría o determinación administrativa.
 
 ## Persistencia (IndexedDB / Dexie)
 
-| Tabla             | Clave        | Contenido                                    |
-| ----------------- | ------------ | -------------------------------------------- |
-| `cases`           | `id`         | `TaxCase`                                    |
-| `documents`       | `id`         | `UploadedDocument` (metadatos)               |
-| `results`         | `caseId`     | `{ caseId, result, updatedAt }`              |
-| `filingInputs`    | `caseId`     | Respuesta local de responsabilidad de IVA    |
-| `analyses`        | `caseId`     | Relaciones, resoluciones y matriz versionada |
-| `documentBlobs`   | `documentId` | Bytes locales opcionales, nunca exportados   |
-| `products`        | `id`         | Productos asociados o por identificar        |
-| `coverages`       | `id`         | Relación requisito-documento-hecho-entidad   |
-| `facts`           | `id`         | Hechos documentales normalizados e historial |
-| `reconciliations` | `id`         | Asociaciones documentales con exógena        |
+| Tabla              | Clave        | Contenido                                    |
+| ------------------ | ------------ | -------------------------------------------- |
+| `cases`            | `id`         | `TaxCase`                                    |
+| `documents`        | `id`         | `UploadedDocument` (metadatos)               |
+| `results`          | `caseId`     | `{ caseId, result, updatedAt }`              |
+| `filingInputs`     | `caseId`     | Respuesta local de responsabilidad de IVA    |
+| `analyses`         | `caseId`     | Relaciones, resoluciones y matriz versionada |
+| `documentBlobs`    | `documentId` | Bytes locales opcionales, nunca exportados   |
+| `products`         | `id`         | Productos asociados o por identificar        |
+| `coverages`        | `id`         | Relación requisito-documento-hecho-entidad   |
+| `facts`            | `id`         | Hechos documentales normalizados e historial |
+| `reconciliations`  | `id`         | Asociaciones documentales con exógena        |
+| `employmentGroups` | `id`         | Grupo laboral e instancias por empleador     |
 
 Los binarios solo se persisten cuando el usuario elige `store_locally`; la
 opción predeterminada conserva metadatos. La contraseña nunca forma parte del
@@ -157,3 +158,17 @@ completa, parcial, no aplicable o revisable y explica la relación.
 autoría e historial. `PreliminaryReconciliation` enlaza múltiples hechos y
 registros exógenos, conserva diferencias y exige confirmación humana para el
 estado conciliado.
+
+## Grupo de ingresos laborales
+
+`EmploymentIncomeGroup` reemplaza requisitos independientes de Formulario 220.
+Conserva hasta tres `EmployerInstance`, cobertura agregada, empleadores
+adicionales detectados y un hallazgo informativo cuando se supera el límite de
+la interfaz. Cada instancia guarda nombre, documento enmascarado, período,
+entidad exógena, Formulario 220 principal, documentos complementarios, estado,
+cobertura, observaciones, origen y marcas de tiempo.
+
+La detección deduplica primero por identificación de entidad y luego por nombre
+normalizado; una coincidencia manual confirmada queda persistida. Solo las
+instancias activas participan en el progreso. El manifiesto 2.0.1 exporta el
+grupo y sus relaciones, nunca los binarios.

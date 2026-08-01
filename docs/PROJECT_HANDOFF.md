@@ -290,3 +290,61 @@ registrar certificado consolidado → asignar coberturas parciales/completas →
 crear hechos por producto → revisar sugerencias → confirmar diferencias →
 exportar el manifiesto y verificar `includesBinaryData: false`. Después diseñar
 el editor N:M antes de cualquier extractor PDF.
+
+## 11. Entrega: Sprint 2.0.1 — checklist laboral (2026-08-01)
+
+### Estado inicial
+
+El checklist generaba un requisito independiente de Formulario 220 por entidad.
+No existía un agregado laboral que conservara empleadores, períodos, documento
+principal, complementos y cobertura por instancia. Tampoco había una guía
+funcional reproducible ni una convención oficial de commits.
+
+### Implementación
+
+- Dominio v0.4.1 con `EmploymentIncomeGroup` y `EmployerInstance`; máximo de
+  tres instancias activas, estados explícitos, documento enmascarado, período,
+  entidad, 220 principal, complementos y trazabilidad temporal.
+- Detección pura de empleadores por concepto laboral o categoría de entidad,
+  deduplicada por identificación y nombre normalizado. Varios conceptos de la
+  misma entidad crean una sola instancia.
+- Las entidades adicionales al límite se conservan y producen un hallazgo
+  informativo; no se descartan silenciosamente.
+- Dexie v5 agrega `employmentGroups`; creación automática al procesar,
+  persistencia tras recarga, edición manual y borrado transaccional.
+- El Formulario 220 salió del checklist genérico. El grupo laboral permite
+  agregar una segunda o tercera instancia, marcar no aplica, eliminar, editar
+  período y asociar entidad y documentos.
+- Un 220 cubre una sola instancia. Los complementos generan cobertura parcial y
+  el certificado consolidado exige confirmación expresa con advertencia.
+- La vista por entidad muestra el 220 asociado sin crear otro requisito.
+- Manifiesto `nexustax.tax-case.manifest` 2.0.1 incluye el grupo laboral y sigue
+  excluyendo binarios.
+- Se crearon `docs/SPRINT_2_VALIDATION.md` y
+  `docs/COMMIT_CONVENTIONS.md`; AGENTS y CLAUDE exigen el estándar.
+
+### Validaciones exactas
+
+| Paso                  | Comando                                 | Resultado                 |
+| --------------------- | --------------------------------------- | ------------------------- |
+| Typecheck             | `pnpm typecheck`                        | OK; 6 proyectos           |
+| Unitarias/integración | `pnpm test`                             | OK; 110/110 pruebas       |
+| Lint                  | `pnpm lint`                             | OK; 0 warnings / 0 errors |
+| Producción            | `pnpm build`                            | OK; 5 páginas generadas   |
+| E2E                   | `pnpm --filter @nexus-tax/web test:e2e` | OK; 1/1 Chromium          |
+
+El E2E comprueba detección laboral, ausencia del 220 duplicado, creación de una
+segunda instancia y persistencia después de recargar, además del flujo completo
+del Sprint 2.0.
+
+### Riesgos y siguiente paso
+
+La interfaz limita deliberadamente la edición activa a tres empleadores; los
+adicionales quedan exportados para una ampliación futura. Los períodos y la
+equivalencia de un certificado consolidado requieren decisión humana porque no
+se interpretan PDFs.
+
+Siguiente paso exacto: ejecutar la matriz manual de
+`docs/SPRINT_2_VALIDATION.md` con fixtures sintéticos de uno, dos, tres y cuatro
+empleadores; registrar evidencia local y priorizar cualquier diferencia antes
+de ampliar el límite o diseñar extracción documental.

@@ -73,6 +73,13 @@ el cálculo puro (matriz/resoluciones); React solo presenta.
 6. **Documenta.** Actualiza `docs/PROJECT_HANDOFF.md` (estado, decisiones,
    pendientes, siguiente paso, riesgos) al cerrar tu tarea.
 
+## Commits
+
+Todo commit creado por un agente debe seguir `docs/COMMIT_CONVENTIONS.md`:
+`ICONO CATEGORIA: descripcion`. Usa una categoria oficial, descripcion en
+presente imperativo, una sola intencion y primera linea de maximo recomendado de
+72 caracteres, sin punto final. Usa cuerpo y `BREAKING CHANGE` cuando aplique.
+
 ## Calidad
 
 - TypeScript estricto, sin `any` injustificado.

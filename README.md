@@ -82,6 +82,8 @@ Detalles en `docs/SECURITY_PRIVACY.md`.
 - [Cobertura documental](docs/DOCUMENT_COVERAGE.md)
 - [Hechos documentales](docs/DOCUMENT_FACTS.md)
 - [Conciliación documental](docs/PRELIMINARY_RECONCILIATION.md)
+- [Validación funcional del Sprint 2](docs/SPRINT_2_VALIDATION.md)
+- [Convenciones de commits](docs/COMMIT_CONVENTIONS.md)
 - [Reglas Aegis](docs/AEGIS_RULES.md)
 - [Seguridad y privacidad](docs/SECURITY_PRIVACY.md)
 - [Roadmap](docs/ROADMAP.md)

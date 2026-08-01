@@ -28,6 +28,11 @@ local opcional, catálogo de 16 tipos, hash, versiones, coberturas
 multipropósito, productos, hechos normalizados, conciliación documental humana
 y manifiesto sin binarios.
 
+**Sprint 2.0.1.** Checklist laboral agrupado, una a tres instancias de
+empleador, deduplicación por entidad, cobertura individual del Formulario 220,
+advertencia para certificados consolidados, migración Dexie v5 y guía de
+validación funcional reproducible.
+
 **Experiencia.** Interfaz con **tema claro y oscuro** conmutable, tokens de color
 semánticos, filtros y detalle de Registros reorganizados, accesibilidad y
 `prefers-reduced-motion`.
