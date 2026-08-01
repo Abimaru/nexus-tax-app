@@ -33,11 +33,15 @@ original). Nunca se muta.
 
 ### NormalizedExogenousRecord — dato normalizado
 
-`id`, `rawId`, `source`, entidad reportante, documento de la persona reportada,
-estado de coincidencia de identidad, concepto, valor, uso sugerido estructurado,
-clasificación tributaria inicial (`nature`, `category`, `treatment`,
-`confidence`, `classificationEvidence`) y `extra`. `entityTaxId` permanece como
-alias de compatibilidad de `reportingEntityDocument`.
+`id`, `rawId`, `source`, entidad reportante, documento de la persona reportada
+(`reportedPersonDocument` + `reportedPersonDocumentNormalized`), estado de
+coincidencia de identidad (`identityMatch`), concepto, valor, `withholding`,
+`currency`, uso sugerido estructurado, y clasificación tributaria inicial
+(`classificationVersion`, `nature`, `category`, `treatment`, `confidence`,
+`classificationEvidence`). Para el análisis resoluble añade `secondaryUses`,
+`multiplicityType` (+ explicación) y `consolidationDisposition` (+ razón). `extra`
+preserva las columnas no canónicas. `entityTaxId` permanece como alias de
+compatibilidad de `reportingEntityDocument`.
 
 ### TaxpayerIdentity — identidad del consultante
 
@@ -50,6 +54,16 @@ muestra enmascarado por defecto.
 Conserva el texto original, topes, referencias `R<number>`, descripciones,
 condiciones y grupos inferidos. La clasificación es determinista, versionada y
 orientativa; no calcula el Formulario 210.
+
+### ExogenousReport — vista semántica del reporte
+
+Es el campo `report` del resultado. Agrupa `metadata` (filas previas al
+encabezado, conservadas sin interpretar), `taxpayer` (`TaxpayerIdentity`),
+`structure` (`ExogenousReportStructure`, **filas 1-based**: `headerRow`,
+`thresholdsStartRow?/thresholdsEndRow?`, `detailsStartRow`), `thresholds[]`
+(`ExogenousThreshold`: número, etiqueta original/normalizada, valor y origen con
+`detailColumn`/`valueColumn`), `records[]` y `findings[]`. Los topes son
+opcionales (se admiten tablas planas) y nunca se normalizan como terceros.
 
 ### ReportingEntity / ReportedConcept — presentación
 
@@ -73,18 +87,22 @@ de un PDF asociado. El binario PDF no se persiste.
 ### ProcessingResult — resultado completo
 
 `parserVersion`, `generatedAt`, `workbook`, `selectedSheet`, `headerRowIndex`,
-`columnMapping`, `rawRecords[]`, `normalizedRecords[]`, `entities[]`,
-`concepts[]`, `findings[]`, `requirements[]`, `metrics`.
+`columnMapping`, **`report`** (`ExogenousReport`), `rawRecords[]`,
+`normalizedRecords[]`, `entities[]`, `concepts[]`, `findings[]`,
+`requirements[]`, **`relationships[]`** (`RecordRelation`), **`matrix`**
+(`TaxMatrix`) y `metrics`.
 
 ### ProcessingMetrics
 
-Incluye `grossUnconsolidatedSum` y agrupaciones homogéneas de ingresos, activos,
-deudas, retenciones, movimientos, consumos, compras y registros sin clasificar,
-además de conteos y `qualityScore`.
+Incluye `grossUnconsolidatedSum` y `homogeneousTotals` (ingresos, activos, deudas,
+retenciones, movimientos financieros, consumos con tarjeta, compras y conteo de
+registros sin clasificar), además de conteos de hallazgos, `qualityScore` y
+`qualityDimensions` (extracción / clasificación / conciliación).
 
 ### FilingObligationAssessment — evaluación Aegis
 
-Derivado local para un conjunto de reglas anual: `taxYear`, `filingYear`,
+Definido en `@nexus-tax/aegis-rules` (no en `domain`). Derivado local para un
+conjunto de reglas anual: `taxYear`, `filingYear`,
 `status` (`required|not_required|pending_information`), `reasons[]`,
 `missingInputs[]`, `deadline`, `evaluatedAt` y `ruleVersion`. Cada razón conserva
 operador, monto observado, UVT, montos exacto/oficial y evidencia del tope.
@@ -93,23 +111,30 @@ humana; no equivale a asesoría o determinación administrativa.
 
 ## Persistencia (IndexedDB / Dexie)
 
-| Tabla          | Clave    | Contenido                                    |
-| -------------- | -------- | -------------------------------------------- |
-| `cases`        | `id`     | `TaxCase`                                    |
-| `documents`    | `id`     | `UploadedDocument` (metadatos)               |
-| `results`      | `caseId` | `{ caseId, result, updatedAt }`              |
-| `filingInputs` | `caseId` | Respuesta local de responsabilidad de IVA    |
-| `analyses`     | `caseId` | Relaciones, resoluciones y matriz versionada |
+| Tabla             | Clave        | Contenido                                    |
+| ----------------- | ------------ | -------------------------------------------- |
+| `cases`           | `id`         | `TaxCase`                                    |
+| `documents`       | `id`         | `UploadedDocument` (metadatos)               |
+| `results`         | `caseId`     | `{ caseId, result, updatedAt }`              |
+| `filingInputs`    | `caseId`     | Respuesta local de responsabilidad de IVA    |
+| `analyses`        | `caseId`     | Relaciones, resoluciones y matriz versionada |
+| `documentBlobs`   | `documentId` | Bytes locales opcionales, nunca exportados   |
+| `products`        | `id`         | Productos asociados o por identificar        |
+| `coverages`       | `id`         | Relación requisito-documento-hecho-entidad   |
+| `facts`           | `id`         | Hechos documentales normalizados e historial |
+| `reconciliations` | `id`         | Asociaciones documentales con exógena        |
 
-El **archivo original no se persiste**. Solo metadatos y el resultado normalizado.
+Los binarios solo se persisten cuando el usuario elige `store_locally`; la
+opción predeterminada conserva metadatos. La contraseña nunca forma parte del
+modelo.
 
 ## Exportación JSON
 
 `toNormalizedJson(result)` produce un documento versionado
 (`schema: "nexustax.exogenous.normalized"`, `schemaVersion: "4"`) con
-`source`, `metrics`, `entities`, `concepts`, `records`, `findings`,
-`requirements`. No incluye datos del archivo binario ni información fuera del
-alcance.
+`source` (incluye `structure`), `metadata`, `taxpayer`, `thresholds`, `metrics`,
+`entities`, `concepts`, `records`, `findings`, `requirements`, `relationships` y
+`matrix`. No incluye datos del archivo binario ni información fuera del alcance.
 
 ## Analisis resoluble
 
@@ -120,3 +145,15 @@ version, obsolescencia e historial. `TaxMatrix` agrupa entradas incluidas,
 excluidas, informativas y pendientes, incorpora conciliacion con topes y separa
 calidad de extraccion, clasificacion y conciliacion. `CaseAnalysis` es la raiz
 persistida de esas estructuras.
+
+## Expediente Sprint 2
+
+`TaxCase` incorpora contribuyente enmascarado, año de presentación y seis
+estados de ciclo de vida. `UploadedDocument` usa catálogo, SHA-256, decisión de
+persistencia y cadena de versiones. `RequirementCoverage` permite cobertura
+completa, parcial, no aplicable o revisable y explica la relación.
+
+`DocumentFact` unifica valores manuales, importados, asistidos o automáticos con
+autoría e historial. `PreliminaryReconciliation` enlaza múltiples hechos y
+registros exógenos, conserva diferencias y exige confirmación humana para el
+estado conciliado.

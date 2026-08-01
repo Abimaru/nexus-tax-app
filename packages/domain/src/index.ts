@@ -24,6 +24,7 @@ export * from './exogenousReport';
 export * from './checklist';
 export * from './processing';
 export * from './analysis';
+export * from './taxDossier';
 
 /** Versión del contrato de dominio. Se incrementa ante cambios incompatibles. */
-export const DOMAIN_VERSION = '0.3.0';
+export const DOMAIN_VERSION = '0.4.0';

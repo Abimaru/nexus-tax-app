@@ -1,6 +1,15 @@
 import Dexie, { type Table } from 'dexie';
 import type { FilingObligationInputs } from '@nexus-tax/aegis-rules';
-import type { CaseAnalysis, ProcessingResult, TaxCase, UploadedDocument } from '@nexus-tax/domain';
+import type {
+  CaseAnalysis,
+  CaseProduct,
+  DocumentFact,
+  PreliminaryReconciliation,
+  ProcessingResult,
+  RequirementCoverage,
+  TaxCase,
+  UploadedDocument,
+} from '@nexus-tax/domain';
 
 /**
  * Persistencia local en IndexedDB mediante Dexie (§12, §14 del alcance).
@@ -25,12 +34,25 @@ export interface StoredFilingInputs {
 
 export type StoredAnalysis = CaseAnalysis;
 
+export interface StoredDocumentBlob {
+  documentId: string;
+  caseId: string;
+  bytes: ArrayBuffer;
+  mimeType: string;
+  storedAt: string;
+}
+
 class NexusTaxDatabase extends Dexie {
   cases!: Table<TaxCase, string>;
   documents!: Table<UploadedDocument, string>;
   results!: Table<StoredResult, string>;
   filingInputs!: Table<StoredFilingInputs, string>;
   analyses!: Table<StoredAnalysis, string>;
+  documentBlobs!: Table<StoredDocumentBlob, string>;
+  products!: Table<CaseProduct, string>;
+  coverages!: Table<RequirementCoverage, string>;
+  facts!: Table<DocumentFact, string>;
+  reconciliations!: Table<PreliminaryReconciliation, string>;
 
   constructor() {
     super('nexustax');
@@ -52,6 +74,38 @@ class NexusTaxDatabase extends Dexie {
       filingInputs: 'caseId, updatedAt',
       analyses: 'caseId, updatedAt, ruleVersion',
     });
+    this.version(4)
+      .stores({
+        cases: 'id, updatedAt, taxYear, status',
+        documents: 'id, caseId, uploadedAt, sha256, status, kind, *entityIds',
+        results: 'caseId, updatedAt',
+        filingInputs: 'caseId, updatedAt',
+        analyses: 'caseId, updatedAt, ruleVersion',
+        documentBlobs: 'documentId, caseId, storedAt',
+        products: 'id, caseId, entityId, type, status',
+        coverages: 'id, caseId, requirementId, documentId, factId, entityId, status',
+        facts: 'id, caseId, documentId, entityId, productId, category, reviewStatus, updatedAt',
+        reconciliations: 'id, caseId, status, *factIds, *exogenousRecordIds, updatedAt',
+      })
+      .upgrade(async (transaction) => {
+        await transaction
+          .table('cases')
+          .toCollection()
+          .modify((taxCase: Record<string, unknown>) => {
+            const taxYear = typeof taxCase.taxYear === 'number' ? taxCase.taxYear : 2025;
+            const legacyStatus = String(taxCase.status ?? 'draft');
+            taxCase.filingYear = taxYear + 1;
+            taxCase.taxpayer = { documentType: null, documentMasked: null, displayName: null };
+            taxCase.status =
+              legacyStatus === 'archived'
+                ? 'closed'
+                : legacyStatus === 'processing'
+                  ? 'under_analysis'
+                  : legacyStatus === 'ready'
+                    ? 'ready_for_review'
+                    : 'new';
+          });
+      });
   }
 }
 

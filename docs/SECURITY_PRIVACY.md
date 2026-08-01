@@ -10,8 +10,9 @@ para que los datos tributarios **nunca salgan del dispositivo** del usuario.
   principal). No hay llamadas de red durante el procesamiento de documentos.
 - **Reglas tributarias embebidas.** La evaluación de obligación y vencimiento no
   descarga ni analiza páginas o PDFs de la DIAN en tiempo de ejecución.
-- **No se persiste el archivo original.** Solo se guardan metadatos del documento
-  y el resultado normalizado. El binario permanece en memoria durante la sesión.
+- **Persistencia explícita.** Por defecto solo se guardan metadatos. El usuario
+  puede conservar un soporte en IndexedDB o decidir no conservarlo. Nunca se
+  envía por red y puede eliminar el binario sin romper sus metadatos.
 - **Sin volcado de datos tributarios completos en consola.** El logging evita
   registrar contenido sensible.
 - **Identidad enmascarada por defecto.** La comparación usa el documento
@@ -24,7 +25,7 @@ para que los datos tributarios **nunca salgan del dispositivo** del usuario.
 
 - **Eliminar un expediente** (borra su resultado y documentos asociados).
 - **Limpiar toda la información local** (botón en la cabecera): vacía las tablas
-  `cases`, `documents`, `results` y `filingInputs` de IndexedDB.
+  todas las tablas del expediente, incluidos binarios, hechos y conciliaciones.
 - **Aviso visible** de procesamiento local en Inicio y en la carga.
 
 ## Manejo de contenido activo
@@ -32,11 +33,16 @@ para que los datos tributarios **nunca salgan del dispositivo** del usuario.
 El lector de Excel usa `bookVBA: false`: no se procesan macros ni VBA. Las
 celdas de error se tratan como nulas.
 
-## PDFs asociados al checklist
+## Biblioteca documental
 
-En esta fase solo se guardan localmente nombre, tamaño, MIME y fecha de asociación
-del PDF. El binario no se persiste ni se analiza. La extracción profunda de PDFs
-se reserva para un backend futuro con controles de seguridad explícitos.
+Los bytes opcionales viven separados de los metadatos. Se muestra el espacio
+ocupado y se permite descarga o eliminación local. SHA-256 detecta duplicados
+sin revelar contenido. La contraseña nunca se persiste. No existe extracción
+profunda, OCR ni ejecución de contenido activo.
+
+El manifiesto declara `includesBinaryData: false`; las pruebas verifican que no
+contiene bytes. No se registran nombres sensibles ni contenido completo en
+consola.
 
 ## Superficie de ataque
 

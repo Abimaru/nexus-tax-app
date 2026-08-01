@@ -174,3 +174,119 @@ Siguiente paso exacto: validar con una copia local del expediente del usuario,
 sin incorporarla al repositorio, revisar cada grupo de Matriz y resolver primero
 `pending_records`; despues contrastar saldos con certificados y registrar reglas
 deterministas adicionales para cualquier etiqueta realmente desconocida.
+
+## 9. Entrega: tema claro/oscuro y pulido de Registros (2026-08-01)
+
+### Estado inicial
+
+La app era **solo oscura** (colores fijos `text-slate-*` / `white/x`). En
+Registros, la barra de filtros se amontonaba en un `flex-wrap` irregular, la
+columna Clasificación se veía comprimida y el detalle expandido era una hilera de
+badges sueltos.
+
+### Cambios implementados
+
+- **Sistema de tema claro/oscuro** con tokens semánticos por variables CSS en
+  `globals.css` (`surface`, `overlay`, `content`, `tone-*`) mapeados a Tailwind.
+  Se migraron ~270 clases fijas a tokens tema-conscientes (los acentos de marca se
+  conservan; en claro los tonos de estado usan variantes más profundas).
+- **`ThemeProvider` + `ThemeToggle`** (sol/luna en la cabecera) con persistencia en
+  `localStorage`, respeto de `prefers-color-scheme` y **script inline anti-parpadeo**.
+- **Badges** y **tooltips de gráficas** ahora son tema-conscientes.
+- **Registros**: barra de filtros en **grilla uniforme** + "Limpiar filtros";
+  columna **Clasificación** con puntos de estado de color y ancho mínimo; **detalle
+  expandido reorganizado por secciones** (Clasificación, Trazabilidad,
+  Consolidación, Relaciones, Uso sugerido, Columnas adicionales).
+
+### Nota operativa
+
+La configuración TS de Tailwind (`tailwind.config.ts`) **no se recarga en caliente**:
+tras editarla hay que **reiniciar `pnpm dev`** (el `next build` sí toma los cambios).
+Se añadió `.claude/launch.json` para gestionar el dev server.
+
+### Validaciones (resultados exactos)
+
+| Paso      | Comando              | Resultado                         |
+| --------- | -------------------- | --------------------------------- |
+| Typecheck | `pnpm typecheck`     | OK; 6 proyectos                   |
+| Lint      | `pnpm lint`          | OK; 0 warnings / 0 errors         |
+| Tests     | `pnpm test`          | OK (incluye parser 43, web 12)    |
+| Build     | `pnpm build`         | OK; 5 páginas generadas           |
+| Tema      | verificación en vivo | OK; conmuta dark↔light y persiste |
+
+### Pendientes / siguiente paso
+
+Opcionales de UI: encabezado de tabla "pegajoso" (`sticky`), densidad ajustable
+(compacto/cómodo) y resaltar con anillo de acento la fila enfocada al llegar desde
+Hallazgos.
+
+## 10. Entrega: Sprint 2.0 — expediente tributario (2026-08-01)
+
+### Estado inicial encontrado
+
+La exógena, matriz y resoluciones ya funcionaban. También había cambios locales
+recientes de tema claro/oscuro y pulido de Registros, todavía sin confirmar, que
+se conservaron. `TaxCase` era mínimo; documentos solo ofrecía cuatro tipos y el
+checklist enlazaba metadatos PDF. No existían coberturas multipropósito,
+productos, hechos documentales ni conciliación documental.
+
+### Implementación
+
+- Rama dedicada: `sprint-2-tax-case`.
+- Dominio v0.4.0: ciclo de vida del expediente, catálogo de 16 documentos,
+  productos, coberturas, hechos con historial, sugerencias y conciliaciones.
+- Dexie v4: tablas aditivas `documentBlobs`, `products`, `coverages`, `facts` y
+  `reconciliations`; migración de estados de expedientes anteriores.
+- Biblioteca con SHA-256, detección de duplicados, persistencia explícita,
+  descarga/eliminación local, versiones y reemplazos sin romper relaciones.
+- Cobertura completa, parcial, no aplicable o revisable. Un mismo certificado
+  puede cubrir varios requisitos.
+- Hechos manuales claramente identificados, con autoría, evidencia e historial.
+- Sugerencias deterministas por entidad, categoría, valor y concepto. El estado
+  conciliado exige confirmación humana.
+- Panel general con cinco progresos separados, acciones rápidas y explicación
+  de pendientes; secciones Entidades, Documentos, Requisitos, Hechos,
+  Conciliaciones, Matriz y Hallazgos, conservando las vistas existentes.
+- Manifiesto `nexustax.tax-case.manifest` 2.0.0 sin binarios.
+- UI nueva construida exclusivamente con tokens semánticos para tema claro y
+  oscuro.
+
+### Seguridad y arquitectura
+
+El soporte se guarda por defecto solo como metadatos. `store_locally` conserva
+bytes únicamente en IndexedDB y `removeDocumentBinary` los elimina sin borrar
+metadatos. La contraseña no existe en los esquemas persistibles. No hay red,
+OCR, IA ni extracción avanzada. Los binarios nunca entran al manifiesto.
+
+### Validaciones exactas
+
+| Paso                  | Comando                                 | Resultado                 |
+| --------------------- | --------------------------------------- | ------------------------- |
+| Typecheck             | `pnpm typecheck`                        | OK; 6 proyectos           |
+| Unitarias/integración | `pnpm test`                             | OK; 98/98 pruebas         |
+| Lint                  | `pnpm lint`                             | OK; 0 warnings / 0 errors |
+| Producción            | `pnpm build`                            | OK; 5 páginas generadas   |
+| E2E                   | `pnpm --filter @nexus-tax/web test:e2e` | OK; 1/1 Chromium          |
+
+El E2E crea el expediente, procesa exógena sintética, resuelve un hallazgo,
+registra un PDF local, crea un hecho manual y comprueba persistencia tras
+recargar.
+
+### Riesgos y pendientes
+
+- Los binarios grandes consumen la cuota del navegador; hoy se muestra el uso,
+  pero no se estima la cuota disponible antes de guardar.
+- Las sugerencias no interpretan PDFs: dependen de hechos digitados o importados
+  y siempre requieren revisión.
+- La UI confirma asociaciones sugeridas de un hecho con un registro; el dominio
+  ya admite múltiples IDs, pero falta un editor avanzado de asociaciones N:M.
+- El catálogo es inicial y versionado en código; nuevos formatos deben añadir
+  pruebas y reglas de compatibilidad.
+
+### Siguiente paso exacto
+
+Probar con soportes sintéticos de varios productos para una sola entidad:
+registrar certificado consolidado → asignar coberturas parciales/completas →
+crear hechos por producto → revisar sugerencias → confirmar diferencias →
+exportar el manifiesto y verificar `includesBinaryData: false`. Después diseñar
+el editor N:M antes de cualquier extractor PDF.

@@ -1,15 +1,23 @@
 import type {
   CaseAnalysis,
+  CaseProduct,
   ClassificationSnapshot,
   CreateTaxCaseInput,
+  DocumentFact,
+  DocumentKind,
+  DocumentStorageMode,
+  FactRequirementRelation,
+  PreliminaryReconciliation,
   ProcessingResult,
   RecordResolution,
+  RequirementCoverage,
   RequirementStatus,
   ResolutionStatus,
   TaxCase,
   TaxCaseStatus,
   UploadedDocument,
 } from '@nexus-tax/domain';
+import { DOCUMENT_CATALOG } from '@nexus-tax/domain';
 import type { FilingObligationInputs } from '@nexus-tax/aegis-rules';
 import {
   ANALYSIS_RULE_VERSION,
@@ -30,9 +38,11 @@ export async function createCase(input: CreateTaxCaseInput): Promise<TaxCase> {
   const taxCase: TaxCase = {
     id: newId('case'),
     alias: input.alias.trim(),
+    taxpayer: { documentType: null, documentMasked: null, displayName: null },
     taxYear: input.taxYear,
+    filingYear: input.taxYear + 1,
     notes: input.notes?.trim() || undefined,
-    status: 'draft',
+    status: 'new',
     createdAt: timestamp,
     updatedAt: timestamp,
   };
@@ -58,15 +68,27 @@ export async function deleteCase(caseId: string): Promise<void> {
   const db = getDb();
   await db.transaction(
     'rw',
-    db.cases,
-    db.documents,
-    db.results,
-    db.filingInputs,
-    db.analyses,
+    [
+      db.cases,
+      db.documents,
+      db.results,
+      db.filingInputs,
+      db.analyses,
+      db.documentBlobs,
+      db.products,
+      db.coverages,
+      db.facts,
+      db.reconciliations,
+    ],
     async () => {
       await db.results.delete(caseId);
       await db.filingInputs.delete(caseId);
       await db.analyses.delete(caseId);
+      await db.documentBlobs.where('caseId').equals(caseId).delete();
+      await db.products.where('caseId').equals(caseId).delete();
+      await db.coverages.where('caseId').equals(caseId).delete();
+      await db.facts.where('caseId').equals(caseId).delete();
+      await db.reconciliations.where('caseId').equals(caseId).delete();
       await db.documents.where('caseId').equals(caseId).delete();
       await db.cases.delete(caseId);
     },
@@ -105,7 +127,17 @@ export async function saveResult(caseId: string, result: ProcessingResult): Prom
   await db.transaction('rw', db.results, db.analyses, db.cases, async () => {
     await db.results.put(stored);
     await db.analyses.put(analysis);
-    await db.cases.update(caseId, { status: 'ready', updatedAt: timestamp });
+    await db.cases.update(caseId, {
+      status: 'under_analysis',
+      taxpayer: {
+        documentType: result.report.taxpayer?.documentType ?? null,
+        documentMasked: result.report.taxpayer?.documentNormalized
+          ? `${'•'.repeat(Math.max(4, result.report.taxpayer.documentNormalized.length - 4))}${result.report.taxpayer.documentNormalized.slice(-4)}`
+          : null,
+        displayName: result.report.taxpayer?.taxpayerName ?? null,
+      },
+      updatedAt: timestamp,
+    });
   });
 }
 
@@ -426,17 +458,392 @@ export async function clearAllData(): Promise<void> {
   const db = getDb();
   await db.transaction(
     'rw',
-    db.cases,
-    db.documents,
-    db.results,
-    db.filingInputs,
-    db.analyses,
+    [
+      db.cases,
+      db.documents,
+      db.results,
+      db.filingInputs,
+      db.analyses,
+      db.documentBlobs,
+      db.products,
+      db.coverages,
+      db.facts,
+      db.reconciliations,
+    ],
     async () => {
       await db.results.clear();
       await db.filingInputs.clear();
       await db.analyses.clear();
+      await db.documentBlobs.clear();
+      await db.products.clear();
+      await db.coverages.clear();
+      await db.facts.clear();
+      await db.reconciliations.clear();
       await db.documents.clear();
       await db.cases.clear();
     },
   );
+}
+
+export interface LocalFileInput {
+  name: string;
+  size: number;
+  type: string;
+  arrayBuffer: () => Promise<ArrayBuffer>;
+}
+
+export interface AddCaseDocumentInput {
+  kind: DocumentKind;
+  storageMode: DocumentStorageMode;
+  entityIds?: string[];
+  productIds?: string[];
+  taxYear: number;
+  cutoffDate?: string;
+  notes?: string;
+  requiresPassword?: boolean;
+  replacesDocumentId?: string;
+  coveredRequirementIds?: string[];
+  partialRequirementIds?: string[];
+}
+
+function bytesToHex(bytes: Uint8Array): string {
+  return Array.from(bytes, (value) => value.toString(16).padStart(2, '0')).join('');
+}
+
+export async function sha256File(file: LocalFileInput): Promise<{
+  sha256: string;
+  bytes: ArrayBuffer;
+}> {
+  const bytes = await file.arrayBuffer();
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes);
+  return { sha256: bytesToHex(new Uint8Array(digest)), bytes };
+}
+
+export async function addCaseDocument(
+  caseId: string,
+  file: LocalFileInput,
+  input: AddCaseDocumentInput,
+): Promise<UploadedDocument> {
+  const db = getDb();
+  const taxCase = await db.cases.get(caseId);
+  if (!taxCase) throw new Error('El expediente ya no existe.');
+  const extension = file.name.includes('.') ? file.name.split('.').pop()!.toLowerCase() : '';
+  const catalog = DOCUMENT_CATALOG.find((entry) => entry.kind === input.kind);
+  if (!catalog) throw new Error('Tipo documental no reconocido.');
+  if (!catalog.acceptedExtensions.includes(extension)) {
+    throw new Error(`El tipo ${catalog.name} no admite archivos .${extension || 'sin extensión'}.`);
+  }
+  const { sha256, bytes } = await sha256File(file);
+  const duplicate = await db.documents.where('sha256').equals(sha256).first();
+  if (duplicate && duplicate.caseId === caseId && duplicate.status === 'active') {
+    throw new Error(`El archivo ya existe como “${duplicate.fileName}” (mismo hash SHA-256).`);
+  }
+  const replaced = input.replacesDocumentId
+    ? await db.documents.get(input.replacesDocumentId)
+    : undefined;
+  if (replaced && replaced.caseId !== caseId) {
+    throw new Error('El documento reemplazado pertenece a otro expediente.');
+  }
+  const timestamp = nowIso();
+  const document: UploadedDocument = {
+    id: newId('document'),
+    caseId,
+    kind: input.kind,
+    category: catalog.category,
+    fileName: file.name,
+    extension,
+    fileSizeBytes: file.size,
+    mimeType: file.type || 'application/octet-stream',
+    sha256,
+    storageMode: input.storageMode,
+    status: 'active',
+    entityIds: [...new Set(input.entityIds ?? [])],
+    productIds: [...new Set(input.productIds ?? [])],
+    taxYear: input.taxYear,
+    cutoffDate: input.cutoffDate?.trim() || null,
+    notes: input.notes?.trim() ?? '',
+    requiresPassword: input.requiresPassword ?? false,
+    version: (replaced?.version ?? 0) + 1,
+    replacesDocumentId: replaced?.id ?? null,
+    replacedByDocumentId: null,
+    coveredRequirementIds: [...new Set(input.coveredRequirementIds ?? [])],
+    partialRequirementIds: [...new Set(input.partialRequirementIds ?? [])],
+    uploadedAt: timestamp,
+    updatedAt: timestamp,
+  };
+  await db.transaction('rw', db.documents, db.documentBlobs, db.coverages, db.cases, async () => {
+    await db.documents.add(document);
+    if (input.storageMode === 'store_locally') {
+      await db.documentBlobs.put({
+        documentId: document.id,
+        caseId,
+        bytes,
+        mimeType: document.mimeType,
+        storedAt: timestamp,
+      });
+    }
+    if (replaced) {
+      await db.documents.update(replaced.id, {
+        status: 'replaced',
+        replacedByDocumentId: document.id,
+        updatedAt: timestamp,
+      });
+    }
+    for (const requirementId of document.coveredRequirementIds) {
+      await db.coverages.put({
+        id: `coverage:${document.id}:${requirementId}`,
+        caseId,
+        requirementId,
+        documentId: document.id,
+        factId: null,
+        entityId: document.entityIds[0] ?? null,
+        status: 'covered',
+        relation: 'covers',
+        notes: 'Cobertura seleccionada al registrar el documento.',
+        updatedAt: timestamp,
+      });
+    }
+    for (const requirementId of document.partialRequirementIds) {
+      await db.coverages.put({
+        id: `coverage:${document.id}:${requirementId}`,
+        caseId,
+        requirementId,
+        documentId: document.id,
+        factId: null,
+        entityId: document.entityIds[0] ?? null,
+        status: 'partial',
+        relation: 'partially_covers',
+        notes: 'Cobertura parcial seleccionada al registrar el documento.',
+        updatedAt: timestamp,
+      });
+    }
+    await db.cases.update(caseId, { status: 'collecting_documents', updatedAt: timestamp });
+  });
+  return document;
+}
+
+export async function getDocumentBinary(documentId: string) {
+  const db = getDb();
+  const [document, stored] = await Promise.all([
+    db.documents.get(documentId),
+    db.documentBlobs.get(documentId),
+  ]);
+  if (!document || !stored) return undefined;
+  return { fileName: document.fileName, mimeType: stored.mimeType, bytes: stored.bytes };
+}
+
+export async function removeDocumentBinary(documentId: string): Promise<void> {
+  const db = getDb();
+  const timestamp = nowIso();
+  await db.transaction('rw', db.documents, db.documentBlobs, async () => {
+    await db.documentBlobs.delete(documentId);
+    await db.documents.update(documentId, { storageMode: 'metadata_only', updatedAt: timestamp });
+  });
+}
+
+export async function markDocumentObsolete(documentId: string): Promise<void> {
+  await getDb().documents.update(documentId, { status: 'obsolete', updatedAt: nowIso() });
+}
+
+export async function getLocalStorageUsage(caseId: string): Promise<number> {
+  const blobs = await getDb().documentBlobs.where('caseId').equals(caseId).toArray();
+  return blobs.reduce((sum, item) => sum + item.bytes.byteLength, 0);
+}
+
+export async function saveRequirementCoverage(
+  coverage: Omit<RequirementCoverage, 'id' | 'updatedAt'>,
+): Promise<RequirementCoverage> {
+  const db = getDb();
+  const updatedAt = nowIso();
+  const id = `coverage:${coverage.documentId ?? coverage.factId ?? 'manual'}:${coverage.requirementId}`;
+  const stored = { ...coverage, id, updatedAt };
+  await db.transaction('rw', db.coverages, db.documents, async () => {
+    await db.coverages.put(stored);
+    if (coverage.documentId) {
+      const document = await db.documents.get(coverage.documentId);
+      if (document) {
+        const covered = new Set(document.coveredRequirementIds);
+        const partial = new Set(document.partialRequirementIds);
+        covered.delete(coverage.requirementId);
+        partial.delete(coverage.requirementId);
+        if (coverage.status === 'covered') covered.add(coverage.requirementId);
+        if (coverage.status === 'partial') partial.add(coverage.requirementId);
+        await db.documents.update(document.id, {
+          coveredRequirementIds: [...covered],
+          partialRequirementIds: [...partial],
+          updatedAt,
+        });
+      }
+    }
+  });
+  return stored;
+}
+
+export async function listCoverages(caseId: string): Promise<RequirementCoverage[]> {
+  return getDb().coverages.where('caseId').equals(caseId).toArray();
+}
+
+export async function saveProduct(
+  input: Omit<CaseProduct, 'id' | 'createdAt' | 'updatedAt'>,
+): Promise<CaseProduct> {
+  const timestamp = nowIso();
+  const product = { ...input, id: newId('product'), createdAt: timestamp, updatedAt: timestamp };
+  await getDb().products.add(product);
+  return product;
+}
+
+export async function listProducts(caseId: string): Promise<CaseProduct[]> {
+  return getDb().products.where('caseId').equals(caseId).toArray();
+}
+
+export type SaveDocumentFactInput = Omit<
+  DocumentFact,
+  'id' | 'caseId' | 'createdAt' | 'updatedAt' | 'history'
+>;
+
+export async function saveDocumentFact(
+  caseId: string,
+  input: SaveDocumentFactInput,
+  requirementRelation: FactRequirementRelation = 'provides_evidence',
+): Promise<DocumentFact> {
+  const timestamp = nowIso();
+  const fact: DocumentFact = {
+    ...input,
+    id: newId('fact'),
+    caseId,
+    author: input.author.trim() || 'Analista local',
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    history: [
+      {
+        id: newId('fact-history'),
+        changedAt: timestamp,
+        author: input.author.trim() || 'Analista local',
+        action: 'created',
+        previousValue: null,
+        nextValue: input.value,
+        observation: 'Hecho documental registrado manualmente.',
+      },
+    ],
+  };
+  const db = getDb();
+  await db.transaction('rw', db.facts, db.coverages, async () => {
+    await db.facts.add(fact);
+    for (const requirementId of fact.requirementIds) {
+      await db.coverages.put({
+        id: `coverage:${fact.id}:${requirementId}`,
+        caseId,
+        requirementId,
+        documentId: fact.documentId,
+        factId: fact.id,
+        entityId: fact.entityId,
+        status: 'requires_review',
+        relation: requirementRelation,
+        notes: 'El hecho documental aporta evidencia pendiente de revisión.',
+        updatedAt: timestamp,
+      });
+    }
+  });
+  return fact;
+}
+
+export async function updateDocumentFact(
+  factId: string,
+  changes: Partial<Pick<DocumentFact, 'value' | 'reviewStatus' | 'evidence'>>,
+  observation: string,
+): Promise<void> {
+  const db = getDb();
+  const fact = await db.facts.get(factId);
+  if (!fact) throw new Error('El hecho documental ya no existe.');
+  const updatedAt = nowIso();
+  await db.facts.update(factId, {
+    ...changes,
+    updatedAt,
+    history: [
+      ...fact.history,
+      {
+        id: newId('fact-history'),
+        changedAt: updatedAt,
+        author: fact.author,
+        action: 'updated',
+        previousValue: fact.value,
+        nextValue: changes.value ?? fact.value,
+        observation: observation.trim(),
+      },
+    ],
+  });
+}
+
+export async function listDocumentFacts(caseId: string): Promise<DocumentFact[]> {
+  return getDb().facts.where('caseId').equals(caseId).sortBy('updatedAt');
+}
+
+export type SaveReconciliationInput = Omit<
+  PreliminaryReconciliation,
+  'id' | 'caseId' | 'createdAt' | 'updatedAt' | 'difference' | 'differencePercentage'
+>;
+
+export async function savePreliminaryReconciliation(
+  caseId: string,
+  input: SaveReconciliationInput,
+): Promise<PreliminaryReconciliation> {
+  if (input.status === 'reconciled' && !input.confirmedByHuman) {
+    throw new Error('Una conciliacion definitiva requiere confirmacion humana.');
+  }
+  const timestamp = nowIso();
+  const difference = Math.abs(input.exogenousValue - input.documentaryValue);
+  const reconciliation: PreliminaryReconciliation = {
+    ...input,
+    id: newId('reconciliation'),
+    caseId,
+    difference,
+    differencePercentage:
+      input.exogenousValue === 0 ? null : (difference / Math.abs(input.exogenousValue)) * 100,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+  await getDb().reconciliations.add(reconciliation);
+  return reconciliation;
+}
+
+export async function listReconciliations(caseId: string): Promise<PreliminaryReconciliation[]> {
+  return getDb().reconciliations.where('caseId').equals(caseId).sortBy('updatedAt');
+}
+
+export async function getTaxCaseWorkspace(caseId: string) {
+  const [
+    taxCase,
+    result,
+    analysis,
+    documents,
+    products,
+    coverages,
+    facts,
+    reconciliations,
+    localBytes,
+    filingInputs,
+  ] = await Promise.all([
+    getCase(caseId),
+    getResult(caseId),
+    getCaseAnalysis(caseId),
+    listDocuments(caseId),
+    listProducts(caseId),
+    listCoverages(caseId),
+    listDocumentFacts(caseId),
+    listReconciliations(caseId),
+    getLocalStorageUsage(caseId),
+    getFilingInputs(caseId),
+  ]);
+  return {
+    taxCase,
+    result,
+    analysis,
+    documents,
+    products,
+    coverages,
+    facts,
+    reconciliations,
+    localBytes,
+    filingInputs,
+  };
 }
