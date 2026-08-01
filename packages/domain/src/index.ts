@@ -26,6 +26,7 @@ export * from './processing';
 export * from './analysis';
 export * from './taxDossier';
 export * from './employment';
+export * from './navigation';
 
 /** Versión del contrato de dominio. Se incrementa ante cambios incompatibles. */
-export const DOMAIN_VERSION = '0.4.1';
+export const DOMAIN_VERSION = '0.4.2';

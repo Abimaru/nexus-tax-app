@@ -11,6 +11,7 @@ import type {
   TaxCase,
   UploadedDocument,
   CaseProduct,
+  CaseNavigationState,
   EmploymentIncomeGroup,
   EmployerInstance,
 } from '@nexus-tax/domain';
@@ -377,6 +378,7 @@ export function buildTaxCaseManifest(input: {
   facts: readonly DocumentFact[];
   reconciliations: readonly PreliminaryReconciliation[];
   employmentGroup?: EmploymentIncomeGroup;
+  navigation?: CaseNavigationState;
 }) {
   return {
     schema: 'nexustax.tax-case.manifest',
@@ -392,5 +394,6 @@ export function buildTaxCaseManifest(input: {
     facts: input.facts,
     reconciliations: input.reconciliations,
     employmentIncomeGroup: input.employmentGroup ?? null,
+    workflow: input.navigation ?? null,
   };
 }

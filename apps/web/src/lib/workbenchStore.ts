@@ -21,6 +21,8 @@ interface WorkbenchState {
   phase: WorkbenchPhase;
   fileName: string | null;
   fileSize: number;
+  fileHash: string | null;
+  fileLoadedAt: string | null;
   inspect: InspectResult | null;
 
   selectedSheet: string | null;
@@ -59,6 +61,8 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
   phase: 'idle',
   fileName: null,
   fileSize: 0,
+  fileHash: null,
+  fileLoadedAt: null,
   inspect: null,
   selectedSheet: null,
   headerRowIndex: null,
@@ -88,11 +92,16 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
       inspect: null,
       result: null,
       progress: null,
+      fileHash: null,
+      fileLoadedAt: new Date().toISOString(),
     });
 
     try {
       const client = ensureClient(get, set);
-      const inspect = await client.inspect(file);
+      const [inspect, digest] = await Promise.all([
+        client.inspect(file),
+        file.arrayBuffer().then((bytes) => globalThis.crypto.subtle.digest('SHA-256', bytes)),
+      ]);
       const firstWithData =
         inspect.metadata.sheets.find((s) => !s.isEmpty) ?? inspect.metadata.sheets[0];
       set({
@@ -102,6 +111,9 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
         headerRowIndex: null,
         columnMapping: null,
         structure: null,
+        fileHash: Array.from(new Uint8Array(digest), (value) =>
+          value.toString(16).padStart(2, '0'),
+        ).join(''),
       });
     } catch (error) {
       set({
@@ -162,6 +174,8 @@ export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
       phase: 'idle',
       fileName: null,
       fileSize: 0,
+      fileHash: null,
+      fileLoadedAt: null,
       inspect: null,
       selectedSheet: null,
       headerRowIndex: null,

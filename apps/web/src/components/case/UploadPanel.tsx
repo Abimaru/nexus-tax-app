@@ -77,6 +77,7 @@ export function UploadPanel() {
             {maxMb} MB
           </p>
           <input
+            id="exogenous-file-input"
             ref={inputRef}
             type="file"
             accept={accept}

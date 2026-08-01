@@ -2,6 +2,7 @@ import Dexie, { type Table } from 'dexie';
 import type { FilingObligationInputs } from '@nexus-tax/aegis-rules';
 import type {
   CaseAnalysis,
+  CaseNavigationState,
   CaseProduct,
   DocumentFact,
   EmploymentIncomeGroup,
@@ -25,6 +26,8 @@ export interface StoredResult {
   caseId: string;
   result: ProcessingResult;
   updatedAt: string;
+  sourceSha256?: string | null;
+  sourceLoadedAt?: string;
 }
 
 export interface StoredFilingInputs {
@@ -55,6 +58,7 @@ class NexusTaxDatabase extends Dexie {
   facts!: Table<DocumentFact, string>;
   reconciliations!: Table<PreliminaryReconciliation, string>;
   employmentGroups!: Table<EmploymentIncomeGroup, string>;
+  navigationStates!: Table<CaseNavigationState, string>;
 
   constructor() {
     super('nexustax');
@@ -120,6 +124,20 @@ class NexusTaxDatabase extends Dexie {
       facts: 'id, caseId, documentId, entityId, productId, category, reviewStatus, updatedAt',
       reconciliations: 'id, caseId, status, *factIds, *exogenousRecordIds, updatedAt',
       employmentGroups: 'id, caseId, coverage, updatedAt',
+    });
+    this.version(6).stores({
+      cases: 'id, updatedAt, taxYear, status',
+      documents: 'id, caseId, uploadedAt, sha256, status, kind, *entityIds',
+      results: 'caseId, updatedAt',
+      filingInputs: 'caseId, updatedAt',
+      analyses: 'caseId, updatedAt, ruleVersion',
+      documentBlobs: 'documentId, caseId, storedAt',
+      products: 'id, caseId, entityId, type, status',
+      coverages: 'id, caseId, requirementId, documentId, factId, entityId, status',
+      facts: 'id, caseId, documentId, entityId, productId, category, reviewStatus, updatedAt',
+      reconciliations: 'id, caseId, status, *factIds, *exogenousRecordIds, updatedAt',
+      employmentGroups: 'id, caseId, coverage, updatedAt',
+      navigationStates: 'caseId, lastStage, recommendedStage, updatedAt',
     });
   }
 }

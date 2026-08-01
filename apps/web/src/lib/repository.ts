@@ -1,5 +1,6 @@
 import type {
   CaseAnalysis,
+  CaseNavigationState,
   CaseProduct,
   ClassificationSnapshot,
   CreateTaxCaseInput,
@@ -19,6 +20,8 @@ import type {
   TaxCase,
   TaxCaseStatus,
   UploadedDocument,
+  WorkflowStageId,
+  WorkflowViewId,
 } from '@nexus-tax/domain';
 import { DOCUMENT_CATALOG } from '@nexus-tax/domain';
 import type { FilingObligationInputs } from '@nexus-tax/aegis-rules';
@@ -84,6 +87,7 @@ export async function deleteCase(caseId: string): Promise<void> {
       db.facts,
       db.reconciliations,
       db.employmentGroups,
+      db.navigationStates,
     ],
     async () => {
       await db.results.delete(caseId);
@@ -95,6 +99,7 @@ export async function deleteCase(caseId: string): Promise<void> {
       await db.facts.where('caseId').equals(caseId).delete();
       await db.reconciliations.where('caseId').equals(caseId).delete();
       await db.employmentGroups.where('caseId').equals(caseId).delete();
+      await db.navigationStates.delete(caseId);
       await db.documents.where('caseId').equals(caseId).delete();
       await db.cases.delete(caseId);
     },
@@ -124,10 +129,21 @@ export async function listDocuments(caseId: string): Promise<UploadedDocument[]>
   return getDb().documents.where('caseId').equals(caseId).toArray();
 }
 
-export async function saveResult(caseId: string, result: ProcessingResult): Promise<void> {
+export async function saveResult(
+  caseId: string,
+  result: ProcessingResult,
+  source: { sha256?: string | null; loadedAt?: string } = {},
+): Promise<void> {
   const db = getDb();
   const timestamp = nowIso();
-  const stored: StoredResult = { caseId, result, updatedAt: timestamp };
+  const previousStored = await db.results.get(caseId);
+  const stored: StoredResult = {
+    caseId,
+    result,
+    updatedAt: timestamp,
+    sourceSha256: source.sha256 ?? previousStored?.sourceSha256 ?? null,
+    sourceLoadedAt: source.loadedAt ?? timestamp,
+  };
   const priorAnalysis = await db.analyses.get(caseId);
   const analysis = reconcileAnalysis(caseId, result, priorAnalysis, timestamp);
   const priorEmploymentGroup = await db.employmentGroups.where('caseId').equals(caseId).first();
@@ -158,6 +174,10 @@ export async function saveResult(caseId: string, result: ProcessingResult): Prom
 export async function getResult(caseId: string): Promise<ProcessingResult | undefined> {
   const stored = await getDb().results.get(caseId);
   return stored?.result;
+}
+
+export async function getStoredResult(caseId: string): Promise<StoredResult | undefined> {
+  return getDb().results.get(caseId);
 }
 
 function snapshotChanged(a: ClassificationSnapshot, b: ClassificationSnapshot): boolean {
@@ -484,6 +504,7 @@ export async function clearAllData(): Promise<void> {
       db.facts,
       db.reconciliations,
       db.employmentGroups,
+      db.navigationStates,
     ],
     async () => {
       await db.results.clear();
@@ -495,6 +516,7 @@ export async function clearAllData(): Promise<void> {
       await db.facts.clear();
       await db.reconciliations.clear();
       await db.employmentGroups.clear();
+      await db.navigationStates.clear();
       await db.documents.clear();
       await db.cases.clear();
     },
@@ -1039,6 +1061,129 @@ export async function associateEmployerDocument(
   });
 }
 
+export async function getCaseNavigationState(
+  caseId: string,
+): Promise<CaseNavigationState | undefined> {
+  return getDb().navigationStates.get(caseId);
+}
+
+export async function saveCaseNavigation(input: {
+  caseId: string;
+  stage: WorkflowStageId;
+  view: WorkflowViewId;
+  recommendedStage: WorkflowStageId;
+  completedViews?: string[];
+}): Promise<CaseNavigationState> {
+  const db = getDb();
+  const current = await db.navigationStates.get(input.caseId);
+  const state: CaseNavigationState = {
+    caseId: input.caseId,
+    lastStage: input.stage,
+    lastView: input.view,
+    recommendedStage: input.recommendedStage,
+    completedViews: input.completedViews ?? current?.completedViews ?? [],
+    manualMode: current?.manualMode ?? false,
+    updatedAt: nowIso(),
+  };
+  await db.navigationStates.put(state);
+  return state;
+}
+
+export async function enableManualCase(caseId: string): Promise<CaseNavigationState> {
+  const db = getDb();
+  const current = await db.navigationStates.get(caseId);
+  const timestamp = nowIso();
+  const state: CaseNavigationState = {
+    caseId,
+    lastStage: 'organizacion',
+    lastView: 'documentos',
+    recommendedStage: 'organizacion',
+    completedViews: current?.completedViews ?? [],
+    manualMode: true,
+    updatedAt: timestamp,
+  };
+  await db.transaction('rw', db.navigationStates, db.cases, async () => {
+    await db.navigationStates.put(state);
+    await db.cases.update(caseId, { status: 'collecting_documents', updatedAt: timestamp });
+  });
+  return state;
+}
+
+export async function markWorkflowViewCompleted(
+  caseId: string,
+  stage: WorkflowStageId,
+  view: WorkflowViewId,
+): Promise<void> {
+  const db = getDb();
+  const current = await db.navigationStates.get(caseId);
+  const completedViews = new Set(current?.completedViews ?? []);
+  completedViews.add(`${stage}/${view}`);
+  await db.navigationStates.put({
+    caseId,
+    lastStage: stage,
+    lastView: view,
+    recommendedStage: current?.recommendedStage ?? stage,
+    completedViews: [...completedViews].sort(),
+    manualMode: current?.manualMode ?? false,
+    updatedAt: nowIso(),
+  });
+}
+
+export async function removeExogenousSource(caseId: string): Promise<void> {
+  const db = getDb();
+  const timestamp = nowIso();
+  const group = await db.employmentGroups.where('caseId').equals(caseId).first();
+  const manualInstances = (group?.instances ?? [])
+    .filter((instance) => instance.source === 'manual')
+    .map((instance) => ({
+      ...instance,
+      entityId: null,
+      manualMatchConfirmed: false,
+      updatedAt: timestamp,
+    }));
+  const navigation = await db.navigationStates.get(caseId);
+  await db.transaction(
+    'rw',
+    db.results,
+    db.analyses,
+    db.employmentGroups,
+    db.navigationStates,
+    db.cases,
+    async () => {
+      await db.results.delete(caseId);
+      await db.analyses.delete(caseId);
+      if (group && manualInstances.length) {
+        await db.employmentGroups.put({
+          ...group,
+          instances: manualInstances,
+          additionalDetectedEmployers: [],
+          findings: [],
+          coverage: calculateEmploymentGroupCoverage(manualInstances),
+          updatedAt: timestamp,
+        });
+      } else if (group) {
+        await db.employmentGroups.delete(group.id);
+      }
+      await db.navigationStates.put({
+        caseId,
+        lastStage: 'fuente',
+        lastView: 'cargar',
+        recommendedStage: 'fuente',
+        completedViews: (navigation?.completedViews ?? []).filter(
+          (view) => !view.startsWith('extraccion/') && !view.startsWith('conciliacion/'),
+        ),
+        manualMode: navigation?.manualMode ?? false,
+        updatedAt: timestamp,
+      });
+      await db.cases.update(caseId, {
+        status: navigation?.manualMode ? 'collecting_documents' : 'new',
+        taxpayer: { documentType: null, documentMasked: null, displayName: null },
+        updatedAt: timestamp,
+      });
+    },
+  );
+}
+
 export async function getTaxCaseWorkspace(caseId: string) {
   const [
     taxCase,
@@ -1052,6 +1197,8 @@ export async function getTaxCaseWorkspace(caseId: string) {
     localBytes,
     filingInputs,
     employmentGroup,
+    navigation,
+    storedResult,
   ] = await Promise.all([
     getCase(caseId),
     getResult(caseId),
@@ -1064,6 +1211,8 @@ export async function getTaxCaseWorkspace(caseId: string) {
     getLocalStorageUsage(caseId),
     getFilingInputs(caseId),
     getEmploymentIncomeGroup(caseId),
+    getCaseNavigationState(caseId),
+    getStoredResult(caseId),
   ]);
   return {
     taxCase,
@@ -1077,5 +1226,12 @@ export async function getTaxCaseWorkspace(caseId: string) {
     localBytes,
     filingInputs,
     employmentGroup,
+    navigation,
+    sourceInfo: storedResult
+      ? {
+          sha256: storedResult.sourceSha256 ?? null,
+          loadedAt: storedResult.sourceLoadedAt ?? storedResult.updatedAt,
+        }
+      : undefined,
   };
 }
