@@ -105,7 +105,21 @@ function makeSupportFile(): string {
   return file;
 }
 
-test('flujo completo: crear expediente, cargar, procesar y ver resumen', async ({ page }) => {
+async function selectStage(page: import('@playwright/test').Page, name: string) {
+  await page
+    .getByRole('navigation', { name: 'Etapas del expediente' })
+    .getByRole('button', { name: new RegExp(name, 'i') })
+    .click();
+}
+
+async function selectView(page: import('@playwright/test').Page, name: string) {
+  await page
+    .getByRole('navigation', { name: 'Vistas de la etapa' })
+    .getByRole('button', { name: new RegExp(`^${name}`, 'i') })
+    .click();
+}
+
+test('flujo guiado completo del expediente', async ({ page }) => {
   const samplePath = makeSampleFile();
   const supportPath = makeSupportFile();
 
@@ -116,16 +130,25 @@ test('flujo completo: crear expediente, cargar, procesar y ver resumen', async (
   await page.getByLabel('Nombre o alias').fill('Expediente de prueba E2E');
   await page.getByRole('button', { name: 'Crear expediente' }).click();
 
-  // Ya en la pantalla del expediente, pestaña Cargar.
-  await expect(page.getByRole('button', { name: /Cargar ex.gena/ })).toBeVisible();
-  await page.getByRole('button', { name: /Cargar ex.gena/ }).click();
-  await page.setInputFiles('input[type="file"]', samplePath);
+  // Un expediente nuevo abre en Fuente y explica las etapas bloqueadas.
+  await expect(page).toHaveURL(/\/fuente\/cargar$/);
+  await expect(
+    page.getByRole('heading', { name: 'Comienza cargando la información exógena' }),
+  ).toBeVisible();
+  await expect(
+    page
+      .getByRole('navigation', { name: 'Etapas del expediente' })
+      .getByRole('button', { name: /Extracción/ }),
+  ).toBeDisabled();
+  await page.setInputFiles('#exogenous-file-input', samplePath);
 
-  // Avanza a Inspección; selecciona la hoja de datos.
+  // Avanza a Extracción; selecciona la hoja y procesa.
+  await expect(page).toHaveURL(/\/extraccion\/inspeccion$/);
   await page.getByRole('button', { name: 'Reporte' }).click();
   await page.getByRole('button', { name: /Procesar información/ }).click();
 
-  // Resumen visible con métricas y gráficas.
+  // Organización abre en Resumen con métricas y gráficas.
+  await expect(page).toHaveURL(/\/organizacion\/resumen$/, { timeout: 20_000 });
   await expect(page.getByText('Registros').first()).toBeVisible({ timeout: 20_000 });
   await expect(page.getByRole('heading', { name: 'Valores reportados por entidad' })).toBeVisible();
   await expect(page.getByRole('heading', { name: /Calidad del an.lisis/ })).toBeVisible();
@@ -133,10 +156,26 @@ test('flujo completo: crear expediente, cargar, procesar y ver resumen', async (
   await expect(page.getByText('Suma bruta no consolidada')).toBeVisible();
   await expect(page.getByText('1234567890', { exact: true })).toHaveCount(0);
 
-  await page
-    .getByRole('navigation', { name: 'Secciones del expediente' })
-    .getByRole('button', { name: 'Requisitos', exact: true })
-    .click();
+  // Fuente permite revisar, reemplazar o eliminar con confirmación.
+  await selectStage(page, 'Fuente');
+  await expect(page.getByText(/SHA-256:/)).toBeVisible();
+  let replacementWarning = '';
+  page.once('dialog', async (dialog) => {
+    replacementWarning = dialog.message();
+    await dialog.dismiss();
+  });
+  await page.getByRole('button', { name: 'Reemplazar fuente', exact: true }).last().click();
+  expect(replacementWarning).toContain('invalidar');
+  let removalWarning = '';
+  page.once('dialog', async (dialog) => {
+    removalWarning = dialog.message();
+    await dialog.dismiss();
+  });
+  await page.getByRole('button', { name: 'Eliminar fuente', exact: true }).click();
+  expect(removalWarning).toContain('documentos y hechos manuales permanecerán');
+
+  await selectStage(page, 'Organización');
+  await selectView(page, 'Requisitos');
   await expect(
     page.getByRole('heading', { name: 'Ingresos laborales y empleadores' }),
   ).toBeVisible();
@@ -145,24 +184,16 @@ test('flujo completo: crear expediente, cargar, procesar y ver resumen', async (
   await page.getByRole('button', { name: /Agregar otro empleador/ }).click();
   await expect(page.getByRole('heading', { name: 'Empleador 2' })).toBeVisible();
   await page.reload();
-  await page
-    .getByRole('navigation', { name: 'Secciones del expediente' })
-    .getByRole('button', { name: 'Requisitos', exact: true })
-    .click();
+  await expect(page).toHaveURL(/\/organizacion\/requisitos$/);
   await expect(page.getByRole('heading', { name: 'Empleador 2' })).toBeVisible();
 
-  await page
-    .getByRole('navigation', { name: 'Secciones del expediente' })
-    .getByRole('button', { name: 'Matriz', exact: true })
-    .click();
+  await selectStage(page, 'Conciliación');
+  await selectView(page, 'Matriz');
   await expect(page.getByRole('heading', { name: 'Matriz tributaria preliminar' })).toBeVisible();
   await expect(page.getByRole('heading', { name: /Facturaci.n electr.nica DIAN/ })).toBeVisible();
   await expect(page.getByText('Beneficio preliminar 1 %')).toBeVisible();
 
-  await page
-    .getByRole('navigation', { name: 'Secciones del expediente' })
-    .getByRole('button', { name: 'Hallazgos', exact: true })
-    .click();
+  await selectView(page, 'Hallazgos');
   const unresolved = page.locator('li').filter({ hasText: 'unclassified_tax_record' }).first();
   await unresolved.getByRole('button', { name: 'Ver registro afectado' }).click();
   await expect(page.getByRole('dialog', { name: /Resolver clasificaci.n/ })).toBeVisible();
@@ -174,33 +205,34 @@ test('flujo completo: crear expediente, cargar, procesar y ver resumen', async (
   await page.getByRole('button', { name: /Cerrar panel de resoluci.n/ }).click();
 
   await page.reload();
-  await page
-    .getByRole('navigation', { name: 'Secciones del expediente' })
-    .getByRole('button', { name: 'Hallazgos', exact: true })
-    .click();
+  await expect(page).toHaveURL(/\/conciliacion\/hallazgos$/);
   await expect(page.getByText(/Resuelto: analyst modified/).first()).toBeVisible();
 
-  await page.getByRole('button', { name: /Obligación/ }).click();
+  await selectStage(page, 'Declaración');
+  await expect(
+    page
+      .getByRole('navigation', { name: 'Vistas de la etapa' })
+      .getByRole('button', { name: /Formulario 210/ }),
+  ).toBeDisabled();
   await expect(page.getByRole('heading', { name: 'Obligación de declarar' })).toBeVisible();
   await page.getByLabel('Responsabilidad de IVA al cierre de 2025').selectOption('false');
   await expect(page.getByText('No se detectan criterios que activen la obligación')).toBeVisible();
   await expect(page.getByText(/19 de octubre de 2026/)).toBeVisible();
   await expect(page.getByText(/co-renta-pn-2025\.1\.0\.0/)).toBeVisible();
 
-  await page
-    .getByRole('navigation', { name: 'Secciones del expediente' })
-    .getByRole('button', { name: 'Documentos', exact: true })
-    .click();
+  await selectStage(page, 'Organización');
+  await selectView(page, 'Documentos');
+  await expect(page).toHaveURL(/\/organizacion\/documentos$/);
+  await expect(page.getByRole('heading', { name: 'Biblioteca documental local' })).toBeVisible();
   await page.setInputFiles('#case-document-file', supportPath);
   await page.getByLabel(/Decisi.n de persistencia/).selectOption('store_locally');
   await page.locator('input[type="checkbox"]').first().check();
   await page.getByRole('button', { name: 'Registrar documento' }).click();
   await expect(page.getByRole('heading', { name: 'certificado-sintetico.pdf' })).toBeVisible();
 
-  await page
-    .getByRole('navigation', { name: 'Secciones del expediente' })
-    .getByRole('button', { name: 'Hechos', exact: true })
-    .click();
+  await selectView(page, 'Hechos');
+  await expect(page).toHaveURL(/\/organizacion\/hechos$/);
+  await expect(page.getByRole('heading', { name: 'Registrar valores manualmente' })).toBeVisible();
   await page.getByLabel('Concepto original').fill('Saldo cuenta bancaria certificado');
   await page.getByLabel('Valor documental').fill('1250000');
   await page.getByLabel(/Categor.a normalizada/).selectOption('asset');
@@ -210,14 +242,42 @@ test('flujo completo: crear expediente, cargar, procesar y ver resumen', async (
   await expect(page.getByText('Saldo cuenta bancaria certificado')).toBeVisible();
 
   await page.reload();
-  await page
-    .getByRole('navigation', { name: 'Secciones del expediente' })
-    .getByRole('button', { name: 'Documentos', exact: true })
-    .click();
+  await expect(page).toHaveURL(/\/organizacion\/hechos$/);
+  await selectView(page, 'Documentos');
   await expect(page.getByRole('heading', { name: 'certificado-sintetico.pdf' })).toBeVisible();
-  await page
-    .getByRole('navigation', { name: 'Secciones del expediente' })
-    .getByRole('button', { name: 'Hechos', exact: true })
-    .click();
+  await selectView(page, 'Hechos');
   await expect(page.getByText('Saldo cuenta bancaria certificado')).toBeVisible();
+
+  await selectStage(page, 'Exportación');
+  await selectView(page, 'Manifiesto');
+  await expect(page.getByText(/Expediente incompleto|Preparado para revisión/)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Exportar manifiesto JSON' })).toBeVisible();
+});
+
+test('stepper responsive sin desbordamiento horizontal', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('link', { name: 'Crear expediente' }).first().click();
+  await page.getByLabel('Nombre o alias').fill('Expediente responsive E2E');
+  await page.getByRole('button', { name: 'Crear expediente' }).click();
+
+  for (const width of [1440, 1280, 1024, 768, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+        ),
+      )
+      .toBe(true);
+    if (width < 768) {
+      await expect(page.getByLabel('Etapa actual')).toBeVisible();
+      await expect(page.getByLabel('Vista actual')).toBeVisible();
+    } else {
+      await expect(
+        page
+          .getByRole('navigation', { name: 'Etapas del expediente' })
+          .getByRole('button', { name: /Fuente/ }),
+      ).toBeVisible();
+    }
+  }
 });

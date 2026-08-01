@@ -30,6 +30,11 @@ import {
   associateEmployerDocument,
   removeEmployerInstance,
   setEmployerInstanceStatus,
+  enableManualCase,
+  getCaseNavigationState,
+  markWorkflowViewCompleted,
+  removeExogenousSource,
+  saveCaseNavigation,
 } from './repository';
 import { buildTaxCaseManifest } from './taxCaseAnalysis';
 
@@ -383,6 +388,12 @@ describe('repositorio (IndexedDB local)', () => {
   it('exporta el expediente sin incluir binarios', async () => {
     const created = await createCase({ alias: 'Exportable', taxYear: 2025 });
     await addEmployerInstance(created.id, { employerName: 'Empleador sintetico' });
+    await saveCaseNavigation({
+      caseId: created.id,
+      stage: 'exportacion',
+      view: 'manifiesto',
+      recommendedStage: 'exportacion',
+    });
     await addCaseDocument(created.id, localFile('local.pdf', 'secreto sintetico'), {
       kind: 'other',
       storageMode: 'store_locally',
@@ -399,11 +410,13 @@ describe('repositorio (IndexedDB local)', () => {
       facts: workspace.facts,
       reconciliations: workspace.reconciliations,
       employmentGroup: workspace.employmentGroup,
+      navigation: workspace.navigation,
     });
     expect(manifest.includesBinaryData).toBe(false);
     expect(JSON.stringify(manifest)).not.toContain('secreto sintetico');
     expect(JSON.stringify(manifest)).not.toContain('bytes');
     expect(manifest.employmentIncomeGroup?.instances).toHaveLength(1);
+    expect(manifest.workflow?.lastView).toBe('manifiesto');
   });
 
   it('registra cobertura parcial sin duplicar el documento', async () => {
@@ -547,5 +560,77 @@ describe('repositorio (IndexedDB local)', () => {
     expect((await getTaxCaseWorkspace(created.id)).employmentGroup?.instances[0]?.status).toBe(
       'covered',
     );
+  });
+
+  it('persiste fuente, hash y última vista por expediente', async () => {
+    const created = await createCase({ alias: 'Navegable', taxYear: 2025 });
+    await saveResult(created.id, sampleResult(), {
+      sha256: 'a'.repeat(64),
+      loadedAt: '2026-01-01T00:00:00.000Z',
+    });
+    await saveCaseNavigation({
+      caseId: created.id,
+      stage: 'organizacion',
+      view: 'documentos',
+      recommendedStage: 'organizacion',
+    });
+    await markWorkflowViewCompleted(created.id, 'exportacion', 'manifiesto');
+    const workspace = await getTaxCaseWorkspace(created.id);
+    expect(workspace.sourceInfo).toEqual({
+      sha256: 'a'.repeat(64),
+      loadedAt: '2026-01-01T00:00:00.000Z',
+    });
+    expect(workspace.navigation).toMatchObject({
+      lastStage: 'exportacion',
+      lastView: 'manifiesto',
+      completedViews: ['exportacion/manifiesto'],
+    });
+  });
+
+  it('persiste la decisión explícita de expediente manual limitado', async () => {
+    const created = await createCase({ alias: 'Manual', taxYear: 2025 });
+    await enableManualCase(created.id);
+    expect(await getCaseNavigationState(created.id)).toMatchObject({
+      manualMode: true,
+      lastStage: 'organizacion',
+      lastView: 'documentos',
+    });
+  });
+
+  it('elimina solo la fuente y conserva documentos y hechos manuales', async () => {
+    const created = await createCase({ alias: 'Sin fuente', taxYear: 2025 });
+    await saveResult(created.id, employmentResult());
+    await addCaseDocument(created.id, localFile('soporte.pdf', 'soporte'), {
+      kind: 'other',
+      storageMode: 'metadata_only',
+      taxYear: 2025,
+    });
+    await saveDocumentFact(created.id, {
+      documentId: null,
+      entityId: null,
+      productId: null,
+      originalConcept: 'Hecho manual conservado',
+      category: 'informational',
+      nature: 'informational',
+      treatment: 'do_not_aggregate',
+      value: 1,
+      currency: 'COP',
+      cutoffDate: null,
+      period: '',
+      pageOrSection: '',
+      evidence: '',
+      captureMethod: 'manual',
+      confidence: 'low',
+      reviewStatus: 'pending',
+      requirementIds: [],
+      author: 'Analista local',
+    });
+    await removeExogenousSource(created.id);
+    const workspace = await getTaxCaseWorkspace(created.id);
+    expect(workspace.result).toBeUndefined();
+    expect(workspace.analysis).toBeUndefined();
+    expect(workspace.documents).toHaveLength(1);
+    expect(workspace.facts).toHaveLength(1);
+    expect(workspace.navigation).toMatchObject({ lastStage: 'fuente', lastView: 'cargar' });
   });
 });
