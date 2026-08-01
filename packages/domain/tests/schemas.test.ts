@@ -6,6 +6,7 @@ import {
   DocumentFactSchema,
   UploadedDocumentSchema,
   ExogenousReportStructureSchema,
+  EmploymentIncomeGroupSchema,
   TaxYearSchema,
 } from '../src/index';
 
@@ -98,5 +99,43 @@ describe('esquemas de dominio', () => {
 
   it('el documento persistible no admite una contrasena', () => {
     expect('password' in UploadedDocumentSchema.shape).toBe(false);
+  });
+
+  it('limita el grupo laboral a tres instancias', () => {
+    const instance = {
+      id: 'employer:1',
+      employerName: 'Empleador sintetico',
+      taxIdMasked: '••••9001',
+      workedPeriod: '2025',
+      entityId: 'entity:1',
+      form220DocumentId: null,
+      complementaryDocumentIds: [],
+      status: 'pending',
+      coverage: 'not_evaluated',
+      observations: '',
+      source: 'detected',
+      manualMatchConfirmed: false,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    };
+    const group = {
+      id: 'employment-group:case:1',
+      caseId: 'case:1',
+      title: 'Ingresos laborales y empleadores',
+      receivedEmploymentIncome: true,
+      instances: [instance, { ...instance, id: 'employer:2' }, { ...instance, id: 'employer:3' }],
+      additionalDetectedEmployers: [],
+      coverage: 'pending',
+      findings: [],
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    };
+    expect(EmploymentIncomeGroupSchema.safeParse(group).success).toBe(true);
+    expect(
+      EmploymentIncomeGroupSchema.safeParse({
+        ...group,
+        instances: [...group.instances, { ...instance, id: 'employer:4' }],
+      }).success,
+    ).toBe(false);
   });
 });

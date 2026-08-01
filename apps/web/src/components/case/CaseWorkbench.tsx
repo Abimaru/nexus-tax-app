@@ -97,6 +97,7 @@ export function CaseWorkbench({ caseId }: { caseId: string }) {
         coverages: workspace?.coverages ?? [],
         facts: workspace?.facts ?? [],
         reconciliations: workspace?.reconciliations ?? [],
+        employmentGroup: workspace?.employmentGroup,
       }),
     [
       result,
@@ -105,6 +106,7 @@ export function CaseWorkbench({ caseId }: { caseId: string }) {
       workspace?.coverages,
       workspace?.facts,
       workspace?.reconciliations,
+      workspace?.employmentGroup,
     ],
   );
   const entities = useMemo(
@@ -167,6 +169,7 @@ export function CaseWorkbench({ caseId }: { caseId: string }) {
       coverages: workspace.coverages,
       facts: workspace.facts,
       reconciliations: workspace.reconciliations,
+      employmentGroup: workspace.employmentGroup,
     });
     downloadTextFile(
       `${safeBaseName(taxCase.alias)}-manifiesto.json`,
@@ -253,7 +256,13 @@ export function CaseWorkbench({ caseId }: { caseId: string }) {
           </div>
         ) : null}
         {tab === 'entidades' && (
-          <EntitiesPanel caseId={caseId} entities={entities} products={workspace?.products ?? []} />
+          <EntitiesPanel
+            caseId={caseId}
+            entities={entities}
+            products={workspace?.products ?? []}
+            employmentGroup={workspace?.employmentGroup}
+            documents={workspace?.documents ?? []}
+          />
         )}
         {tab === 'documentos' && taxCase ? (
           <DocumentsPanel
@@ -272,6 +281,7 @@ export function CaseWorkbench({ caseId }: { caseId: string }) {
             result={result}
             documents={workspace?.documents ?? []}
             coverages={workspace?.coverages ?? []}
+            employmentGroup={workspace?.employmentGroup}
           />
         )}
         {tab === 'hechos' && (

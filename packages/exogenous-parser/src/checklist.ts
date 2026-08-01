@@ -72,16 +72,6 @@ export const DEFAULT_CHECKLIST_RULES: ChecklistRule[] = [
     },
   },
   {
-    id: 'concept.employment.v2',
-    matches: (record) => record.category === 'employment_income',
-    requirement: {
-      documentName: 'Formulario 220 (Certificado de ingresos y retenciones)',
-      documentCategory: 'Laboral',
-      reason: 'Se detectaron pagos o ingresos laborales.',
-      confidence: 'high',
-    },
-  },
-  {
     id: 'concept.severance.v2',
     matches: (record) => record.category === 'severance',
     requirement: {

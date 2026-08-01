@@ -4,6 +4,7 @@ import type {
   CaseAnalysis,
   CaseProduct,
   DocumentFact,
+  EmploymentIncomeGroup,
   PreliminaryReconciliation,
   ProcessingResult,
   RequirementCoverage,
@@ -53,6 +54,7 @@ class NexusTaxDatabase extends Dexie {
   coverages!: Table<RequirementCoverage, string>;
   facts!: Table<DocumentFact, string>;
   reconciliations!: Table<PreliminaryReconciliation, string>;
+  employmentGroups!: Table<EmploymentIncomeGroup, string>;
 
   constructor() {
     super('nexustax');
@@ -106,6 +108,19 @@ class NexusTaxDatabase extends Dexie {
                     : 'new';
           });
       });
+    this.version(5).stores({
+      cases: 'id, updatedAt, taxYear, status',
+      documents: 'id, caseId, uploadedAt, sha256, status, kind, *entityIds',
+      results: 'caseId, updatedAt',
+      filingInputs: 'caseId, updatedAt',
+      analyses: 'caseId, updatedAt, ruleVersion',
+      documentBlobs: 'documentId, caseId, storedAt',
+      products: 'id, caseId, entityId, type, status',
+      coverages: 'id, caseId, requirementId, documentId, factId, entityId, status',
+      facts: 'id, caseId, documentId, entityId, productId, category, reviewStatus, updatedAt',
+      reconciliations: 'id, caseId, status, *factIds, *exogenousRecordIds, updatedAt',
+      employmentGroups: 'id, caseId, coverage, updatedAt',
+    });
   }
 }
 

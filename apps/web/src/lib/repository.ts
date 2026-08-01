@@ -6,6 +6,9 @@ import type {
   DocumentFact,
   DocumentKind,
   DocumentStorageMode,
+  EmployerInstance,
+  EmployerInstanceStatus,
+  EmploymentIncomeGroup,
   FactRequirementRelation,
   PreliminaryReconciliation,
   ProcessingResult,
@@ -26,6 +29,7 @@ import {
 } from '@nexus-tax/exogenous-parser';
 import { getDb, type StoredResult } from './db';
 import { newId, nowIso } from './id';
+import { buildEmploymentIncomeGroup, calculateEmploymentGroupCoverage } from './taxCaseAnalysis';
 
 /**
  * Repositorio de acceso a datos locales. Envuelve Dexie con operaciones de
@@ -79,6 +83,7 @@ export async function deleteCase(caseId: string): Promise<void> {
       db.coverages,
       db.facts,
       db.reconciliations,
+      db.employmentGroups,
     ],
     async () => {
       await db.results.delete(caseId);
@@ -89,6 +94,7 @@ export async function deleteCase(caseId: string): Promise<void> {
       await db.coverages.where('caseId').equals(caseId).delete();
       await db.facts.where('caseId').equals(caseId).delete();
       await db.reconciliations.where('caseId').equals(caseId).delete();
+      await db.employmentGroups.where('caseId').equals(caseId).delete();
       await db.documents.where('caseId').equals(caseId).delete();
       await db.cases.delete(caseId);
     },
@@ -124,9 +130,17 @@ export async function saveResult(caseId: string, result: ProcessingResult): Prom
   const stored: StoredResult = { caseId, result, updatedAt: timestamp };
   const priorAnalysis = await db.analyses.get(caseId);
   const analysis = reconcileAnalysis(caseId, result, priorAnalysis, timestamp);
-  await db.transaction('rw', db.results, db.analyses, db.cases, async () => {
+  const priorEmploymentGroup = await db.employmentGroups.where('caseId').equals(caseId).first();
+  const employmentGroup = buildEmploymentIncomeGroup({
+    caseId,
+    result,
+    existing: priorEmploymentGroup,
+    now: timestamp,
+  });
+  await db.transaction('rw', db.results, db.analyses, db.cases, db.employmentGroups, async () => {
     await db.results.put(stored);
     await db.analyses.put(analysis);
+    if (employmentGroup) await db.employmentGroups.put(employmentGroup);
     await db.cases.update(caseId, {
       status: 'under_analysis',
       taxpayer: {
@@ -469,6 +483,7 @@ export async function clearAllData(): Promise<void> {
       db.coverages,
       db.facts,
       db.reconciliations,
+      db.employmentGroups,
     ],
     async () => {
       await db.results.clear();
@@ -479,6 +494,7 @@ export async function clearAllData(): Promise<void> {
       await db.coverages.clear();
       await db.facts.clear();
       await db.reconciliations.clear();
+      await db.employmentGroups.clear();
       await db.documents.clear();
       await db.cases.clear();
     },
@@ -810,6 +826,219 @@ export async function listReconciliations(caseId: string): Promise<PreliminaryRe
   return getDb().reconciliations.where('caseId').equals(caseId).sortBy('updatedAt');
 }
 
+export async function getEmploymentIncomeGroup(
+  caseId: string,
+): Promise<EmploymentIncomeGroup | undefined> {
+  return getDb().employmentGroups.where('caseId').equals(caseId).first();
+}
+
+async function putEmploymentInstances(
+  group: EmploymentIncomeGroup,
+  instances: EmployerInstance[],
+): Promise<EmploymentIncomeGroup> {
+  const stored: EmploymentIncomeGroup = {
+    ...group,
+    instances,
+    coverage: calculateEmploymentGroupCoverage(instances),
+    updatedAt: nowIso(),
+  };
+  await getDb().employmentGroups.put(stored);
+  return stored;
+}
+
+export async function addEmployerInstance(
+  caseId: string,
+  input: { employerName?: string; receivedEmploymentIncome?: boolean } = {},
+): Promise<EmployerInstance> {
+  const db = getDb();
+  const timestamp = nowIso();
+  const current = await getEmploymentIncomeGroup(caseId);
+  const group: EmploymentIncomeGroup = current ?? {
+    id: `employment-group:${caseId}`,
+    caseId,
+    title: 'Ingresos laborales y empleadores',
+    receivedEmploymentIncome: input.receivedEmploymentIncome ?? true,
+    instances: [],
+    additionalDetectedEmployers: [],
+    coverage: 'pending',
+    findings: [],
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+  if (group.instances.length >= 3) throw new Error('La interfaz admite hasta tres empleadores.');
+  const instance: EmployerInstance = {
+    id: newId('employer'),
+    employerName: input.employerName?.trim() ?? '',
+    taxIdMasked: null,
+    workedPeriod: '',
+    entityId: null,
+    form220DocumentId: null,
+    complementaryDocumentIds: [],
+    status: 'pending',
+    coverage: 'not_evaluated',
+    observations: '',
+    source: 'manual',
+    manualMatchConfirmed: false,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+  await db.employmentGroups.put({
+    ...group,
+    receivedEmploymentIncome: input.receivedEmploymentIncome ?? group.receivedEmploymentIncome,
+    instances: [...group.instances, instance],
+    coverage: calculateEmploymentGroupCoverage([...group.instances, instance]),
+    updatedAt: timestamp,
+  });
+  return instance;
+}
+
+export async function updateEmployerInstance(
+  caseId: string,
+  instanceId: string,
+  changes: Partial<
+    Pick<
+      EmployerInstance,
+      | 'employerName'
+      | 'workedPeriod'
+      | 'entityId'
+      | 'taxIdMasked'
+      | 'observations'
+      | 'manualMatchConfirmed'
+    >
+  >,
+): Promise<void> {
+  const group = await getEmploymentIncomeGroup(caseId);
+  if (!group) throw new Error('El grupo laboral no existe.');
+  const timestamp = nowIso();
+  const instances = group.instances.map((instance) =>
+    instance.id === instanceId ? { ...instance, ...changes, updatedAt: timestamp } : instance,
+  );
+  if (!instances.some((instance) => instance.id === instanceId)) {
+    throw new Error('La instancia de empleador no existe.');
+  }
+  await putEmploymentInstances(group, instances);
+}
+
+export async function setEmployerInstanceStatus(
+  caseId: string,
+  instanceId: string,
+  status: EmployerInstanceStatus,
+): Promise<void> {
+  const group = await getEmploymentIncomeGroup(caseId);
+  if (!group) throw new Error('El grupo laboral no existe.');
+  const timestamp = nowIso();
+  const instances = group.instances.map((instance) => {
+    if (instance.id !== instanceId) return instance;
+    const coverage: EmployerInstance['coverage'] =
+      status === 'covered'
+        ? 'covered'
+        : status === 'partially_covered'
+          ? 'partial'
+          : status === 'not_applicable'
+            ? 'not_applicable'
+            : status === 'requires_review'
+              ? 'requires_review'
+              : 'not_evaluated';
+    return { ...instance, status, coverage, updatedAt: timestamp };
+  });
+  await putEmploymentInstances(group, instances);
+}
+
+export async function removeEmployerInstance(caseId: string, instanceId: string): Promise<void> {
+  const group = await getEmploymentIncomeGroup(caseId);
+  if (!group) return;
+  await putEmploymentInstances(
+    group,
+    group.instances.filter((instance) => instance.id !== instanceId),
+  );
+}
+
+export async function associateEmployerDocument(
+  caseId: string,
+  instanceId: string,
+  documentId: string,
+  options: { complementary?: boolean; allowConsolidatedAsPrimary?: boolean } = {},
+): Promise<void> {
+  const db = getDb();
+  const [group, document] = await Promise.all([
+    getEmploymentIncomeGroup(caseId),
+    db.documents.get(documentId),
+  ]);
+  if (!group) throw new Error('El grupo laboral no existe.');
+  if (!document || document.caseId !== caseId || document.status !== 'active') {
+    throw new Error('El documento no esta activo en este expediente.');
+  }
+  const target = group.instances.find((instance) => instance.id === instanceId);
+  if (!target) throw new Error('La instancia de empleador no existe.');
+  if (options.complementary) {
+    if (document.kind === 'form_220') {
+      throw new Error('El Formulario 220 debe asociarse como documento principal.');
+    }
+  } else {
+    if (!['form_220', 'consolidated_tax_certificate'].includes(document.kind)) {
+      throw new Error('El documento principal debe ser un Formulario 220.');
+    }
+    if (document.kind === 'consolidated_tax_certificate' && !options.allowConsolidatedAsPrimary) {
+      throw new Error(
+        'Un certificado consolidado requiere una decision expresa del analista para reemplazar el Formulario 220.',
+      );
+    }
+    if (
+      document.kind === 'form_220' &&
+      group.instances.some(
+        (instance) => instance.id !== instanceId && instance.form220DocumentId === document.id,
+      )
+    ) {
+      throw new Error('Este Formulario 220 ya esta asociado a otro empleador.');
+    }
+  }
+  if (
+    document.entityIds.length &&
+    target.entityId &&
+    !document.entityIds.includes(target.entityId)
+  ) {
+    throw new Error('El documento esta asociado a una entidad diferente.');
+  }
+  const timestamp = nowIso();
+  const instances = group.instances.map((instance) => {
+    if (instance.id !== instanceId) return instance;
+    if (options.complementary) {
+      return {
+        ...instance,
+        complementaryDocumentIds: [...new Set([...instance.complementaryDocumentIds, documentId])],
+        status: instance.status === 'pending' ? ('partially_covered' as const) : instance.status,
+        coverage: instance.coverage === 'not_evaluated' ? ('partial' as const) : instance.coverage,
+        updatedAt: timestamp,
+      };
+    }
+    return {
+      ...instance,
+      form220DocumentId: documentId,
+      status: 'covered' as const,
+      coverage: 'covered' as const,
+      observations:
+        document.kind === 'consolidated_tax_certificate'
+          ? `${instance.observations}\nEl analista acepto expresamente un certificado consolidado como soporte principal.`.trim()
+          : instance.observations,
+      updatedAt: timestamp,
+    };
+  });
+  await db.transaction('rw', db.employmentGroups, db.documents, async () => {
+    await db.employmentGroups.put({
+      ...group,
+      instances,
+      coverage: calculateEmploymentGroupCoverage(instances),
+      updatedAt: timestamp,
+    });
+    if (target.entityId && !document.entityIds.includes(target.entityId)) {
+      await db.documents.update(document.id, {
+        entityIds: [...document.entityIds, target.entityId],
+        updatedAt: timestamp,
+      });
+    }
+  });
+}
+
 export async function getTaxCaseWorkspace(caseId: string) {
   const [
     taxCase,
@@ -822,6 +1051,7 @@ export async function getTaxCaseWorkspace(caseId: string) {
     reconciliations,
     localBytes,
     filingInputs,
+    employmentGroup,
   ] = await Promise.all([
     getCase(caseId),
     getResult(caseId),
@@ -833,6 +1063,7 @@ export async function getTaxCaseWorkspace(caseId: string) {
     listReconciliations(caseId),
     getLocalStorageUsage(caseId),
     getFilingInputs(caseId),
+    getEmploymentIncomeGroup(caseId),
   ]);
   return {
     taxCase,
@@ -845,5 +1076,6 @@ export async function getTaxCaseWorkspace(caseId: string) {
     reconciliations,
     localBytes,
     filingInputs,
+    employmentGroup,
   };
 }

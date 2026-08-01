@@ -211,12 +211,14 @@ describe('generación de checklist', () => {
   const result = processSheet(read, { sheetName: 'Terceros', now: FIXED_NOW });
 
   it('genera requisitos únicamente cuando existe una señal conceptual', () => {
-    expect(result.requirements).toHaveLength(3);
+    expect(result.requirements).toHaveLength(2);
     expect(result.requirements.map((requirement) => requirement.documentName)).toEqual([
       'Certificado tributario y de rendimientos',
-      'Formulario 220 (Certificado de ingresos y retenciones)',
       'Certificado de intereses de vivienda',
     ]);
+    expect(
+      result.requirements.some((requirement) => /Formulario 220/i.test(requirement.documentName)),
+    ).toBe(false);
   });
 
   it('nunca afirma obligatoriedad legal', () => {

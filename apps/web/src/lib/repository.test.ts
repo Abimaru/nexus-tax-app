@@ -26,6 +26,10 @@ import {
   savePreliminaryReconciliation,
   saveRequirementCoverage,
   deleteCase,
+  addEmployerInstance,
+  associateEmployerDocument,
+  removeEmployerInstance,
+  setEmployerInstanceStatus,
 } from './repository';
 import { buildTaxCaseManifest } from './taxCaseAnalysis';
 
@@ -50,6 +54,29 @@ function financialResult(): ProcessingResult {
   XLSX.utils.book_append_sheet(wb, ws, 'Datos');
   const buffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer;
   return processWorkbookFile(buffer, 'financiero.xlsx', 1, { sheetName: 'Datos' });
+}
+
+function employmentResult(employers = 1, conceptsPerEmployer = 1): ProcessingResult {
+  const wb = XLSX.utils.book_new();
+  const rows: unknown[][] = [['NIT', 'Nombre', 'Concepto', 'Valor']];
+  for (let employer = 1; employer <= employers; employer += 1) {
+    for (let concept = 1; concept <= conceptsPerEmployer; concept += 1) {
+      rows.push([
+        `900${employer}`,
+        `Empleador Sintetico ${employer}`,
+        concept === 1 ? 'Salarios' : 'Pago laboral adicional',
+        employer * concept * 100,
+      ]);
+    }
+  }
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  XLSX.utils.book_append_sheet(wb, ws, 'Datos');
+  return processWorkbookFile(
+    XLSX.write(wb, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer,
+    'laboral.xlsx',
+    1,
+    { sheetName: 'Datos' },
+  );
 }
 
 function localFile(name: string, contents: string) {
@@ -355,6 +382,7 @@ describe('repositorio (IndexedDB local)', () => {
 
   it('exporta el expediente sin incluir binarios', async () => {
     const created = await createCase({ alias: 'Exportable', taxYear: 2025 });
+    await addEmployerInstance(created.id, { employerName: 'Empleador sintetico' });
     await addCaseDocument(created.id, localFile('local.pdf', 'secreto sintetico'), {
       kind: 'other',
       storageMode: 'store_locally',
@@ -370,10 +398,12 @@ describe('repositorio (IndexedDB local)', () => {
       coverages: workspace.coverages,
       facts: workspace.facts,
       reconciliations: workspace.reconciliations,
+      employmentGroup: workspace.employmentGroup,
     });
     expect(manifest.includesBinaryData).toBe(false);
     expect(JSON.stringify(manifest)).not.toContain('secreto sintetico');
     expect(JSON.stringify(manifest)).not.toContain('bytes');
+    expect(manifest.employmentIncomeGroup?.instances).toHaveLength(1);
   });
 
   it('registra cobertura parcial sin duplicar el documento', async () => {
@@ -439,5 +469,83 @@ describe('repositorio (IndexedDB local)', () => {
       facts: [],
       localBytes: 0,
     });
+  });
+
+  it('persiste el grupo laboral detectado sin duplicar conceptos del mismo empleador', async () => {
+    const created = await createCase({ alias: 'Laboral', taxYear: 2025 });
+    await saveResult(created.id, employmentResult(1, 3));
+    const workspace = await getTaxCaseWorkspace(created.id);
+    expect(workspace.employmentGroup?.instances).toHaveLength(1);
+    expect(
+      workspace.result?.requirements.some((item) => /Formulario 220/i.test(item.documentName)),
+    ).toBe(false);
+  });
+
+  it('crea una segunda instancia solo por accion explicita y persiste tras recarga', async () => {
+    const created = await createCase({ alias: 'Dos empleadores', taxYear: 2025 });
+    await saveResult(created.id, employmentResult());
+    await addEmployerInstance(created.id, { employerName: 'Segundo empleador sintetico' });
+    const workspace = await getTaxCaseWorkspace(created.id);
+    expect(workspace.employmentGroup?.instances).toHaveLength(2);
+    expect(workspace.employmentGroup?.instances[1]).toMatchObject({
+      source: 'manual',
+      status: 'pending',
+    });
+  });
+
+  it('permite marcar no aplica y eliminar una instancia laboral', async () => {
+    const created = await createCase({ alias: 'Editar empleadores', taxYear: 2025 });
+    await saveResult(created.id, employmentResult(2));
+    const initial = (await getTaxCaseWorkspace(created.id)).employmentGroup!;
+    await setEmployerInstanceStatus(created.id, initial.instances[1]!.id, 'not_applicable');
+    expect((await getTaxCaseWorkspace(created.id)).employmentGroup?.coverage).toBe('pending');
+    await removeEmployerInstance(created.id, initial.instances[1]!.id);
+    expect((await getTaxCaseWorkspace(created.id)).employmentGroup?.instances).toHaveLength(1);
+  });
+
+  it('asocia cada Formulario 220 a una sola instancia y valida la entidad', async () => {
+    const created = await createCase({ alias: 'Formularios 220', taxYear: 2025 });
+    await saveResult(created.id, employmentResult(2));
+    const initial = (await getTaxCaseWorkspace(created.id)).employmentGroup!;
+    const first = initial.instances[0]!;
+    const form220 = await addCaseDocument(created.id, localFile('empleador-1.pdf', '220 uno'), {
+      kind: 'form_220',
+      storageMode: 'metadata_only',
+      taxYear: 2025,
+      entityIds: [first.entityId!],
+    });
+    await associateEmployerDocument(created.id, first.id, form220.id);
+    const stored = (await getTaxCaseWorkspace(created.id)).employmentGroup!;
+    expect(stored.instances[0]).toMatchObject({
+      form220DocumentId: form220.id,
+      status: 'covered',
+    });
+    await expect(
+      associateEmployerDocument(created.id, stored.instances[1]!.id, form220.id),
+    ).rejects.toThrow(/otro empleador|entidad diferente/);
+  });
+
+  it('no acepta un certificado consolidado como 220 sin decision expresa', async () => {
+    const created = await createCase({ alias: 'Advertencia laboral', taxYear: 2025 });
+    await saveResult(created.id, employmentResult());
+    const instance = (await getTaxCaseWorkspace(created.id)).employmentGroup!.instances[0]!;
+    const consolidated = await addCaseDocument(
+      created.id,
+      localFile('consolidado-laboral.pdf', 'consolidado'),
+      {
+        kind: 'consolidated_tax_certificate',
+        storageMode: 'metadata_only',
+        taxYear: 2025,
+      },
+    );
+    await expect(
+      associateEmployerDocument(created.id, instance.id, consolidated.id),
+    ).rejects.toThrow(/decision expresa/);
+    await associateEmployerDocument(created.id, instance.id, consolidated.id, {
+      allowConsolidatedAsPrimary: true,
+    });
+    expect((await getTaxCaseWorkspace(created.id)).employmentGroup?.instances[0]?.status).toBe(
+      'covered',
+    );
   });
 });

@@ -4,19 +4,21 @@ import { useState } from 'react';
 import { ClipboardList } from 'lucide-react';
 import {
   CoverageStatusSchema,
+  type EmploymentIncomeGroup,
   type ProcessingResult,
   type RequirementCoverage,
   type UploadedDocument,
 } from '@nexus-tax/domain';
 import { Badge, Button, EmptyState, GlassPanel } from '@nexus-tax/ui';
 import { saveRequirementCoverage } from '@/lib/repository';
+import { EmploymentIncomeGroupPanel } from './EmploymentIncomeGroupPanel';
 
 const COVERAGE_LABEL = {
   not_evaluated: 'No evaluado',
   partial: 'Parcial',
   covered: 'Cubierto',
   not_applicable: 'No aplica',
-  requires_review: 'Requiere revisión',
+  requires_review: 'Requiere revision',
 } as const;
 
 export function RequirementsPanel({
@@ -24,34 +26,44 @@ export function RequirementsPanel({
   result,
   documents,
   coverages,
+  employmentGroup,
 }: {
   caseId: string;
   result?: ProcessingResult;
   documents: UploadedDocument[];
   coverages: RequirementCoverage[];
+  employmentGroup?: EmploymentIncomeGroup;
 }) {
   const [documentByRequirement, setDocumentByRequirement] = useState<Record<string, string>>({});
   const [statusByRequirement, setStatusByRequirement] = useState<
     Record<string, (typeof CoverageStatusSchema.options)[number]>
   >({});
-  if (!result?.requirements.length)
-    return (
-      <EmptyState
-        icon={<ClipboardList className="h-8 w-8" />}
-        title="Sin requisitos sugeridos"
-        description="El checklist se genera solo cuando la exógena aporta evidencia concreta."
-      />
-    );
+  const requirements = (result?.requirements ?? []).filter(
+    (requirement) => !requirement.documentName.toLowerCase().includes('formulario 220'),
+  );
   return (
     <div className="space-y-3">
+      <EmploymentIncomeGroupPanel
+        caseId={caseId}
+        group={employmentGroup}
+        documents={documents}
+        result={result}
+      />
       <GlassPanel className="p-5">
         <h2 className="text-lg font-semibold text-content-strong">Cobertura de requisitos</h2>
         <p className="mt-1 text-sm text-content-muted">
-          Un documento puede cubrir varios requisitos; cada asociación conserva su estado y no
+          Un documento puede cubrir varios requisitos; cada asociacion conserva su estado y no
           afirma obligatoriedad legal.
         </p>
       </GlassPanel>
-      {result.requirements.map((requirement) => {
+      {!requirements.length ? (
+        <EmptyState
+          icon={<ClipboardList className="h-8 w-8" />}
+          title="Sin otros requisitos sugeridos"
+          description="El checklist general se genera cuando la exogena aporta evidencia concreta."
+        />
+      ) : null}
+      {requirements.map((requirement) => {
         const related = coverages.filter((coverage) => coverage.requirementId === requirement.id);
         const selectedDocument = documentByRequirement[requirement.id] ?? documents[0]?.id ?? '';
         const selectedStatus = statusByRequirement[requirement.id] ?? 'not_evaluated';
@@ -142,7 +154,7 @@ export function RequirementsPanel({
                     documentId: selectedDocument,
                     factId: null,
                     entityId:
-                      result.entities.find((entity) => entity.name === requirement.entityName)
+                      result?.entities.find((entity) => entity.name === requirement.entityName)
                         ?.id ?? null,
                     status: selectedStatus,
                     relation:
@@ -166,5 +178,6 @@ export function RequirementsPanel({
     </div>
   );
 }
+
 const inputClass =
   'rounded-lg border border-overlay/12 bg-overlay/5 px-3 py-2 text-sm text-content-strong';

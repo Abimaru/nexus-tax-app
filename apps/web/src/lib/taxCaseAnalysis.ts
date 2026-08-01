@@ -11,11 +11,114 @@ import type {
   TaxCase,
   UploadedDocument,
   CaseProduct,
+  EmploymentIncomeGroup,
+  EmployerInstance,
 } from '@nexus-tax/domain';
-import { TAX_CASE_EXPORT_SCHEMA_VERSION } from '@nexus-tax/domain';
+import { MAX_EMPLOYER_INSTANCES, TAX_CASE_EXPORT_SCHEMA_VERSION } from '@nexus-tax/domain';
 
 function percentage(numerator: number, denominator: number): number {
   return denominator === 0 ? 0 : Math.round((numerator / denominator) * 100);
+}
+
+export function calculateEmploymentGroupCoverage(
+  instances: readonly EmployerInstance[],
+): EmploymentIncomeGroup['coverage'] {
+  const active = instances.filter((instance) => instance.status !== 'not_applicable');
+  if (active.length === 0) return instances.length ? 'not_applicable' : 'pending';
+  if (active.some((instance) => instance.status === 'requires_review')) return 'requires_review';
+  if (active.every((instance) => instance.status === 'covered')) return 'covered';
+  if (active.some((instance) => ['covered', 'partially_covered'].includes(instance.status)))
+    return 'partial';
+  return 'pending';
+}
+
+export function buildEmploymentIncomeGroup(input: {
+  caseId: string;
+  result?: ProcessingResult;
+  existing?: EmploymentIncomeGroup;
+  now?: string;
+}): EmploymentIncomeGroup | undefined {
+  const timestamp = input.now ?? new Date().toISOString();
+  const existing = input.existing;
+  const entities = input.result?.entities ?? [];
+  const laborEntityIds = new Set<string>();
+  for (const record of input.result?.normalizedRecords ?? []) {
+    if (record.category !== 'employment_income') continue;
+    const entity = entityForRecord(record, entities);
+    if (entity) laborEntityIds.add(entity.id);
+  }
+  const candidates = entities
+    .filter((entity) => entity.category === 'employer' || laborEntityIds.has(entity.id))
+    .filter(
+      (entity, index, all) =>
+        all.findIndex((candidate) => {
+          if (entity.taxId && candidate.taxId) return entity.taxId === candidate.taxId;
+          return normalize(entity.name) === normalize(candidate.name);
+        }) === index,
+    )
+    .sort((a, b) => a.name.localeCompare(b.name, 'es'));
+
+  if (!existing && candidates.length === 0) return undefined;
+
+  const instances: EmployerInstance[] = [...(existing?.instances ?? [])];
+  const additionalDetectedEmployers: EmploymentIncomeGroup['additionalDetectedEmployers'] = [];
+  for (const entity of candidates) {
+    const matched = instances.some(
+      (instance) =>
+        instance.entityId === entity.id ||
+        (instance.manualMatchConfirmed &&
+          normalize(instance.employerName) === normalize(entity.name)),
+    );
+    if (matched) continue;
+    if (instances.length >= MAX_EMPLOYER_INSTANCES) {
+      additionalDetectedEmployers.push({
+        entityId: entity.id,
+        employerName: entity.name,
+        taxIdMasked: mask(entity.taxId),
+      });
+      continue;
+    }
+    instances.push({
+      id: `employer:${entity.id}`,
+      employerName: entity.name,
+      taxIdMasked: mask(entity.taxId),
+      workedPeriod: '',
+      entityId: entity.id,
+      form220DocumentId: null,
+      complementaryDocumentIds: [],
+      status: 'pending',
+      coverage: 'not_evaluated',
+      observations: '',
+      source: 'detected',
+      manualMatchConfirmed: false,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+  }
+  const findings = additionalDetectedEmployers.length
+    ? [
+        {
+          id: `employment-limit:${input.caseId}`,
+          code: 'employment_employer_limit_exceeded' as const,
+          severity: 'info' as const,
+          message: `Se detectaron ${candidates.length} empleadores. La interfaz conserva tres instancias activas y ${additionalDetectedEmployers.length} entidades adicionales para una ampliacion futura.`,
+          entityIds: additionalDetectedEmployers.map((item) => item.entityId),
+        },
+      ]
+    : [];
+  return {
+    id: existing?.id ?? `employment-group:${input.caseId}`,
+    caseId: input.caseId,
+    title: 'Ingresos laborales y empleadores',
+    receivedEmploymentIncome:
+      existing?.receivedEmploymentIncome ?? (candidates.length ? true : null),
+    instances,
+    additionalDetectedEmployers,
+    coverage: calculateEmploymentGroupCoverage(instances),
+    findings,
+    createdAt: existing?.createdAt ?? timestamp,
+    updatedAt: timestamp,
+  };
 }
 
 export function calculateCaseProgress(input: {
@@ -25,9 +128,12 @@ export function calculateCaseProgress(input: {
   coverages: readonly RequirementCoverage[];
   facts: readonly DocumentFact[];
   reconciliations: readonly PreliminaryReconciliation[];
+  employmentGroup?: EmploymentIncomeGroup;
 }): CaseProgress {
-  const requirements = input.result?.requirements ?? [];
-  const coveredWeight = requirements.reduce((sum, requirement) => {
+  const requirements = (input.result?.requirements ?? []).filter(
+    (requirement) => !normalize(requirement.documentName).includes('formulario 220'),
+  );
+  let coveredWeight = requirements.reduce((sum, requirement) => {
     const statuses = input.coverages
       .filter((coverage) => coverage.requirementId === requirement.id)
       .map((coverage) => coverage.status);
@@ -35,6 +141,14 @@ export function calculateCaseProgress(input: {
     if (statuses.includes('partial')) return sum + 0.5;
     return sum;
   }, 0);
+  const activeEmployers =
+    input.employmentGroup?.instances.filter((item) => item.status !== 'not_applicable') ?? [];
+  coveredWeight += activeEmployers.reduce(
+    (sum, employer) =>
+      sum + (employer.status === 'covered' ? 1 : employer.status === 'partially_covered' ? 0.5 : 0),
+    0,
+  );
+  const requirementCount = requirements.length + activeEmployers.length;
   const reviewedFacts = input.facts.filter((fact) =>
     ['reviewed', 'confirmed'].includes(fact.reviewStatus),
   ).length;
@@ -59,12 +173,13 @@ export function calculateCaseProgress(input: {
     (group) =>
       !['reconciled', 'rounding_difference', 'not_comparable'].includes(group.reconciliationStatus),
   ).length;
-  const pendingRequirements = requirements.filter((requirement) => {
-    const statuses = input.coverages
-      .filter((coverage) => coverage.requirementId === requirement.id)
-      .map((coverage) => coverage.status);
-    return !statuses.includes('covered') && !statuses.includes('not_applicable');
-  }).length;
+  const pendingRequirements =
+    requirements.filter((requirement) => {
+      const statuses = input.coverages
+        .filter((coverage) => coverage.requirementId === requirement.id)
+        .map((coverage) => coverage.status);
+      return !statuses.includes('covered') && !statuses.includes('not_applicable');
+    }).length + activeEmployers.filter((item) => item.status !== 'covered').length;
   const explanation: string[] = [];
   if (pendingRequirements)
     explanation.push(`${pendingRequirements} requisitos requieren cobertura.`);
@@ -76,7 +191,7 @@ export function calculateCaseProgress(input: {
     explanation.push('El expediente esta preparado para revision humana final.');
 
   return {
-    documentCoverage: percentage(coveredWeight, requirements.length),
+    documentCoverage: percentage(coveredWeight, requirementCount),
     reviewedFacts: percentage(reviewedFacts, input.facts.length),
     reconciliation: percentage(reconciledFacts, input.facts.length),
     findings: percentage(Math.max(0, findings.length - openFindings), findings.length),
@@ -261,6 +376,7 @@ export function buildTaxCaseManifest(input: {
   coverages: readonly RequirementCoverage[];
   facts: readonly DocumentFact[];
   reconciliations: readonly PreliminaryReconciliation[];
+  employmentGroup?: EmploymentIncomeGroup;
 }) {
   return {
     schema: 'nexustax.tax-case.manifest',
@@ -275,5 +391,6 @@ export function buildTaxCaseManifest(input: {
     coverages: input.coverages,
     facts: input.facts,
     reconciliations: input.reconciliations,
+    employmentIncomeGroup: input.employmentGroup ?? null,
   };
 }

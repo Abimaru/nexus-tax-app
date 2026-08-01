@@ -135,6 +135,24 @@ test('flujo completo: crear expediente, cargar, procesar y ver resumen', async (
 
   await page
     .getByRole('navigation', { name: 'Secciones del expediente' })
+    .getByRole('button', { name: 'Requisitos', exact: true })
+    .click();
+  await expect(
+    page.getByRole('heading', { name: 'Ingresos laborales y empleadores' }),
+  ).toBeVisible();
+  await expect(page.getByLabel('Nombre del empleador')).toHaveValue('Empresa Empleadora SAS');
+  await expect(page.getByRole('heading', { name: /Formulario 220/ })).toHaveCount(0);
+  await page.getByRole('button', { name: /Agregar otro empleador/ }).click();
+  await expect(page.getByRole('heading', { name: 'Empleador 2' })).toBeVisible();
+  await page.reload();
+  await page
+    .getByRole('navigation', { name: 'Secciones del expediente' })
+    .getByRole('button', { name: 'Requisitos', exact: true })
+    .click();
+  await expect(page.getByRole('heading', { name: 'Empleador 2' })).toBeVisible();
+
+  await page
+    .getByRole('navigation', { name: 'Secciones del expediente' })
     .getByRole('button', { name: 'Matriz', exact: true })
     .click();
   await expect(page.getByRole('heading', { name: 'Matriz tributaria preliminar' })).toBeVisible();
