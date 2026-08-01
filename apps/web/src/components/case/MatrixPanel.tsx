@@ -34,8 +34,8 @@ export function MatrixPanel({
       <GlassPanel className="p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-slate-100">Matriz tributaria preliminar</h2>
-            <p className="mt-1 text-sm text-slate-400">
+            <h2 className="text-lg font-semibold text-content-strong">Matriz tributaria preliminar</h2>
+            <p className="mt-1 text-sm text-content-muted">
               Consolidados explicables, relaciones y conciliación contra los topes detectados.
             </p>
           </div>
@@ -77,8 +77,8 @@ export function MatrixPanel({
       <GlassPanel className="p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h3 className="text-sm font-medium text-slate-100">Facturación electrónica DIAN</h3>
-            <p className="text-xs text-slate-500">
+            <h3 className="text-sm font-medium text-content-strong">Facturación electrónica DIAN</h3>
+            <p className="text-xs text-content-subtle">
               Indicadores de compras, soporte y conciliación; no son gastos deducibles definitivos.
             </p>
           </div>
@@ -88,9 +88,9 @@ export function MatrixPanel({
           <InvoiceMetric label="Total neto facturado" value={invoice.totalNetInvoiced} />
           <InvoiceMetric label="Base susceptible" value={invoice.eligibleBenefitBase} />
           <InvoiceMetric label="Diferencia" value={invoice.difference} />
-          <div className="rounded-lg border border-white/8 p-3">
-            <dt className="text-xs text-slate-500">Porcentaje susceptible</dt>
-            <dd className="mt-1 text-sm font-medium text-slate-100">
+          <div className="rounded-lg border border-overlay/8 p-3">
+            <dt className="text-xs text-content-subtle">Porcentaje susceptible</dt>
+            <dd className="mt-1 text-sm font-medium text-content-strong">
               {invoice.eligiblePercentage === null
                 ? '—'
                 : `${invoice.eligiblePercentage.toFixed(2)} %`}
@@ -98,12 +98,12 @@ export function MatrixPanel({
           </div>
           <InvoiceMetric label="Beneficio preliminar 1 %" value={invoice.preliminaryBenefit} />
         </dl>
-        <div className="mt-4 rounded-lg border border-amber-400/20 bg-amber-400/5 p-3 text-xs text-amber-100">
+        <div className="mt-4 rounded-lg border border-amber-400/20 bg-amber-400/5 p-3 text-xs text-tone-amber">
           La base susceptible es un subconjunto del total neto facturado y no se suma nuevamente a
           las compras. El 1 % es una estimación orientativa: no confirma procedencia ni aplica todos
           los límites legales.
         </div>
-        <p className="mt-3 text-xs text-slate-500">
+        <p className="mt-3 text-xs text-content-subtle">
           Estado: {invoice.reviewStatus} · registros totales: {invoice.totalRecordIds.length} ·
           bases susceptibles: {invoice.benefitBaseRecordIds.length} · relaciones de subconjunto:{' '}
           {invoice.relationIds.length}.
@@ -114,19 +114,19 @@ export function MatrixPanel({
         {analysis.matrix.groups.map((group) => (
           <details
             key={group.id}
-            className="group rounded-xl border border-white/8 bg-white/[0.02]"
+            className="group rounded-xl border border-overlay/8 bg-overlay/[0.02]"
           >
             <summary className="cursor-pointer list-none p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cyan/50">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h3 className="text-sm font-medium text-slate-100">{group.label}</h3>
-                  <p className="mt-1 text-xs text-slate-500">
+                  <h3 className="text-sm font-medium text-content-strong">{group.label}</h3>
+                  <p className="mt-1 text-xs text-content-subtle">
                     {group.includedCount} incluidos · {group.excludedCount} excluidos ·{' '}
                     {group.pendingCount} pendientes
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-sm font-semibold text-slate-100">
+                  <span className="text-sm font-semibold text-content-strong">
                     {formatCurrencyCOP(group.consolidatedValue)}
                   </span>
                   <Badge tone={statusTone(group.reconciliationStatus)}>
@@ -135,7 +135,7 @@ export function MatrixPanel({
                 </div>
               </div>
             </summary>
-            <div className="border-t border-white/8 p-4">
+            <div className="border-t border-overlay/8 p-4">
               <dl className="grid gap-3 text-xs sm:grid-cols-2 lg:grid-cols-4">
                 <Data
                   label="Tope DIAN"
@@ -164,14 +164,14 @@ export function MatrixPanel({
                 <Data label="Confianza" value={group.confidence} />
               </dl>
               {group.warnings.map((warning) => (
-                <p key={warning} className="mt-3 text-xs text-amber-200">
+                <p key={warning} className="mt-3 text-xs text-tone-amber">
                   {warning}
                 </p>
               ))}
-              <p className="mt-2 text-xs text-accent-cyan">Acción: {group.recommendedAction}</p>
+              <p className="mt-2 text-xs text-tone-cyan">Acción: {group.recommendedAction}</p>
               <div className="mt-4 overflow-x-auto">
                 <table className="min-w-full text-left text-xs">
-                  <thead className="text-slate-500">
+                  <thead className="text-content-subtle">
                     <tr>
                       <th className="px-2 py-2">Fila / detalle</th>
                       <th className="px-2 py-2">Clasificación</th>
@@ -189,22 +189,22 @@ export function MatrixPanel({
                         entry.relationIds.includes(item.id),
                       );
                       return (
-                        <tr key={entry.recordId} className="border-t border-white/5 text-slate-300">
+                        <tr key={entry.recordId} className="border-t border-overlay/5 text-content">
                           <td className="px-2 py-2">
                             {record?.source.sheet} · {record?.source.row}
-                            <span className="block text-slate-500">
+                            <span className="block text-content-subtle">
                               {record?.conceptLabel ?? 'Sin detalle'}
                             </span>
                           </td>
                           <td className="px-2 py-2">
                             {CATEGORY_LABEL[entry.effectiveClassification.category]}
-                            <span className="block text-slate-500">
+                            <span className="block text-content-subtle">
                               {RESOLUTION_LABEL[entry.resolutionStatus]}
                             </span>
                           </td>
                           <td className="px-2 py-2">
                             {DISPOSITION_LABEL[entry.disposition]}
-                            <span className="block max-w-72 text-slate-500">{entry.reason}</span>
+                            <span className="block max-w-72 text-content-subtle">{entry.reason}</span>
                           </td>
                           <td className="px-2 py-2">
                             {relations.length
@@ -224,7 +224,7 @@ export function MatrixPanel({
           </details>
         ))}
       </div>
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-content-subtle">
         Matriz {analysis.matrix.ruleVersion} · {formatNumber(analysis.relationships.length)}{' '}
         relaciones trazables · cálculo completamente local.
       </p>
@@ -234,19 +234,19 @@ export function MatrixPanel({
 
 function QualityCard({ label, score, detail }: { label: string; score: number; detail: string }) {
   return (
-    <div className="rounded-xl border border-white/8 p-4">
-      <span className="text-xs text-slate-500">{label}</span>
-      <p className="mt-1 text-2xl font-semibold text-slate-100">{score}/100</p>
-      <p className="mt-2 text-xs text-slate-500">{detail}</p>
+    <div className="rounded-xl border border-overlay/8 p-4">
+      <span className="text-xs text-content-subtle">{label}</span>
+      <p className="mt-1 text-2xl font-semibold text-content-strong">{score}/100</p>
+      <p className="mt-2 text-xs text-content-subtle">{detail}</p>
     </div>
   );
 }
 
 function InvoiceMetric({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-lg border border-white/8 p-3">
-      <dt className="text-xs text-slate-500">{label}</dt>
-      <dd className="mt-1 text-sm font-medium text-slate-100">{formatCurrencyCOP(value)}</dd>
+    <div className="rounded-lg border border-overlay/8 p-3">
+      <dt className="text-xs text-content-subtle">{label}</dt>
+      <dd className="mt-1 text-sm font-medium text-content-strong">{formatCurrencyCOP(value)}</dd>
     </div>
   );
 }
@@ -254,8 +254,8 @@ function InvoiceMetric({ label, value }: { label: string; value: number }) {
 function Data({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-slate-500">{label}</dt>
-      <dd className="mt-1 text-slate-200">{value}</dd>
+      <dt className="text-content-subtle">{label}</dt>
+      <dd className="mt-1 text-content">{value}</dd>
     </div>
   );
 }

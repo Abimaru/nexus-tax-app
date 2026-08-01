@@ -110,14 +110,14 @@ export function ResolutionDrawer({
         role="dialog"
         aria-modal="true"
         aria-labelledby="resolution-title"
-        className="relative z-10 h-full w-full max-w-2xl overflow-y-auto border-l border-white/10 bg-surface-raised p-5 shadow-2xl"
+        className="relative z-10 h-full w-full max-w-2xl overflow-y-auto border-l border-overlay/10 bg-surface-raised p-5 shadow-2xl"
       >
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 id="resolution-title" className="text-lg font-semibold text-slate-100">
+            <h2 id="resolution-title" className="text-lg font-semibold text-content-strong">
               Resolver clasificación
             </h2>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-content-subtle">
               {record.source.sheet} · fila {record.source.row} · regla{' '}
               {record.classificationVersion}
             </p>
@@ -128,13 +128,13 @@ export function ResolutionDrawer({
         </div>
 
         {resolution?.isObsolete ? (
-          <div className="mt-4 rounded-lg border border-amber-400/30 bg-amber-400/10 p-3 text-sm text-amber-100">
+          <div className="mt-4 rounded-lg border border-amber-400/30 bg-amber-400/10 p-3 text-sm text-tone-amber">
             {resolution.obsoleteReason}
           </div>
         ) : null}
 
-        <section className="mt-5 rounded-xl border border-white/8 p-4">
-          <h3 className="text-sm font-medium text-slate-100">Evidencia original — solo lectura</h3>
+        <section className="mt-5 rounded-xl border border-overlay/8 p-4">
+          <h3 className="text-sm font-medium text-content-strong">Evidencia original — solo lectura</h3>
           <dl className="mt-3 grid gap-3 text-xs sm:grid-cols-2">
             <Data label="Entidad reportante" value={record.entityName ?? '—'} />
             <Data label="Identificación" value={maskDocument(record.reportingEntityDocument)} />
@@ -154,14 +154,14 @@ export function ResolutionDrawer({
           </dl>
         </section>
 
-        <section className="mt-4 rounded-xl border border-white/8 p-4">
+        <section className="mt-4 rounded-xl border border-overlay/8 p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-sm font-medium text-slate-100">Clasificación</h3>
+            <h3 className="text-sm font-medium text-content-strong">Clasificación</h3>
             <Badge tone={record.confidence === 'low' ? 'amber' : 'cyan'}>
               Confianza automática: {record.confidence}
             </Badge>
           </div>
-          <p className="mt-2 text-xs text-slate-500">
+          <p className="mt-2 text-xs text-content-subtle">
             Automática: {CATEGORY_LABEL[automatic.category]} · {NATURE_LABEL[automatic.nature]} ·{' '}
             {TREATMENT_LABEL[automatic.treatment]}
           </p>
@@ -220,7 +220,7 @@ export function ResolutionDrawer({
               }
             />
           </div>
-          <div className="mt-3 text-xs text-slate-500">
+          <div className="mt-3 text-xs text-content-subtle">
             Evidencias utilizadas:{' '}
             {automatic.evidence.length
               ? automatic.evidence.map((item) => `${item.kind}: ${item.value}`).join(' · ')
@@ -228,10 +228,10 @@ export function ResolutionDrawer({
           </div>
         </section>
 
-        <section className="mt-4 rounded-xl border border-white/8 p-4">
-          <h3 className="text-sm font-medium text-slate-100">Relaciones</h3>
+        <section className="mt-4 rounded-xl border border-overlay/8 p-4">
+          <h3 className="text-sm font-medium text-content-strong">Relaciones</h3>
           {related.length ? (
-            <ul className="mt-2 space-y-2 text-xs text-slate-400">
+            <ul className="mt-2 space-y-2 text-xs text-content-muted">
               {related.map((item) => {
                 const otherId =
                   item.sourceRecordId === recordId ? item.targetRecordId : item.sourceRecordId;
@@ -239,7 +239,7 @@ export function ResolutionDrawer({
                   (candidate) => candidate.id === otherId,
                 );
                 return (
-                  <li key={item.id} className="rounded-lg border border-white/5 p-2">
+                  <li key={item.id} className="rounded-lg border border-overlay/5 p-2">
                     {RELATION_LABEL[item.type]} · fila {other?.source.row ?? '—'} · confianza{' '}
                     {item.confidence} ·{' '}
                     {item.evidence.map((evidence) => evidence.description).join(' ')}
@@ -248,29 +248,29 @@ export function ResolutionDrawer({
               })}
             </ul>
           ) : (
-            <p className="mt-2 text-xs text-slate-500">Sin relaciones detectadas.</p>
+            <p className="mt-2 text-xs text-content-subtle">Sin relaciones detectadas.</p>
           )}
         </section>
 
-        <section className="mt-4 space-y-3 rounded-xl border border-white/8 p-4">
-          <label className="block text-xs text-slate-400">
+        <section className="mt-4 space-y-3 rounded-xl border border-overlay/8 p-4">
+          <label className="block text-xs text-content-muted">
             Observación
             <textarea
               value={observation}
               onChange={(event) => setObservation(event.target.value)}
-              className="mt-1 min-h-20 w-full rounded-lg border border-white/12 bg-white/5 p-2 text-sm text-slate-100"
+              className="mt-1 min-h-20 w-full rounded-lg border border-overlay/12 bg-overlay/5 p-2 text-sm text-content-strong"
             />
           </label>
-          <label className="block text-xs text-slate-400">
+          <label className="block text-xs text-content-muted">
             Justificación
             <textarea
               value={justification}
               onChange={(event) => setJustification(event.target.value)}
-              className="mt-1 min-h-20 w-full rounded-lg border border-white/12 bg-white/5 p-2 text-sm text-slate-100"
+              className="mt-1 min-h-20 w-full rounded-lg border border-overlay/12 bg-overlay/5 p-2 text-sm text-content-strong"
             />
           </label>
           {error ? (
-            <p role="alert" className="text-sm text-rose-300">
+            <p role="alert" className="text-sm text-tone-rose">
               {error}
             </p>
           ) : null}
@@ -378,13 +378,13 @@ export function ResolutionDrawer({
           </div>
         </section>
 
-        <section className="mt-4 rounded-xl border border-white/8 p-4">
-          <h3 className="text-sm font-medium text-slate-100">Historial de decisiones</h3>
+        <section className="mt-4 rounded-xl border border-overlay/8 p-4">
+          <h3 className="text-sm font-medium text-content-strong">Historial de decisiones</h3>
           {resolution?.history.length ? (
-            <ol className="mt-2 space-y-2 text-xs text-slate-400">
+            <ol className="mt-2 space-y-2 text-xs text-content-muted">
               {[...resolution.history].reverse().map((decision) => (
                 <li key={decision.id} className="border-l border-accent-cyan/30 pl-3">
-                  <span className="text-slate-200">{RESOLUTION_LABEL[decision.status]}</span> ·{' '}
+                  <span className="text-content">{RESOLUTION_LABEL[decision.status]}</span> ·{' '}
                   {new Date(decision.decidedAt).toLocaleString('es-CO')}
                   {decision.justification ? (
                     <span className="block">{decision.justification}</span>
@@ -393,7 +393,7 @@ export function ResolutionDrawer({
               ))}
             </ol>
           ) : (
-            <p className="mt-2 text-xs text-slate-500">Sin decisiones manuales previas.</p>
+            <p className="mt-2 text-xs text-content-subtle">Sin decisiones manuales previas.</p>
           )}
         </section>
       </aside>
@@ -404,8 +404,8 @@ export function ResolutionDrawer({
 function Data({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-slate-500">{label}</dt>
-      <dd className="mt-1 break-words text-slate-200">{value}</dd>
+      <dt className="text-content-subtle">{label}</dt>
+      <dd className="mt-1 break-words text-content">{value}</dd>
     </div>
   );
 }
@@ -422,12 +422,12 @@ function Select({
   onChange: (value: string) => void;
 }) {
   return (
-    <label className="text-xs text-slate-400">
+    <label className="text-xs text-content-muted">
       {label}
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="mt-1 w-full rounded-lg border border-white/12 bg-surface-raised px-2 py-2 text-sm text-slate-100"
+        className="mt-1 w-full rounded-lg border border-overlay/12 bg-surface-raised px-2 py-2 text-sm text-content-strong"
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>

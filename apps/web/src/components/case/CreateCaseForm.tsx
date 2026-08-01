@@ -70,7 +70,7 @@ export function CreateCaseForm() {
     <GlassPanel as="section" className="p-6">
       <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
         <div>
-          <label htmlFor="alias" className="block text-sm font-medium text-slate-200">
+          <label htmlFor="alias" className="block text-sm font-medium text-content">
             Nombre o alias
           </label>
           <input
@@ -82,21 +82,21 @@ export function CreateCaseForm() {
             onChange={(e) => setAlias(e.target.value)}
             aria-invalid={Boolean(aliasError || errors.alias)}
             aria-describedby="alias-help alias-error"
-            className="mt-1.5 w-full rounded-xl border border-white/12 bg-white/5 px-3 py-2.5 text-slate-100 placeholder:text-slate-500 focus-visible:border-accent-cyan/50"
+            className="mt-1.5 w-full rounded-xl border border-overlay/12 bg-overlay/5 px-3 py-2.5 text-content-strong placeholder:text-content-subtle focus-visible:border-accent-cyan/50"
             placeholder="Ej. Declaración 2024 — Personal"
           />
-          <p id="alias-help" className="mt-1 text-xs text-slate-500">
+          <p id="alias-help" className="mt-1 text-xs text-content-subtle">
             Usa un alias reconocible. No necesita ser tu nombre legal.
           </p>
           {(aliasError || errors.alias) && (
-            <p id="alias-error" role="alert" className="mt-1 text-xs text-rose-300">
+            <p id="alias-error" role="alert" className="mt-1 text-xs text-tone-rose">
               {aliasError ?? errors.alias}
             </p>
           )}
         </div>
 
         <div>
-          <label htmlFor="taxYear" className="block text-sm font-medium text-slate-200">
+          <label htmlFor="taxYear" className="block text-sm font-medium text-content">
             Año gravable
           </label>
           <select
@@ -104,7 +104,7 @@ export function CreateCaseForm() {
             name="taxYear"
             value={taxYear}
             onChange={(e) => setTaxYear(Number(e.target.value))}
-            className="mt-1.5 w-full rounded-xl border border-white/12 bg-white/5 px-3 py-2.5 text-slate-100 focus-visible:border-accent-cyan/50"
+            className="mt-1.5 w-full rounded-xl border border-overlay/12 bg-overlay/5 px-3 py-2.5 text-content-strong focus-visible:border-accent-cyan/50"
           >
             {YEARS.map((year) => (
               <option key={year} value={year} className="bg-surface-raised">
@@ -113,15 +113,15 @@ export function CreateCaseForm() {
             ))}
           </select>
           {errors.taxYear && (
-            <p role="alert" className="mt-1 text-xs text-rose-300">
+            <p role="alert" className="mt-1 text-xs text-tone-rose">
               {errors.taxYear}
             </p>
           )}
         </div>
 
         <div>
-          <label htmlFor="notes" className="block text-sm font-medium text-slate-200">
-            Notas <span className="text-slate-500">(opcional)</span>
+          <label htmlFor="notes" className="block text-sm font-medium text-content">
+            Notas <span className="text-content-subtle">(opcional)</span>
           </label>
           <textarea
             id="notes"
@@ -130,7 +130,7 @@ export function CreateCaseForm() {
             onChange={(e) => setNotes(e.target.value)}
             rows={3}
             maxLength={2000}
-            className="mt-1.5 w-full resize-y rounded-xl border border-white/12 bg-white/5 px-3 py-2.5 text-slate-100 placeholder:text-slate-500 focus-visible:border-accent-cyan/50"
+            className="mt-1.5 w-full resize-y rounded-xl border border-overlay/12 bg-overlay/5 px-3 py-2.5 text-content-strong placeholder:text-content-subtle focus-visible:border-accent-cyan/50"
             placeholder="Contexto del expediente, pendientes, recordatorios…"
           />
         </div>

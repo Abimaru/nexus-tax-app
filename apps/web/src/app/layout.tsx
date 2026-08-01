@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { APP_IDENTITY } from '@nexus-tax/config';
 import { AppHeader } from '@/components/AppHeader';
+import { ThemeProvider, themeNoFlashScript } from '@/components/theme/ThemeProvider';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -11,16 +12,24 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#070b16',
+  themeColor: [
+    { media: '(prefers-color-scheme: dark)', color: '#070b16' },
+    { media: '(prefers-color-scheme: light)', color: '#f4f7fb' },
+  ],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className="dark">
+    <html lang="es" suppressHydrationWarning>
+      <head>
+        {/* Fija el tema antes de pintar para evitar parpadeo. */}
+        <script dangerouslySetInnerHTML={{ __html: themeNoFlashScript }} />
+      </head>
       <body>
+        <ThemeProvider>
         <a
           href="#contenido"
-          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-surface-raised focus:px-4 focus:py-2 focus:text-slate-100"
+          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-surface-raised focus:px-4 focus:py-2 focus:text-content-strong"
         >
           Saltar al contenido
         </a>
@@ -29,11 +38,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <main id="contenido" className="flex-1 pb-16">
             {children}
           </main>
-          <footer className="border-t border-white/5 py-6 text-center text-xs text-slate-500">
+          <footer className="border-t border-overlay/5 py-6 text-center text-xs text-content-subtle">
             {APP_IDENTITY.name} · {APP_IDENTITY.subtitle} · Motor futuro:{' '}
             {APP_IDENTITY.futureEngine}
           </footer>
         </div>
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -8,12 +8,21 @@ declaración de renta: organizar expedientes, leer información tributaria,
 conciliar fuentes, detectar inconsistencias y —en fases posteriores— proponer
 valores para el Formulario 210.
 
+## Qué hace hoy
+
+Lee y estructura la exógena, extrae la identidad DIAN, **clasifica** cada
+registro, construye una **matriz de análisis** con conciliación preliminar contra
+topes, permite **resolver** decisiones con historial y **evalúa de forma
+orientativa** la obligación de declarar (AG 2025) con reglas versionadas. Todo
+local, con evidencia y bajo revisión humana.
+
 ## Qué NO es (todavía)
 
 - No es una plataforma pública ni multiusuario.
 - No presenta declaraciones ante la DIAN.
-- No calcula impuestos ni afirma obligaciones legales.
-- No usa IA ni backend en el Sprint 1.
+- No **liquida** el impuesto (no calcula el Formulario 210) ni afirma
+  obligaciones legales; la clasificación y la obligación son **orientativas**.
+- No usa IA ni backend, y no persiste el archivo original ni binarios de PDF.
 
 ## Principios
 

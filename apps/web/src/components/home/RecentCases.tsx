@@ -7,10 +7,12 @@ import { Badge, Button, EmptyState, GlassPanel, Skeleton } from '@nexus-tax/ui';
 import { deleteCase, listCases } from '@/lib/repository';
 
 const STATUS_LABEL: Record<string, string> = {
-  draft: 'Borrador',
-  processing: 'Procesando',
-  ready: 'Listo',
-  archived: 'Archivado',
+  new: 'Nuevo',
+  collecting_documents: 'Recopilando documentos',
+  under_analysis: 'En análisis',
+  pending_information: 'Pendiente de información',
+  ready_for_review: 'Listo para revisión',
+  closed: 'Cerrado',
 };
 
 /** Lista de expedientes recientes desde IndexedDB, reactiva a cambios. */
@@ -48,12 +50,12 @@ export function RecentCases() {
           <GlassPanel className="group flex items-center justify-between p-4 transition-colors hover:border-accent-cyan/30">
             <Link href={`/expedientes/${taxCase.id}`} className="flex-1 rounded-lg">
               <div className="flex items-center gap-2">
-                <span className="font-medium text-slate-100">{taxCase.alias}</span>
-                <Badge tone={taxCase.status === 'ready' ? 'emerald' : 'neutral'}>
+                <span className="font-medium text-content-strong">{taxCase.alias}</span>
+                <Badge tone={taxCase.status === 'ready_for_review' ? 'emerald' : 'neutral'}>
                   {STATUS_LABEL[taxCase.status] ?? taxCase.status}
                 </Badge>
               </div>
-              <p className="mt-1 text-xs text-slate-400">
+              <p className="mt-1 text-xs text-content-muted">
                 Año gravable {taxCase.taxYear} · Actualizado{' '}
                 {new Date(taxCase.updatedAt).toLocaleDateString('es-CO')}
               </p>
@@ -61,7 +63,7 @@ export function RecentCases() {
             <button
               type="button"
               onClick={() => void deleteCase(taxCase.id)}
-              className="ml-3 rounded-lg p-2 text-slate-500 transition-colors hover:bg-rose-500/10 hover:text-rose-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
+              className="ml-3 rounded-lg p-2 text-content-subtle transition-colors hover:bg-rose-500/10 hover:text-tone-rose focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
               aria-label={`Eliminar expediente ${taxCase.alias}`}
             >
               <Trash2 className="h-4 w-4" aria-hidden />

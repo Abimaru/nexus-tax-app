@@ -65,14 +65,14 @@ export function UploadPanel() {
             'flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-12 text-center transition-colors',
             dragActive
               ? 'border-accent-cyan bg-accent-cyan/5'
-              : 'border-white/15 hover:border-accent-cyan/40 hover:bg-white/[0.02]',
+              : 'border-overlay/15 hover:border-accent-cyan/40 hover:bg-overlay/[0.02]',
           ].join(' ')}
         >
-          <UploadCloud className="h-10 w-10 text-accent-cyan" aria-hidden />
-          <p className="mt-3 text-base font-medium text-slate-100">
+          <UploadCloud className="h-10 w-10 text-tone-cyan" aria-hidden />
+          <p className="mt-3 text-base font-medium text-content-strong">
             Arrastra tu Excel de información exógena aquí
           </p>
-          <p className="mt-1 text-sm text-slate-400">
+          <p className="mt-1 text-sm text-content-muted">
             o haz clic para seleccionarlo · Formatos {SUPPORTED_FILE_EXTENSIONS.join(' y ')} · hasta{' '}
             {maxMb} MB
           </p>
@@ -88,8 +88,8 @@ export function UploadPanel() {
         <div className="mt-4 flex items-center justify-between">
           <PrivacyNotice />
           {fileName && !isBusy ? (
-            <span className="inline-flex items-center gap-2 text-sm text-slate-300">
-              <FileSpreadsheet className="h-4 w-4 text-accent-cyan" aria-hidden />
+            <span className="inline-flex items-center gap-2 text-sm text-content">
+              <FileSpreadsheet className="h-4 w-4 text-tone-cyan" aria-hidden />
               {fileName} · {formatBytes(fileSize)}
             </span>
           ) : null}
@@ -97,7 +97,7 @@ export function UploadPanel() {
       </GlassPanel>
 
       {phase === 'inspecting' && (
-        <GlassPanel className="flex items-center gap-3 p-4 text-sm text-slate-300">
+        <GlassPanel className="flex items-center gap-3 p-4 text-sm text-content">
           <Spinner />
           Leyendo el archivo localmente…
         </GlassPanel>
@@ -121,10 +121,10 @@ export function UploadPanel() {
       {phase === 'error' && error && (
         <GlassPanel className="p-5">
           <div className="flex items-start gap-3">
-            <XCircle className="mt-0.5 h-5 w-5 text-rose-400" aria-hidden />
+            <XCircle className="mt-0.5 h-5 w-5 text-tone-rose" aria-hidden />
             <div>
-              <p className="text-sm font-medium text-rose-200">No se pudo cargar el archivo</p>
-              <p className="mt-1 text-sm text-slate-400">{error}</p>
+              <p className="text-sm font-medium text-tone-rose">No se pudo cargar el archivo</p>
+              <p className="mt-1 text-sm text-content-muted">{error}</p>
               <Button variant="secondary" className="mt-3" onClick={reset}>
                 Intentar con otro archivo
               </Button>

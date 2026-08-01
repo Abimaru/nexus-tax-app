@@ -3,8 +3,9 @@
 import Link from 'next/link';
 import { BrandMark, PrivacyNotice } from '@nexus-tax/ui';
 import { GlobalDataControls } from './GlobalDataControls';
+import { ThemeToggle } from './theme/ThemeToggle';
 
-/** Cabecera global: identidad + aviso de privacidad + controles de datos. */
+/** Cabecera global: identidad + aviso de privacidad + tema + controles de datos. */
 export function AppHeader() {
   return (
     <header className="flex flex-wrap items-center justify-between gap-3 py-5">
@@ -13,6 +14,7 @@ export function AppHeader() {
       </Link>
       <div className="flex items-center gap-3">
         <PrivacyNotice compact className="hidden sm:inline-flex" />
+        <ThemeToggle />
         <GlobalDataControls />
       </div>
     </header>

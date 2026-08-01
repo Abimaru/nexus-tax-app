@@ -178,8 +178,8 @@ export function InspectPanel() {
       <GlassPanel className="p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-sm font-medium text-slate-200">{inspect.metadata.fileName}</h2>
-            <p className="text-xs text-slate-500">
+            <h2 className="text-sm font-medium text-content">{inspect.metadata.fileName}</h2>
+            <p className="text-xs text-content-subtle">
               {formatBytes(fileSize)} · {inspect.metadata.sheetCount} hoja(s)
             </p>
           </div>
@@ -191,7 +191,7 @@ export function InspectPanel() {
         </div>
 
         <div className="mt-4">
-          <span className="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-500">
+          <span className="mb-2 block text-xs font-medium uppercase tracking-wide text-content-subtle">
             Hojas
           </span>
           <div className="flex flex-wrap gap-2">
@@ -204,8 +204,8 @@ export function InspectPanel() {
                 className={[
                   'rounded-lg border px-3 py-1.5 text-sm transition-colors',
                   sheet.name === selectedSheet
-                    ? 'border-accent-cyan/50 bg-accent-cyan/10 text-slate-100'
-                    : 'border-white/10 text-slate-300 hover:bg-white/5',
+                    ? 'border-accent-cyan/50 bg-accent-cyan/10 text-content-strong'
+                    : 'border-overlay/10 text-content hover:bg-overlay/5',
                   sheet.isEmpty ? 'cursor-not-allowed opacity-40' : '',
                 ].join(' ')}
               >
@@ -221,8 +221,8 @@ export function InspectPanel() {
       <GlassPanel className="p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h3 className="text-sm font-medium text-slate-200">Secciones detectadas</h3>
-            <p className="text-xs text-slate-500">
+            <h3 className="text-sm font-medium text-content">Secciones detectadas</h3>
+            <p className="text-xs text-content-subtle">
               Revisa los límites antes de procesar. Las filas se muestran como aparecen en Excel.
             </p>
           </div>
@@ -232,20 +232,20 @@ export function InspectPanel() {
         </div>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-lg border border-white/8 bg-white/[0.02] p-3">
-            <span className="block text-xs text-slate-500">Metadatos</span>
-            <span className="text-sm text-slate-200">
+          <div className="rounded-lg border border-overlay/8 bg-overlay/[0.02] p-3">
+            <span className="block text-xs text-content-subtle">Metadatos</span>
+            <span className="text-sm text-content">
               {effectiveStructure.headerRow > 1
                 ? `Filas 1–${effectiveStructure.headerRow - 1}`
                 : 'Sin filas previas'}
             </span>
           </div>
           <div className="rounded-lg border border-accent-cyan/20 bg-accent-cyan/5 p-3">
-            <span className="block text-xs text-slate-500">Encabezados</span>
-            <span className="text-sm text-slate-200">Fila {effectiveStructure.headerRow}</span>
+            <span className="block text-xs text-content-subtle">Encabezados</span>
+            <span className="text-sm text-content">Fila {effectiveStructure.headerRow}</span>
           </div>
           <label className="rounded-lg border border-accent-violet/20 bg-accent-violet/5 p-3">
-            <span className="block text-xs text-slate-500">Detalle desde</span>
+            <span className="block text-xs text-content-subtle">Detalle desde</span>
             <input
               type="number"
               min={
@@ -256,10 +256,10 @@ export function InspectPanel() {
               max={Math.max(sheetMeta?.rowCount ?? 1, effectiveStructure.headerRow + 1)}
               value={effectiveStructure.detailsStartRow}
               onChange={(event) => updateDetailsStart(Number(event.target.value))}
-              className="mt-1 w-full rounded border border-white/12 bg-white/5 px-2 py-1 text-sm text-slate-100"
+              className="mt-1 w-full rounded border border-overlay/12 bg-overlay/5 px-2 py-1 text-sm text-content-strong"
             />
           </label>
-          <label className="flex items-center gap-2 rounded-lg border border-white/8 bg-white/[0.02] p-3 text-sm text-slate-300">
+          <label className="flex items-center gap-2 rounded-lg border border-overlay/8 bg-overlay/[0.02] p-3 text-sm text-content">
             <input
               type="checkbox"
               checked={effectiveStructure.thresholdsStartRow !== undefined}
@@ -273,7 +273,7 @@ export function InspectPanel() {
 
         {effectiveStructure.thresholdsStartRow !== undefined &&
         effectiveStructure.thresholdsEndRow !== undefined ? (
-          <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-slate-300">
+          <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-content">
             <span>Topes:</span>
             <label className="flex items-center gap-2">
               desde fila
@@ -283,7 +283,7 @@ export function InspectPanel() {
                 max={effectiveStructure.thresholdsEndRow}
                 value={effectiveStructure.thresholdsStartRow}
                 onChange={(event) => updateThresholdRange('start', Number(event.target.value))}
-                className="w-20 rounded border border-white/12 bg-white/5 px-2 py-1 text-slate-100"
+                className="w-20 rounded border border-overlay/12 bg-overlay/5 px-2 py-1 text-content-strong"
               />
             </label>
             <label className="flex items-center gap-2">
@@ -294,7 +294,7 @@ export function InspectPanel() {
                 max={effectiveStructure.detailsStartRow - 1}
                 value={effectiveStructure.thresholdsEndRow}
                 onChange={(event) => updateThresholdRange('end', Number(event.target.value))}
-                className="w-20 rounded border border-white/12 bg-white/5 px-2 py-1 text-slate-100"
+                className="w-20 rounded border border-overlay/12 bg-overlay/5 px-2 py-1 text-content-strong"
               />
             </label>
           </div>
@@ -305,17 +305,17 @@ export function InspectPanel() {
       <GlassPanel className="p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h3 className="text-sm font-medium text-slate-200">Fila de encabezados</h3>
-            <p className="text-xs text-slate-500">
+            <h3 className="text-sm font-medium text-content">Fila de encabezados</h3>
+            <p className="text-xs text-content-subtle">
               Detectada automáticamente; ajústala si los títulos están en otra fila.
             </p>
           </div>
-          <label className="flex items-center gap-2 text-sm text-slate-300">
+          <label className="flex items-center gap-2 text-sm text-content">
             Encabezado en la
             <select
               value={effectiveHeaderIndex}
               onChange={(e) => setHeaderRow(Number(e.target.value))}
-              className="rounded-lg border border-white/12 bg-white/5 px-2 py-1.5 text-slate-100"
+              className="rounded-lg border border-overlay/12 bg-overlay/5 px-2 py-1.5 text-content-strong"
             >
               {Array.from({ length: Math.max(headerScanLimit, 1) }, (_, i) => (
                 <option key={i} value={i} className="bg-surface-raised">
@@ -329,18 +329,18 @@ export function InspectPanel() {
 
       {/* Mapeo manual de columnas */}
       <GlassPanel className="p-5">
-        <h3 className="text-sm font-medium text-slate-200">Mapeo de columnas</h3>
-        <p className="text-xs text-slate-500">
+        <h3 className="text-sm font-medium text-content">Mapeo de columnas</h3>
+        <p className="text-xs text-content-subtle">
           Sugerido automáticamente. Puedes reasignar cada campo a la columna correcta.
         </p>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           {CANONICAL_FIELDS.map((field) => (
             <label key={field} className="flex flex-col gap-1">
-              <span className="text-xs text-slate-400">{FIELD_LABELS[field]}</span>
+              <span className="text-xs text-content-muted">{FIELD_LABELS[field]}</span>
               <select
                 value={effectiveMapping[field] ?? ''}
                 onChange={(e) => updateMapping(field, e.target.value || null)}
-                className="rounded-lg border border-white/12 bg-white/5 px-2 py-2 text-sm text-slate-100"
+                className="rounded-lg border border-overlay/12 bg-overlay/5 px-2 py-2 text-sm text-content-strong"
               >
                 <option value="" className="bg-surface-raised">
                   — Sin asignar —
@@ -360,12 +360,12 @@ export function InspectPanel() {
 
       {/* Vista previa */}
       <GlassPanel className="p-5">
-        <h3 className="text-sm font-medium text-slate-200">Vista previa</h3>
-        <p className="mb-3 text-xs text-slate-500">
+        <h3 className="text-sm font-medium text-content">Vista previa</h3>
+        <p className="mb-3 text-xs text-content-subtle">
           Mostrando {previewRows.length} de {sheetMeta?.rowCount ?? 0} filas. Los colores distinguen
           encabezado, topes y detalle; el procesamiento siempre usa la hoja completa.
         </p>
-        <div className="max-h-80 overflow-auto rounded-lg border border-white/8">
+        <div className="max-h-80 overflow-auto rounded-lg border border-overlay/8">
           <table className="min-w-full border-collapse text-left text-xs">
             <tbody>
               {previewRows
@@ -384,15 +384,15 @@ export function InspectPanel() {
                       key={r}
                       className={
                         isHeader
-                          ? 'bg-accent-cyan/10 font-medium text-slate-100'
+                          ? 'bg-accent-cyan/10 font-medium text-content-strong'
                           : isThreshold
-                            ? 'bg-amber-400/10 text-amber-100'
+                            ? 'bg-amber-400/10 text-tone-amber'
                             : isDetail
-                              ? 'bg-accent-violet/5 text-slate-200'
-                              : 'text-slate-400'
+                              ? 'bg-accent-violet/5 text-content'
+                              : 'text-content-muted'
                       }
                     >
-                      <td className="sticky left-0 bg-surface-raised/80 px-2 py-1 text-slate-500">
+                      <td className="sticky left-0 bg-surface-raised/80 px-2 py-1 text-content-subtle">
                         {r + 1}
                       </td>
                       {Array.from({ length: columnCount }, (_, c) => (

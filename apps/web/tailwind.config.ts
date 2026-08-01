@@ -16,15 +16,35 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // Acentos de marca: iguales en ambos temas (el usuario los prefiere).
         accent: {
           cyan: '#22d3ee',
           blue: '#3b82f6',
           violet: '#8b5cf6',
         },
+        // Superficies y texto: dependen del tema vía variables CSS (globals.css).
         surface: {
-          base: '#070b16',
-          raised: '#0d1424',
-          glass: 'rgba(19, 27, 46, 0.55)',
+          base: 'rgb(var(--surface-base) / <alpha-value>)',
+          raised: 'rgb(var(--surface-raised) / <alpha-value>)',
+          glass: 'var(--surface-glass)',
+        },
+        // Superposición translúcida (blanca en oscuro, oscura en claro).
+        overlay: 'rgb(var(--overlay) / <alpha-value>)',
+        // Escala de texto semántica.
+        content: {
+          DEFAULT: 'rgb(var(--content) / <alpha-value>)',
+          strong: 'rgb(var(--content-strong) / <alpha-value>)',
+          muted: 'rgb(var(--content-muted) / <alpha-value>)',
+          subtle: 'rgb(var(--content-subtle) / <alpha-value>)',
+        },
+        // Tonos de estado tema-conscientes (texto/íconos/badges).
+        tone: {
+          cyan: 'rgb(var(--tone-cyan) / <alpha-value>)',
+          blue: 'rgb(var(--tone-blue) / <alpha-value>)',
+          violet: 'rgb(var(--tone-violet) / <alpha-value>)',
+          rose: 'rgb(var(--tone-rose) / <alpha-value>)',
+          amber: 'rgb(var(--tone-amber) / <alpha-value>)',
+          emerald: 'rgb(var(--tone-emerald) / <alpha-value>)',
         },
       },
       fontFamily: {

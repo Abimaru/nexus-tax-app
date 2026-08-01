@@ -3,7 +3,7 @@
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import type { ReportedConcept } from '@nexus-tax/domain';
 import { formatCurrencyCOP } from '@nexus-tax/ui';
-import { CHART_COLORS, truncateLabel } from './chartTheme';
+import { CHART_COLORS, TOOLTIP_STYLE, truncateLabel } from './chartTheme';
 
 /** Composición por concepto (agrupa la cola en "Otros"). */
 export function ConceptPieChart({
@@ -15,7 +15,7 @@ export function ConceptPieChart({
 }) {
   const positive = concepts.filter((c) => c.totalReported > 0);
   if (positive.length === 0) {
-    return <p className="text-sm text-slate-500">Sin conceptos con valor para graficar.</p>;
+    return <p className="text-sm text-content-subtle">Sin conceptos con valor para graficar.</p>;
   }
 
   const head = positive.slice(0, topN);
@@ -49,17 +49,12 @@ export function ConceptPieChart({
             ))}
           </Pie>
           <Tooltip
-            contentStyle={{
-              background: '#0d1424',
-              border: '1px solid rgba(148,163,184,0.2)',
-              borderRadius: 12,
-              color: '#e2e8f0',
-            }}
+            contentStyle={TOOLTIP_STYLE}
             formatter={(value: number, name: string) => [formatCurrencyCOP(value), name]}
           />
           <Legend
             formatter={(value: string) => (
-              <span className="text-xs text-slate-400">{truncateLabel(value, 22)}</span>
+              <span className="text-xs text-content-muted">{truncateLabel(value, 22)}</span>
             )}
           />
         </PieChart>

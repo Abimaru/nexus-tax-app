@@ -29,23 +29,23 @@ export function QualityGauge({ metrics }: { metrics: ProcessingMetrics }) {
           </RadialBarChart>
         </ResponsiveContainer>
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-3xl font-semibold text-slate-50">{score}</span>
-          <span className="text-xs text-slate-400">de 100</span>
+          <span className="text-3xl font-semibold text-content-strong">{score}</span>
+          <span className="text-xs text-content-muted">de 100</span>
         </div>
       </div>
 
       <dl className="mt-2 grid w-full grid-cols-3 gap-2 text-center text-xs">
-        <div className="rounded-lg bg-white/5 py-2">
-          <dt className="text-slate-400">Errores</dt>
-          <dd className="text-base font-medium text-rose-300">{metrics.findingCounts.error}</dd>
+        <div className="rounded-lg bg-overlay/5 py-2">
+          <dt className="text-content-muted">Errores</dt>
+          <dd className="text-base font-medium text-tone-rose">{metrics.findingCounts.error}</dd>
         </div>
-        <div className="rounded-lg bg-white/5 py-2">
-          <dt className="text-slate-400">Advertencias</dt>
-          <dd className="text-base font-medium text-amber-300">{metrics.findingCounts.warning}</dd>
+        <div className="rounded-lg bg-overlay/5 py-2">
+          <dt className="text-content-muted">Advertencias</dt>
+          <dd className="text-base font-medium text-tone-amber">{metrics.findingCounts.warning}</dd>
         </div>
-        <div className="rounded-lg bg-white/5 py-2">
-          <dt className="text-slate-400">Info</dt>
-          <dd className="text-base font-medium text-accent-cyan">{metrics.findingCounts.info}</dd>
+        <div className="rounded-lg bg-overlay/5 py-2">
+          <dt className="text-content-muted">Info</dt>
+          <dd className="text-base font-medium text-tone-cyan">{metrics.findingCounts.info}</dd>
         </div>
       </dl>
     </div>

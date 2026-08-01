@@ -17,11 +17,11 @@ export function BrandMark({ showSubtitle = true, className }: BrandMarkProps) {
         <span className="h-3.5 w-3.5 rounded-sm bg-surface-base" />
       </span>
       <span className="leading-tight">
-        <span className="block text-lg font-semibold tracking-tight text-slate-50">
+        <span className="block text-lg font-semibold tracking-tight text-content-strong">
           {APP_IDENTITY.name}
         </span>
         {showSubtitle ? (
-          <span className="block text-xs text-slate-400">{APP_IDENTITY.subtitle}</span>
+          <span className="block text-xs text-content-muted">{APP_IDENTITY.subtitle}</span>
         ) : null}
       </span>
     </div>

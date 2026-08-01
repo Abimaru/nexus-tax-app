@@ -9,15 +9,15 @@ export default function HomePage() {
   return (
     <div className="flex flex-col gap-10 pt-4">
       <section className="animate-fade-in-up">
-        <div className="flex items-center gap-2 text-sm text-accent-cyan">
+        <div className="flex items-center gap-2 text-sm text-tone-cyan">
           <Sparkles className="h-4 w-4" aria-hidden />
           <span>{APP_IDENTITY.subtitle}</span>
         </div>
-        <h1 className="mt-3 max-w-2xl text-4xl font-semibold leading-tight tracking-tight text-slate-50 sm:text-5xl">
+        <h1 className="mt-3 max-w-2xl text-4xl font-semibold leading-tight tracking-tight text-content-strong sm:text-5xl">
           Organiza y analiza tu <span className="text-gradient">información tributaria</span> sin
           salir de tu navegador.
         </h1>
-        <p className="mt-4 max-w-2xl text-base text-slate-400">
+        <p className="mt-4 max-w-2xl text-base text-content-muted">
           {APP_IDENTITY.name} te ayuda a crear expedientes, leer información exógena de la DIAN,
           normalizar registros, detectar inconsistencias y preparar tu declaración de renta. Todo el
           procesamiento ocurre localmente.
@@ -34,7 +34,7 @@ export default function HomePage() {
 
       <section aria-labelledby="recientes-title">
         <div className="mb-3 flex items-center justify-between">
-          <h2 id="recientes-title" className="text-lg font-medium text-slate-200">
+          <h2 id="recientes-title" className="text-lg font-medium text-content">
             Expedientes recientes
           </h2>
         </div>
@@ -73,10 +73,10 @@ function FeatureCard({
 }) {
   return (
     <GlassPanel className="p-5">
-      <div className="text-accent-cyan">{icon}</div>
-      <h3 className="mt-3 text-sm font-medium text-slate-100">{title}</h3>
-      <p className="mt-1 text-sm text-slate-400">{description}</p>
-      <span className="mt-3 inline-flex items-center gap-1 text-xs text-slate-500">
+      <div className="text-tone-cyan">{icon}</div>
+      <h3 className="mt-3 text-sm font-medium text-content-strong">{title}</h3>
+      <p className="mt-1 text-sm text-content-muted">{description}</p>
+      <span className="mt-3 inline-flex items-center gap-1 text-xs text-content-subtle">
         <ArrowRight className="h-3 w-3" aria-hidden /> Sprint 1
       </span>
     </GlassPanel>

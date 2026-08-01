@@ -61,16 +61,16 @@ export function ChecklistPanel({ result, caseId }: { result: ProcessingResult; c
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-start gap-2 rounded-xl border border-white/10 bg-white/[0.02] p-3 text-xs text-slate-400">
-        <Info className="mt-0.5 h-4 w-4 shrink-0 text-accent-cyan" aria-hidden />
+      <div className="flex items-start gap-2 rounded-xl border border-overlay/10 bg-overlay/[0.02] p-3 text-xs text-content-muted">
+        <Info className="mt-0.5 h-4 w-4 shrink-0 text-tone-cyan" aria-hidden />
         <p>
-          Estas son <strong className="text-slate-200">recomendaciones de soporte</strong>, no una
+          Estas son <strong className="text-content">recomendaciones de soporte</strong>, no una
           lista de documentos legalmente obligatorios. Cada requisito indica su nivel de confianza y
           el origen de la recomendación.
         </p>
       </div>
       {attachmentError ? (
-        <p role="alert" className="text-xs text-rose-300">
+        <p role="alert" className="text-xs text-tone-rose">
           {attachmentError}
         </p>
       ) : null}
@@ -78,18 +78,18 @@ export function ChecklistPanel({ result, caseId }: { result: ProcessingResult; c
       {grouped.map(([entityName, requirements]) => (
         <GlassPanel key={entityName} className="p-5">
           <div className="mb-3 flex items-center gap-2">
-            <h3 className="text-sm font-medium text-slate-100">{entityName}</h3>
+            <h3 className="text-sm font-medium text-content-strong">{entityName}</h3>
             <Badge tone="neutral">{CATEGORY_LABEL[requirements[0]!.entityCategory]}</Badge>
           </div>
           <ul className="flex flex-col gap-3">
             {requirements.map((req) => (
               <li
                 key={req.id}
-                className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-white/8 bg-white/[0.02] p-3"
+                className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-overlay/8 bg-overlay/[0.02] p-3"
               >
                 <div className="min-w-[220px] flex-1">
-                  <p className="text-sm font-medium text-slate-100">{req.documentName}</p>
-                  <p className="mt-0.5 text-xs text-slate-400">{req.reason}</p>
+                  <p className="text-sm font-medium text-content-strong">{req.documentName}</p>
+                  <p className="mt-0.5 text-xs text-content-muted">{req.reason}</p>
                   <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
                     <Badge tone="violet">{req.documentCategory}</Badge>
                     <Badge
@@ -103,7 +103,7 @@ export function ChecklistPanel({ result, caseId }: { result: ProcessingResult; c
                     >
                       {CONFIDENCE_LABEL[req.confidence]}
                     </Badge>
-                    <span className="text-slate-500">Origen: {req.recommendationSource}</span>
+                    <span className="text-content-subtle">Origen: {req.recommendationSource}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -120,7 +120,7 @@ export function ChecklistPanel({ result, caseId }: { result: ProcessingResult; c
                         e.target.value as RequirementStatus,
                       )
                     }
-                    className="rounded-lg border border-white/12 bg-white/5 px-2 py-1.5 text-xs text-slate-100"
+                    className="rounded-lg border border-overlay/12 bg-overlay/5 px-2 py-1.5 text-xs text-content-strong"
                   >
                     {STATUS_OPTIONS.map((opt) => (
                       <option key={opt.value} value={opt.value} className="bg-surface-raised">
@@ -132,13 +132,13 @@ export function ChecklistPanel({ result, caseId }: { result: ProcessingResult; c
                     <button
                       type="button"
                       onClick={() => void removeRequirementPdf(caseId, req.id)}
-                      className="inline-flex items-center gap-1 rounded-lg border border-rose-500/30 px-2 py-1.5 text-xs text-rose-300"
+                      className="inline-flex items-center gap-1 rounded-lg border border-rose-500/30 px-2 py-1.5 text-xs text-tone-rose"
                       aria-label={`Eliminar PDF de ${req.documentName}`}
                     >
                       <Trash2 className="h-3.5 w-3.5" aria-hidden /> Eliminar PDF
                     </button>
                   ) : (
-                    <label className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-white/10 px-2 py-1.5 text-xs text-slate-300 hover:bg-white/5">
+                    <label className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-overlay/10 px-2 py-1.5 text-xs text-content hover:bg-overlay/5">
                       <Upload className="h-3.5 w-3.5" aria-hidden /> Asociar PDF
                       <input
                         type="file"
@@ -163,7 +163,7 @@ export function ChecklistPanel({ result, caseId }: { result: ProcessingResult; c
                   )}
                 </div>
                 {req.attachment ? (
-                  <p className="w-full text-right text-[11px] text-slate-500">
+                  <p className="w-full text-right text-[11px] text-content-subtle">
                     {req.attachment.fileName} · {formatBytes(req.attachment.fileSizeBytes)} · solo
                     metadatos locales
                   </p>

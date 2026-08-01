@@ -2,26 +2,93 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ---------------------------------------------------------------------------
+ * Tokens de tema (modo oscuro por defecto, modo claro con [data-theme="light"]).
+ * Los valores son tripletes RGB para poder usar el modificador de opacidad de
+ * Tailwind (p. ej. bg-overlay/5). El glass se define como color completo.
+ * ------------------------------------------------------------------------- */
 :root {
   /* Stack de sistema para evitar dependencias de red en el build. */
   --font-sans:
     'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial,
     sans-serif;
+
+  /* Superficies */
+  --surface-base: 7 11 22;
+  --surface-raised: 13 20 36;
+  --surface-glass: rgba(19, 27, 46, 0.55);
+
+  /* Capa de superposición (bordes/rellenos translúcidos) */
+  --overlay: 255 255 255;
+
+  /* Texto */
+  --content: 226 232 240; /* slate-200 */
+  --content-strong: 248 250 252; /* slate-50 */
+  --content-muted: 148 163 184; /* slate-400 */
+  --content-subtle: 100 116 139; /* slate-500 */
+
+  /* Halos de fondo */
+  --halo-cyan: rgba(34, 211, 238, 0.1);
+  --halo-violet: rgba(139, 92, 246, 0.1);
+  --halo-blue: rgba(59, 130, 246, 0.08);
+
+  /* Tonos de texto/ícono de estado: vívidos sobre superficies oscuras. */
+  --tone-cyan: 34 211 238;
+  --tone-blue: 96 165 250;
+  --tone-violet: 167 139 250;
+  --tone-rose: 253 164 175;
+  --tone-amber: 252 211 77;
+  --tone-emerald: 110 231 183;
+
+  /* Tooltips de gráficas */
+  --chart-tooltip-bg: #0d1424;
+  --chart-tooltip-border: rgba(148, 163, 184, 0.2);
+  --chart-tooltip-fg: #e2e8f0;
+
+  color-scheme: dark;
+}
+
+:root[data-theme='light'] {
+  --surface-base: 244 247 251;
+  --surface-raised: 255 255 255;
+  --surface-glass: rgba(255, 255, 255, 0.72);
+
+  --overlay: 15 23 42; /* slate-900: superposiciones sutiles oscuras sobre claro */
+
+  --content: 30 41 59; /* slate-800 */
+  --content-strong: 15 23 42; /* slate-900 */
+  --content-muted: 71 85 105; /* slate-600 */
+  --content-subtle: 100 116 139; /* slate-500 */
+
+  --halo-cyan: rgba(34, 211, 238, 0.14);
+  --halo-violet: rgba(139, 92, 246, 0.12);
+  --halo-blue: rgba(59, 130, 246, 0.12);
+
+  /* Tonos más profundos para contraste sobre superficies claras. */
+  --tone-cyan: 14 116 144; /* cyan-700 */
+  --tone-blue: 29 78 216; /* blue-700 */
+  --tone-violet: 109 40 217; /* violet-700 */
+  --tone-rose: 190 18 60; /* rose-700 */
+  --tone-amber: 180 83 9; /* amber-700 */
+  --tone-emerald: 4 120 87; /* emerald-700 */
+
+  /* Tooltips de gráficas (claro) */
+  --chart-tooltip-bg: #ffffff;
+  --chart-tooltip-border: rgba(15, 23, 42, 0.12);
+  --chart-tooltip-fg: #1e293b;
+
+  color-scheme: light;
 }
 
 @layer base {
-  html {
-    color-scheme: dark;
-  }
-
   body {
-    @apply bg-surface-base text-slate-200 antialiased;
+    @apply bg-surface-base text-content antialiased;
     font-family: var(--font-sans);
-    /* Iluminación sutil de fondo: halos de acento sobre superficie profunda. */
+    /* Iluminación sutil de fondo: halos de acento sobre la superficie. */
     background-image:
-      radial-gradient(60rem 60rem at 12% -10%, rgba(34, 211, 238, 0.1), transparent 60%),
-      radial-gradient(50rem 50rem at 100% 0%, rgba(139, 92, 246, 0.1), transparent 55%),
-      radial-gradient(70rem 40rem at 50% 120%, rgba(59, 130, 246, 0.08), transparent 60%);
+      radial-gradient(60rem 60rem at 12% -10%, var(--halo-cyan), transparent 60%),
+      radial-gradient(50rem 50rem at 100% 0%, var(--halo-violet), transparent 55%),
+      radial-gradient(70rem 40rem at 50% 120%, var(--halo-blue), transparent 60%);
     background-attachment: fixed;
     min-height: 100vh;
   }

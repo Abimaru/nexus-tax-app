@@ -12,7 +12,7 @@ import {
 } from 'recharts';
 import type { ReportingEntity } from '@nexus-tax/domain';
 import { formatCurrencyCOP, formatCurrencyCompact } from '@nexus-tax/ui';
-import { AXIS_COLOR, CHART_COLORS, GRID_COLOR, truncateLabel } from './chartTheme';
+import { AXIS_COLOR, CHART_COLORS, GRID_COLOR, TOOLTIP_STYLE, truncateLabel } from './chartTheme';
 
 /** Barras de valores reportados por entidad (top N). */
 export function EntityBarChart({
@@ -29,7 +29,7 @@ export function EntityBarChart({
   }));
 
   if (data.length === 0) {
-    return <p className="text-sm text-slate-500">Sin entidades para graficar.</p>;
+    return <p className="text-sm text-content-subtle">Sin entidades para graficar.</p>;
   }
 
   return (
@@ -52,12 +52,7 @@ export function EntityBarChart({
           />
           <Tooltip
             cursor={{ fill: 'rgba(148,163,184,0.08)' }}
-            contentStyle={{
-              background: '#0d1424',
-              border: '1px solid rgba(148,163,184,0.2)',
-              borderRadius: 12,
-              color: '#e2e8f0',
-            }}
+            contentStyle={TOOLTIP_STYLE}
             formatter={(value: number) => [formatCurrencyCOP(value), 'Total reportado']}
             labelFormatter={(_label, payload) => payload?.[0]?.payload?.name ?? ''}
           />
@@ -70,18 +65,18 @@ export function EntityBarChart({
       </ResponsiveContainer>
 
       {/* Alternativa textual accesible (§14). */}
-      <details className="mt-2 text-xs text-slate-500">
+      <details className="mt-2 text-xs text-content-subtle">
         <summary className="cursor-pointer">Ver datos en tabla</summary>
         <table className="mt-2 w-full text-left">
           <thead>
-            <tr className="text-slate-400">
+            <tr className="text-content-muted">
               <th className="py-1">Entidad</th>
               <th className="py-1 text-right">Total reportado</th>
             </tr>
           </thead>
           <tbody>
             {data.map((d) => (
-              <tr key={d.name} className="border-t border-white/5">
+              <tr key={d.name} className="border-t border-overlay/5">
                 <td className="py-1">{d.name}</td>
                 <td className="py-1 text-right">{formatCurrencyCOP(d.value)}</td>
               </tr>

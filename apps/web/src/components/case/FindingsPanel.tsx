@@ -115,8 +115,8 @@ function FilterChip({
       className={[
         'rounded-full border px-3 py-1 text-xs transition-colors',
         active
-          ? 'border-accent-cyan/50 bg-accent-cyan/10 text-slate-100'
-          : 'border-white/10 text-slate-400 hover:text-slate-200',
+          ? 'border-accent-cyan/50 bg-accent-cyan/10 text-content-strong'
+          : 'border-overlay/10 text-content-muted hover:text-content',
       ].join(' ')}
     >
       {label}
@@ -142,25 +142,25 @@ function FindingCard({
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <SeverityBadge severity={finding.severity} />
-            <h3 className="text-sm font-medium text-slate-100">{finding.title}</h3>
+            <h3 className="text-sm font-medium text-content-strong">{finding.title}</h3>
           </div>
-          <code className="text-[11px] text-slate-500">{finding.code}</code>
+          <code className="text-[11px] text-content-subtle">{finding.code}</code>
         </div>
-        <p className="mt-2 text-sm text-slate-400">{finding.message}</p>
+        <p className="mt-2 text-sm text-content-muted">{finding.message}</p>
         {resolution && !resolution.isObsolete && resolution.status !== 'pending_review' ? (
-          <p className="mt-2 text-xs text-emerald-300">
+          <p className="mt-2 text-xs text-tone-emerald">
             Resuelto: {resolution.status.replaceAll('_', ' ')}.
           </p>
         ) : null}
 
         {ev ? (
-          <div className="mt-2 flex flex-wrap gap-3 text-xs text-slate-500">
+          <div className="mt-2 flex flex-wrap gap-3 text-xs text-content-subtle">
             {ev.sheet ? <span>Hoja: {ev.sheet}</span> : null}
             {ev.row ? <span>Fila: {ev.row}</span> : null}
             {ev.column ? <span>Columna: {ev.column}</span> : null}
             {ev.value ? (
               <span>
-                Valor: <span className="text-slate-300">{ev.value}</span>
+                Valor: <span className="text-content">{ev.value}</span>
               </span>
             ) : null}
             {ev.expectedMasked ? <span>Esperado: {ev.expectedMasked}</span> : null}
@@ -169,7 +169,7 @@ function FindingCard({
         ) : null}
 
         {finding.suggestedAction ? (
-          <p className="mt-2 text-xs text-accent-cyan/90">
+          <p className="mt-2 text-xs text-tone-cyan/90">
             Acción sugerida: {finding.suggestedAction}
           </p>
         ) : null}

@@ -66,14 +66,14 @@ export function SummaryPanel({
         />
       </div>
 
-      <p className="-mt-3 text-xs text-slate-500">
+      <p className="-mt-3 text-xs text-content-subtle">
         Suma aritmética de registros heterogéneos. No representa ingresos, patrimonio, gastos ni
         impuesto total.
       </p>
 
       <GlassPanel className="p-5">
-        <h3 className="text-sm font-medium text-slate-200">Agrupaciones tributarias iniciales</h3>
-        <p className="mb-4 text-xs text-slate-500">
+        <h3 className="text-sm font-medium text-content">Agrupaciones tributarias iniciales</h3>
+        <p className="mb-4 text-xs text-content-subtle">
           Clasificación orientativa y determinista; no constituye el cálculo del Formulario 210.
         </p>
         <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -84,9 +84,9 @@ export function SummaryPanel({
           <Metric label="Movimientos financieros" value={homogeneous.financialMovements} />
           <Metric label="Consumos" value={homogeneous.cardConsumption} />
           <Metric label="Compras" value={homogeneous.purchases} />
-          <div className="rounded-lg border border-white/8 bg-white/[0.02] p-3">
-            <dt className="text-xs text-slate-500">Registros sin clasificar</dt>
-            <dd className="mt-1 text-lg font-medium text-slate-100">
+          <div className="rounded-lg border border-overlay/8 bg-overlay/[0.02] p-3">
+            <dt className="text-xs text-content-subtle">Registros sin clasificar</dt>
+            <dd className="mt-1 text-lg font-medium text-content-strong">
               {formatNumber(homogeneous.unclassifiedRecordCount)}
             </dd>
           </div>
@@ -95,39 +95,39 @@ export function SummaryPanel({
 
       <div className="grid gap-4 lg:grid-cols-2">
         <GlassPanel className="p-5">
-          <h3 className="mb-3 text-sm font-medium text-slate-200">
+          <h3 className="mb-3 text-sm font-medium text-content">
             Valores reportados por entidad
           </h3>
           <EntityBarChart entities={result.entities} />
         </GlassPanel>
         <GlassPanel className="p-5">
-          <h3 className="mb-3 text-sm font-medium text-slate-200">Distribución por concepto</h3>
+          <h3 className="mb-3 text-sm font-medium text-content">Distribución por concepto</h3>
           <ConceptPieChart concepts={result.concepts} />
         </GlassPanel>
       </div>
 
       {result.report?.thresholds.length ? (
         <GlassPanel className="p-5">
-          <h3 className="text-sm font-medium text-slate-200">Resumen de topes detectado</h3>
-          <p className="mb-3 text-xs text-slate-500">
+          <h3 className="text-sm font-medium text-content">Resumen de topes detectado</h3>
+          <p className="mb-3 text-xs text-content-subtle">
             Se muestra como contexto del reporte y no se incluye entre los registros de terceros.
           </p>
           <dl className="grid gap-2 sm:grid-cols-2">
             {result.report.thresholds.map((threshold) => (
               <div
                 key={`${threshold.source.sheet}-${threshold.source.row}`}
-                className="flex items-start justify-between gap-4 rounded-lg border border-white/8 bg-white/[0.02] p-3"
+                className="flex items-start justify-between gap-4 rounded-lg border border-overlay/8 bg-overlay/[0.02] p-3"
               >
                 <div>
-                  <dt className="text-sm text-slate-300">
+                  <dt className="text-sm text-content">
                     {threshold.number !== undefined ? `${threshold.number}. ` : ''}
                     {threshold.label}
                   </dt>
-                  <dd className="text-xs text-slate-500">
+                  <dd className="text-xs text-content-subtle">
                     {threshold.source.sheet} · fila {threshold.source.row}
                   </dd>
                 </div>
-                <dd className="shrink-0 text-sm font-medium text-slate-100">
+                <dd className="shrink-0 text-sm font-medium text-content-strong">
                   {formatCurrencyCOP(threshold.value)}
                 </dd>
               </div>
@@ -137,10 +137,10 @@ export function SummaryPanel({
       ) : null}
 
       <GlassPanel className="p-5">
-        <h3 className="mb-3 text-sm font-medium text-slate-200">Calidad del análisis</h3>
+        <h3 className="mb-3 text-sm font-medium text-content">Calidad del análisis</h3>
         <div className="grid items-center gap-4 sm:grid-cols-[220px_1fr]">
           <QualityGauge metrics={metrics} />
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-content-muted">
             El indicador circular conserva la compatibilidad histórica y representa principalmente
             la extracción. La clasificación y la conciliación se muestran por separado para no
             producir una interpretación engañosa.
@@ -170,19 +170,19 @@ export function SummaryPanel({
 
 function QualityMetric({ label, score, detail }: { label: string; score: number; detail: string }) {
   return (
-    <div className="rounded-lg border border-white/8 p-3">
-      <dt className="text-xs text-slate-500">Calidad de {label.toLowerCase()}</dt>
-      <dd className="mt-1 text-lg font-medium text-slate-100">{score}/100</dd>
-      <p className="mt-1 text-xs text-slate-500">{detail}</p>
+    <div className="rounded-lg border border-overlay/8 p-3">
+      <dt className="text-xs text-content-subtle">Calidad de {label.toLowerCase()}</dt>
+      <dd className="mt-1 text-lg font-medium text-content-strong">{score}/100</dd>
+      <p className="mt-1 text-xs text-content-subtle">{detail}</p>
     </div>
   );
 }
 
 function Metric({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-lg border border-white/8 bg-white/[0.02] p-3">
-      <dt className="text-xs text-slate-500">{label}</dt>
-      <dd className="mt-1 text-sm font-medium text-slate-100">{formatCurrencyCOP(value)}</dd>
+    <div className="rounded-lg border border-overlay/8 bg-overlay/[0.02] p-3">
+      <dt className="text-xs text-content-subtle">{label}</dt>
+      <dd className="mt-1 text-sm font-medium text-content-strong">{formatCurrencyCOP(value)}</dd>
     </div>
   );
 }

@@ -37,7 +37,7 @@ export function GlobalDataControls() {
 
   return (
     <div className="flex items-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-2 py-1">
-      <span className="text-xs text-rose-200">¿Borrar todo lo local?</span>
+      <span className="text-xs text-tone-rose">¿Borrar todo lo local?</span>
       <Button variant="danger" onClick={handleClear} disabled={busy}>
         {busy ? 'Borrando…' : 'Sí, borrar'}
       </Button>

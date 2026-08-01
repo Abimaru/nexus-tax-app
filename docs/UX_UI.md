@@ -5,13 +5,36 @@
 - **Nombre:** NexusTax
 - **Subtítulo:** Estación personal de análisis tributario
 - **Motor futuro:** Aegis Engine
-- **Modo principal:** oscuro
-- **Acentos:** cian (`#22d3ee`), azul eléctrico (`#3b82f6`), violeta (`#8b5cf6`)
-- **Superficies:** fondos oscuros profundos con glassmorphism moderado e
-  iluminación sutil (halos de acento en el fondo).
+- **Temas:** **oscuro** (por defecto) y **claro**, conmutables desde la cabecera.
+- **Acentos:** cian (`#22d3ee`), azul eléctrico (`#3b82f6`), violeta (`#8b5cf6`);
+  se conservan en ambos temas.
+- **Superficies:** en oscuro, fondos profundos con glassmorphism moderado e
+  iluminación sutil (halos de acento); en claro, superficies claras con las
+  mismas formas y halos más tenues.
 
-Los tokens viven en `packages/config` (`BRAND_TOKENS`) y se reflejan en
-`apps/web/tailwind.config.ts`.
+## Sistema de tema (claro/oscuro)
+
+El color es **semántico y tema-consciente** mediante variables CSS en
+`apps/web/src/app/globals.css`, expuestas como colores de Tailwind:
+
+| Token Tailwind                               | Significado                                                                   |
+| -------------------------------------------- | ----------------------------------------------------------------------------- |
+| `surface-base` / `surface-raised`            | fondo de app / paneles                                                        |
+| `surface-glass`                              | superficie con glassmorphism                                                  |
+| `overlay/<n>`                                | superposición translúcida (bordes, hovers): blanca en oscuro, oscura en claro |
+| `content` / `-strong/-muted/-subtle`         | escala de texto                                                               |
+| `tone-{cyan,blue,violet,rose,amber,emerald}` | texto/íconos/badges de estado: vívidos en oscuro, profundos en claro          |
+
+**Regla para desarrolladores:** usa siempre estos tokens. **Nunca** `text-slate-*`,
+`bg-white/x` ni `border-white/x` fijos: rompen el modo claro.
+
+- **`ThemeProvider`** (`components/theme/ThemeProvider.tsx`) fija `data-theme` en
+  `<html>`, persiste la elección en `localStorage` y respeta
+  `prefers-color-scheme` la primera vez.
+- Un **script inline anti-parpadeo** aplica el tema antes de pintar (sin FOUC).
+- **`ThemeToggle`** (sol/luna) vive en la cabecera; es accesible y evita
+  desajustes de hidratación.
+- Cambiar `tailwind.config.ts` requiere **reiniciar `pnpm dev`**.
 
 ## Lo que evitamos
 
@@ -26,10 +49,10 @@ extensos, tablas ilegibles y apariencia genérica de dashboard administrativo.
 - **Drag and drop** para cargar archivos.
 - **Empty states orientativos** (explican qué hacer).
 - **Mensajes de error accionables**.
-- Respeto por `prefers-reduced-motion` (global en `globals.css` y en cada
-  componente animado).
+- **Puntos de estado de color** (además de texto) para identidad/resolución.
+- Respeto por `prefers-reduced-motion` (global en `globals.css` y por componente).
 
-## Pantallas (Sprint 1)
+## Pantallas
 
 1. **Inicio** — identidad, descripción, expedientes recientes, botón _Crear
    expediente_, aviso de privacidad.
@@ -37,26 +60,40 @@ extensos, tablas ilegibles y apariencia genérica de dashboard administrativo.
 3. **Cargar exógena** — drag & drop, formatos admitidos, aviso de procesamiento
    local, progreso real por fases, cancelar.
 4. **Inspección del libro** — nombre, tamaño, hojas, dimensiones, selección de
-   hoja, vista previa, selección de fila de encabezados, mapeo manual.
-5. **Resumen** — tarjetas (registros, entidades, conceptos, total, hallazgos) y
-   gráficas (valores por entidad, distribución por concepto, calidad).
-6. **Registros** — tabla paginada con búsqueda, filtros, ordenamiento, detalle de
-   fila con referencia al origen y exportación JSON.
-7. **Checklist documental** — requisitos agrupados por entidad, con motivo,
-   estado y origen de la recomendación.
-8. **Hallazgos** — severidad, descripción, evidencia, acción sugerida y
-   navegación al registro afectado.
+   hoja, vista previa, fila de encabezados y **detección de secciones**
+   (metadatos / rango de topes / inicio del detalle) revisable antes de procesar.
+5. **Identidad del contribuyente** — documento **enmascarado**, distinción de los
+   dos NIT jerárquicos y coincidencia por registro.
+6. **Resumen** — tarjetas (registros, entidades, conceptos, total, hallazgos) y
+   gráficas (valores por entidad, distribución por concepto, calidad). El total
+   separa métricas homogéneas de la suma bruta no consolidada.
+7. **Registros** — tabla paginada con **barra de filtros en grilla** (búsqueda +
+   entidad, categoría, identidad, naturaleza, tratamiento, resolución, relación,
+   consolidación) y **Limpiar filtros**. Columna **Clasificación** con badge +
+   puntos de estado; detalle de fila **por secciones** (Clasificación,
+   Trazabilidad, Consolidación, Relaciones, Uso sugerido, Columnas adicionales).
+   Exportación JSON.
+8. **Matriz de análisis** — grupos tributarios, conciliación preliminar contra
+   los topes, diferencias, confianza y prevención de doble conteo.
+9. **Hallazgos** — severidad, descripción, evidencia, acción sugerida, navegación
+   al registro afectado y **resolución humana** (confirmar/modificar/excluir con
+   justificación, vía _drawer_).
+10. **Checklist documental** — requisitos por entidad, con motivo, estado, origen
+    y nivel de confianza; **adjuntar PDF** guarda solo metadatos.
+11. **Obligación de declarar** — evaluación orientativa AG 2025: criterios,
+    evidencia, condición de IVA, vencimiento, versión y **fuentes DIAN**.
 
 ## Accesibilidad (§14)
 
 - Navegación por teclado y **foco visible** en toda la app.
 - Etiquetas asociadas (`label`/`aria-*`), enlace "Saltar al contenido".
-- Estados **no dependientes solo del color** (iconos + texto en severidades).
+- Estados **no dependientes solo del color** (iconos + texto + puntos de estado).
 - Gráficas con **alternativa textual** (tabla desplegable / desglose numérico).
-- Contraste suficiente sobre superficies oscuras.
+- Contraste suficiente en **ambos temas** (claro y oscuro).
 
 ## Componentes compartidos (`packages/ui`)
 
 `BrandMark`, `Button`, `Badge`, `GlassPanel`, `StatCard`, `AnimatedCounter`,
 `SeverityBadge`, `ProgressBar`, `Spinner`, `Skeleton`, `EmptyState`,
-`PrivacyNotice`. Todos son de presentación pura, sin reglas de negocio.
+`PrivacyNotice`. Todos de presentación pura, sin reglas de negocio. El control de
+tema (`ThemeProvider`, `ThemeToggle`) vive en `apps/web/src/components/theme`.
