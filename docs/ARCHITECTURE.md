@@ -69,9 +69,9 @@ El `ProcessingResult` es **determinista**: mismas entradas ⇒ misma salida
 ## Estado y persistencia
 
 - **Zustand** (`workbenchStore.ts`): estado efímero del flujo de carga.
-- **Dexie/IndexedDB** (`db.ts`, `repository.ts`): expedientes, documentos y
-  resultados, además de la respuesta de IVA usada por Aegis. **No se persiste
-  el archivo original** (privacidad).
+- **Dexie/IndexedDB** (`db.ts`, `repository.ts`): expedientes, resultados,
+  análisis y biblioteca documental. Los binarios viven separados y solo se
+  guardan por elección explícita del usuario.
 
 ## Decisiones clave
 
@@ -88,8 +88,18 @@ invocar el calculo puro con esa superposicion. React presenta el resultado, pero
 no contiene reglas tributarias. Al reprocesar se conservan las decisiones y se
 marcan obsoletas si cambia su registro o la version automatica.
 
-El archivo original sigue fuera de IndexedDB; solo se persisten resultado
-normalizado, relaciones, historial de decisiones y matriz.
+El archivo exógeno procesado sigue fuera de IndexedDB por defecto. Los soportes
+documentales pueden conservarse localmente de forma optativa y eliminable.
 
 - **Adaptadores configurables** (sinónimos de columnas, reglas de checklist) en
   vez de reglas rígidas: preparan el terreno para el Aegis Engine.
+
+## Sprint 2: agregado y almacenamiento
+
+Dexie v4 agrega `documentBlobs`, `products`, `coverages`, `facts` y
+`reconciliations`. `documents` contiene metadatos y hash; separar bytes permite
+eliminar la copia local sin romper versiones, coberturas o hechos.
+
+El expediente se materializa como una vista agregada desde esas tablas. Las
+sugerencias y métricas viven en funciones puras fuera de React. La interfaz usa
+tokens semánticos compartidos en tema claro y oscuro.

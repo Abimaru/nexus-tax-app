@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   CreateTaxCaseInputSchema,
   DocumentaryRequirementSchema,
+  DOCUMENT_CATALOG,
+  DocumentFactSchema,
+  UploadedDocumentSchema,
   ExogenousReportStructureSchema,
   TaxYearSchema,
 } from '../src/index';
@@ -52,5 +55,48 @@ describe('esquemas de dominio', () => {
         detailsStartRow: 20,
       }).success,
     ).toBe(false);
+  });
+
+  it('mantiene un catalogo documental completo y multiproposito', () => {
+    expect(DOCUMENT_CATALOG).toHaveLength(16);
+    const consolidated = DOCUMENT_CATALOG.find(
+      (entry) => entry.kind === 'consolidated_tax_certificate',
+    );
+    expect(consolidated?.supportsMultipleProducts).toBe(true);
+    expect(consolidated?.requirementCapabilities).toContain('debts');
+  });
+
+  it('distingue hechos manuales de extracciones automaticas', () => {
+    const parsed = DocumentFactSchema.safeParse({
+      id: 'fact:1',
+      caseId: 'case:1',
+      documentId: null,
+      entityId: null,
+      productId: null,
+      originalConcept: 'Saldo sintetico',
+      category: 'asset',
+      nature: 'asset',
+      treatment: 'add_to_assets',
+      value: 100,
+      currency: 'COP',
+      cutoffDate: null,
+      period: '2025',
+      pageOrSection: '1',
+      evidence: 'Registro de prueba',
+      captureMethod: 'manual',
+      confidence: 'high',
+      reviewStatus: 'pending',
+      requirementIds: [],
+      author: 'Analista local',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      history: [],
+    });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) expect(parsed.data.captureMethod).toBe('manual');
+  });
+
+  it('el documento persistible no admite una contrasena', () => {
+    expect('password' in UploadedDocumentSchema.shape).toBe(false);
   });
 });

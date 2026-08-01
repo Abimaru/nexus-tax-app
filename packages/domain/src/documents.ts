@@ -1,33 +1,304 @@
 import { z } from 'zod';
-import { IsoTimestampSchema } from './primitives';
-
-/**
- * UploadedDocument — metadatos de un archivo aportado a un expediente.
- * Por privacidad, NO se persiste el contenido binario del archivo por defecto;
- * solo sus metadatos y el resultado normalizado derivado.
- */
+import { EntityCategorySchema } from './aggregates';
+import { IsoTimestampSchema, TaxYearSchema } from './primitives';
 
 export const DocumentKindSchema = z.enum([
-  'exogenous', // Información exógena (Excel) — foco del Sprint 1
-  'employment_certificate', // Formulario 220 / certificado laboral (futuro)
-  'financial_certificate', // Certificados bancarios (futuro)
+  'exogenous_information',
+  'electronic_invoicing',
+  'prior_year_return',
+  'form_220',
+  'consolidated_tax_certificate',
+  'balance_certificate',
+  'debt_certificate',
+  'income_withholding_certificate',
+  'housing_interest_certificate',
+  'employee_fund_certificate',
+  'severance_certificate',
+  'property_tax_certificate',
+  'prize_certificate',
+  'annual_cost_report',
+  'dependent_support',
   'other',
 ]);
 export type DocumentKind = z.infer<typeof DocumentKindSchema>;
 
-export const DocumentStatusSchema = z.enum(['pending', 'parsed', 'error']);
-export type DocumentStatus = z.infer<typeof DocumentStatusSchema>;
+export const DocumentCategorySchema = z.enum([
+  'tax_authority',
+  'employment',
+  'financial',
+  'property',
+  'costs',
+  'personal_support',
+  'other',
+]);
+export type DocumentCategory = z.infer<typeof DocumentCategorySchema>;
+
+export const DocumentStorageModeSchema = z.enum(['metadata_only', 'store_locally', 'do_not_keep']);
+export type DocumentStorageMode = z.infer<typeof DocumentStorageModeSchema>;
+
+export const CaseDocumentStatusSchema = z.enum(['active', 'obsolete', 'replaced', 'error']);
+export type CaseDocumentStatus = z.infer<typeof CaseDocumentStatusSchema>;
+
+export const DocumentCatalogEntrySchema = z.object({
+  kind: DocumentKindSchema,
+  name: z.string(),
+  category: DocumentCategorySchema,
+  description: z.string(),
+  compatibleEntityCategories: z.array(EntityCategorySchema),
+  requirementCapabilities: z.array(z.string()),
+  possibleData: z.array(z.string()),
+  requiresReview: z.boolean(),
+  supportsMultipleProducts: z.boolean(),
+  acceptedExtensions: z.array(z.string()),
+});
+export type DocumentCatalogEntry = z.infer<typeof DocumentCatalogEntrySchema>;
+
+const ALL_ENTITIES = EntityCategorySchema.options;
+export const DOCUMENT_CATALOG: readonly DocumentCatalogEntry[] = [
+  catalog(
+    'exogenous_information',
+    'Informacion exogena',
+    'tax_authority',
+    'Reporte de terceros y topes DIAN.',
+    ALL_ENTITIES,
+    ['exogenous'],
+    ['registros', 'topes', 'entidades'],
+    true,
+    true,
+    ['xlsx', 'xls'],
+  ),
+  catalog(
+    'electronic_invoicing',
+    'Facturacion electronica',
+    'tax_authority',
+    'Reporte agregado de facturas electronicas.',
+    ['other', 'unknown'],
+    ['purchases'],
+    ['total facturado', 'base susceptible'],
+    true,
+    true,
+    ['xlsx', 'pdf'],
+  ),
+  catalog(
+    'prior_year_return',
+    'Declaracion del ano anterior',
+    'tax_authority',
+    'Declaracion usada solo como referencia historica.',
+    ALL_ENTITIES,
+    ['prior_year'],
+    ['saldos previos'],
+    true,
+    true,
+    ['pdf'],
+  ),
+  catalog(
+    'form_220',
+    'Formulario 220',
+    'employment',
+    'Certificado de ingresos y retenciones laborales.',
+    ['employer'],
+    ['employment_income'],
+    ['ingresos', 'retenciones', 'aportes'],
+    true,
+    false,
+    ['pdf'],
+  ),
+  catalog(
+    'consolidated_tax_certificate',
+    'Certificado tributario consolidado',
+    'financial',
+    'Certificado multiproposito de una entidad financiera.',
+    ['bank', 'pension', 'housing', 'other'],
+    ['balances', 'debts', 'financial_income', 'withholdings', 'investments'],
+    ['saldos', 'deudas', 'rendimientos', 'retenciones', 'inversiones'],
+    true,
+    true,
+    ['pdf'],
+  ),
+  catalog(
+    'balance_certificate',
+    'Certificado de saldos',
+    'financial',
+    'Saldos de cuentas o inversiones al cierre.',
+    ['bank', 'pension', 'other'],
+    ['balances'],
+    ['saldos al cierre'],
+    true,
+    true,
+    ['pdf'],
+  ),
+  catalog(
+    'debt_certificate',
+    'Certificado de deuda',
+    'financial',
+    'Obligaciones y saldos pendientes al cierre.',
+    ['bank', 'housing', 'other'],
+    ['debts'],
+    ['deudas', 'intereses'],
+    true,
+    true,
+    ['pdf'],
+  ),
+  catalog(
+    'income_withholding_certificate',
+    'Certificado de rendimientos y retenciones',
+    'financial',
+    'Rendimientos financieros y retenciones practicadas.',
+    ['bank', 'other'],
+    ['financial_income', 'withholdings'],
+    ['rendimientos', 'retenciones'],
+    true,
+    true,
+    ['pdf'],
+  ),
+  catalog(
+    'housing_interest_certificate',
+    'Certificado de intereses de vivienda',
+    'financial',
+    'Intereses pagados por credito de vivienda.',
+    ['housing', 'bank'],
+    ['housing_interest'],
+    ['intereses', 'saldo deuda'],
+    true,
+    false,
+    ['pdf'],
+  ),
+  catalog(
+    'employee_fund_certificate',
+    'Certificado de fondo de empleados',
+    'employment',
+    'Aportes, ahorros, creditos y rendimientos del fondo.',
+    ['employer', 'other'],
+    ['employee_fund'],
+    ['aportes', 'ahorros', 'deudas'],
+    true,
+    true,
+    ['pdf'],
+  ),
+  catalog(
+    'severance_certificate',
+    'Certificado de cesantias',
+    'employment',
+    'Saldos y movimientos de cesantias.',
+    ['pension', 'other'],
+    ['severance'],
+    ['saldo', 'retiros'],
+    true,
+    false,
+    ['pdf'],
+  ),
+  catalog(
+    'property_tax_certificate',
+    'Certificado predial',
+    'property',
+    'Soporte de propiedad y valor de inmueble.',
+    ['other', 'unknown'],
+    ['property'],
+    ['avaluo', 'identificacion predial'],
+    true,
+    false,
+    ['pdf', 'jpg', 'png'],
+  ),
+  catalog(
+    'prize_certificate',
+    'Certificado de premio o ganancia ocasional',
+    'tax_authority',
+    'Soporte de premio, retencion y valor recibido.',
+    ['other', 'unknown'],
+    ['occasional_gain'],
+    ['premio', 'retencion'],
+    true,
+    false,
+    ['pdf'],
+  ),
+  catalog(
+    'annual_cost_report',
+    'Reporte anual de costos o gastos',
+    'costs',
+    'Relacion anual de costos o compras con soporte.',
+    ['other', 'unknown'],
+    ['costs'],
+    ['costos', 'compras'],
+    true,
+    true,
+    ['xlsx', 'pdf'],
+  ),
+  catalog(
+    'dependent_support',
+    'Soporte de dependiente',
+    'personal_support',
+    'Documento para revisar una posible condicion de dependiente.',
+    ['other', 'unknown'],
+    ['dependent'],
+    ['identificacion', 'periodo'],
+    true,
+    false,
+    ['pdf', 'jpg', 'png'],
+  ),
+  catalog(
+    'other',
+    'Otro documento',
+    'other',
+    'Documento no incluido aun en el catalogo.',
+    ALL_ENTITIES,
+    [],
+    [],
+    true,
+    true,
+    ['pdf', 'xlsx', 'xls', 'jpg', 'jpeg', 'png', 'txt'],
+  ),
+];
+
+function catalog(
+  kind: DocumentKind,
+  name: string,
+  category: DocumentCategory,
+  description: string,
+  compatibleEntityCategories: DocumentCatalogEntry['compatibleEntityCategories'],
+  requirementCapabilities: string[],
+  possibleData: string[],
+  requiresReview: boolean,
+  supportsMultipleProducts: boolean,
+  acceptedExtensions: string[],
+): DocumentCatalogEntry {
+  return {
+    kind,
+    name,
+    category,
+    description,
+    compatibleEntityCategories,
+    requirementCapabilities,
+    possibleData,
+    requiresReview,
+    supportsMultipleProducts,
+    acceptedExtensions,
+  };
+}
 
 export const UploadedDocumentSchema = z.object({
   id: z.string().min(1),
   caseId: z.string().min(1),
   kind: DocumentKindSchema,
+  category: DocumentCategorySchema,
   fileName: z.string().min(1),
+  extension: z.string(),
   fileSizeBytes: z.number().int().nonnegative(),
-  mimeType: z.string().default(''),
-  status: DocumentStatusSchema,
-  /** Mensaje de error legible cuando status === 'error'. */
-  errorMessage: z.string().optional(),
+  mimeType: z.string(),
+  sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  storageMode: DocumentStorageModeSchema,
+  status: CaseDocumentStatusSchema,
+  entityIds: z.array(z.string()),
+  productIds: z.array(z.string()),
+  taxYear: TaxYearSchema,
+  cutoffDate: z.string().nullable(),
+  notes: z.string().max(2000),
+  requiresPassword: z.boolean(),
+  version: z.number().int().positive(),
+  replacesDocumentId: z.string().nullable(),
+  replacedByDocumentId: z.string().nullable(),
+  coveredRequirementIds: z.array(z.string()),
+  partialRequirementIds: z.array(z.string()),
   uploadedAt: IsoTimestampSchema,
+  updatedAt: IsoTimestampSchema,
 });
 export type UploadedDocument = z.infer<typeof UploadedDocumentSchema>;

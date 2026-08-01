@@ -4,20 +4,26 @@
 extensible. Motor futuro de reglas: **Aegis Engine**.
 
 > NexusTax ayuda a un analista humano a organizar expedientes, leer información
-> exógena, normalizar registros, detectar inconsistencias y preparar la
-> declaración de renta. **No** presenta declaraciones ante la DIAN ni realiza
-> cálculos tributarios todavía. Todo el procesamiento ocurre **en tu navegador**.
+> exógena, normalizar y **clasificar** registros, conciliar contra topes, detectar
+> inconsistencias y preparar la declaración de renta. Todo es **orientativo y
+> revisado por un humano**: **no** presenta declaraciones ante la DIAN ni **liquida
+> el impuesto** (no calcula el Formulario 210). Todo ocurre **en tu navegador**.
 
-## Alcance del Sprint 1
+## Alcance actual
 
-Crear expediente → cargar Excel de exógena → inspeccionar hojas → normalizar
-registros → ver resumen y gráficas → revisar hallazgos → evaluar de forma
-orientativa la obligación de declarar para AG 2025 → obtener un checklist
-documental preliminar → guardar en IndexedDB → exportar JSON.
+Crear expediente → cargar Excel de exógena → inspeccionar hojas y **secciones**
+(topes/detalle) → normalizar y clasificar registros → extraer la **identidad DIAN**
+→ ver resumen y gráficas → revisar la **matriz de análisis** y los hallazgos →
+**resolver** decisiones (con historial) → evaluar de forma orientativa la
+**obligación de declarar** AG 2025 → biblioteca y cobertura documental → hechos
+manuales → conciliación documental confirmada por el analista → guardar en
+IndexedDB → exportar un manifiesto sin binarios. Interfaz con **tema claro y
+oscuro**.
 
 Fuera de alcance (por ahora): backend, IA, autenticación, extracción avanzada
-de PDFs, liquidación del impuesto e integración en línea con la DIAN. Solo se permite asociar
-metadatos locales de un PDF a una recomendación documental.
+de PDFs, OCR, liquidación del impuesto e integración en línea con la DIAN. Un
+soporte puede conservarse opcionalmente en IndexedDB, siempre local y por
+decisión explícita.
 
 ## Arquitectura (monorepo pnpm)
 
@@ -69,6 +75,13 @@ Detalles en `docs/SECURITY_PRIVACY.md`.
 - [UX / UI](docs/UX_UI.md)
 - [Modelo de datos](docs/DATA_MODEL.md)
 - [Parser de exógena](docs/EXOGENOUS_PARSER.md)
+- [Clasificación y resolución](docs/CLASSIFICATION_RESOLUTION.md)
+- [Reglas tributarias](docs/TAX_RULES.md)
+- [Conciliación](docs/RECONCILIATION.md)
+- [Expediente tributario](docs/TAX_CASE.md)
+- [Cobertura documental](docs/DOCUMENT_COVERAGE.md)
+- [Hechos documentales](docs/DOCUMENT_FACTS.md)
+- [Conciliación documental](docs/PRELIMINARY_RECONCILIATION.md)
 - [Reglas Aegis](docs/AEGIS_RULES.md)
 - [Seguridad y privacidad](docs/SECURITY_PRIVACY.md)
 - [Roadmap](docs/ROADMAP.md)

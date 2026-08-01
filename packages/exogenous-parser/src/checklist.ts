@@ -30,6 +30,16 @@ function recordText(record: NormalizedExogenousRecord): string {
 
 export const DEFAULT_CHECKLIST_RULES: ChecklistRule[] = [
   {
+    id: 'concept.housing-interest.v2',
+    matches: (record) => /interes(?:es)? de vivienda|credito hipotecario/.test(recordText(record)),
+    requirement: {
+      documentName: 'Certificado de intereses de vivienda',
+      documentCategory: 'Vivienda',
+      reason: 'Se detectaron intereses o un crédito de vivienda que conviene soportar.',
+      confidence: 'high',
+    },
+  },
+  {
     id: 'concept.bank-balance.v2',
     matches: (record) =>
       record.category === 'asset' && /saldo|cuenta|deposito|banc/.test(recordText(record)),
@@ -102,6 +112,28 @@ export const DEFAULT_CHECKLIST_RULES: ChecklistRule[] = [
       confidence: 'high',
     },
   },
+  {
+    id: 'concept.property.v2',
+    matches: (record) => /predial|inmueble|avaluo catastral/.test(recordText(record)),
+    requirement: {
+      documentName: 'Certificado predial',
+      documentCategory: 'Patrimonio',
+      reason: 'Se detectó información de un inmueble o avalúo que requiere soporte.',
+      confidence: 'high',
+    },
+  },
+  {
+    id: 'concept.annual-costs.v2',
+    matches: (record) =>
+      ['purchase', 'electronic_invoicing_total'].includes(record.category) &&
+      /compra|costo|gasto|factur/.test(recordText(record)),
+    requirement: {
+      documentName: 'Reporte anual de costos o gastos',
+      documentCategory: 'Costos y gastos',
+      reason: 'Se detectaron compras o costos con evidencia conceptual específica.',
+      confidence: 'medium',
+    },
+  },
 ];
 
 export function buildChecklist(
@@ -133,6 +165,34 @@ export function buildChecklist(
         isLegallyRequired: false,
         attachment: null,
       });
+    }
+    const entityRequirements = requirements.filter(
+      (requirement) => requirement.entityName === entity.name,
+    );
+    const financialRequirementCount = entityRequirements.filter((requirement) =>
+      ['Financiero', 'Pasivos', 'Vivienda', 'Pensiones y cesantías'].includes(
+        requirement.documentCategory,
+      ),
+    ).length;
+    if (financialRequirementCount >= 2) {
+      const documentName = 'Certificado tributario consolidado';
+      const uniqueKey = `${entity.id}|${documentName}`;
+      if (!seen.has(uniqueKey)) {
+        seen.add(uniqueKey);
+        requirements.push({
+          id: prefixedId('req', [entity.id, 'entity.consolidated-certificate.v2', documentName]),
+          entityName: entity.name,
+          entityCategory: entity.category,
+          documentName,
+          documentCategory: 'Financiero multipropósito',
+          reason: `La entidad presenta ${financialRequirementCount} necesidades financieras que un certificado consolidado podría cubrir sin duplicar archivos.`,
+          status: 'pending',
+          recommendationSource: 'entity.consolidated-certificate.v2',
+          confidence: 'high',
+          isLegallyRequired: false,
+          attachment: null,
+        });
+      }
     }
   }
 

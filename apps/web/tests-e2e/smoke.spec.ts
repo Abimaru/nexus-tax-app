@@ -98,8 +98,16 @@ function makeSampleFile(): string {
   return file;
 }
 
+function makeSupportFile(): string {
+  const dir = mkdtempSync(join(tmpdir(), 'nexustax-support-'));
+  const file = join(dir, 'certificado-sintetico.pdf');
+  writeFileSync(file, Buffer.from('%PDF-1.4 soporte exclusivamente sintetico'));
+  return file;
+}
+
 test('flujo completo: crear expediente, cargar, procesar y ver resumen', async ({ page }) => {
   const samplePath = makeSampleFile();
+  const supportPath = makeSupportFile();
 
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
@@ -109,7 +117,8 @@ test('flujo completo: crear expediente, cargar, procesar y ver resumen', async (
   await page.getByRole('button', { name: 'Crear expediente' }).click();
 
   // Ya en la pantalla del expediente, pestaña Cargar.
-  await expect(page.getByRole('button', { name: /Cargar/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Cargar ex.gena/ })).toBeVisible();
+  await page.getByRole('button', { name: /Cargar ex.gena/ }).click();
   await page.setInputFiles('input[type="file"]', samplePath);
 
   // Avanza a Inspección; selecciona la hoja de datos.
@@ -124,12 +133,18 @@ test('flujo completo: crear expediente, cargar, procesar y ver resumen', async (
   await expect(page.getByText('Suma bruta no consolidada')).toBeVisible();
   await expect(page.getByText('1234567890', { exact: true })).toHaveCount(0);
 
-  await page.getByRole('button', { name: 'Matriz' }).click();
+  await page
+    .getByRole('navigation', { name: 'Secciones del expediente' })
+    .getByRole('button', { name: 'Matriz', exact: true })
+    .click();
   await expect(page.getByRole('heading', { name: 'Matriz tributaria preliminar' })).toBeVisible();
   await expect(page.getByRole('heading', { name: /Facturaci.n electr.nica DIAN/ })).toBeVisible();
   await expect(page.getByText('Beneficio preliminar 1 %')).toBeVisible();
 
-  await page.getByRole('button', { name: 'Hallazgos' }).click();
+  await page
+    .getByRole('navigation', { name: 'Secciones del expediente' })
+    .getByRole('button', { name: 'Hallazgos', exact: true })
+    .click();
   const unresolved = page.locator('li').filter({ hasText: 'unclassified_tax_record' }).first();
   await unresolved.getByRole('button', { name: 'Ver registro afectado' }).click();
   await expect(page.getByRole('dialog', { name: /Resolver clasificaci.n/ })).toBeVisible();
@@ -141,7 +156,10 @@ test('flujo completo: crear expediente, cargar, procesar y ver resumen', async (
   await page.getByRole('button', { name: /Cerrar panel de resoluci.n/ }).click();
 
   await page.reload();
-  await page.getByRole('button', { name: 'Hallazgos' }).click();
+  await page
+    .getByRole('navigation', { name: 'Secciones del expediente' })
+    .getByRole('button', { name: 'Hallazgos', exact: true })
+    .click();
   await expect(page.getByText(/Resuelto: analyst modified/).first()).toBeVisible();
 
   await page.getByRole('button', { name: /Obligación/ }).click();
@@ -150,4 +168,38 @@ test('flujo completo: crear expediente, cargar, procesar y ver resumen', async (
   await expect(page.getByText('No se detectan criterios que activen la obligación')).toBeVisible();
   await expect(page.getByText(/19 de octubre de 2026/)).toBeVisible();
   await expect(page.getByText(/co-renta-pn-2025\.1\.0\.0/)).toBeVisible();
+
+  await page
+    .getByRole('navigation', { name: 'Secciones del expediente' })
+    .getByRole('button', { name: 'Documentos', exact: true })
+    .click();
+  await page.setInputFiles('#case-document-file', supportPath);
+  await page.getByLabel(/Decisi.n de persistencia/).selectOption('store_locally');
+  await page.locator('input[type="checkbox"]').first().check();
+  await page.getByRole('button', { name: 'Registrar documento' }).click();
+  await expect(page.getByRole('heading', { name: 'certificado-sintetico.pdf' })).toBeVisible();
+
+  await page
+    .getByRole('navigation', { name: 'Secciones del expediente' })
+    .getByRole('button', { name: 'Hechos', exact: true })
+    .click();
+  await page.getByLabel('Concepto original').fill('Saldo cuenta bancaria certificado');
+  await page.getByLabel('Valor documental').fill('1250000');
+  await page.getByLabel(/Categor.a normalizada/).selectOption('asset');
+  await page.getByLabel(/^Naturaleza/).selectOption('asset');
+  await page.getByLabel(/^Tratamiento/).selectOption('add_to_assets');
+  await page.getByRole('button', { name: 'Guardar hecho' }).click();
+  await expect(page.getByText('Saldo cuenta bancaria certificado')).toBeVisible();
+
+  await page.reload();
+  await page
+    .getByRole('navigation', { name: 'Secciones del expediente' })
+    .getByRole('button', { name: 'Documentos', exact: true })
+    .click();
+  await expect(page.getByRole('heading', { name: 'certificado-sintetico.pdf' })).toBeVisible();
+  await page
+    .getByRole('navigation', { name: 'Secciones del expediente' })
+    .getByRole('button', { name: 'Hechos', exact: true })
+    .click();
+  await expect(page.getByText('Saldo cuenta bancaria certificado')).toBeVisible();
 });

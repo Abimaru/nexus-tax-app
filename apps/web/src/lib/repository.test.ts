@@ -17,7 +17,17 @@ import {
   getCaseAnalysis,
   saveRecordResolution,
   restoreAutomaticClassification,
+  addCaseDocument,
+  getDocumentBinary,
+  getTaxCaseWorkspace,
+  removeDocumentBinary,
+  saveDocumentFact,
+  updateDocumentFact,
+  savePreliminaryReconciliation,
+  saveRequirementCoverage,
+  deleteCase,
 } from './repository';
+import { buildTaxCaseManifest } from './taxCaseAnalysis';
 
 function sampleResult(detail = 'Rendimientos'): ProcessingResult {
   const wb = XLSX.utils.book_new();
@@ -30,6 +40,28 @@ function sampleResult(detail = 'Rendimientos'): ProcessingResult {
   return processWorkbookFile(buffer, 'r.xlsx', 1, { sheetName: 'Datos' });
 }
 
+function financialResult(): ProcessingResult {
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet([
+    ['NIT', 'Nombre', 'Concepto', 'Valor'],
+    ['900', 'Banco Ficticio', 'Saldo cuenta bancaria', 100_000],
+    ['900', 'Banco Ficticio', 'Rendimientos financieros', 10_000],
+  ]);
+  XLSX.utils.book_append_sheet(wb, ws, 'Datos');
+  const buffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer;
+  return processWorkbookFile(buffer, 'financiero.xlsx', 1, { sheetName: 'Datos' });
+}
+
+function localFile(name: string, contents: string) {
+  const bytes = new TextEncoder().encode(contents);
+  return {
+    name,
+    size: bytes.byteLength,
+    type: 'application/pdf',
+    arrayBuffer: async () => bytes.buffer.slice(0),
+  };
+}
+
 describe('repositorio (IndexedDB local)', () => {
   beforeEach(async () => {
     await clearAllData();
@@ -39,7 +71,7 @@ describe('repositorio (IndexedDB local)', () => {
     const created = await createCase({ alias: 'Prueba Local', taxYear: 2024 });
     const cases = await listCases();
     expect(cases.map((c) => c.id)).toContain(created.id);
-    expect(created.status).toBe('draft');
+    expect(created.status).toBe('new');
   });
 
   it('guarda y recupera un resultado de procesamiento', async () => {
@@ -184,5 +216,228 @@ describe('repositorio (IndexedDB local)', () => {
       status: 'analyst_confirmed',
     });
     expect(analysis?.resolutions[0]?.obsoleteReason).toContain('cambi');
+  });
+
+  it('registra un documento multiproposito y conserva el binario solo por decision explicita', async () => {
+    const created = await createCase({ alias: 'Biblioteca', taxYear: 2025 });
+    const result = financialResult();
+    await saveResult(created.id, result);
+    expect(result.requirements.length).toBeGreaterThanOrEqual(2);
+    const requirementIds = result.requirements.slice(0, 2).map((item) => item.id);
+    const document = await addCaseDocument(
+      created.id,
+      localFile('consolidado.pdf', 'contenido sintetico'),
+      {
+        kind: 'consolidated_tax_certificate',
+        storageMode: 'store_locally',
+        taxYear: 2025,
+        coveredRequirementIds: requirementIds,
+        requiresPassword: true,
+      },
+    );
+    expect(document.coveredRequirementIds).toEqual(requirementIds);
+    expect(document.requiresPassword).toBe(true);
+    expect('password' in document).toBe(false);
+    expect(await getDocumentBinary(document.id)).toMatchObject({ fileName: 'consolidado.pdf' });
+    const workspace = await getTaxCaseWorkspace(created.id);
+    expect(workspace.coverages.filter((item) => item.status === 'covered')).toHaveLength(2);
+    expect(workspace.localBytes).toBeGreaterThan(0);
+  });
+
+  it('detecta duplicados por hash y permite eliminar solo el binario local', async () => {
+    const created = await createCase({ alias: 'Duplicados', taxYear: 2025 });
+    const first = await addCaseDocument(created.id, localFile('a.pdf', 'igual'), {
+      kind: 'other',
+      storageMode: 'store_locally',
+      taxYear: 2025,
+    });
+    await expect(
+      addCaseDocument(created.id, localFile('b.pdf', 'igual'), {
+        kind: 'other',
+        storageMode: 'metadata_only',
+        taxYear: 2025,
+      }),
+    ).rejects.toThrow(/mismo hash/);
+    await removeDocumentBinary(first.id);
+    expect(await getDocumentBinary(first.id)).toBeUndefined();
+    expect((await getTaxCaseWorkspace(created.id)).documents[0]?.storageMode).toBe('metadata_only');
+  });
+
+  it('mantiene versiones al reemplazar un documento', async () => {
+    const created = await createCase({ alias: 'Versiones', taxYear: 2025 });
+    const first = await addCaseDocument(created.id, localFile('v1.pdf', 'version uno'), {
+      kind: 'balance_certificate',
+      storageMode: 'metadata_only',
+      taxYear: 2025,
+    });
+    const second = await addCaseDocument(created.id, localFile('v2.pdf', 'version dos'), {
+      kind: 'balance_certificate',
+      storageMode: 'metadata_only',
+      taxYear: 2025,
+      replacesDocumentId: first.id,
+    });
+    const workspace = await getTaxCaseWorkspace(created.id);
+    expect(workspace.documents.find((item) => item.id === first.id)).toMatchObject({
+      status: 'replaced',
+      replacedByDocumentId: second.id,
+    });
+    expect(second).toMatchObject({ version: 2, replacesDocumentId: first.id });
+  });
+
+  it('persiste un hecho manual con historial editable', async () => {
+    const created = await createCase({ alias: 'Hechos', taxYear: 2025 });
+    const fact = await saveDocumentFact(created.id, {
+      documentId: null,
+      entityId: null,
+      productId: null,
+      originalConcept: 'Saldo sintetico',
+      category: 'asset',
+      nature: 'asset',
+      treatment: 'add_to_assets',
+      value: 100,
+      currency: 'COP',
+      cutoffDate: '2025-12-31',
+      period: '2025',
+      pageOrSection: '2',
+      evidence: 'Digitado desde soporte sintetico',
+      captureMethod: 'manual',
+      confidence: 'high',
+      reviewStatus: 'pending',
+      requirementIds: [],
+      author: 'Analista local',
+    });
+    await updateDocumentFact(
+      fact.id,
+      { value: 101, reviewStatus: 'reviewed' },
+      'Correccion revisada.',
+    );
+    const stored = (await getTaxCaseWorkspace(created.id)).facts[0];
+    expect(stored).toMatchObject({
+      value: 101,
+      captureMethod: 'manual',
+      reviewStatus: 'reviewed',
+    });
+    expect(stored?.history).toHaveLength(2);
+  });
+
+  it('requiere confirmacion humana y calcula diferencias al conciliar', async () => {
+    const created = await createCase({ alias: 'Conciliacion', taxYear: 2025 });
+    await expect(
+      savePreliminaryReconciliation(created.id, {
+        factIds: ['fact:1'],
+        exogenousRecordIds: ['record:1'],
+        status: 'reconciled',
+        exogenousValue: 100,
+        documentaryValue: 100,
+        productId: null,
+        explanation: 'igualdad',
+        analystDecision: '',
+        suggestionScore: 80,
+        suggestionSignals: ['valor igual'],
+        confirmedByHuman: false,
+      }),
+    ).rejects.toThrow(/confirmacion humana/);
+    const saved = await savePreliminaryReconciliation(created.id, {
+      factIds: ['fact:1'],
+      exogenousRecordIds: ['record:1'],
+      status: 'minor_difference',
+      exogenousValue: 100,
+      documentaryValue: 101,
+      productId: null,
+      explanation: 'redondeo',
+      analystDecision: 'Confirmado',
+      suggestionScore: 80,
+      suggestionSignals: ['misma entidad'],
+      confirmedByHuman: true,
+    });
+    expect(saved).toMatchObject({ difference: 1, differencePercentage: 1, confirmedByHuman: true });
+  });
+
+  it('exporta el expediente sin incluir binarios', async () => {
+    const created = await createCase({ alias: 'Exportable', taxYear: 2025 });
+    await addCaseDocument(created.id, localFile('local.pdf', 'secreto sintetico'), {
+      kind: 'other',
+      storageMode: 'store_locally',
+      taxYear: 2025,
+    });
+    const workspace = await getTaxCaseWorkspace(created.id);
+    const manifest = buildTaxCaseManifest({
+      taxCase: created,
+      result: workspace.result,
+      analysis: workspace.analysis,
+      documents: workspace.documents,
+      products: workspace.products,
+      coverages: workspace.coverages,
+      facts: workspace.facts,
+      reconciliations: workspace.reconciliations,
+    });
+    expect(manifest.includesBinaryData).toBe(false);
+    expect(JSON.stringify(manifest)).not.toContain('secreto sintetico');
+    expect(JSON.stringify(manifest)).not.toContain('bytes');
+  });
+
+  it('registra cobertura parcial sin duplicar el documento', async () => {
+    const created = await createCase({ alias: 'Cobertura parcial', taxYear: 2025 });
+    const result = financialResult();
+    await saveResult(created.id, result);
+    const document = await addCaseDocument(created.id, localFile('parcial.pdf', 'parcial'), {
+      kind: 'consolidated_tax_certificate',
+      storageMode: 'metadata_only',
+      taxYear: 2025,
+    });
+    const requirement = result.requirements[0]!;
+    await saveRequirementCoverage({
+      caseId: created.id,
+      requirementId: requirement.id,
+      documentId: document.id,
+      factId: null,
+      entityId: null,
+      status: 'partial',
+      relation: 'partially_covers',
+      notes: 'Falta un producto.',
+    });
+    const workspace = await getTaxCaseWorkspace(created.id);
+    expect(workspace.documents).toHaveLength(1);
+    expect(workspace.coverages[0]).toMatchObject({
+      status: 'partial',
+      relation: 'partially_covers',
+    });
+  });
+
+  it('elimina todas las tablas y binarios del expediente', async () => {
+    const created = await createCase({ alias: 'Eliminar completo', taxYear: 2025 });
+    await addCaseDocument(created.id, localFile('borrar.pdf', 'borrar'), {
+      kind: 'other',
+      storageMode: 'store_locally',
+      taxYear: 2025,
+    });
+    await saveDocumentFact(created.id, {
+      documentId: null,
+      entityId: null,
+      productId: null,
+      originalConcept: 'Hecho borrable',
+      category: 'informational',
+      nature: 'informational',
+      treatment: 'do_not_aggregate',
+      value: 1,
+      currency: 'COP',
+      cutoffDate: null,
+      period: '',
+      pageOrSection: '',
+      evidence: '',
+      captureMethod: 'manual',
+      confidence: 'low',
+      reviewStatus: 'pending',
+      requirementIds: [],
+      author: 'Analista local',
+    });
+    await deleteCase(created.id);
+    const workspace = await getTaxCaseWorkspace(created.id);
+    expect(workspace).toMatchObject({
+      taxCase: undefined,
+      documents: [],
+      facts: [],
+      localBytes: 0,
+    });
   });
 });
