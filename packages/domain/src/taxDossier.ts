@@ -107,6 +107,13 @@ export const DocumentFactSchema = z.object({
   createdAt: IsoTimestampSchema,
   updatedAt: IsoTimestampSchema,
   history: z.array(DocumentFactHistorySchema),
+  extractionCandidateId: z.string().nullable().optional(),
+  extractedValue: z.number().nullable().optional(),
+  correctedValue: z.number().nullable().optional(),
+  adapterId: z.string().nullable().optional(),
+  adapterVersion: z.string().nullable().optional(),
+  finalConfidence: z.enum(['high', 'medium', 'low', 'insufficient']).optional(),
+  analystDecision: z.string().optional(),
 });
 export type DocumentFact = z.infer<typeof DocumentFactSchema>;
 
@@ -188,4 +195,4 @@ export const CaseEntitySummarySchema = z.object({
 });
 export type CaseEntitySummary = z.infer<typeof CaseEntitySummarySchema>;
 
-export const TAX_CASE_EXPORT_SCHEMA_VERSION = '2.0.3';
+export const TAX_CASE_EXPORT_SCHEMA_VERSION = '2.1.0';
