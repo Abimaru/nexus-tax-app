@@ -52,7 +52,7 @@ export function RecentCases() {
               <div className="flex items-center gap-2">
                 <span className="font-medium text-content-strong">{taxCase.alias}</span>
                 <Badge tone={taxCase.status === 'ready_for_review' ? 'emerald' : 'neutral'}>
-                  {STATUS_LABEL[taxCase.status] ?? taxCase.status}
+                  {STATUS_LABEL[taxCase.status]}
                 </Badge>
               </div>
               <p className="mt-1 text-xs text-content-muted">

@@ -1,4 +1,6 @@
 import type {
+  AcceptedExogenousValue,
+  AcceptedSourceStatus,
   CaseAnalysis,
   CaseNavigationState,
   CaseProduct,
@@ -15,6 +17,7 @@ import type {
   ProcessingResult,
   RecordResolution,
   RequirementCoverage,
+  RequirementSourceDecision,
   RequirementStatus,
   ResolutionStatus,
   TaxCase,
@@ -23,7 +26,7 @@ import type {
   WorkflowStageId,
   WorkflowViewId,
 } from '@nexus-tax/domain';
-import { DOCUMENT_CATALOG } from '@nexus-tax/domain';
+import { ACCEPTED_SOURCE_RULE_VERSION, DOCUMENT_CATALOG } from '@nexus-tax/domain';
 import type { FilingObligationInputs } from '@nexus-tax/aegis-rules';
 import {
   ANALYSIS_RULE_VERSION,
@@ -88,6 +91,8 @@ export async function deleteCase(caseId: string): Promise<void> {
       db.reconciliations,
       db.employmentGroups,
       db.navigationStates,
+      db.acceptedSources,
+      db.requirementSourceDecisions,
     ],
     async () => {
       await db.results.delete(caseId);
@@ -100,6 +105,8 @@ export async function deleteCase(caseId: string): Promise<void> {
       await db.reconciliations.where('caseId').equals(caseId).delete();
       await db.employmentGroups.where('caseId').equals(caseId).delete();
       await db.navigationStates.delete(caseId);
+      await db.acceptedSources.where('caseId').equals(caseId).delete();
+      await db.requirementSourceDecisions.where('caseId').equals(caseId).delete();
       await db.documents.where('caseId').equals(caseId).delete();
       await db.cases.delete(caseId);
     },
@@ -505,6 +512,8 @@ export async function clearAllData(): Promise<void> {
       db.reconciliations,
       db.employmentGroups,
       db.navigationStates,
+      db.acceptedSources,
+      db.requirementSourceDecisions,
     ],
     async () => {
       await db.results.clear();
@@ -517,6 +526,8 @@ export async function clearAllData(): Promise<void> {
       await db.reconciliations.clear();
       await db.employmentGroups.clear();
       await db.navigationStates.clear();
+      await db.acceptedSources.clear();
+      await db.requirementSourceDecisions.clear();
       await db.documents.clear();
       await db.cases.clear();
     },
@@ -816,6 +827,199 @@ export async function listDocumentFacts(caseId: string): Promise<DocumentFact[]>
   return getDb().facts.where('caseId').equals(caseId).sortBy('updatedAt');
 }
 
+export type AcceptExogenousValueInput = Pick<
+  AcceptedExogenousValue,
+  | 'exogenousRecordId'
+  | 'requirementId'
+  | 'entityId'
+  | 'reason'
+  | 'observation'
+  | 'includedInMatrix'
+  | 'occasionalGainRecognition'
+  | 'beneficiaryAlias'
+> & { author?: string };
+
+export async function acceptExogenousValue(
+  caseId: string,
+  input: AcceptExogenousValueInput,
+): Promise<AcceptedExogenousValue> {
+  const db = getDb();
+  const stored = await db.results.get(caseId);
+  const record = stored?.result.normalizedRecords.find(
+    (item) => item.id === input.exogenousRecordId,
+  );
+  if (!record || record.reportedValue === null) {
+    throw new Error('El registro exógeno seleccionado no tiene un valor utilizable.');
+  }
+  const observation = input.observation.trim();
+  if (input.reason === 'other' && !observation) {
+    throw new Error('Describe el motivo cuando seleccionas “Otro motivo”.');
+  }
+  if (input.occasionalGainRecognition === 'collected_for_third_party' && !observation) {
+    throw new Error('Explica por qué el premio fue cobrado para un tercero.');
+  }
+  const timestamp = nowIso();
+  const author = input.author?.trim() || 'Analista local';
+  const previous = await db.acceptedSources
+    .where('caseId')
+    .equals(caseId)
+    .filter((item) => item.exogenousRecordId === record.id)
+    .first();
+  const status: AcceptedSourceStatus =
+    input.occasionalGainRecognition === 'unrecognized' ||
+    input.occasionalGainRecognition === 'collected_for_third_party'
+      ? 'pending_review'
+      : 'provisionally_accepted';
+  const accepted: AcceptedExogenousValue = {
+    id: previous?.id ?? newId('accepted-source'),
+    caseId,
+    exogenousRecordId: record.id,
+    requirementId: input.requirementId,
+    entityId: input.entityId,
+    primarySource: 'exogenous_information',
+    secondarySources: ['analyst_resolution'],
+    captureMethod: 'analyst_resolution',
+    confidence: record.confidence,
+    status,
+    reason: input.reason,
+    observation,
+    originalConcept: record.conceptLabel ?? record.conceptCode ?? 'Concepto sin etiqueta',
+    originalValue: record.reportedValue,
+    provisionalValue: record.reportedValue,
+    category: record.category,
+    taxGroup: record.category,
+    source: record.source,
+    includedInMatrix: input.includedInMatrix && status === 'provisionally_accepted',
+    documentId: previous?.documentId ?? null,
+    replacementDecisionId: previous?.replacementDecisionId ?? null,
+    occasionalGainRecognition: input.occasionalGainRecognition,
+    beneficiaryAlias: input.beneficiaryAlias?.trim() || null,
+    ruleVersion: ACCEPTED_SOURCE_RULE_VERSION,
+    author,
+    createdAt: previous?.createdAt ?? timestamp,
+    updatedAt: timestamp,
+    history: [
+      ...(previous?.history ?? []),
+      {
+        id: newId('source-history'),
+        changedAt: timestamp,
+        author,
+        action: previous ? 'updated_acceptance' : 'accepted_exogenous_value',
+        previousStatus: previous?.status ?? null,
+        nextStatus: status,
+        observation,
+      },
+    ],
+  };
+  await db.transaction('rw', db.acceptedSources, db.requirementSourceDecisions, async () => {
+    await db.acceptedSources.put(accepted);
+    if (input.requirementId) {
+      const requirementDecision = await db.requirementSourceDecisions
+        .where('caseId')
+        .equals(caseId)
+        .filter((item) => item.requirementId === input.requirementId)
+        .first();
+      if (requirementDecision) {
+        await db.requirementSourceDecisions.update(requirementDecision.id, {
+          acceptedSourceId: accepted.id,
+          status:
+            status === 'provisionally_accepted' ? 'alternative_source_covered' : 'requires_review',
+          updatedAt: timestamp,
+        });
+      }
+    }
+  });
+  return accepted;
+}
+
+export async function confirmAcceptedExogenousValue(id: string): Promise<void> {
+  const db = getDb();
+  const current = await db.acceptedSources.get(id);
+  if (!current) throw new Error('La aceptación ya no existe.');
+  const timestamp = nowIso();
+  await db.acceptedSources.update(id, {
+    status: 'analyst_confirmed',
+    includedInMatrix: true,
+    updatedAt: timestamp,
+    history: [
+      ...current.history,
+      {
+        id: newId('source-history'),
+        changedAt: timestamp,
+        author: current.author,
+        action: 'analyst_confirmed',
+        previousStatus: current.status,
+        nextStatus: 'analyst_confirmed',
+        observation: 'Valor confirmado por el analista.',
+      },
+    ],
+  });
+}
+
+export async function listAcceptedExogenousValues(
+  caseId: string,
+): Promise<AcceptedExogenousValue[]> {
+  return getDb().acceptedSources.where('caseId').equals(caseId).sortBy('updatedAt');
+}
+
+export type SaveRequirementSourceDecisionInput = Omit<
+  RequirementSourceDecision,
+  'id' | 'caseId' | 'author' | 'createdAt' | 'updatedAt'
+> & { author?: string };
+
+export async function saveRequirementSourceDecision(
+  caseId: string,
+  input: SaveRequirementSourceDecisionInput,
+): Promise<RequirementSourceDecision> {
+  if (!input.reason.trim()) throw new Error('Indica por qué la entidad no emite el soporte.');
+  if (!input.managedAt) throw new Error('Indica la fecha de gestión.');
+  const db = getDb();
+  const timestamp = nowIso();
+  const previous = await db.requirementSourceDecisions
+    .where('caseId')
+    .equals(caseId)
+    .filter((item) => item.requirementId === input.requirementId)
+    .first();
+  const decision: RequirementSourceDecision = {
+    ...input,
+    id: previous?.id ?? newId('requirement-source'),
+    caseId,
+    reason: input.reason.trim(),
+    observation: input.observation.trim(),
+    author: input.author?.trim() || 'Analista local',
+    createdAt: previous?.createdAt ?? timestamp,
+    updatedAt: timestamp,
+  };
+  await db.transaction('rw', db.requirementSourceDecisions, db.coverages, async () => {
+    await db.requirementSourceDecisions.put(decision);
+    await db.coverages.put({
+      id: `coverage:source-decision:${input.requirementId}`,
+      caseId,
+      requirementId: input.requirementId,
+      documentId: input.evidenceDocumentId,
+      factId: null,
+      entityId: null,
+      status:
+        input.status === 'alternative_source_covered'
+          ? 'covered'
+          : input.status === 'requires_review'
+            ? 'requires_review'
+            : 'not_evaluated',
+      relation:
+        input.status === 'alternative_source_covered' ? 'provides_evidence' : 'requires_support',
+      notes: `La entidad no emite este soporte. ${decision.reason}`,
+      updatedAt: timestamp,
+    });
+  });
+  return decision;
+}
+
+export async function listRequirementSourceDecisions(
+  caseId: string,
+): Promise<RequirementSourceDecision[]> {
+  return getDb().requirementSourceDecisions.where('caseId').equals(caseId).sortBy('updatedAt');
+}
+
 export type SaveReconciliationInput = Omit<
   PreliminaryReconciliation,
   'id' | 'caseId' | 'createdAt' | 'updatedAt' | 'difference' | 'differencePercentage'
@@ -840,7 +1044,46 @@ export async function savePreliminaryReconciliation(
     createdAt: timestamp,
     updatedAt: timestamp,
   };
-  await getDb().reconciliations.add(reconciliation);
+  const db = getDb();
+  await db.transaction('rw', db.reconciliations, db.acceptedSources, db.facts, async () => {
+    await db.reconciliations.add(reconciliation);
+    const relatedFacts = await db.facts.bulkGet(input.factIds);
+    const supportingDocumentId = relatedFacts.find((fact) => fact?.documentId)?.documentId ?? null;
+    for (const recordId of input.exogenousRecordIds) {
+      const accepted = await db.acceptedSources
+        .where('caseId')
+        .equals(caseId)
+        .filter((item) => item.exogenousRecordId === recordId)
+        .first();
+      if (!accepted) continue;
+      if (!supportingDocumentId) continue;
+      const nextStatus: AcceptedSourceStatus =
+        input.status === 'not_comparable'
+          ? 'not_comparable'
+          : difference === 0
+            ? 'supported_by_document'
+            : 'contradicted_by_document';
+      await db.acceptedSources.update(accepted.id, {
+        status: nextStatus,
+        secondarySources: Array.from(new Set([...accepted.secondarySources, 'document' as const])),
+        documentId: supportingDocumentId,
+        replacementDecisionId: reconciliation.id,
+        updatedAt: timestamp,
+        history: [
+          ...accepted.history,
+          {
+            id: newId('source-history'),
+            changedAt: timestamp,
+            author: 'Analista local',
+            action: 'document_reconciliation',
+            previousStatus: accepted.status,
+            nextStatus,
+            observation: input.analystDecision,
+          },
+        ],
+      });
+    }
+  });
   return reconciliation;
 }
 
@@ -1144,14 +1387,23 @@ export async function removeExogenousSource(caseId: string): Promise<void> {
   const navigation = await db.navigationStates.get(caseId);
   await db.transaction(
     'rw',
-    db.results,
-    db.analyses,
-    db.employmentGroups,
-    db.navigationStates,
-    db.cases,
+    [
+      db.results,
+      db.analyses,
+      db.employmentGroups,
+      db.navigationStates,
+      db.cases,
+      db.acceptedSources,
+      db.requirementSourceDecisions,
+    ],
     async () => {
       await db.results.delete(caseId);
       await db.analyses.delete(caseId);
+      await db.acceptedSources.where('caseId').equals(caseId).delete();
+      await db.requirementSourceDecisions
+        .where('caseId')
+        .equals(caseId)
+        .modify({ acceptedSourceId: null, updatedAt: timestamp });
       if (group && manualInstances.length) {
         await db.employmentGroups.put({
           ...group,
@@ -1199,6 +1451,8 @@ export async function getTaxCaseWorkspace(caseId: string) {
     employmentGroup,
     navigation,
     storedResult,
+    acceptedSources,
+    requirementSourceDecisions,
   ] = await Promise.all([
     getCase(caseId),
     getResult(caseId),
@@ -1213,6 +1467,8 @@ export async function getTaxCaseWorkspace(caseId: string) {
     getEmploymentIncomeGroup(caseId),
     getCaseNavigationState(caseId),
     getStoredResult(caseId),
+    listAcceptedExogenousValues(caseId),
+    listRequirementSourceDecisions(caseId),
   ]);
   return {
     taxCase,
@@ -1227,6 +1483,8 @@ export async function getTaxCaseWorkspace(caseId: string) {
     filingInputs,
     employmentGroup,
     navigation,
+    acceptedSources,
+    requirementSourceDecisions,
     sourceInfo: storedResult
       ? {
           sha256: storedResult.sourceSha256 ?? null,

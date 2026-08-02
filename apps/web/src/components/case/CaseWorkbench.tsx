@@ -106,6 +106,7 @@ export function CaseWorkbench({
         facts: workspace?.facts ?? [],
         reconciliations: workspace?.reconciliations ?? [],
         employmentGroup: workspace?.employmentGroup,
+        requirementSourceDecisions: workspace?.requirementSourceDecisions ?? [],
       }),
     [result, analysis, workspace],
   );
@@ -281,6 +282,8 @@ export function CaseWorkbench({
       reconciliations: workspace.reconciliations,
       employmentGroup: workspace.employmentGroup,
       navigation: workspace.navigation,
+      acceptedSources: workspace.acceptedSources,
+      requirementSourceDecisions: workspace.requirementSourceDecisions,
     });
     downloadTextFile(
       `${safeBaseName(taxCase.alias)}-manifiesto.json`,
@@ -355,7 +358,7 @@ export function CaseWorkbench({
         <span aria-hidden>/</span>
         <span>{stageDefinition.name}</span>
         <span aria-hidden>/</span>
-        <span aria-current="page">{viewDefinition?.label ?? view}</span>
+        <span aria-current="page">{viewDefinition?.label ?? 'Vista no reconocida'}</span>
       </nav>
 
       <header className="mt-3 flex flex-wrap items-center justify-between gap-3">
@@ -480,6 +483,8 @@ export function CaseWorkbench({
             documents={workspace.documents}
             coverages={workspace.coverages}
             employmentGroup={workspace.employmentGroup}
+            acceptedSources={workspace.acceptedSources}
+            requirementSourceDecisions={workspace.requirementSourceDecisions}
           />
         ) : null}
         {stage === 'organizacion' && view === 'hechos' ? (
@@ -489,6 +494,7 @@ export function CaseWorkbench({
             documents={workspace.documents}
             products={workspace.products}
             facts={workspace.facts}
+            acceptedSources={workspace.acceptedSources}
           />
         ) : null}
 
@@ -499,12 +505,18 @@ export function CaseWorkbench({
             facts={workspace.facts}
             suggestions={suggestions}
             reconciliations={workspace.reconciliations}
+            acceptedSources={workspace.acceptedSources}
           />
         ) : null}
         {stage === 'conciliacion' && view === 'matriz' ? (
           <AnalysisGate result={result} analysis={analysis}>
             {(currentResult, currentAnalysis) => (
-              <MatrixPanel caseId={caseId} result={currentResult} analysis={currentAnalysis} />
+              <MatrixPanel
+                caseId={caseId}
+                result={currentResult}
+                analysis={currentAnalysis}
+                acceptedSources={workspace.acceptedSources}
+              />
             )}
           </AnalysisGate>
         ) : null}
@@ -516,6 +528,8 @@ export function CaseWorkbench({
                 analysis={analysis}
                 onNavigateToRecord={navigateToRecord}
                 onReviewRecord={setReviewRecordId}
+                caseId={caseId}
+                acceptedSources={workspace.acceptedSources}
               />
             )}
           </ResultGate>

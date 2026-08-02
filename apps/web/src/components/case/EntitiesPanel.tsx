@@ -11,6 +11,10 @@ import {
 } from '@nexus-tax/domain';
 import { Badge, Button, EmptyState, GlassPanel, ProgressBar } from '@nexus-tax/ui';
 import { PRODUCT_LABEL } from '@/lib/dossierPresentation';
+import {
+  EMPLOYER_STATUS_PRESENTATION,
+  ENTITY_CATEGORY_PRESENTATION,
+} from '@/lib/presentationCatalogs';
 import { saveProduct } from '@/lib/repository';
 
 export function EntitiesPanel({
@@ -102,7 +106,8 @@ export function EntitiesPanel({
                 <div>
                   <h3 className="font-semibold text-content-strong">{entity.name}</h3>
                   <p className="text-xs text-content-subtle">
-                    {entity.taxIdMasked ?? 'Identificación no disponible'} · {entity.category}
+                    {entity.taxIdMasked ?? 'Identificación no disponible'} ·{' '}
+                    {ENTITY_CATEGORY_PRESENTATION[entity.category].label}
                   </p>
                 </div>
                 <Badge tone={entity.status === 'al_dia' ? 'emerald' : 'amber'}>
@@ -144,7 +149,9 @@ export function EntitiesPanel({
                     Formulario 220: {form220?.fileName ?? 'pendiente'} · periodo{' '}
                     {employer.workedPeriod || 'por confirmar'}
                   </p>
-                  <p className="mt-1">Estado: {employer.status.replaceAll('_', ' ')}</p>
+                  <p className="mt-1">
+                    Estado: {EMPLOYER_STATUS_PRESENTATION[employer.status].label}
+                  </p>
                 </div>
               ) : null}
             </GlassPanel>

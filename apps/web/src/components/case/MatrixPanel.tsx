@@ -1,7 +1,7 @@
 'use client';
 
 import { RotateCcw } from 'lucide-react';
-import type { CaseAnalysis, ProcessingResult } from '@nexus-tax/domain';
+import type { AcceptedExogenousValue, CaseAnalysis, ProcessingResult } from '@nexus-tax/domain';
 import { Badge, Button, GlassPanel, formatCurrencyCOP, formatNumber } from '@nexus-tax/ui';
 import { restoreAutomaticAnalysis } from '@/lib/repository';
 import {
@@ -11,6 +11,8 @@ import {
   RELATION_LABEL,
   RESOLUTION_LABEL,
 } from '@/lib/analysisPresentation';
+import { ACCEPTED_SOURCE_STATUS_PRESENTATION } from '@/lib/presentationCatalogs';
+import { AcceptedSourceAction } from './AcceptedSourceAction';
 
 function statusTone(status: string) {
   if (status === 'reconciled' || status === 'rounding_difference') return 'emerald' as const;
@@ -23,10 +25,12 @@ export function MatrixPanel({
   caseId,
   result,
   analysis,
+  acceptedSources,
 }: {
   caseId: string;
   result: ProcessingResult;
   analysis: CaseAnalysis;
+  acceptedSources: AcceptedExogenousValue[];
 }) {
   const invoice = analysis.matrix.electronicInvoicing;
   return (
@@ -34,26 +38,36 @@ export function MatrixPanel({
       <GlassPanel className="p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-content-strong">Matriz tributaria preliminar</h2>
+            <h2 className="text-lg font-semibold text-content-strong">
+              Matriz tributaria preliminar
+            </h2>
             <p className="mt-1 text-sm text-content-muted">
               Consolidados explicables, relaciones y conciliación contra los topes detectados.
             </p>
           </div>
-          <Button
-            variant="secondary"
-            leadingIcon={<RotateCcw className="h-4 w-4" aria-hidden />}
-            onClick={() => {
-              if (
-                window.confirm(
-                  '¿Restaurar completamente el análisis automático? El historial manual se eliminará.',
-                )
-              ) {
-                void restoreAutomaticAnalysis(caseId);
-              }
-            }}
-          >
-            Restaurar análisis automático
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <AcceptedSourceAction
+              caseId={caseId}
+              result={result}
+              acceptedSources={acceptedSources}
+              compact
+            />
+            <Button
+              variant="secondary"
+              leadingIcon={<RotateCcw className="h-4 w-4" aria-hidden />}
+              onClick={() => {
+                if (
+                  window.confirm(
+                    '¿Restaurar completamente el análisis automático? El historial manual se eliminará.',
+                  )
+                ) {
+                  void restoreAutomaticAnalysis(caseId);
+                }
+              }}
+            >
+              Restaurar análisis automático
+            </Button>
+          </div>
         </div>
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           <QualityCard
@@ -72,12 +86,25 @@ export function MatrixPanel({
             detail={analysis.matrix.quality.reconciliation.explanation}
           />
         </div>
+        <div
+          className="mt-4 flex flex-wrap gap-2 text-xs"
+          aria-label="Fuentes y estados de la matriz"
+        >
+          <Badge tone="emerald">Documentado</Badge>
+          <Badge tone="amber">Aceptado desde exógena</Badge>
+          <Badge tone="violet">Registro manual</Badge>
+          <Badge tone="cyan">Cálculo determinista</Badge>
+          <Badge tone="neutral">Pendiente</Badge>
+          <Badge tone="rose">Contradicho</Badge>
+        </div>
       </GlassPanel>
 
       <GlassPanel className="p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h3 className="text-sm font-medium text-content-strong">Facturación electrónica DIAN</h3>
+            <h3 className="text-sm font-medium text-content-strong">
+              Facturación electrónica DIAN
+            </h3>
             <p className="text-xs text-content-subtle">
               Indicadores de compras, soporte y conciliación; no son gastos deducibles definitivos.
             </p>
@@ -104,8 +131,14 @@ export function MatrixPanel({
           los límites legales.
         </div>
         <p className="mt-3 text-xs text-content-subtle">
-          Estado: {invoice.reviewStatus} · registros totales: {invoice.totalRecordIds.length} ·
-          bases susceptibles: {invoice.benefitBaseRecordIds.length} · relaciones de subconjunto:{' '}
+          Estado:{' '}
+          {invoice.reviewStatus === 'reviewed'
+            ? 'Revisado'
+            : invoice.reviewStatus === 'pending'
+              ? 'Pendiente de revisión'
+              : 'No disponible'}{' '}
+          · registros totales: {invoice.totalRecordIds.length} · bases susceptibles:{' '}
+          {invoice.benefitBaseRecordIds.length} · relaciones de subconjunto:{' '}
           {invoice.relationIds.length}.
         </p>
       </GlassPanel>
@@ -188,6 +221,9 @@ export function MatrixPanel({
                       const relations = analysis.relationships.filter((item) =>
                         entry.relationIds.includes(item.id),
                       );
+                      const accepted = acceptedSources.find(
+                        (item) => item.exogenousRecordId === entry.recordId,
+                      );
                       return (
                         <tr key={entry.recordId} className="border-t border-overlay/5 text-content">
                           <td className="px-2 py-2">
@@ -204,7 +240,22 @@ export function MatrixPanel({
                           </td>
                           <td className="px-2 py-2">
                             {DISPOSITION_LABEL[entry.disposition]}
-                            <span className="block max-w-72 text-content-subtle">{entry.reason}</span>
+                            {accepted ? (
+                              <Badge
+                                tone={
+                                  accepted.status === 'contradicted_by_document'
+                                    ? 'rose'
+                                    : accepted.documentId
+                                      ? 'emerald'
+                                      : 'amber'
+                                }
+                              >
+                                {ACCEPTED_SOURCE_STATUS_PRESENTATION[accepted.status].label}
+                              </Badge>
+                            ) : null}
+                            <span className="block max-w-72 text-content-subtle">
+                              {entry.reason}
+                            </span>
                           </td>
                           <td className="px-2 py-2">
                             {relations.length

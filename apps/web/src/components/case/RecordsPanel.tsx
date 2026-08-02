@@ -543,7 +543,9 @@ const DOT_TONE_CLASS: Record<DotTone, string> = {
 
 /** Punto de estado: hace la lectura no dependiente solo del texto. */
 function StatusDot({ tone }: { tone: DotTone }) {
-  return <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${DOT_TONE_CLASS[tone]}`} aria-hidden />;
+  return (
+    <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${DOT_TONE_CLASS[tone]}`} aria-hidden />
+  );
 }
 
 function categoryTone(category: TaxCategory): 'amber' | 'neutral' | 'cyan' {
@@ -609,7 +611,9 @@ function RecordRow({
         <td className="px-4 py-3 align-top">
           <span className="text-content-strong">{record.entityName ?? '—'}</span>
           {record.reportingEntityDocument ? (
-            <span className="block text-xs text-content-subtle">{record.reportingEntityDocument}</span>
+            <span className="block text-xs text-content-subtle">
+              {record.reportingEntityDocument}
+            </span>
           ) : null}
         </td>
         <td className="px-4 py-3 align-top text-content">
@@ -657,7 +661,9 @@ function RecordRow({
                   />
                   <DetailField
                     label="Confianza"
-                    value={CONFIDENCE_LABEL[state.classification.confidence] ?? state.classification.confidence}
+                    value={
+                      CONFIDENCE_LABEL[state.classification.confidence] ?? 'Confianza no reconocida'
+                    }
                   />
                 </dl>
               </DetailSection>

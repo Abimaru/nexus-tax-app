@@ -9,6 +9,7 @@ import {
   TaxNatureSchema,
   TaxTreatmentSchema,
   type CaseProduct,
+  type AcceptedExogenousValue,
   type DocumentaryRequirement,
   type DocumentFact,
   type ProcessingResult,
@@ -17,12 +18,12 @@ import {
 import { Badge, Button, EmptyState, GlassPanel, formatCurrencyCOP } from '@nexus-tax/ui';
 import { CATEGORY_LABEL, NATURE_LABEL, TREATMENT_LABEL } from '@/lib/analysisPresentation';
 import { saveDocumentFact, updateDocumentFact } from '@/lib/repository';
-
-const METHOD_LABEL: Record<string, string> = {
-  manual: 'Manual',
-  assisted_extraction: 'Extracción asistida',
-  imported: 'Importado',
-};
+import {
+  CAPTURE_METHOD_PRESENTATION,
+  REQUIREMENT_RELATION_PRESENTATION,
+  REVIEW_STATUS_PRESENTATION,
+} from '@/lib/presentationCatalogs';
+import { AcceptedSourceAction } from './AcceptedSourceAction';
 
 function parseAmount(raw: string): number | null {
   if (!raw.trim()) return null;
@@ -36,12 +37,14 @@ export function FactsPanel({
   documents,
   products,
   facts,
+  acceptedSources,
 }: {
   caseId: string;
   result?: ProcessingResult;
   documents: UploadedDocument[];
   products: CaseProduct[];
   facts: DocumentFact[];
+  acceptedSources: AcceptedExogenousValue[];
 }) {
   const [entityId, setEntityId] = useState('');
   const [documentId, setDocumentId] = useState('');
@@ -118,16 +121,27 @@ export function FactsPanel({
   return (
     <div className="space-y-5">
       <GlassPanel className="p-5">
-        <div className="flex items-center gap-3">
-          <span className="grid h-11 w-11 place-items-center rounded-xl bg-accent-cyan/10 text-tone-cyan">
-            <Coins className="h-5 w-5" aria-hidden />
-          </span>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="grid h-11 w-11 place-items-center rounded-xl bg-accent-cyan/10 text-tone-cyan">
+              <Coins className="h-5 w-5" aria-hidden />
+            </span>
+            <div>
+              <h2 className="text-lg font-semibold text-content-strong">
+                Registrar valores manualmente
+              </h2>
+              <p className="mt-0.5 text-sm text-content-muted">
+                Toma un valor de un certificado o soporte. Siempre conserva su origen y no se
+                presenta como extracción automática.
+              </p>
+            </div>
+          </div>
           <div>
-            <h2 className="text-lg font-semibold text-content-strong">Registrar valores manualmente</h2>
-            <p className="mt-0.5 text-sm text-content-muted">
-              Toma un valor de un certificado o soporte. Siempre conserva su origen y no se presenta
-              como extracción automática.
-            </p>
+            <AcceptedSourceAction
+              caseId={caseId}
+              result={result}
+              acceptedSources={acceptedSources}
+            />
           </div>
         </div>
 
@@ -257,7 +271,7 @@ export function FactsPanel({
                 >
                   {FactCaptureMethodSchema.options.map((option) => (
                     <option className="bg-surface-raised" key={option} value={option}>
-                      {METHOD_LABEL[option] ?? option}
+                      {CAPTURE_METHOD_PRESENTATION[option].label}
                     </option>
                   ))}
                 </select>
@@ -319,10 +333,13 @@ export function FactsPanel({
                 >
                   {FactRequirementRelationSchema.options.map((option) => (
                     <option className="bg-surface-raised" key={option} value={option}>
-                      {option.replaceAll('_', ' ')}
+                      {REQUIREMENT_RELATION_PRESENTATION[option].label}
                     </option>
                   ))}
                 </select>
+                <span className="mt-1 block text-[11px] text-content-subtle">
+                  {REQUIREMENT_RELATION_PRESENTATION[requirementRelation].description}
+                </span>
               </Field>
             </div>
           </Section>
@@ -453,7 +470,7 @@ export function FactsPanel({
                       : `${fact.value} ${fact.currency}`}
                   </p>
                   <Badge tone={fact.captureMethod === 'manual' ? 'violet' : 'cyan'}>
-                    {METHOD_LABEL[fact.captureMethod] ?? fact.captureMethod}
+                    {CAPTURE_METHOD_PRESENTATION[fact.captureMethod].label}
                   </Badge>
                 </div>
               </div>
@@ -479,7 +496,9 @@ export function FactsPanel({
                     Marcar revisado
                   </Button>
                 ) : (
-                  <Badge tone="emerald">{fact.reviewStatus}</Badge>
+                  <Badge tone="emerald">
+                    {REVIEW_STATUS_PRESENTATION[fact.reviewStatus].label}
+                  </Badge>
                 )}
               </div>
             </GlassPanel>

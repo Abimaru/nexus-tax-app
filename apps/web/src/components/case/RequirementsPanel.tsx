@@ -5,16 +5,24 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { CheckCircle2, ChevronDown, ClipboardList, Link2, Paperclip } from 'lucide-react';
 import {
   CoverageStatusSchema,
+  type AcceptedExogenousValue,
   type DocumentaryRequirement,
   type EmploymentIncomeGroup,
   type ProcessingResult,
   type RequirementCoverage,
+  type RequirementSourceDecision,
   type UploadedDocument,
 } from '@nexus-tax/domain';
 import { Badge, Button, EmptyState, GlassPanel } from '@nexus-tax/ui';
 import { saveRequirementCoverage } from '@/lib/repository';
 import { documentIcon, entityVisual, TONE_BOX_CLASS } from '@/lib/entityVisuals';
 import { EmploymentIncomeGroupPanel } from './EmploymentIncomeGroupPanel';
+import { AcceptedSourceAction } from './AcceptedSourceAction';
+import { RequirementSourceDecisionAction } from './RequirementSourceDecisionAction';
+import {
+  ACCEPTED_SOURCE_STATUS_PRESENTATION,
+  REQUIREMENT_RELATION_PRESENTATION,
+} from '@/lib/presentationCatalogs';
 
 const COVERAGE_LABEL = {
   not_evaluated: 'No evaluado',
@@ -26,11 +34,26 @@ const COVERAGE_LABEL = {
 
 type CoverageStatus = (typeof CoverageStatusSchema.options)[number];
 
-function coverageState(related: RequirementCoverage[]): {
+function coverageState(
+  related: RequirementCoverage[],
+  sourceDecision?: RequirementSourceDecision,
+): {
   label: string;
   tone: 'emerald' | 'amber' | 'neutral';
   done: boolean;
 } {
+  if (sourceDecision) {
+    if (sourceDecision.status === 'alternative_source_covered') {
+      return { label: 'Cubierto por fuente alternativa', tone: 'emerald', done: true };
+    }
+    if (sourceDecision.status === 'justified_unavailable') {
+      return { label: 'No disponible justificado', tone: 'neutral', done: true };
+    }
+    if (sourceDecision.status === 'pending_support') {
+      return { label: 'Pendiente de soporte', tone: 'amber', done: false };
+    }
+    return { label: 'Requiere revisión', tone: 'amber', done: false };
+  }
   if (related.some((item) => item.status === 'covered')) {
     return { label: 'Cubierto', tone: 'emerald', done: true };
   }
@@ -46,12 +69,16 @@ export function RequirementsPanel({
   documents,
   coverages,
   employmentGroup,
+  acceptedSources,
+  requirementSourceDecisions,
 }: {
   caseId: string;
   result?: ProcessingResult;
   documents: UploadedDocument[];
   coverages: RequirementCoverage[];
   employmentGroup?: EmploymentIncomeGroup;
+  acceptedSources: AcceptedExogenousValue[];
+  requirementSourceDecisions: RequirementSourceDecision[];
 }) {
   const reduceMotion = useReducedMotion();
   const [documentByRequirement, setDocumentByRequirement] = useState<Record<string, string>>({});
@@ -78,7 +105,10 @@ export function RequirementsPanel({
   const totalCovered = requirements.filter(
     (requirement) =>
       coverages.filter((coverage) => coverage.requirementId === requirement.id).length > 0 &&
-      coverageState(coverages.filter((coverage) => coverage.requirementId === requirement.id)).done,
+      coverageState(
+        coverages.filter((coverage) => coverage.requirementId === requirement.id),
+        requirementSourceDecisions.find((item) => item.requirementId === requirement.id),
+      ).done,
   ).length;
 
   const activeDocuments = documents.filter((document) => document.status === 'active');
@@ -126,10 +156,12 @@ export function RequirementsPanel({
         const category = entityRequirements[0]!.entityCategory;
         const visual = entityVisual(category);
         const CategoryIcon = visual.icon;
-        const coveredInGroup = entityRequirements.filter((requirement) =>
-          coverageState(
-            coverages.filter((coverage) => coverage.requirementId === requirement.id),
-          ).done,
+        const coveredInGroup = entityRequirements.filter(
+          (requirement) =>
+            coverageState(
+              coverages.filter((coverage) => coverage.requirementId === requirement.id),
+              requirementSourceDecisions.find((item) => item.requirementId === requirement.id),
+            ).done,
         ).length;
 
         return (
@@ -162,7 +194,13 @@ export function RequirementsPanel({
                   const related = coverages.filter(
                     (coverage) => coverage.requirementId === requirement.id,
                   );
-                  const state = coverageState(related);
+                  const sourceDecision = requirementSourceDecisions.find(
+                    (item) => item.requirementId === requirement.id,
+                  );
+                  const acceptedForRequirement = acceptedSources.filter(
+                    (item) => item.requirementId === requirement.id,
+                  );
+                  const state = coverageState(related, sourceDecision);
                   const DocIcon = documentIcon(requirement.documentName);
                   const isOpen = expanded === requirement.id;
                   const selectedDocument =
@@ -184,9 +222,7 @@ export function RequirementsPanel({
                           </div>
                         </div>
                         <Badge tone={state.tone}>
-                          {state.done ? (
-                            <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
-                          ) : null}
+                          {state.done ? <CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> : null}
                           {state.label}
                         </Badge>
                       </div>
@@ -202,11 +238,28 @@ export function RequirementsPanel({
                                 <span className="text-content-subtle">
                                   · {COVERAGE_LABEL[coverage.status]}
                                 </span>
+                                <span
+                                  className="text-content-subtle"
+                                  title={
+                                    REQUIREMENT_RELATION_PRESENTATION[coverage.relation].description
+                                  }
+                                >
+                                  · {REQUIREMENT_RELATION_PRESENTATION[coverage.relation].label}
+                                </span>
                               </span>
                             </li>
                           ))}
                         </ul>
                       ) : null}
+                      {acceptedForRequirement.map((accepted) => (
+                        <p
+                          key={accepted.id}
+                          className="mt-2 rounded-lg border border-tone-amber/20 bg-tone-amber/5 px-3 py-2 text-xs text-content-muted sm:ml-12"
+                        >
+                          Fuente alternativa: {accepted.originalConcept} ·{' '}
+                          {ACCEPTED_SOURCE_STATUS_PRESENTATION[accepted.status].label}
+                        </p>
+                      ))}
 
                       <div className="mt-2 pl-12">
                         <button
@@ -222,6 +275,24 @@ export function RequirementsPanel({
                             aria-hidden
                           />
                         </button>
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <AcceptedSourceAction
+                            caseId={caseId}
+                            result={result}
+                            acceptedSources={acceptedForRequirement}
+                            requirement={requirement}
+                            compact
+                          />
+                          <RequirementSourceDecisionAction
+                            caseId={caseId}
+                            requirement={requirement}
+                            documents={documents}
+                            decision={sourceDecision}
+                            acceptedSources={acceptedSources.filter(
+                              (item) => item.requirementId === requirement.id,
+                            )}
+                          />
+                        </div>
 
                         {isOpen ? (
                           <div className="mt-2 grid gap-2 rounded-xl border border-overlay/10 bg-overlay/[0.02] p-3 md:grid-cols-[1fr_180px_auto]">

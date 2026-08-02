@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { GitCompareArrows } from 'lucide-react';
 import type {
+  AcceptedExogenousValue,
   DocumentFact,
   PreliminaryReconciliation,
   ProcessingResult,
@@ -10,6 +11,8 @@ import type {
 } from '@nexus-tax/domain';
 import { Badge, Button, EmptyState, GlassPanel, formatCurrencyCOP } from '@nexus-tax/ui';
 import { savePreliminaryReconciliation } from '@/lib/repository';
+import { PRELIMINARY_RECONCILIATION_PRESENTATION } from '@/lib/presentationCatalogs';
+import { AcceptedSourceAction } from './AcceptedSourceAction';
 
 export function ReconciliationsPanel({
   caseId,
@@ -17,12 +20,14 @@ export function ReconciliationsPanel({
   facts,
   suggestions,
   reconciliations,
+  acceptedSources,
 }: {
   caseId: string;
   result?: ProcessingResult;
   facts: DocumentFact[];
   suggestions: ReconciliationSuggestion[];
   reconciliations: PreliminaryReconciliation[];
+  acceptedSources: AcceptedExogenousValue[];
 }) {
   const [explanation, setExplanation] = useState(
     'Coincidencia revisada por entidad, categoría, concepto y valor.',
@@ -71,6 +76,14 @@ export function ReconciliationsPanel({
           Las coincidencias son sugerencias deterministas. Igualdad de valor nunca confirma por sí
           sola una conciliación.
         </p>
+        <div className="mt-3">
+          <AcceptedSourceAction
+            caseId={caseId}
+            result={result}
+            acceptedSources={acceptedSources}
+            compact
+          />
+        </div>
         <label className="mt-4 block text-xs text-content-muted">
           Explicación del analista
           <textarea
@@ -159,7 +172,7 @@ export function ReconciliationsPanel({
                             : 'amber'
                       }
                     >
-                      {item.status}
+                      {PRELIMINARY_RECONCILIATION_PRESENTATION[item.status].label}
                     </Badge>
                     <p className="mt-1 text-xs text-content-muted">
                       Diferencia {formatCurrencyCOP(item.difference)}

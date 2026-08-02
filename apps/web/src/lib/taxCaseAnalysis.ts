@@ -1,4 +1,5 @@
 import type {
+  AcceptedExogenousValue,
   CaseAnalysis,
   CaseEntitySummary,
   CaseProgress,
@@ -8,6 +9,7 @@ import type {
   ReconciliationSuggestion,
   ReportingEntity,
   RequirementCoverage,
+  RequirementSourceDecision,
   TaxCase,
   UploadedDocument,
   CaseProduct,
@@ -130,11 +132,20 @@ export function calculateCaseProgress(input: {
   facts: readonly DocumentFact[];
   reconciliations: readonly PreliminaryReconciliation[];
   employmentGroup?: EmploymentIncomeGroup;
+  requirementSourceDecisions?: readonly RequirementSourceDecision[];
 }): CaseProgress {
   const requirements = (input.result?.requirements ?? []).filter(
     (requirement) => !normalize(requirement.documentName).includes('formulario 220'),
   );
   let coveredWeight = requirements.reduce((sum, requirement) => {
+    const sourceDecision = input.requirementSourceDecisions?.find(
+      (decision) => decision.requirementId === requirement.id,
+    );
+    if (
+      sourceDecision &&
+      ['alternative_source_covered', 'justified_unavailable'].includes(sourceDecision.status)
+    )
+      return sum + 1;
     const statuses = input.coverages
       .filter((coverage) => coverage.requirementId === requirement.id)
       .map((coverage) => coverage.status);
@@ -176,6 +187,12 @@ export function calculateCaseProgress(input: {
   ).length;
   const pendingRequirements =
     requirements.filter((requirement) => {
+      if (
+        input.requirementSourceDecisions?.some(
+          (decision) => decision.requirementId === requirement.id,
+        )
+      )
+        return false;
       const statuses = input.coverages
         .filter((coverage) => coverage.requirementId === requirement.id)
         .map((coverage) => coverage.status);
@@ -379,6 +396,8 @@ export function buildTaxCaseManifest(input: {
   reconciliations: readonly PreliminaryReconciliation[];
   employmentGroup?: EmploymentIncomeGroup;
   navigation?: CaseNavigationState;
+  acceptedSources?: readonly AcceptedExogenousValue[];
+  requirementSourceDecisions?: readonly RequirementSourceDecision[];
 }) {
   return {
     schema: 'nexustax.tax-case.manifest',
@@ -395,5 +414,7 @@ export function buildTaxCaseManifest(input: {
     reconciliations: input.reconciliations,
     employmentIncomeGroup: input.employmentGroup ?? null,
     workflow: input.navigation ?? null,
+    acceptedSources: input.acceptedSources ?? [],
+    requirementSourceDecisions: input.requirementSourceDecisions ?? [],
   };
 }

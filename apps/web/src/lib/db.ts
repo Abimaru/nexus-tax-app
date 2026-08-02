@@ -2,6 +2,7 @@ import Dexie, { type Table } from 'dexie';
 import type { FilingObligationInputs } from '@nexus-tax/aegis-rules';
 import type {
   CaseAnalysis,
+  AcceptedExogenousValue,
   CaseNavigationState,
   CaseProduct,
   DocumentFact,
@@ -9,6 +10,7 @@ import type {
   PreliminaryReconciliation,
   ProcessingResult,
   RequirementCoverage,
+  RequirementSourceDecision,
   TaxCase,
   UploadedDocument,
 } from '@nexus-tax/domain';
@@ -59,6 +61,8 @@ class NexusTaxDatabase extends Dexie {
   reconciliations!: Table<PreliminaryReconciliation, string>;
   employmentGroups!: Table<EmploymentIncomeGroup, string>;
   navigationStates!: Table<CaseNavigationState, string>;
+  acceptedSources!: Table<AcceptedExogenousValue, string>;
+  requirementSourceDecisions!: Table<RequirementSourceDecision, string>;
 
   constructor() {
     super('nexustax');
@@ -138,6 +142,22 @@ class NexusTaxDatabase extends Dexie {
       reconciliations: 'id, caseId, status, *factIds, *exogenousRecordIds, updatedAt',
       employmentGroups: 'id, caseId, coverage, updatedAt',
       navigationStates: 'caseId, lastStage, recommendedStage, updatedAt',
+    });
+    this.version(7).stores({
+      cases: 'id, updatedAt, taxYear, status',
+      documents: 'id, caseId, uploadedAt, sha256, status, kind, *entityIds',
+      results: 'caseId, updatedAt',
+      filingInputs: 'caseId, updatedAt',
+      analyses: 'caseId, updatedAt, ruleVersion',
+      documentBlobs: 'documentId, caseId, storedAt',
+      products: 'id, caseId, entityId, type, status',
+      coverages: 'id, caseId, requirementId, documentId, factId, entityId, status',
+      facts: 'id, caseId, documentId, entityId, productId, category, reviewStatus, updatedAt',
+      reconciliations: 'id, caseId, status, *factIds, *exogenousRecordIds, updatedAt',
+      employmentGroups: 'id, caseId, coverage, updatedAt',
+      navigationStates: 'caseId, lastStage, recommendedStage, updatedAt',
+      acceptedSources: 'id, caseId, exogenousRecordId, requirementId, status, updatedAt',
+      requirementSourceDecisions: 'id, caseId, requirementId, status, updatedAt',
     });
   }
 }

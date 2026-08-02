@@ -3,12 +3,15 @@
 import { useMemo, useState } from 'react';
 import { ArrowRight, ShieldCheck } from 'lucide-react';
 import type {
+  AcceptedExogenousValue,
   CaseAnalysis,
   DataQualityFinding,
   FindingSeverity,
   ProcessingResult,
 } from '@nexus-tax/domain';
 import { Button, EmptyState, GlassPanel, SeverityBadge } from '@nexus-tax/ui';
+import { RESOLUTION_LABEL } from '@/lib/analysisPresentation';
+import { AcceptedSourceAction } from './AcceptedSourceAction';
 
 const SEVERITY_ORDER: FindingSeverity[] = ['error', 'warning', 'info'];
 
@@ -17,6 +20,8 @@ interface FindingsPanelProps {
   analysis?: CaseAnalysis;
   onNavigateToRecord: (recordId: string) => void;
   onReviewRecord: (recordId: string) => void;
+  caseId: string;
+  acceptedSources: AcceptedExogenousValue[];
 }
 
 /** Pantalla "Hallazgos" (§10). Severidad, evidencia y navegación al registro. */
@@ -25,6 +30,8 @@ export function FindingsPanel({
   analysis,
   onNavigateToRecord,
   onReviewRecord,
+  caseId,
+  acceptedSources,
 }: FindingsPanelProps) {
   const [severityFilter, setSeverityFilter] = useState<FindingSeverity | 'all'>('all');
 
@@ -60,6 +67,49 @@ export function FindingsPanel({
 
   return (
     <div className="flex flex-col gap-4">
+      <div>
+        <AcceptedSourceAction
+          caseId={caseId}
+          result={result}
+          acceptedSources={acceptedSources}
+          compact
+        />
+      </div>
+      {acceptedSources
+        .filter(
+          (item) =>
+            item.status === 'pending_review' ||
+            item.status === 'contradicted_by_document' ||
+            item.status === 'provisionally_accepted',
+        )
+        .map((item) => (
+          <GlassPanel key={`source-finding:${item.id}`} className="p-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <SeverityBadge severity="info" />
+              <h3 className="text-sm font-medium text-content-strong">
+                {item.occasionalGainRecognition === 'collected_for_third_party'
+                  ? 'Operación cobrada para un tercero'
+                  : item.occasionalGainRecognition === 'unrecognized'
+                    ? 'Operación no reconocida'
+                    : item.status === 'contradicted_by_document'
+                      ? 'Contradicción posterior entre fuentes'
+                      : item.category === 'occasional_gain'
+                        ? 'Ganancia ocasional sin soporte'
+                        : 'Fuente provisional pendiente'}
+              </h3>
+            </div>
+            <p className="mt-2 text-sm text-content-muted">
+              {item.originalConcept}. La decisión se conserva con su evidencia y no reduce por sí
+              sola la calidad de extracción.
+            </p>
+            {item.occasionalGainRecognition === 'collected_for_third_party' ? (
+              <p className="mt-2 text-xs text-tone-amber">
+                No se excluyó automáticamente. Requiere explicación y revisión profesional o
+                documental.
+              </p>
+            ) : null}
+          </GlassPanel>
+        ))}
       <div className="flex flex-wrap gap-2">
         <FilterChip
           label="Todos"
@@ -144,12 +194,14 @@ function FindingCard({
             <SeverityBadge severity={finding.severity} />
             <h3 className="text-sm font-medium text-content-strong">{finding.title}</h3>
           </div>
-          <code className="text-[11px] text-content-subtle">{finding.code}</code>
+          <span className="text-[11px] text-content-subtle">
+            Referencia técnica disponible en la exportación
+          </span>
         </div>
         <p className="mt-2 text-sm text-content-muted">{finding.message}</p>
         {resolution && !resolution.isObsolete && resolution.status !== 'pending_review' ? (
           <p className="mt-2 text-xs text-tone-emerald">
-            Resuelto: {resolution.status.replaceAll('_', ' ')}.
+            Resuelto: {RESOLUTION_LABEL[resolution.status]}.
           </p>
         ) : null}
 
