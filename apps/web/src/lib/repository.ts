@@ -32,6 +32,7 @@ import type {
   ExtractionFeedbackMethod,
   FactRequirementRelation,
   PdfDocumentDiagnosis,
+  OcrPageOutcome,
   PreliminaryReconciliation,
   ProcessingResult,
   RecordResolution,
@@ -1034,7 +1035,19 @@ export async function completeExtractionSession(input: {
       (page) => ({ page, count: candidates.filter((candidate) => candidate.page === page).length }),
     ),
   };
-  const metrics = metricsWithCandidateStatuses(baseMetrics, candidates);
+  const metrics = metricsWithCandidateStatuses(
+    {
+      ...baseMetrics,
+      pagesRecommendedForOcr:
+        input.diagnosis?.pages.filter(
+          (page) => page.type === 'scanned' || page.type === 'insufficient_text',
+        ).length ?? 0,
+      pagesProcessedWithOcr: 0,
+      ocrFailures: 0,
+      ocrContradictions: 0,
+    },
+    candidates,
+  );
   await db.transaction('rw', db.extractionSessions, db.documentCandidates, async () => {
     await db.documentCandidates.bulkPut(candidates);
     for (const candidateId of obsoleteCandidateIds) {
@@ -1089,6 +1102,38 @@ export async function listExtractionSessions(caseId: string): Promise<DocumentEx
 
 export async function listDocumentCandidates(caseId: string): Promise<DocumentFactCandidate[]> {
   return getDb().documentCandidates.where('caseId').equals(caseId).sortBy('updatedAt');
+}
+
+export async function recordOcrPageOutcome(
+  sessionId: string,
+  input: Omit<OcrPageOutcome, 'processedAt'>,
+): Promise<void> {
+  const db = getDb();
+  const session = await db.extractionSessions.get(sessionId);
+  if (!session) throw new Error('La sesión de extracción ya no existe.');
+  const timestamp = nowIso();
+  const outcome: OcrPageOutcome = { ...input, processedAt: timestamp };
+  const outcomes = [
+    ...(session.ocrOutcomes ?? []).filter((item) => item.page !== input.page),
+    outcome,
+  ].sort((a, b) => a.page - b.page);
+  const metrics = session.metrics
+    ? {
+        ...session.metrics,
+        pagesProcessedWithOcr: outcomes.filter((item) => item.status === 'completed').length,
+        ocrFailures: outcomes.filter((item) => item.status === 'failed').length,
+        ocrContradictions: outcomes.filter(
+          (item) =>
+            item.status === 'completed' &&
+            ['contradiction', 'requires_review'].includes(item.comparisonStatus ?? ''),
+        ).length,
+      }
+    : undefined;
+  await db.extractionSessions.update(sessionId, {
+    ocrOutcomes: outcomes,
+    metrics,
+    updatedAt: timestamp,
+  });
 }
 
 export const MANUAL_CANDIDATE_FIELDS = DocumentCapturedFieldSchema.options;
@@ -1331,6 +1376,10 @@ function metricsWithCandidateStatuses(
 ): DocumentExtractionMetrics {
   const count = (status: DocumentFactCandidate['status']) =>
     candidates.filter((candidate) => candidate.status === status).length;
+  const manualCandidates = candidates.filter((candidate) => candidate.adapterId === 'manual.lab');
+  const ocrCandidates = manualCandidates.filter((candidate) =>
+    candidate.evidence.location.toLowerCase().includes('ocr'),
+  );
   return {
     ...metrics,
     candidatesPersisted: candidates.length,
@@ -1341,6 +1390,9 @@ function metricsWithCandidateStatuses(
     duplicates: count('duplicate'),
     informational: count('informational'),
     obsolete: count('obsolete'),
+    manualCandidates: manualCandidates.length,
+    ocrCandidates: ocrCandidates.length,
+    nativeCandidates: candidates.filter((candidate) => candidate.adapterId !== 'manual.lab').length,
   };
 }
 
@@ -2299,6 +2351,8 @@ export async function getTaxCaseWorkspace(caseId: string) {
     extractionSessions,
     documentCandidates,
     caseTasks,
+    documentProfiles,
+    extractionFeedback,
   ] = await Promise.all([
     getCase(caseId),
     getResult(caseId),
@@ -2318,7 +2372,10 @@ export async function getTaxCaseWorkspace(caseId: string) {
     listExtractionSessions(caseId),
     listDocumentCandidates(caseId),
     listCaseTasks(caseId),
+    listDocumentProfiles(),
+    listExtractionFeedback(),
   ]);
+  const documentIds = new Set(documents.map((document) => document.id));
   return {
     taxCase,
     result,
@@ -2337,6 +2394,8 @@ export async function getTaxCaseWorkspace(caseId: string) {
     extractionSessions,
     documentCandidates,
     caseTasks,
+    documentProfiles,
+    extractionFeedback: extractionFeedback.filter((item) => documentIds.has(item.documentId)),
     sourceInfo: storedResult
       ? {
           sha256: storedResult.sourceSha256 ?? null,

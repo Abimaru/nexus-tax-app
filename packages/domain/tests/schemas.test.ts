@@ -14,6 +14,7 @@ import {
   DocumentFactCandidateSchema,
   DocumentProfileSchema,
   ExtractionFeedbackSchema,
+  CaseTaskSchema,
 } from '../src/index';
 
 describe('esquemas de dominio', () => {
@@ -212,6 +213,16 @@ describe('esquemas de dominio', () => {
         completedPhases: ['reading', 'classifying', 'extracting'],
         pageCount: 1,
         readablePageCount: 1,
+        ocrOutcomes: [
+          {
+            page: 1,
+            status: 'completed',
+            comparisonStatus: 'agree',
+            confidence: 91,
+            errorCode: null,
+            processedAt: timestamp,
+          },
+        ],
         candidateIds: ['candidate:1'],
         classification: null,
         adapterId: 'co.balance.generic',
@@ -275,6 +286,38 @@ describe('esquemas de dominio', () => {
         decisions: [],
         createdAt: timestamp,
         updatedAt: timestamp,
+      }).success,
+    ).toBe(true);
+  });
+
+  it('valida tareas OCR con destino exacto y sin contenido extraído', () => {
+    expect(
+      CaseTaskSchema.safeParse({
+        id: 'task:ocr:1',
+        caseId: 'case:1',
+        type: 'run_page_ocr',
+        title: 'Revisar página 2 con OCR',
+        explanation: 'La página parece escaneada.',
+        source: 'ocr',
+        stage: 'organizacion',
+        view: 'laboratorio',
+        entityId: null,
+        documentId: 'document:1',
+        requirementId: null,
+        candidateId: null,
+        reconciliationId: null,
+        matrixGroupId: null,
+        extractionSessionId: 'session:1',
+        profileId: null,
+        page: 2,
+        priority: 'medium',
+        blocking: false,
+        status: 'pending',
+        recommendedAction: 'Abrir página',
+        ruleId: 'case-task.page-ocr.v1',
+        evidence: ['Página 2'],
+        createdAt: '2026-08-02T00:00:00.000Z',
+        updatedAt: '2026-08-02T00:00:00.000Z',
       }).success,
     ).toBe(true);
   });

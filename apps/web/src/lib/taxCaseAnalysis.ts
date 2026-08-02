@@ -19,6 +19,8 @@ import type {
   EmployerInstance,
   DocumentExtractionSession,
   DocumentFactCandidate,
+  DocumentProfile,
+  ExtractionFeedback,
 } from '@nexus-tax/domain';
 import { MAX_EMPLOYER_INSTANCES, TAX_CASE_EXPORT_SCHEMA_VERSION } from '@nexus-tax/domain';
 
@@ -232,6 +234,9 @@ export function buildCaseTasks(input: {
   documents: readonly UploadedDocument[];
   coverages: readonly RequirementCoverage[];
   candidates: readonly DocumentFactCandidate[];
+  extractionSessions?: readonly DocumentExtractionSession[];
+  documentProfiles?: readonly DocumentProfile[];
+  extractionFeedback?: readonly ExtractionFeedback[];
   reconciliations: readonly PreliminaryReconciliation[];
   requirementSourceDecisions?: readonly RequirementSourceDecision[];
   vatResponsibility: boolean | null;
@@ -244,6 +249,157 @@ export function buildCaseTasks(input: {
       .filter((document) => document.status === 'active')
       .map((document) => document.id),
   );
+  const latestSessions = new Map<string, DocumentExtractionSession>();
+  for (const session of input.extractionSessions ?? []) {
+    if (!activeDocumentIds.has(session.documentId)) continue;
+    const current = latestSessions.get(session.documentId);
+    if (!current || session.runNumber > current.runNumber)
+      latestSessions.set(session.documentId, session);
+  }
+  for (const session of latestSessions.values()) {
+    const outcomes = new Map((session.ocrOutcomes ?? []).map((outcome) => [outcome.page, outcome]));
+    for (const page of session.diagnosis?.pages ?? []) {
+      const outcome = outcomes.get(page.pageNumber);
+      if (outcome?.status === 'failed') {
+        tasks.push({
+          id: `task:ocr-recovery:${session.id}:${page.pageNumber}`,
+          caseId: input.caseId,
+          type: 'recover_document_extraction',
+          title: `Recuperar OCR de la página ${page.pageNumber}`,
+          explanation: 'El reconocimiento local falló y requiere una decisión de recuperación.',
+          source: 'ocr',
+          stage: 'organizacion',
+          view: 'laboratorio',
+          entityId: null,
+          documentId: session.documentId,
+          requirementId: null,
+          candidateId: null,
+          reconciliationId: null,
+          matrixGroupId: null,
+          extractionSessionId: session.id,
+          profileId: null,
+          page: page.pageNumber,
+          priority: 'high',
+          blocking: false,
+          status: 'pending',
+          recommendedAction: 'Abrir opciones de recuperación',
+          ruleId: 'case-task.ocr-recovery.v1',
+          evidence: [outcome.errorCode ?? 'Fallo local sin código'],
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        });
+        continue;
+      }
+      if (
+        outcome?.status === 'completed' &&
+        ['contradiction', 'requires_review'].includes(outcome.comparisonStatus ?? '')
+      ) {
+        tasks.push({
+          id: `task:ocr-contradiction:${session.id}:${page.pageNumber}`,
+          caseId: input.caseId,
+          type: 'review_ocr_contradiction',
+          title: `Revisar contradicción en la página ${page.pageNumber}`,
+          explanation: 'El texto nativo y el OCR no ofrecen una lectura inequívoca.',
+          source: 'ocr',
+          stage: 'organizacion',
+          view: 'laboratorio',
+          entityId: null,
+          documentId: session.documentId,
+          requirementId: null,
+          candidateId: null,
+          reconciliationId: null,
+          matrixGroupId: null,
+          extractionSessionId: session.id,
+          profileId: null,
+          page: page.pageNumber,
+          priority: 'high',
+          blocking: true,
+          status: 'pending',
+          recommendedAction: 'Comparar ambas lecturas',
+          ruleId: 'case-task.ocr-contradiction.v1',
+          evidence: [`Página ${page.pageNumber} · ${outcome.comparisonStatus}`],
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        });
+        continue;
+      }
+      if (
+        (!outcome || outcome.status === 'cancelled') &&
+        (page.type === 'scanned' || page.type === 'insufficient_text')
+      ) {
+        tasks.push({
+          id: `task:page-ocr:${session.id}:${page.pageNumber}`,
+          caseId: input.caseId,
+          type: 'run_page_ocr',
+          title: `Revisar página ${page.pageNumber} con OCR`,
+          explanation:
+            page.type === 'scanned'
+              ? 'La página parece escaneada y no contiene texto seleccionable.'
+              : 'La página contiene texto insuficiente para una lectura confiable.',
+          source: 'ocr',
+          stage: 'organizacion',
+          view: 'laboratorio',
+          entityId: null,
+          documentId: session.documentId,
+          requirementId: null,
+          candidateId: null,
+          reconciliationId: null,
+          matrixGroupId: null,
+          extractionSessionId: session.id,
+          profileId: null,
+          page: page.pageNumber,
+          priority: 'medium',
+          blocking: false,
+          status: 'pending',
+          recommendedAction: 'Abrir página en el laboratorio',
+          ruleId: 'case-task.page-ocr.v1',
+          evidence: [`Página ${page.pageNumber} · ${page.type}`],
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        });
+      }
+    }
+  }
+  const profilesById = new Map(
+    (input.documentProfiles ?? []).map((profile) => [profile.id, profile]),
+  );
+  const profileTaskIds = new Set<string>();
+  for (const feedback of input.extractionFeedback ?? []) {
+    if (!feedback.profileId || feedback.applicability !== 'profile_update') continue;
+    const profile = profilesById.get(feedback.profileId);
+    if (!profile || profile.status !== 'draft' || !activeDocumentIds.has(feedback.documentId))
+      continue;
+    const taskId = `task:profile:${profile.id}:${feedback.documentId}`;
+    if (profileTaskIds.has(taskId)) continue;
+    profileTaskIds.add(taskId);
+    tasks.push({
+      id: taskId,
+      caseId: input.caseId,
+      type: 'test_document_profile',
+      title: `Probar perfil ${profile.name}`,
+      explanation: 'El perfil está en borrador y necesita validación explícita con este formato.',
+      source: 'profile',
+      stage: 'organizacion',
+      view: 'laboratorio',
+      entityId: profile.entityId,
+      documentId: feedback.documentId,
+      requirementId: null,
+      candidateId: feedback.candidateId,
+      reconciliationId: null,
+      matrixGroupId: null,
+      extractionSessionId: feedback.extractionSessionId,
+      profileId: profile.id,
+      page: feedback.page,
+      priority: 'low',
+      blocking: false,
+      status: 'pending',
+      recommendedAction: 'Revisar y probar perfil',
+      ruleId: 'case-task.document-profile-test.v1',
+      evidence: [feedback.reason],
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+  }
   for (const candidate of input.candidates) {
     if (!activeDocumentIds.has(candidate.documentId)) continue;
     if (!['pending', 'requires_review'].includes(candidate.status)) continue;
@@ -270,6 +426,9 @@ export function buildCaseTasks(input: {
       candidateId: candidate.id,
       reconciliationId: null,
       matrixGroupId: null,
+      extractionSessionId: candidate.extractionSessionId,
+      profileId: null,
+      page: candidate.page,
       priority: candidate.confidence.level === 'low' ? 'high' : 'medium',
       blocking: true,
       status: 'pending',
@@ -309,6 +468,9 @@ export function buildCaseTasks(input: {
       candidateId: null,
       reconciliationId: null,
       matrixGroupId: null,
+      extractionSessionId: null,
+      profileId: null,
+      page: null,
       priority: requirement.confidence === 'high' ? 'high' : 'medium',
       blocking: true,
       status: 'pending',
@@ -340,6 +502,9 @@ export function buildCaseTasks(input: {
       candidateId: null,
       reconciliationId: reconciliation.id,
       matrixGroupId: null,
+      extractionSessionId: null,
+      profileId: null,
+      page: null,
       priority: reconciliation.status === 'relevant_difference' ? 'high' : 'medium',
       blocking: true,
       status: 'pending',
@@ -370,6 +535,9 @@ export function buildCaseTasks(input: {
       candidateId: null,
       reconciliationId: null,
       matrixGroupId: group.id,
+      extractionSessionId: null,
+      profileId: null,
+      page: null,
       priority: group.reconciliationStatus === 'relevant_difference' ? 'high' : 'medium',
       blocking: group.pendingCount > 0,
       status: 'pending',
@@ -396,6 +564,9 @@ export function buildCaseTasks(input: {
       candidateId: null,
       reconciliationId: null,
       matrixGroupId: null,
+      extractionSessionId: null,
+      profileId: null,
+      page: null,
       priority: 'high',
       blocking: true,
       status: 'pending',
@@ -594,7 +765,26 @@ export function buildTaxCaseManifest(input: {
   extractionSessions?: readonly DocumentExtractionSession[];
   documentCandidates?: readonly DocumentFactCandidate[];
   tasks?: readonly CaseTask[];
+  documentProfiles?: readonly DocumentProfile[];
+  extractionFeedback?: readonly ExtractionFeedback[];
 }) {
+  const latestSessions = new Map<string, DocumentExtractionSession>();
+  for (const session of input.extractionSessions ?? []) {
+    const current = latestSessions.get(session.documentId);
+    if (!current || session.runNumber > current.runNumber)
+      latestSessions.set(session.documentId, session);
+  }
+  const sessions = [...latestSessions.values()];
+  const linkedProfileIds = new Set(
+    (input.extractionFeedback ?? [])
+      .map((item) => item.profileId)
+      .filter((profileId): profileId is string => Boolean(profileId)),
+  );
+  const linkedProfiles = (input.documentProfiles ?? []).filter((profile) =>
+    linkedProfileIds.has(profile.id),
+  );
+  const countProfileStatus = (status: DocumentProfile['status']) =>
+    linkedProfiles.filter((profile) => profile.status === status).length;
   return {
     schema: 'nexustax.tax-case.manifest',
     schemaVersion: TAX_CASE_EXPORT_SCHEMA_VERSION,
@@ -617,6 +807,45 @@ export function buildTaxCaseManifest(input: {
       candidates: input.documentCandidates ?? [],
       includesFullText: false as const,
       includesPasswords: false as const,
+      includesRenderedImages: false as const,
+      metrics: {
+        pagesRecommendedForOcr: sessions.reduce(
+          (total, session) => total + (session.metrics?.pagesRecommendedForOcr ?? 0),
+          0,
+        ),
+        pagesProcessedWithOcr: sessions.reduce(
+          (total, session) => total + (session.metrics?.pagesProcessedWithOcr ?? 0),
+          0,
+        ),
+        ocrFailures: sessions.reduce(
+          (total, session) => total + (session.metrics?.ocrFailures ?? 0),
+          0,
+        ),
+        ocrContradictions: sessions.reduce(
+          (total, session) => total + (session.metrics?.ocrContradictions ?? 0),
+          0,
+        ),
+        nativeCandidates: sessions.reduce(
+          (total, session) => total + (session.metrics?.nativeCandidates ?? 0),
+          0,
+        ),
+        ocrCandidates: sessions.reduce(
+          (total, session) => total + (session.metrics?.ocrCandidates ?? 0),
+          0,
+        ),
+        manualCandidates: sessions.reduce(
+          (total, session) => total + (session.metrics?.manualCandidates ?? 0),
+          0,
+        ),
+        linkedProfiles: linkedProfiles.length,
+        profilesByStatus: {
+          draft: countProfileStatus('draft'),
+          tested: countProfileStatus('tested'),
+          active: countProfileStatus('active'),
+          obsolete: countProfileStatus('obsolete'),
+        },
+        feedbackRecords: input.extractionFeedback?.length ?? 0,
+      },
     },
     tasks: input.tasks ?? [],
   };

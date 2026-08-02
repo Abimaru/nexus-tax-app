@@ -157,6 +157,25 @@ export const PdfDocumentDiagnosisSchema = z.object({
 });
 export type PdfDocumentDiagnosis = z.infer<typeof PdfDocumentDiagnosisSchema>;
 
+export const OcrPageOutcomeSchema = z.object({
+  page: z.number().int().positive(),
+  status: z.enum(['completed', 'cancelled', 'failed']),
+  comparisonStatus: z
+    .enum([
+      'agree',
+      'ocr_complements',
+      'native_more_reliable',
+      'ocr_more_complete',
+      'contradiction',
+      'requires_review',
+    ])
+    .nullable(),
+  confidence: z.number().min(0).max(100).nullable(),
+  errorCode: z.string().nullable(),
+  processedAt: IsoTimestampSchema,
+});
+export type OcrPageOutcome = z.infer<typeof OcrPageOutcomeSchema>;
+
 export const CandidateExogenousMatchSchema = z.object({
   recordId: z.string(),
   status: z.enum([
@@ -277,6 +296,13 @@ export const DocumentExtractionMetricsSchema = z.object({
   candidatesByPage: z.array(
     z.object({ page: z.number().int().positive(), count: z.number().int().nonnegative() }),
   ),
+  pagesRecommendedForOcr: z.number().int().nonnegative().optional(),
+  pagesProcessedWithOcr: z.number().int().nonnegative().optional(),
+  ocrFailures: z.number().int().nonnegative().optional(),
+  ocrContradictions: z.number().int().nonnegative().optional(),
+  nativeCandidates: z.number().int().nonnegative().optional(),
+  ocrCandidates: z.number().int().nonnegative().optional(),
+  manualCandidates: z.number().int().nonnegative().optional(),
 });
 export type DocumentExtractionMetrics = z.infer<typeof DocumentExtractionMetricsSchema>;
 
@@ -292,6 +318,7 @@ export const DocumentExtractionSessionSchema = z.object({
   readablePageCount: z.number().int().nonnegative(),
   metrics: DocumentExtractionMetricsSchema.optional(),
   diagnosis: PdfDocumentDiagnosisSchema.nullable().optional(),
+  ocrOutcomes: z.array(OcrPageOutcomeSchema).optional(),
   candidateIds: z.array(z.string()),
   classification: DocumentClassificationSchema.nullable(),
   adapterId: z.string().nullable(),

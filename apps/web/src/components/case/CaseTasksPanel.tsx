@@ -70,6 +70,11 @@ export function CaseTasksPanel({
                       Dato afectado: {task.evidence[0]}
                     </p>
                   ) : null}
+                  {task.documentId ? (
+                    <p className="mt-2 text-xs text-content-subtle">
+                      Destino: documento local{task.page ? ` · página ${task.page}` : ''}
+                    </p>
+                  ) : null}
                   <div className="mt-auto pt-4">
                     <p className="mb-2 text-xs text-content-muted">
                       Cómo resolverlo: {task.recommendedAction}

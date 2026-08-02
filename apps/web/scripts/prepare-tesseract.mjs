@@ -1,4 +1,5 @@
-import { copyFile, mkdir, stat } from 'node:fs/promises';
+import { copyFile, mkdir, readFile, stat } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -19,7 +20,9 @@ const CORE_VARIANTS = [
 ];
 
 const SPANISH_TRAINEDDATA_URL =
-  'https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/main/spa.traineddata';
+  'https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/87416418657359cb625c412a48b6e1d6d41c29bd/spa.traineddata';
+const SPANISH_TRAINEDDATA_SHA256 =
+  '6f2e04d02774a18f01bed44b1111f2cd7f3ba7ac9dc4373cd3f898a40ea6b464';
 
 async function exists(path) {
   return stat(path)
@@ -28,7 +31,10 @@ async function exists(path) {
 }
 
 async function fetchSpanishTraineddata(destination) {
-  if (await exists(destination)) return;
+  if (await exists(destination)) {
+    await verifySpanishTraineddata(destination);
+    return;
+  }
   let response;
   try {
     response = await fetch(SPANISH_TRAINEDDATA_URL);
@@ -48,6 +54,19 @@ async function fetchSpanishTraineddata(destination) {
   const bytes = new Uint8Array(await response.arrayBuffer());
   const { writeFile } = await import('node:fs/promises');
   await writeFile(destination, bytes);
+  await verifySpanishTraineddata(destination);
+}
+
+async function verifySpanishTraineddata(path) {
+  const digest = createHash('sha256')
+    .update(await readFile(path))
+    .digest('hex');
+  if (digest !== SPANISH_TRAINEDDATA_SHA256) {
+    throw new Error(
+      `El modelo OCR local no coincide con el SHA-256 esperado (${SPANISH_TRAINEDDATA_SHA256}). ` +
+        'Elimina solo apps/web/public/vendor/tesseract/lang/spa.traineddata y ejecuta de nuevo la preparación.',
+    );
+  }
 }
 
 await mkdir(coreTarget, { recursive: true });

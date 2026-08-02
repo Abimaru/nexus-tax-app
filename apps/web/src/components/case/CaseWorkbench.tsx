@@ -146,6 +146,9 @@ export function CaseWorkbench({
         documents: workspace?.documents ?? [],
         coverages: workspace?.coverages ?? [],
         candidates: workspace?.documentCandidates ?? [],
+        extractionSessions: workspace?.extractionSessions ?? [],
+        documentProfiles: workspace?.documentProfiles ?? [],
+        extractionFeedback: workspace?.extractionFeedback ?? [],
         reconciliations: workspace?.reconciliations ?? [],
         requirementSourceDecisions: workspace?.requirementSourceDecisions ?? [],
         vatResponsibility: workspace?.filingInputs?.isVatResponsibleAtYearEnd ?? null,
@@ -322,6 +325,8 @@ export function CaseWorkbench({
       extractionSessions: workspace.extractionSessions,
       documentCandidates: workspace.documentCandidates,
       tasks: workspace.caseTasks,
+      documentProfiles: workspace.documentProfiles,
+      extractionFeedback: workspace.extractionFeedback,
     });
     downloadTextFile(
       `${safeBaseName(taxCase.alias)}-manifiesto.json`,
@@ -557,6 +562,8 @@ export function CaseWorkbench({
             documents={workspace.documents}
             sessions={workspace.extractionSessions}
             candidates={workspace.documentCandidates}
+            targetDocumentId={tasks.find((task) => task.id === activeTaskId)?.documentId ?? null}
+            targetPage={tasks.find((task) => task.id === activeTaskId)?.page ?? null}
           />
         ) : null}
         {stage === 'organizacion' && view === 'pendientes' ? (

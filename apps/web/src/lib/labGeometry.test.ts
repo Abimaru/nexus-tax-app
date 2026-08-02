@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { pdfBlockToImageRect, pdfPointToImagePoint } from './labGeometry';
+import { normalizeImageSelection, pdfBlockToImageRect, pdfPointToImagePoint } from './labGeometry';
 
 describe('labGeometry', () => {
   it('convierte un bloque PDF (Y hacia arriba) a un rectángulo de imagen (Y hacia abajo)', () => {
@@ -20,5 +20,16 @@ describe('labGeometry', () => {
   it('convierte un punto PDF a coordenadas de imagen respetando la escala', () => {
     expect(pdfPointToImagePoint({ x: 10, y: 90 }, 100, 1)).toEqual({ x: 10, y: 10 });
     expect(pdfPointToImagePoint({ x: 10, y: 90 }, 100, 2)).toEqual({ x: 20, y: 20 });
+  });
+});
+
+describe('normalizeImageSelection', () => {
+  it('normaliza un arrastre inverso y lo limita al tamaño de la imagen', () => {
+    expect(normalizeImageSelection({ x: 900, y: 600 }, { x: -20, y: 100 }, 800, 400)).toEqual({
+      x: 0,
+      y: 0.25,
+      width: 1,
+      height: 0.75,
+    });
   });
 });

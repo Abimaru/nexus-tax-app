@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import type { DocumentFact, ProcessingResult } from '@nexus-tax/domain';
+import type {
+  DocumentExtractionSession,
+  DocumentFact,
+  ProcessingResult,
+  UploadedDocument,
+} from '@nexus-tax/domain';
 import { processWorkbookFile } from '@nexus-tax/exogenous-parser';
 import * as XLSX from 'xlsx';
 import {
@@ -203,5 +208,100 @@ describe('expediente tributario derivado', () => {
     });
     expect(resolved.some((task) => task.requirementId === requirement.id)).toBe(false);
     expect(resolved.some((task) => task.type === 'confirm_vat')).toBe(false);
+  });
+
+  it('deriva tareas OCR con destino exacto de documento y página', () => {
+    const timestamp = '2026-08-02T00:00:00.000Z';
+    const document: UploadedDocument = {
+      id: 'document:ocr',
+      caseId: 'case:1',
+      kind: 'other',
+      category: 'other',
+      fileName: 'escaneado-sintetico.pdf',
+      extension: '.pdf',
+      fileSizeBytes: 100,
+      mimeType: 'application/pdf',
+      sha256: 'a'.repeat(64),
+      storageMode: 'store_locally',
+      status: 'active',
+      entityIds: [],
+      productIds: [],
+      taxYear: 2025,
+      cutoffDate: null,
+      notes: '',
+      requiresPassword: false,
+      version: 1,
+      replacesDocumentId: null,
+      replacedByDocumentId: null,
+      coveredRequirementIds: [],
+      partialRequirementIds: [],
+      uploadedAt: timestamp,
+      updatedAt: timestamp,
+    };
+    const session: DocumentExtractionSession = {
+      id: 'session:ocr',
+      caseId: 'case:1',
+      documentId: document.id,
+      runNumber: 1,
+      status: 'partially_read',
+      phase: 'review',
+      completedPhases: ['reading'],
+      pageCount: 2,
+      readablePageCount: 1,
+      diagnosis: {
+        type: 'hybrid',
+        textualPageCount: 1,
+        scannedPageCount: 1,
+        insufficientPageCount: 0,
+        damagedPageCount: 0,
+        signals: [],
+        pages: [
+          {
+            pageNumber: 2,
+            type: 'scanned',
+            characterCount: 0,
+            tokenCount: 0,
+            textCoverage: 0,
+            orientation: 'portrait',
+            width: 612,
+            height: 792,
+            warnings: [],
+            recommendedMethod: 'ocr',
+          },
+        ],
+      },
+      candidateIds: [],
+      classification: null,
+      adapterId: null,
+      adapterVersion: null,
+      findings: [],
+      textPersisted: false,
+      errorCode: null,
+      errorMessage: null,
+      supersedesSessionId: null,
+      obsoleteCandidateIds: [],
+      startedAt: timestamp,
+      finishedAt: timestamp,
+      updatedAt: timestamp,
+    };
+    const tasks = buildCaseTasks({
+      caseId: 'case:1',
+      documents: [document],
+      coverages: [],
+      candidates: [],
+      extractionSessions: [session],
+      reconciliations: [],
+      vatResponsibility: false,
+      now: timestamp,
+    });
+    expect(tasks).toContainEqual(
+      expect.objectContaining({
+        type: 'run_page_ocr',
+        documentId: document.id,
+        extractionSessionId: session.id,
+        page: 2,
+        view: 'laboratorio',
+      }),
+    );
   });
 });

@@ -1,6 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
   AlertTriangle,
@@ -19,6 +25,7 @@ import {
   type DocumentFactCandidate,
   type DocumentKind,
   type DocumentProfile,
+  type DocumentProfileZone,
   type ExtractionFeedbackApplicability,
   type PdfDocumentDiagnosis,
   type PdfPageType,
@@ -51,17 +58,26 @@ import {
   getDocumentBinary,
   listDocumentProfiles,
   recordExtractionFeedback,
+  recordOcrPageOutcome,
+  updateDocumentProfileStatus,
   type ManualCandidateField,
 } from '@/lib/repository';
-import { OcrClient, type OcrProgressEvent } from '@/lib/ocrClient';
+import { OcrClient, OcrError, type OcrProgressEvent } from '@/lib/ocrClient';
 import { renderPdfPage } from '@/lib/pdfPageRenderer';
 import { rawImageToBlob } from '@/lib/canvasImage';
-import { pdfBlockToImageRect } from '@/lib/labGeometry';
+import { normalizeImageSelection, pdfBlockToImageRect, type ImageRect } from '@/lib/labGeometry';
 
 const MATCH_CONFIDENCE_LABEL: Record<'high' | 'medium' | 'low', string> = {
   high: 'Alta',
   medium: 'Media',
   low: 'Baja',
+};
+
+const PROFILE_STATUS_LABEL: Record<DocumentProfile['status'], string> = {
+  draft: 'Borrador',
+  tested: 'Probado',
+  active: 'Activo',
+  obsolete: 'Obsoleto',
 };
 
 const FEEDBACK_APPLICABILITY_LABEL: Record<ExtractionFeedbackApplicability, string> = {
@@ -132,11 +148,15 @@ export function DocumentLabPanel({
   documents,
   sessions,
   candidates,
+  targetDocumentId,
+  targetPage,
 }: {
   caseId: string;
   documents: UploadedDocument[];
   sessions: DocumentExtractionSession[];
   candidates: DocumentFactCandidate[];
+  targetDocumentId?: string | null;
+  targetPage?: number | null;
 }) {
   const latestSessions = useMemo(() => {
     const byDocument = new Map<string, DocumentExtractionSession>();
@@ -150,8 +170,14 @@ export function DocumentLabPanel({
   }, [sessions]);
 
   const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(
-    latestSessions[0]?.documentId ?? null,
+    targetDocumentId ?? latestSessions[0]?.documentId ?? null,
   );
+
+  useEffect(() => {
+    if (targetDocumentId && latestSessions.some((item) => item.documentId === targetDocumentId)) {
+      setSelectedDocumentId(targetDocumentId);
+    }
+  }, [latestSessions, targetDocumentId]);
 
   useEffect(() => {
     if (selectedDocumentId && latestSessions.some((s) => s.documentId === selectedDocumentId)) {
@@ -218,6 +244,7 @@ export function DocumentLabPanel({
         session={session}
         document={document}
         candidates={sessionCandidates}
+        targetPage={targetPage}
       />
     </div>
   );
@@ -228,20 +255,23 @@ function DocumentLabWorkspace({
   session,
   document,
   candidates,
+  targetPage,
 }: {
   caseId: string;
   session: DocumentExtractionSession;
   document?: UploadedDocument;
   candidates: DocumentFactCandidate[];
+  targetPage?: number | null;
 }) {
   const [mode, setMode] = useState<'basic' | 'advanced'>('basic');
   const [bytes, setBytes] = useState<ArrayBuffer | null | undefined>(undefined);
   const [representation, setRepresentation] = useState<DocumentRepresentation | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [selectedPage, setSelectedPage] = useState(1);
+  const [selectedPage, setSelectedPage] = useState(targetPage ?? 1);
   const [pageStates, setPageStates] = useState<Record<number, PageOcrState>>({});
   const [layers, setLayers] = useState({ native: true, ocr: true, candidates: true });
   const [improveContrast, setImproveContrast] = useState(false);
+  const [selectedZone, setSelectedZone] = useState<DocumentProfileZone | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -278,6 +308,12 @@ function DocumentLabWorkspace({
   }, [bytes]);
 
   useEffect(() => {
+    if (targetPage && targetPage <= (session.pageCount || Number.MAX_SAFE_INTEGER)) {
+      setSelectedPage(targetPage);
+    }
+  }, [session.pageCount, targetPage]);
+
+  useEffect(() => {
     return () => {
       abortRef.current?.abort();
     };
@@ -303,14 +339,17 @@ function DocumentLabWorkspace({
     }));
   }
 
-  async function runOcrOnPage(page: number) {
+  async function runOcrOnPage(page: number, renderScale = 1.6) {
     if (!bytes) return;
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
     updatePageState(page, { status: 'rendering', errorMessage: undefined });
     try {
-      const rendered = await renderPdfPage(bytes, page, { scale: 1.6, signal: controller.signal });
+      const rendered = await renderPdfPage(bytes, page, {
+        scale: renderScale,
+        signal: controller.signal,
+      });
       const displayBlob = await rawImageToBlob(rendered);
       const imageUrl = URL.createObjectURL(displayBlob);
       updatePageState(page, {
@@ -329,6 +368,13 @@ function DocumentLabWorkspace({
       await client.dispose();
       const nativeText = pageData?.normalizedText ?? '';
       const comparison = compareTextSources(page, nativeText, result.text);
+      await recordOcrPageOutcome(session.id, {
+        page,
+        status: 'completed',
+        comparisonStatus: comparison.status,
+        confidence: result.confidence,
+        errorCode: null,
+      });
       updatePageState(page, {
         status: 'done',
         ocrText: result.text,
@@ -337,9 +383,23 @@ function DocumentLabWorkspace({
       });
     } catch (error) {
       if (controller.signal.aborted) {
+        await recordOcrPageOutcome(session.id, {
+          page,
+          status: 'cancelled',
+          comparisonStatus: null,
+          confidence: null,
+          errorCode: 'cancelled',
+        });
         updatePageState(page, { status: 'cancelled' });
         return;
       }
+      await recordOcrPageOutcome(session.id, {
+        page,
+        status: 'failed',
+        comparisonStatus: null,
+        confidence: null,
+        errorCode: error instanceof OcrError ? error.code : 'unknown',
+      });
       updatePageState(page, {
         status: 'error',
         errorMessage: error instanceof Error ? error.message : 'No fue posible ejecutar el OCR.',
@@ -349,6 +409,19 @@ function DocumentLabWorkspace({
 
   function cancelOcr() {
     abortRef.current?.abort();
+  }
+
+  async function continueWithNativeText(page: number) {
+    const nativeText = pageData?.normalizedText ?? '';
+    const comparison = compareTextSources(page, nativeText, '');
+    await recordOcrPageOutcome(session.id, {
+      page,
+      status: 'completed',
+      comparisonStatus: comparison.status,
+      confidence: null,
+      errorCode: null,
+    });
+    updatePageState(page, { status: 'done', ocrText: '', ocrTokens: [], comparison });
   }
 
   if (bytes === undefined) {
@@ -387,7 +460,11 @@ function DocumentLabWorkspace({
       <GlassPanel className="p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge tone={diagnosis ? PAGE_TYPE_TONE[diagnosis.type as PdfPageType] ?? 'amber' : 'neutral'}>
+            <Badge
+              tone={
+                diagnosis ? (PAGE_TYPE_TONE[diagnosis.type as PdfPageType] ?? 'amber') : 'neutral'
+              }
+            >
               Documento: {diagnosis ? diagnosisTypeLabel(diagnosis.type) : 'Sin diagnóstico'}
             </Badge>
             {recommendation?.recommended ? (
@@ -440,6 +517,8 @@ function DocumentLabWorkspace({
 
       <ProfileSuggestions
         representation={representation}
+        session={session}
+        selectedZone={selectedZone}
         documentKind={
           session.classification?.correctedKind ?? session.classification?.proposedKind ?? 'other'
         }
@@ -466,7 +545,11 @@ function DocumentLabWorkspace({
               </label>
             ) : null}
             {pageState.status === 'rendering' || pageState.status === 'recognizing' ? (
-              <Button variant="ghost" onClick={cancelOcr} leadingIcon={<XCircle className="h-4 w-4" />}>
+              <Button
+                variant="ghost"
+                onClick={cancelOcr}
+                leadingIcon={<XCircle className="h-4 w-4" />}
+              >
                 Cancelar
               </Button>
             ) : (
@@ -480,7 +563,13 @@ function DocumentLabWorkspace({
             )}
           </div>
         </div>
-        <OcrStatus state={pageState} />
+        <OcrStatus
+          state={pageState}
+          hasNativeText={Boolean(pageData?.normalizedText.trim())}
+          onRetry={() => void runOcrOnPage(selectedPage)}
+          onRetryLight={() => void runOcrOnPage(selectedPage, 1.1)}
+          onContinueNative={() => void continueWithNativeText(selectedPage)}
+        />
       </GlassPanel>
 
       {pageState.imageUrl && mode === 'advanced' ? (
@@ -494,7 +583,27 @@ function DocumentLabWorkspace({
           ocrTokens={pageState.ocrTokens ?? []}
           candidates={pageCandidates}
           layers={layers}
-          onToggleLayer={(layer) => setLayers((current) => ({ ...current, [layer]: !current[layer] }))}
+          selection={selectedZone}
+          onSelection={(rect) =>
+            setSelectedZone({
+              id: `zone:${crypto.randomUUID()}`,
+              purpose: 'totals',
+              page: selectedPage,
+              relativeX: rect.x,
+              relativeY: rect.y,
+              relativeWidth: rect.width,
+              relativeHeight: rect.height,
+              field: 'value',
+              adapterId: null,
+              version: '1.0.0',
+              evidence: `Zona marcada manualmente en la página ${selectedPage}.`,
+              createdBy: 'analyst',
+            })
+          }
+          onClearSelection={() => setSelectedZone(null)}
+          onToggleLayer={(layer) =>
+            setLayers((current) => ({ ...current, [layer]: !current[layer] }))
+          }
         />
       ) : null}
 
@@ -508,7 +617,9 @@ function DocumentLabWorkspace({
 
       {mode === 'advanced' ? (
         <GlassPanel className="p-5">
-          <h3 className="text-sm font-semibold text-content-strong">Detalle técnico de la página</h3>
+          <h3 className="text-sm font-semibold text-content-strong">
+            Detalle técnico de la página
+          </h3>
           <dl className="mt-3 grid gap-3 text-xs sm:grid-cols-3">
             <div>
               <dt className="text-content-subtle">Caracteres nativos</dt>
@@ -563,7 +674,19 @@ function readMethodLabel(method: string): string {
   return labels[method] ?? method;
 }
 
-function OcrStatus({ state }: { state: PageOcrState }) {
+function OcrStatus({
+  state,
+  hasNativeText,
+  onRetry,
+  onRetryLight,
+  onContinueNative,
+}: {
+  state: PageOcrState;
+  hasNativeText: boolean;
+  onRetry: () => void;
+  onRetryLight: () => void;
+  onContinueNative: () => void;
+}) {
   if (state.status === 'idle') return null;
   if (state.status === 'rendering') {
     return (
@@ -586,7 +709,28 @@ function OcrStatus({ state }: { state: PageOcrState }) {
     return <p className="mt-3 text-xs text-content-muted">OCR cancelado.</p>;
   }
   if (state.status === 'error') {
-    return <p className="mt-3 text-xs text-tone-rose">{state.errorMessage}</p>;
+    return (
+      <div role="alert" className="mt-3 rounded-lg border border-tone-rose/30 bg-tone-rose/5 p-3">
+        <p className="text-xs text-tone-rose">{state.errorMessage}</p>
+        <p className="mt-1 text-xs text-content-muted">
+          Puedes reintentar, reducir la resolución para usar menos memoria o continuar con la
+          evidencia nativa disponible.
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button variant="secondary" onClick={onRetry}>
+            Reintentar
+          </Button>
+          <Button variant="ghost" onClick={onRetryLight}>
+            Reintentar con menos resolución
+          </Button>
+          {hasNativeText ? (
+            <Button variant="ghost" onClick={onContinueNative}>
+              Continuar con texto nativo
+            </Button>
+          ) : null}
+        </div>
+      </div>
+    );
   }
   if (state.status === 'done' && state.comparison) {
     return (
@@ -625,6 +769,9 @@ function LabOverlay({
   ocrTokens,
   candidates,
   layers,
+  selection,
+  onSelection,
+  onClearSelection,
   onToggleLayer,
 }: {
   imageUrl: string;
@@ -632,21 +779,43 @@ function LabOverlay({
   imageHeight: number;
   pageHeightPdf: number;
   renderScale: number;
-  nativeBlocks: readonly { x?: number; y?: number; width?: number; height?: number; text: string }[];
+  nativeBlocks: readonly {
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
+    text: string;
+  }[];
   ocrTokens: readonly UnifiedTextToken[];
   candidates: readonly DocumentFactCandidate[];
   layers: { native: boolean; ocr: boolean; candidates: boolean };
+  selection: DocumentProfileZone | null;
+  onSelection: (rect: ImageRect) => void;
+  onClearSelection: () => void;
   onToggleLayer: (layer: 'native' | 'ocr' | 'candidates') => void;
 }) {
+  const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
+
+  function imagePoint(event: ReactPointerEvent<SVGSVGElement>) {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    return {
+      x: ((event.clientX - bounds.left) / bounds.width) * imageWidth,
+      y: ((event.clientY - bounds.top) / bounds.height) * imageHeight,
+    };
+  }
+
+  function finishSelection(event: ReactPointerEvent<SVGSVGElement>) {
+    if (!dragStart) return;
+    const rect = normalizeImageSelection(dragStart, imagePoint(event), imageWidth, imageHeight);
+    setDragStart(null);
+    if (rect.width >= 0.01 && rect.height >= 0.01) onSelection(rect);
+  }
+
   return (
     <GlassPanel className="p-5">
       <div className="mb-3 flex flex-wrap gap-3 text-xs text-content-muted">
         <label className="flex items-center gap-1.5">
-          <input
-            type="checkbox"
-            checked={layers.native}
-            onChange={() => onToggleLayer('native')}
-          />
+          <input type="checkbox" checked={layers.native} onChange={() => onToggleLayer('native')} />
           <span className="inline-block h-2.5 w-2.5 rounded-sm bg-tone-cyan" /> Tokens nativos
         </label>
         <label className="flex items-center gap-1.5">
@@ -662,6 +831,19 @@ function LabOverlay({
           <span className="inline-block h-2.5 w-2.5 rounded-full bg-tone-amber" /> Candidatos
         </label>
       </div>
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <Button variant="ghost" onClick={() => onSelection({ x: 0, y: 0, width: 1, height: 1 })}>
+          Usar página completa como zona
+        </Button>
+        {selection ? (
+          <Button variant="ghost" onClick={onClearSelection}>
+            Quitar zona marcada
+          </Button>
+        ) : null}
+        <span className="text-xs text-content-subtle">
+          Arrastra sobre la vista para definir una zona de valor reutilizable en el perfil.
+        </span>
+      </div>
       <div className="max-h-[70vh] w-full max-w-2xl overflow-auto rounded-lg border border-overlay/10">
         <div className="relative">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -672,82 +854,104 @@ function LabOverlay({
           />
           <svg
             viewBox={`0 0 ${imageWidth} ${imageHeight}`}
-            className="pointer-events-none absolute inset-0 h-full w-full"
+            className="absolute inset-0 h-full w-full touch-none cursor-crosshair"
             role="img"
-            aria-label="Superposición de capas del laboratorio"
+            aria-label="Superposición de capas y editor de zona del laboratorio"
+            onPointerDown={(event) => {
+              event.currentTarget.setPointerCapture(event.pointerId);
+              setDragStart(imagePoint(event));
+            }}
+            onPointerUp={finishSelection}
+            onPointerCancel={() => setDragStart(null)}
           >
-          {layers.native
-            ? nativeBlocks
-                .filter((block) => block.x !== undefined && block.y !== undefined)
-                .map((block, index) => {
-                  const rect = pdfBlockToImageRect(
-                    {
-                      x: block.x ?? 0,
-                      y: block.y ?? 0,
-                      width: block.width ?? 0,
-                      height: block.height ?? 0,
-                    },
-                    pageHeightPdf,
-                    renderScale,
-                  );
-                  return (
-                    <rect
-                      key={`native-${index}`}
-                      x={rect.x}
-                      y={rect.y}
-                      width={Math.max(rect.width, 2)}
-                      height={Math.max(rect.height, 2)}
-                      fill="none"
-                      stroke="rgb(34 211 238)"
-                      strokeWidth={1}
-                    />
-                  );
-                })
-            : null}
-          {layers.ocr
-            ? ocrTokens.map((token, index) => (
-                <rect
-                  key={`ocr-${index}`}
-                  x={token.x}
-                  y={token.y}
-                  width={Math.max(token.width, 2)}
-                  height={Math.max(token.height, 2)}
-                  fill="none"
-                  stroke="rgb(139 92 246)"
-                  strokeWidth={1}
-                  strokeDasharray="3 2"
-                />
-              ))
-            : null}
-          {layers.candidates
-            ? candidates
-                .filter((candidate) => candidate.evidence.x != null && candidate.evidence.y != null)
-                .map((candidate) => {
-                  const point = pdfBlockToImageRect(
-                    {
-                      x: candidate.evidence.x ?? 0,
-                      y: candidate.evidence.y ?? 0,
-                      width: 4,
-                      height: 4,
-                    },
-                    pageHeightPdf,
-                    renderScale,
-                  );
-                  return (
-                    <circle
-                      key={candidate.id}
-                      cx={point.x}
-                      cy={point.y}
-                      r={5}
-                      fill="rgb(245 158 11)"
-                      opacity={0.8}
-                    >
-                      <title>{candidate.originalConcept}</title>
-                    </circle>
-                  );
-                })
-            : null}
-        </svg>
+            {selection ? (
+              <rect
+                x={selection.relativeX * imageWidth}
+                y={selection.relativeY * imageHeight}
+                width={selection.relativeWidth * imageWidth}
+                height={selection.relativeHeight * imageHeight}
+                fill="rgb(34 211 238 / 0.12)"
+                stroke="rgb(34 211 238)"
+                strokeWidth={2}
+                strokeDasharray="6 3"
+              >
+                <title>Zona de valor seleccionada por el analista</title>
+              </rect>
+            ) : null}
+            {layers.native
+              ? nativeBlocks
+                  .filter((block) => block.x !== undefined && block.y !== undefined)
+                  .map((block, index) => {
+                    const rect = pdfBlockToImageRect(
+                      {
+                        x: block.x ?? 0,
+                        y: block.y ?? 0,
+                        width: block.width ?? 0,
+                        height: block.height ?? 0,
+                      },
+                      pageHeightPdf,
+                      renderScale,
+                    );
+                    return (
+                      <rect
+                        key={`native-${index}`}
+                        x={rect.x}
+                        y={rect.y}
+                        width={Math.max(rect.width, 2)}
+                        height={Math.max(rect.height, 2)}
+                        fill="none"
+                        stroke="rgb(34 211 238)"
+                        strokeWidth={1}
+                      />
+                    );
+                  })
+              : null}
+            {layers.ocr
+              ? ocrTokens.map((token, index) => (
+                  <rect
+                    key={`ocr-${index}`}
+                    x={token.x}
+                    y={token.y}
+                    width={Math.max(token.width, 2)}
+                    height={Math.max(token.height, 2)}
+                    fill="none"
+                    stroke="rgb(139 92 246)"
+                    strokeWidth={1}
+                    strokeDasharray="3 2"
+                  />
+                ))
+              : null}
+            {layers.candidates
+              ? candidates
+                  .filter(
+                    (candidate) => candidate.evidence.x != null && candidate.evidence.y != null,
+                  )
+                  .map((candidate) => {
+                    const point = pdfBlockToImageRect(
+                      {
+                        x: candidate.evidence.x ?? 0,
+                        y: candidate.evidence.y ?? 0,
+                        width: 4,
+                        height: 4,
+                      },
+                      pageHeightPdf,
+                      renderScale,
+                    );
+                    return (
+                      <circle
+                        key={candidate.id}
+                        cx={point.x}
+                        cy={point.y}
+                        r={5}
+                        fill="rgb(245 158 11)"
+                        opacity={0.8}
+                      >
+                        <title>{candidate.originalConcept}</title>
+                      </circle>
+                    );
+                  })
+              : null}
+          </svg>
         </div>
       </div>
       <p className="mt-2 text-xs text-content-subtle">
@@ -762,15 +966,16 @@ function LabOverlay({
 function ProfileSuggestions({
   representation,
   documentKind,
+  session,
+  selectedZone,
 }: {
   representation: DocumentRepresentation;
   documentKind: DocumentKind;
+  session: DocumentExtractionSession;
+  selectedZone: DocumentProfileZone | null;
 }) {
   const profiles = useLiveQuery(() => listDocumentProfiles(), []) ?? EMPTY_PROFILES;
-  const signals = useMemo(
-    () => computeDocumentProfileSignals(representation),
-    [representation],
-  );
+  const signals = useMemo(() => computeDocumentProfileSignals(representation), [representation]);
   const matches = useMemo(
     () => matchDocumentProfiles(signals, documentKind, profiles),
     [signals, documentKind, profiles],
@@ -784,18 +989,33 @@ function ProfileSuggestions({
     if (!name) return;
     setCreating(true);
     try {
-      await createDocumentProfile({
+      const profile = await createDocumentProfile({
         name,
         documentKind,
         entityId: null,
         brandName: null,
         signals,
         expectedPageCount: signals.pageCount,
-        zones: [],
-        fields: [],
+        zones: selectedZone ? [selectedZone] : [],
+        fields: selectedZone?.field ? [selectedZone.field] : [],
         adapterId: null,
         confidence: 'low',
         origin: 'manual',
+      });
+      await recordExtractionFeedback({
+        documentId: session.documentId,
+        extractionSessionId: session.id,
+        candidateId: null,
+        decision: 'field_selected',
+        reason: `Perfil ${name} creado en borrador para validación.`,
+        method: null,
+        adapterId: null,
+        profileId: profile.id,
+        beforeValue: null,
+        afterValue: null,
+        page: null,
+        zoneId: null,
+        applicability: 'profile_update',
       });
       setCreated(true);
       setProfileName('');
@@ -826,23 +1046,68 @@ function ProfileSuggestions({
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="font-medium text-content-strong">{profile.name}</span>
-                  <Badge
-                    tone={
-                      match.confidence === 'high'
-                        ? 'emerald'
-                        : match.confidence === 'medium'
-                          ? 'amber'
-                          : 'neutral'
-                    }
-                  >
-                    Confianza {MATCH_CONFIDENCE_LABEL[match.confidence]}
-                  </Badge>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge tone={profile.status === 'active' ? 'emerald' : 'neutral'}>
+                      {PROFILE_STATUS_LABEL[profile.status]}
+                    </Badge>
+                    <Badge
+                      tone={
+                        match.confidence === 'high'
+                          ? 'emerald'
+                          : match.confidence === 'medium'
+                            ? 'amber'
+                            : 'neutral'
+                      }
+                    >
+                      Confianza {MATCH_CONFIDENCE_LABEL[match.confidence]}
+                    </Badge>
+                  </div>
                 </div>
                 <ul className="mt-1.5 list-disc space-y-0.5 pl-4 text-content-subtle">
                   {match.reasons.map((reason) => (
                     <li key={reason}>{reason}</li>
                   ))}
                 </ul>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {profile.status === 'draft' ? (
+                    <Button
+                      variant="ghost"
+                      onClick={() => void updateDocumentProfileStatus(profile.id, 'tested')}
+                    >
+                      Marcar como probado
+                    </Button>
+                  ) : null}
+                  {profile.status === 'tested' ? (
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        if (
+                          window.confirm('Activar este perfil para futuras sugerencias locales?')
+                        ) {
+                          void updateDocumentProfileStatus(profile.id, 'active');
+                        }
+                      }}
+                    >
+                      Activar perfil
+                    </Button>
+                  ) : null}
+                  {profile.status !== 'obsolete' ? (
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        if (
+                          window.confirm(
+                            'Marcar este perfil como obsoleto? No se eliminará su historial.',
+                          )
+                        ) {
+                          void updateDocumentProfileStatus(profile.id, 'obsolete');
+                        }
+                      }}
+                    >
+                      Marcar obsoleto
+                    </Button>
+                  ) : null}
+                </div>
               </li>
             );
           })}
@@ -893,7 +1158,8 @@ function ManualCandidatePanel({
   const [concept, setConcept] = useState('');
   const [value, setValue] = useState('');
   const [source, setSource] = useState<'native' | 'ocr'>('native');
-  const [category, setCategory] = useState<(typeof TaxCategorySchema.options)[number]>('unclassified');
+  const [category, setCategory] =
+    useState<(typeof TaxCategorySchema.options)[number]>('unclassified');
   const [nature, setNature] = useState<(typeof TaxNatureSchema.options)[number]>('unclassified');
   const [treatment, setTreatment] =
     useState<(typeof TaxTreatmentSchema.options)[number]>('requires_review');
@@ -1075,13 +1341,13 @@ function ManualCandidatePanel({
             setApplicability(event.target.value as ExtractionFeedbackApplicability)
           }
         >
-          {(
-            ['this_document_only', 'similar_documents', 'profile_update'] as const
-          ).map((option) => (
-            <option key={option} value={option}>
-              {FEEDBACK_APPLICABILITY_LABEL[option]}
-            </option>
-          ))}
+          {(['this_document_only', 'similar_documents', 'profile_update'] as const).map(
+            (option) => (
+              <option key={option} value={option}>
+                {FEEDBACK_APPLICABILITY_LABEL[option]}
+              </option>
+            ),
+          )}
         </select>
       </label>
       <div className="mt-4 flex items-center gap-3">
@@ -1092,7 +1358,9 @@ function ManualCandidatePanel({
         >
           {saving ? 'Creando…' : 'Crear candidato manual asistido'}
         </Button>
-        {saved ? <span className="text-xs text-tone-emerald">Candidato creado y listo para revisar.</span> : null}
+        {saved ? (
+          <span className="text-xs text-tone-emerald">Candidato creado y listo para revisar.</span>
+        ) : null}
       </div>
     </GlassPanel>
   );

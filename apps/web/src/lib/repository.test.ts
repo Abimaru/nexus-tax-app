@@ -46,6 +46,7 @@ import {
   listDocumentProfiles,
   listExtractionFeedback,
   recordExtractionFeedback,
+  recordOcrPageOutcome,
   restoreDocumentCandidate,
   reviewDocumentCandidate,
   updateDocumentProfileStatus,
@@ -502,7 +503,13 @@ describe('repositorio (IndexedDB local)', () => {
       acceptedSources: workspace.acceptedSources,
       requirementSourceDecisions: workspace.requirementSourceDecisions,
     });
-    expect(manifest.schemaVersion).toBe('2.1.1');
+    expect(manifest.schemaVersion).toBe('2.2.0');
+    expect(manifest.documentExtraction.includesRenderedImages).toBe(false);
+    expect(manifest.documentExtraction.metrics).toMatchObject({
+      pagesProcessedWithOcr: 0,
+      ocrFailures: 0,
+      feedbackRecords: 0,
+    });
     expect(manifest.includesBinaryData).toBe(false);
     expect(JSON.stringify(manifest)).not.toContain('secreto sintetico');
     expect(JSON.stringify(manifest)).not.toContain('bytes');
@@ -922,6 +929,9 @@ describe('repositorio (IndexedDB local)', () => {
         candidateId: null,
         reconciliationId: null,
         matrixGroupId: null,
+        extractionSessionId: null,
+        profileId: null,
+        page: null,
         priority: 'high',
         blocking: true,
         status: 'pending',
@@ -958,6 +968,28 @@ describe('repositorio (IndexedDB local)', () => {
       sessionId: session.id,
       pageCount: 1,
       readablePageCount: 1,
+      diagnosis: {
+        type: 'insufficient_text',
+        textualPageCount: 0,
+        scannedPageCount: 0,
+        insufficientPageCount: 1,
+        damagedPageCount: 0,
+        signals: ['Texto insuficiente.'],
+        pages: [
+          {
+            pageNumber: 1,
+            type: 'insufficient_text',
+            characterCount: 8,
+            tokenCount: 1,
+            textCoverage: 0.01,
+            orientation: 'portrait',
+            width: 612,
+            height: 792,
+            warnings: ['Requiere OCR.'],
+            recommendedMethod: 'ocr',
+          },
+        ],
+      },
       classification: {
         proposedKind: 'balance_certificate',
         confidence: 'high',
@@ -972,13 +1004,44 @@ describe('repositorio (IndexedDB local)', () => {
       findings: [],
       candidates: [candidate],
     });
+    await recordOcrPageOutcome(session.id, {
+      page: 1,
+      status: 'completed',
+      comparisonStatus: 'contradiction',
+      confidence: 82,
+      errorCode: null,
+    });
     const workspace = await getTaxCaseWorkspace(created.id);
     expect(workspace.extractionSessions[0]).toMatchObject({
       status: 'ready_for_review',
       textPersisted: false,
       candidateIds: [candidate.id],
+      ocrOutcomes: [{ page: 1, status: 'completed', comparisonStatus: 'contradiction' }],
+      metrics: {
+        pagesRecommendedForOcr: 1,
+        pagesProcessedWithOcr: 1,
+        ocrContradictions: 1,
+      },
     });
     expect(JSON.stringify(workspace.extractionSessions)).not.toMatch(/password|PDF sintético/);
+    const manifest = buildTaxCaseManifest({
+      taxCase: workspace.taxCase!,
+      documents: workspace.documents,
+      products: workspace.products,
+      coverages: workspace.coverages,
+      facts: workspace.facts,
+      reconciliations: workspace.reconciliations,
+      extractionSessions: workspace.extractionSessions,
+      documentCandidates: workspace.documentCandidates,
+      documentProfiles: workspace.documentProfiles,
+      extractionFeedback: workspace.extractionFeedback,
+    });
+    expect(manifest.documentExtraction.metrics).toMatchObject({
+      pagesRecommendedForOcr: 1,
+      pagesProcessedWithOcr: 1,
+      ocrContradictions: 1,
+    });
+    expect(JSON.stringify(manifest)).not.toMatch(/ocrText|imageUrl|renderedImage/);
   });
 
   it('crea un candidato manual desde el laboratorio y pasa por la revisión normal', async () => {

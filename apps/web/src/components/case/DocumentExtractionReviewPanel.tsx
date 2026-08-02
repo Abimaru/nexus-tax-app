@@ -439,6 +439,18 @@ function ExtractionSessionCard({
             {session.metrics.sectionsDetected.length} sección(es) detectada(s). No es un porcentaje
             de precisión.
           </p>
+          {(session.metrics.pagesRecommendedForOcr ?? 0) > 0 ? (
+            <div className="mt-3 flex flex-wrap gap-2 text-xs" aria-label="Actividad de OCR local">
+              <Badge tone="amber">OCR sugerido {session.metrics.pagesRecommendedForOcr ?? 0}</Badge>
+              <Badge tone="cyan">OCR procesado {session.metrics.pagesProcessedWithOcr ?? 0}</Badge>
+              <Badge tone={(session.metrics.ocrContradictions ?? 0) > 0 ? 'rose' : 'neutral'}>
+                Contradicciones {session.metrics.ocrContradictions ?? 0}
+              </Badge>
+              <Badge tone={(session.metrics.ocrFailures ?? 0) > 0 ? 'amber' : 'neutral'}>
+                Fallos recuperables {session.metrics.ocrFailures ?? 0}
+              </Badge>
+            </div>
+          ) : null}
         </section>
       ) : null}
 

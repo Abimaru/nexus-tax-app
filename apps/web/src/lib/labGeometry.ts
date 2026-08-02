@@ -33,3 +33,22 @@ export function pdfPointToImagePoint(
     y: (pageHeightPdf - point.y) * renderScale,
   };
 }
+
+export function normalizeImageSelection(
+  start: { x: number; y: number },
+  end: { x: number; y: number },
+  imageWidth: number,
+  imageHeight: number,
+): ImageRect {
+  const clamp = (value: number, maximum: number) => Math.min(maximum, Math.max(0, value));
+  const x1 = clamp(Math.min(start.x, end.x), imageWidth);
+  const y1 = clamp(Math.min(start.y, end.y), imageHeight);
+  const x2 = clamp(Math.max(start.x, end.x), imageWidth);
+  const y2 = clamp(Math.max(start.y, end.y), imageHeight);
+  return {
+    x: imageWidth ? x1 / imageWidth : 0,
+    y: imageHeight ? y1 / imageHeight : 0,
+    width: imageWidth ? (x2 - x1) / imageWidth : 0,
+    height: imageHeight ? (y2 - y1) / imageHeight : 0,
+  };
+}

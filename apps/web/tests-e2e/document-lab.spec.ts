@@ -152,6 +152,35 @@ test('un PDF sin texto se lee y se diagnostica como escaneado, no se rechaza', a
     page.getByRole('heading', { name: 'escaneado-sin-texto-sintetico.pdf' }),
   ).toBeVisible();
   await expect(page.getByText('Lectura parcial').first()).toBeVisible();
+
+  const darkOptionStyle = await page
+    .getByLabel('Estado')
+    .locator('option')
+    .first()
+    .evaluate((option) => {
+      const style = getComputedStyle(option);
+      return { backgroundColor: style.backgroundColor, color: style.color };
+    });
+  expect(darkOptionStyle.backgroundColor).toBe('rgb(13, 20, 36)');
+  expect(darkOptionStyle.color).toBe('rgb(248, 250, 252)');
+  await page.getByRole('button', { name: 'Cambiar a modo claro' }).click();
+  const lightOptionStyle = await page
+    .getByLabel('Estado')
+    .locator('option')
+    .first()
+    .evaluate((option) => {
+      const style = getComputedStyle(option);
+      return { backgroundColor: style.backgroundColor, color: style.color };
+    });
+  expect(lightOptionStyle.backgroundColor).toBe('rgb(255, 255, 255)');
+  expect(lightOptionStyle.color).toBe('rgb(15, 23, 42)');
+  await page.getByRole('button', { name: 'Cambiar a modo oscuro' }).click();
+
+  await selectView(page, 'Pendientes');
+  await expect(page.getByText('Revisar página 1 con OCR')).toBeVisible();
+  await page.getByRole('button', { name: 'Abrir página en el laboratorio' }).click();
+  await expect(page).toHaveURL(/\/organizacion\/laboratorio$/);
+  await expect(page.getByLabel('Página', { exact: true })).toHaveValue('1');
 });
 
 test('el laboratorio documental diagnostica, ejecuta OCR real y crea un candidato manual', async ({
@@ -195,17 +224,30 @@ test('el laboratorio documental diagnostica, ejecuta OCR real y crea un candidat
     .fill('Certificado de saldos E2E');
   await page.getByRole('button', { name: 'Crear perfil desde este documento' }).click();
   await expect(
-    page.getByText('Perfil creado en borrador. Pruébalo con documentos similares antes de activarlo.'),
+    page.getByText(
+      'Perfil creado en borrador. Pruébalo con documentos similares antes de activarlo.',
+    ),
   ).toBeVisible();
+  await page.getByRole('button', { name: 'Marcar como probado' }).click();
+  await expect(page.getByText('Probado', { exact: true })).toBeVisible();
 
   await page.getByRole('button', { name: 'Avanzado' }).click();
   await page.getByRole('button', { name: 'Ejecutar OCR en esta página' }).click();
 
-  await expect(page.getByText(/Coinciden|complementa|más confiable|más completo/)).toBeVisible({
-    timeout: 90_000,
-  });
+  await expect(
+    page
+      .locator('span.inline-flex')
+      .filter({
+        hasText:
+          /^(Coinciden|El OCR complementa el texto nativo|El texto nativo es más confiable|El OCR es más completo|Contradicción: requiere revisión|Requiere revisión)$/,
+      }),
+  ).toBeVisible({ timeout: 90_000 });
   await expect(page.getByAltText('Vista previa de la página renderizada')).toBeVisible();
   await expect(page.getByLabel('Tokens nativos')).toBeVisible();
+  await page.getByRole('button', { name: 'Usar página completa como zona' }).click();
+  await expect(
+    page.locator('rect').filter({ hasText: 'Zona de valor seleccionada por el analista' }),
+  ).toHaveCount(1);
 
   await page.screenshot({
     path: testInfo.outputPath('laboratorio-avanzado-1280.png'),
@@ -215,12 +257,12 @@ test('el laboratorio documental diagnostica, ejecuta OCR real y crea un candidat
   // Selección manual de campo: crea un candidato asistido y no navega fuera.
   await page.getByLabel('Fuente del texto').selectOption('native');
   await page.getByLabel('Campo').selectOption('balance');
-  await page.getByRole('button', { name: 'Usar el texto de la página como punto de partida' }).click();
+  await page
+    .getByRole('button', { name: 'Usar el texto de la página como punto de partida' })
+    .click();
   await page.getByRole('textbox', { name: 'Concepto' }).fill('Saldo capturado en el laboratorio');
   await page.getByRole('spinbutton', { name: 'Valor' }).fill('900000');
-  await page
-    .getByLabel('¿Cómo quieres recordar esta decisión?')
-    .selectOption('similar_documents');
+  await page.getByLabel('¿Cómo quieres recordar esta decisión?').selectOption('similar_documents');
   await page.getByRole('button', { name: 'Crear candidato manual asistido' }).click();
   await expect(page.getByText('Candidato creado y listo para revisar.')).toBeVisible();
 
@@ -229,9 +271,23 @@ test('el laboratorio documental diagnostica, ejecuta OCR real y crea un candidat
   await page.setViewportSize({ width: 390, height: 844 });
   await expect
     .poll(() =>
-      page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth),
+      page.evaluate(
+        () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+      ),
     )
     .toBe(true);
+  // Chromium puede omitir superficies con backdrop-filter que nunca entraron
+  // al viewport al componer una captura fullPage. Las recorremos para que la
+  // evidencia visual represente la pantalla que realmente ve el usuario.
+  for (const locator of [
+    page.getByRole('heading', { name: 'Perfiles documentales' }),
+    page.getByRole('heading', { name: 'OCR local bajo demanda' }),
+    page.getByRole('heading', { name: 'Selección manual de campo' }),
+    page.getByRole('heading', { name: 'Detalle técnico de la página' }),
+  ]) {
+    await locator.scrollIntoViewIfNeeded();
+  }
+  await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({
     path: testInfo.outputPath('laboratorio-390.png'),
     fullPage: true,

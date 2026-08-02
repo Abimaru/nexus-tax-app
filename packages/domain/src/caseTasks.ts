@@ -18,6 +18,10 @@ export const CaseTaskTypeSchema = z.enum([
   'resolve_matrix_group',
   'confirm_vat',
   'review_filing_obligation',
+  'run_page_ocr',
+  'review_ocr_contradiction',
+  'recover_document_extraction',
+  'test_document_profile',
 ]);
 export type CaseTaskType = z.infer<typeof CaseTaskTypeSchema>;
 
@@ -35,7 +39,17 @@ export const CaseTaskSchema = z.object({
   type: CaseTaskTypeSchema,
   title: z.string().min(1),
   explanation: z.string().min(1),
-  source: z.enum(['document', 'candidate', 'requirement', 'finding', 'matrix', 'filing', 'system']),
+  source: z.enum([
+    'document',
+    'candidate',
+    'requirement',
+    'finding',
+    'matrix',
+    'filing',
+    'ocr',
+    'profile',
+    'system',
+  ]),
   stage: WorkflowStageIdSchema,
   view: WorkflowViewIdSchema,
   entityId: z.string().nullable(),
@@ -44,6 +58,9 @@ export const CaseTaskSchema = z.object({
   candidateId: z.string().nullable(),
   reconciliationId: z.string().nullable(),
   matrixGroupId: z.string().nullable(),
+  extractionSessionId: z.string().nullable(),
+  profileId: z.string().nullable(),
+  page: z.number().int().positive().nullable(),
   priority: z.enum(['high', 'medium', 'low']),
   blocking: z.boolean(),
   status: CaseTaskStatusSchema,
@@ -55,4 +72,4 @@ export const CaseTaskSchema = z.object({
 });
 export type CaseTask = z.infer<typeof CaseTaskSchema>;
 
-export const CASE_TASK_SCHEMA_VERSION = '2.1.1';
+export const CASE_TASK_SCHEMA_VERSION = '2.2.0';
