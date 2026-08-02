@@ -39,10 +39,16 @@ import {
   confirmAcceptedExogenousValue,
   saveRequirementSourceDecision,
   completeExtractionSession,
+  createDocumentProfile,
   createExtractionSession,
   createManualDocumentCandidate,
+  deleteDocumentProfile,
+  listDocumentProfiles,
+  listExtractionFeedback,
+  recordExtractionFeedback,
   restoreDocumentCandidate,
   reviewDocumentCandidate,
+  updateDocumentProfileStatus,
   markDocumentObsolete,
   synchronizeCaseTasks,
 } from './repository';
@@ -1013,6 +1019,64 @@ describe('repositorio (IndexedDB local)', () => {
     });
     expect(fact?.captureMethod).toBe('assisted');
     expect(fact?.value).toBe(750_000);
+  });
+
+  it('crea un perfil documental en borrador y solo lo activa con una acción explícita', async () => {
+    const profile = await createDocumentProfile({
+      name: 'Certificado de saldos — Banco Ficticio',
+      documentKind: 'balance_certificate',
+      entityId: null,
+      brandName: 'Banco Ficticio',
+      signals: {
+        pageWidth: 612,
+        pageHeight: 792,
+        pageCount: 1,
+        sectionLabels: ['balances'],
+        headerKeywords: ['certificado de saldos'],
+      },
+      expectedPageCount: 1,
+      zones: [],
+      fields: ['balance'],
+      adapterId: 'co.balance-certificate.generic',
+      confidence: 'medium',
+      origin: 'manual',
+    });
+    expect(profile.status).toBe('draft');
+
+    const listed = await listDocumentProfiles();
+    expect(listed.map((item) => item.id)).toContain(profile.id);
+
+    await updateDocumentProfileStatus(profile.id, 'active');
+    const updated = (await listDocumentProfiles()).find((item) => item.id === profile.id);
+    expect(updated?.status).toBe('active');
+
+    await deleteDocumentProfile(profile.id);
+    expect((await listDocumentProfiles()).map((item) => item.id)).not.toContain(profile.id);
+  });
+
+  it('registra feedback de calibración con el alcance que el analista eligió', async () => {
+    const feedback = await recordExtractionFeedback({
+      documentId: 'document-1',
+      extractionSessionId: 'session-1',
+      candidateId: 'candidate-1',
+      decision: 'value_corrected',
+      reason: 'El OCR confundió el símbolo de pesos con un dígito.',
+      method: 'ocr',
+      adapterId: 'co.balance-certificate.generic',
+      profileId: null,
+      beforeValue: '$9OO000',
+      afterValue: '900000',
+      page: 1,
+      zoneId: null,
+      applicability: 'similar_documents',
+    });
+    expect(feedback.applicability).toBe('similar_documents');
+    expect(feedback.reason).toContain('OCR');
+
+    const listedForDocument = await listExtractionFeedback('document-1');
+    expect(listedForDocument.map((item) => item.id)).toContain(feedback.id);
+    const listedAll = await listExtractionFeedback();
+    expect(listedAll.map((item) => item.id)).toContain(feedback.id);
   });
 
   it('exige justificar una corrección y crea un hecho asistido trazable', async () => {
