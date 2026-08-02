@@ -217,6 +217,16 @@ texto completo.
 - `CaseTask` modela pendientes con destino, prioridad, bloqueo, regla y evidencia.
 - Dexie v9 agrega `caseTasks`; el manifiesto pasa a 2.1.1 y puede incluir tareas sin datos binarios.
 
+## Cambios 2.2.0
+
+- `CaseTask` incorpora `page`, `extractionSessionId` y `profileId`, además de orígenes OCR/perfil.
+- `DocumentExtractionSession.ocrOutcomes` persiste solo estado, comparación, confianza, código de
+  fallo y fecha por página; nunca texto, tokens ni imagen.
+- `DocumentExtractionMetrics` agrega páginas sugeridas/procesadas por OCR, fallos, contradicciones y
+  candidatos por fuente.
+- El manifiesto 2.2.0 exporta métricas agregadas y declara que no incluye texto, contraseñas,
+  imágenes renderizadas ni binarios.
+
 Las sesiones y candidatos obsoletos se conservan para auditoría. Al reemplazar u obsoletar un
 documento se invalidan coberturas relacionadas y se recalculan tareas derivadas.
 

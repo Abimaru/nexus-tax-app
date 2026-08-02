@@ -836,13 +836,13 @@ estimación cualitativa rápida/moderada/intensiva).
 
 ### Validación exacta (2026-08-02)
 
-| Paso | Resultado |
-| --- | --- |
-| `pnpm typecheck` | OK; 7 de 8 proyectos del workspace, 0 errores |
-| `pnpm lint` | OK; 0 warnings / 0 errors |
-| `pnpm test` | OK; 204/204 pruebas (11 dominio, 26 Aegis, 55 document-intelligence, 44 parser, 68 web) |
-| `NEXUSTAX_NEXT_DIST_DIR=.next-build pnpm build` | OK; compilación y 7 rutas generadas |
-| `pnpm check:encoding` | OK; 236 archivos revisados, 0 mojibake |
+| Paso                                            | Resultado                                                                               |
+| ----------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `pnpm typecheck`                                | OK; 7 de 8 proyectos del workspace, 0 errores                                           |
+| `pnpm lint`                                     | OK; 0 warnings / 0 errors                                                               |
+| `pnpm test`                                     | OK; 204/204 pruebas (11 dominio, 26 Aegis, 55 document-intelligence, 44 parser, 68 web) |
+| `NEXUSTAX_NEXT_DIST_DIR=.next-build pnpm build` | OK; compilación y 7 rutas generadas                                                     |
+| `pnpm check:encoding`                           | OK; 236 archivos revisados, 0 mojibake                                                  |
 
 No se ejecutó `pnpm --filter @nexus-tax/web test:e2e` en este cierre: no se tocó ninguna vista ni
 flujo de UI en las Fases A-C (todo el trabajo fue dominio, paquete puro y un cliente de aplicación sin
@@ -905,12 +905,10 @@ actual — activarlo, probarlo u obsoletarlo sigue siendo una acción aparte
 un `ExtractionFeedback` con el alcance que el analista elige (solo este documento / sugerencia para
 similares / actualización de perfil); ninguna de las tres opciones aplica nada por sí sola.
 
-**Deliberadamente fuera de este bloque:**
+**Pendientes registrados al cierre de la fase E:**
 
-- Editor de zonas por arrastre (dibujar un rectángulo a mano): las zonas de un perfil existen en el
-  modelo (`DocumentProfileZone`, coordenadas relativas 0-1) pero hoy no hay UI para crearlas
-  dibujando; un perfil nuevo se crea con `zones: []`. Encaja mejor como iteración sobre el overlay ya
-  construido que como trabajo nuevo desde cero.
+- Editor de zonas por arrastre: quedó resuelto en las fases F–G mediante el overlay con coordenadas
+  relativas 0–1 y alternativa accesible para seleccionar la página completa.
 - Aplicar automáticamente las zonas de un perfil activo para pre-rellenar candidatos: el perfil se
   sugiere y se puede crear, pero todavía no alimenta la extracción — es el siguiente enganche natural
   una vez que existan perfiles reales probados con documentos similares.
@@ -925,16 +923,62 @@ similares / actualización de perfil); ninguna de las tres opciones aplica nada 
 
 ### Validación exacta (2026-08-02)
 
-| Paso | Resultado |
-| --- | --- |
-| `pnpm typecheck` | OK; 7 de 8 proyectos del workspace, 0 errores |
-| `pnpm lint` | OK; 0 warnings / 0 errors |
-| `pnpm test` | OK; 219/219 pruebas (13 dominio, 26 Aegis, 61 document-intelligence, 44 parser, 75 web) |
-| `NEXUSTAX_NEXT_DIST_DIR=.next-build pnpm build` | OK; compilación y 7 rutas generadas |
-| `pnpm --filter @nexus-tax/web test:e2e` (servidor aislado, puerto 3101) | OK; 4/4 escenarios Chromium, incluyendo OCR real (no mockeado) |
-| `pnpm check:encoding` | OK; 244 archivos revisados, 0 mojibake |
-| Visual | capturas Playwright reales: escritorio 1280, móvil 390, tema claro — sin desbordamiento horizontal, contraste correcto en ambos temas |
+| Paso                                                                    | Resultado                                                                                                                             |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm typecheck`                                                        | OK; 7 de 8 proyectos del workspace, 0 errores                                                                                         |
+| `pnpm lint`                                                             | OK; 0 warnings / 0 errors                                                                                                             |
+| `pnpm test`                                                             | OK; 219/219 pruebas (13 dominio, 26 Aegis, 61 document-intelligence, 44 parser, 75 web)                                               |
+| `NEXUSTAX_NEXT_DIST_DIR=.next-build pnpm build`                         | OK; compilación y 7 rutas generadas                                                                                                   |
+| `pnpm --filter @nexus-tax/web test:e2e` (servidor aislado, puerto 3101) | OK; 4/4 escenarios Chromium, incluyendo OCR real (no mockeado)                                                                        |
+| `pnpm check:encoding`                                                   | OK; 244 archivos revisados, 0 mojibake                                                                                                |
+| Visual                                                                  | capturas Playwright reales: escritorio 1280, móvil 390, tema claro — sin desbordamiento horizontal, contraste correcto en ambos temas |
 
-**Siguiente paso exacto:** con aprobación explícita, evaluar si conviene un editor de zonas por
-arrastre antes o después de conectar un perfil activo a la extracción automática — ambos dependen del
-mismo overlay ya construido, y decidir el orden evita construir la UI de zonas dos veces.
+El estado vigente, la validación final y el siguiente paso se consolidan en la sección 20.
+
+## 20. Entrega: Fases F y G — operación, calidad y cierre de Sprint 2.2 (2026-08-02)
+
+### Fase F
+
+- `CaseTask` 2.2.0 agrega destino por documento, sesión, perfil y página. Se derivan tareas para OCR
+  recomendado, contradicción nativo/OCR, fallo recuperable y perfil en borrador; el laboratorio abre
+  directamente el destino exacto.
+- `DocumentExtractionSession.ocrOutcomes` conserva solo metadatos operacionales por página. Texto,
+  tokens e imagen siguen siendo efímeros.
+- Los fallos OCR ofrecen reintento, escala reducida y continuidad con texto nativo. Ninguna opción
+  se ejecuta automáticamente.
+- El manifiesto pasa a 2.2.0 con métricas agregadas de OCR, candidatos, perfiles vinculados y
+  feedback. Declara que no contiene binarios, texto completo, contraseñas ni imágenes renderizadas.
+
+### Fase G y quality gate visual
+
+- Editor de zonas por arrastre con coordenadas relativas 0–1 y alternativa de teclado para marcar la
+  página completa. Los perfiles tienen transiciones explícitas borrador→probado→activo→obsoleto.
+- Corpus sintético de representaciones textuales, escaneadas, híbridas, horizontales y de dos
+  columnas; E2E con PDF sin texto, OCR real, candidato manual, tarea por página, zona, tema oscuro/
+  claro y 390 px.
+- Se corrigió la lista nativa blanca de los cinco filtros de cobertura técnica mediante colores
+  semánticos globales para `<option>`/`<optgroup>`. La auditoría eliminó además tres colores fijos
+  fuera del estándar en drawer, acción primaria e indicador.
+- `spa.traineddata` queda fijado a commit y SHA-256. Se crean `OCR_SECURITY.md`,
+  `OCR_PERFORMANCE.md`, `DOCUMENT_LAB.md`, `DOCUMENT_PROFILES.md` y `EXTRACTION_FEEDBACK.md`.
+
+### Validación exacta
+
+| Paso                  | Resultado                                                                               |
+| --------------------- | --------------------------------------------------------------------------------------- |
+| `pnpm check:encoding` | OK; 252 archivos, una fixture excluida, sin mojibake                                    |
+| `pnpm typecheck`      | OK; 7 de 8 proyectos, 0 errores                                                         |
+| `pnpm lint`           | OK; 0 warnings / 0 errors                                                               |
+| `pnpm test`           | OK; 227/227 pruebas (14 dominio, 26 Aegis, 66 document-intelligence, 44 parser, 77 web) |
+| `pnpm build`          | OK; 7 rutas; verificación SHA-256 del modelo OCR correcta                               |
+| `pnpm test:e2e`       | OK; 4/4 escenarios Chromium; OCR real y flujo completo                                  |
+| Visual                | OK; capturas locales 1280/390, temas oscuro/claro y sin desbordamiento horizontal       |
+
+### Riesgos y siguiente paso
+
+- Los perfiles activos siguen siendo sugerencias: no aplican zonas ni crean candidatos
+  automáticamente. Esta frontera es deliberada para conservar revisión humana.
+- `DocumentLabPanel.tsx` concentra varias responsabilidades; la siguiente refactorización segura es
+  separarlo en diagnóstico, OCR, overlay, perfiles y candidato manual sin cambiar comportamiento.
+- Ampliar el corpus con más emisores sintéticos y medir por separado renderizado, carga de worker y
+  reconocimiento antes de ofrecer nuevas optimizaciones.

@@ -15,6 +15,9 @@ regenera localmente; la descarga del modelo de idioma requiere red **solo en
 tiempo de desarrollo/build**, nunca durante el procesamiento de un documento
 del usuario.
 
+El modelo está fijado a un commit de `tessdata_fast` y la preparación valida su SHA-256 antes de
+usar tanto una descarga nueva como un archivo ya existente; ver [seguridad del OCR](OCR_SECURITY.md).
+
 ## Cuándo se ejecuta
 
 Nunca automáticamente. `diagnosePdfDocument` (ver
@@ -43,6 +46,11 @@ página, desde el laboratorio documental integrado al expediente.
 - **Liberación**: `terminate()`/`dispose()` cierran el worker ante cualquier
   fallo o al terminar.
 
+Un resultado operacional acotado se conserva por página para tareas y métricas: completado,
+cancelado o fallido; comparación; confianza; código de error y fecha. Texto, tokens e imagen siguen
+siendo efímeros. Ante fallo, la interfaz permite reintentar, reducir la escala o continuar con texto
+nativo.
+
 ## Representación unificada y comparación
 
 `ocrTokensFromRaw`/`nativeTokensFromBlocks` (`document-intelligence`)
@@ -70,6 +78,5 @@ preprocesamiento solo afecta la imagen que se envía a Tesseract.
 - **Sin renderizado por lotes**: cada ejecución de OCR renderiza y procesa una
   página a la vez, por diseño (evita mantener muchas imágenes en memoria).
 
-La documentación específica de seguridad y mediciones de rendimiento queda
-pendiente para la Fase G. Mientras tanto, consulta [seguridad y privacidad](SECURITY_PRIVACY.md)
-y el [roadmap](ROADMAP.md).
+Consulta [seguridad del OCR](OCR_SECURITY.md), [rendimiento](OCR_PERFORMANCE.md),
+[laboratorio documental](DOCUMENT_LAB.md) y [seguridad general](SECURITY_PRIVACY.md).

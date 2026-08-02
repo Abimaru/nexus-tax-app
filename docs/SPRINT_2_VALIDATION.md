@@ -1,4 +1,4 @@
-# Validacion funcional del Sprint 2.0
+# Validación funcional del Sprint 2
 
 Guia reproducible con datos exclusivamente sinteticos. No uses archivos ni
 identificaciones tributarias reales.
@@ -48,6 +48,17 @@ anchos de pantalla.
 | Build                   | Next.js compiló y generó 5 páginas | OK     |
 | Playwright              | 2/2 escenarios en Chromium         | OK     |
 
+### Resultado observado de cierre Sprint 2.2 (2026-08-02)
+
+| Paso                    | Resultado observado                              | Estado |
+| ----------------------- | ------------------------------------------------ | ------ |
+| Codificación            | 252 archivos, una fixture excluida, sin mojibake | OK     |
+| Typecheck               | 7 de 8 proyectos del workspace                   | OK     |
+| Unitarias e integración | 227/227 pruebas                                  | OK     |
+| Lint                    | 0 errores y 0 advertencias                       | OK     |
+| Build                   | 7 rutas; modelo OCR fijado y SHA-256 correcto    | OK     |
+| Playwright              | 4/4 escenarios, OCR real, temas y responsive     | OK     |
+
 ## Matriz de validacion manual
 
 Usa `pnpm dev` y registra el resultado observado sin reemplazar el esperado.
@@ -80,9 +91,14 @@ Usa `pnpm dev` y registra el resultado observado sin reemplazar el esperado.
 | Versiones           | Reemplazar un documento                                            | La anterior queda reemplazada y la nueva aumenta version          | Por registrar       | Pendiente | Biblioteca           |
 | Hecho manual        | Crear y editar un hecho                                            | Metodo manual, autoria e historial persisten                      | Por registrar       | Pendiente | Vista Hechos         |
 | Conciliacion        | Elegir una sugerencia y confirmar                                  | Diferencia calculada; conciliado exige confirmacion humana        | Por registrar       | Pendiente | Vista Conciliaciones |
-| Exportacion         | Exportar el manifiesto                                             | Esquema 2.0.3, fuentes aceptadas e `includesBinaryData: false`    | Por registrar       | Pendiente | JSON local           |
+| Exportacion         | Exportar el manifiesto                                             | Esquema 2.2.0, métricas OCR y `includesBinaryData: false`         | Por registrar       | Pendiente | JSON local           |
 | Seguridad           | Buscar claves `password`, bytes o llamadas de red en el manifiesto | No hay contraseñas ni binarios exportados ni procesamiento remoto | Por registrar       | Pendiente | Revision JSON        |
 | Borrado integral    | Eliminar el expediente                                             | Se eliminan sus tablas y binarios locales                         | Por registrar       | Pendiente | IndexedDB vacio      |
+| Selectores por tema | Abrir los cinco filtros de cobertura en oscuro y claro             | Opciones con fondo y texto legibles según el tema                 | E2E automatizado    | OK        | document-lab.spec.ts |
+| OCR por página      | Ejecutar OCR y abrir la tarea derivada                             | Destino conserva documento y página; no ejecuta automático        | E2E + unitarias     | OK        | tareas 2.2           |
+| Recuperación OCR    | Simular fallo y elegir reintento ligero o texto nativo             | Acciones visibles; no se pierde evidencia                         | Unitarias/UI        | OK        | laboratorio          |
+| Zona de perfil      | Marcar página completa o arrastrar un rectángulo                   | Coordenadas 0-1; alternativa operable por teclado                 | E2E + unitarias     | OK        | overlay              |
+| Privacidad 2.2      | Revisar el manifiesto y buscar texto OCR, tokens e imágenes        | Solo métricas; las tres banderas de exclusión son `false`         | Unitarias           | OK        | manifiesto 2.2.0     |
 
 ## Cierre
 

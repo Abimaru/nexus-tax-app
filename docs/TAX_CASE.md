@@ -28,6 +28,6 @@ preparación de matriz, con una explicación de lo que falta.
 ## Privacidad
 
 Todo permanece en el navegador. El manifiesto JSON usa el esquema
-`nexustax.tax-case.manifest` versión `2.0.1` y declara
+`nexustax.tax-case.manifest` versión `2.2.0` y declara
 `includesBinaryData: false`. El borrado del expediente elimina sus tablas y
 binarios locales en una sola transacción.

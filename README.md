@@ -26,7 +26,7 @@ gestionar soportes no emitidos → exportar un manifiesto sin binarios. Interfaz
 con **tema claro y oscuro**.
 
 Un PDF escaneado o con texto insuficiente ya no se rechaza: se diagnostica y el
-analista decide si ejecuta OCR local (Tesseract.js vendorizado, sin red) sobre
+analista decide si ejecuta OCR local (Tesseract.js vendorizado, sin red durante el reconocimiento) sobre
 una página, varias o ninguna. El OCR nunca se ejecuta automáticamente ni
 alimenta la matriz directamente.
 
@@ -100,6 +100,11 @@ Detalles en `docs/SECURITY_PRIVACY.md`.
 - [Revisión de extracción](docs/DOCUMENT_EXTRACTION_REVIEW.md)
 - [Seguridad de extracción](docs/DOCUMENT_EXTRACTION_SECURITY.md)
 - [OCR local](docs/LOCAL_OCR.md)
+- [Seguridad del OCR](docs/OCR_SECURITY.md)
+- [Rendimiento del OCR](docs/OCR_PERFORMANCE.md)
+- [Laboratorio documental](docs/DOCUMENT_LAB.md)
+- [Perfiles documentales](docs/DOCUMENT_PROFILES.md)
+- [Feedback de extracción](docs/EXTRACTION_FEEDBACK.md)
 - [Contrato de enriquecimiento futuro](docs/AI_DOCUMENT_ENRICHMENT_CONTRACT.md)
 - [Fuentes aceptadas](docs/ACCEPTED_SOURCES.md)
 - [Aceptación de valores exógenos](docs/EXOGENOUS_VALUE_ACCEPTANCE.md)
@@ -124,7 +129,7 @@ preparación operativa. Consulta [cobertura de extracción](docs/DOCUMENT_EXTRAC
 [identidad](docs/ENTITY_IDENTITY_MODEL.md), [tareas](docs/CASE_TASKS.md) y
 [preparación](docs/DECLARATION_READINESS.md).
 
-## Sprint 2.2 (en curso) — laboratorio documental, OCR local y perfiles
+## Sprint 2.2 — laboratorio documental, OCR local y perfiles
 
 Script de codificación (`pnpm check:encoding`) para detectar mojibake. Diagnóstico de tipo de PDF
 (textual/escaneado/texto insuficiente/dañado) por documento y por página. OCR local bajo demanda con
@@ -132,6 +137,6 @@ Tesseract.js vendorizado (sin CDN, sin red durante el reconocimiento), contrato 
 nativo/OCR y comparación explícita entre ambas fuentes. **Laboratorio documental**: modo básico/
 avanzado, overlay de capas y candidatos manuales asistidos. **Perfiles documentales** reutilizables
 entre expedientes (por señales estructurales, nunca por nombre de archivo) y registro de feedback de
-calibración con el alcance que elige el analista. Faltan: tareas ligadas a página/OCR, métricas
-extendidas en el manifiesto, corpus sintético completo y documentación final de seguridad,
-rendimiento, laboratorio, perfiles y feedback (Fases F y G).
+calibración con el alcance que elige el analista. Las Fases F–G agregan tareas con destino exacto
+documento+página, recuperación de fallos, editor de zonas, ciclo de perfiles, métricas agregadas en
+el manifiesto 2.2.0, validación UX/UI y documentación final de seguridad y rendimiento.

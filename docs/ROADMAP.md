@@ -93,7 +93,7 @@ Siguiente evolución segura: ampliar adaptadores con nuevas variantes convertida
 sintéticos y calibrar detección de tablas por emisor. IA externa, backend, Formulario 210
 definitivo y conciliación irrevocable siguen fuera de alcance.
 
-## Sprint 2.2 (en curso) — laboratorio documental, OCR local y perfiles
+## Sprint 2.2 — laboratorio documental, OCR local y perfiles
 
 Implementado (Fases A-E): script de detección de mojibake; diagnóstico de tipo de PDF por documento
 y por página (textual/escaneado/texto insuficiente/dañado); OCR local bajo demanda con Tesseract.js
@@ -104,11 +104,13 @@ ruido); laboratorio documental con overlay de capas y candidatos manuales asisti
 documentales reutilizables por señales estructurales (nunca por nombre de archivo) y feedback de
 calibración con el alcance que elige el analista.
 
-Pendiente (Fases F y G, ver `docs/PROJECT_HANDOFF.md`): tareas del expediente ligadas a
-documento+página (`page requiere OCR`, candidato OCR contradictorio, perfil listo para probar);
-métricas de OCR y perfiles en el manifiesto de exportación; manejo de fallos con acciones de
-recuperación (reducir resolución, reintentar, continuar con texto nativo); editor de zonas por
-arrastre sobre el overlay ya construido; corpus sintético ampliado (documentos escaneados/híbridos/
-rotados/dos columnas reales, no solo PDFs de texto renderizados) y E2E de flujo completo; mediciones
-de rendimiento con hardware real. IA externa, backend obligatorio y Formulario 210 definitivo
-siguen fuera de alcance.
+Implementado (Fases F–G): tareas ligadas a documento+página (OCR sugerido, contradicción, fallo
+recuperable y perfil listo para probar); deep-link al laboratorio; métricas OCR/perfiles en el
+manifiesto 2.2.0; recuperación mediante reintento, menor resolución o texto nativo; editor de zonas
+por arrastre con alternativa de teclado; ciclo explícito borrador→probado→activo→obsoleto;
+fixtures sintéticos y E2E con OCR real, temas oscuro/claro, escritorio/móvil; documentación final y
+medición de referencia. IA externa, backend obligatorio y Formulario 210 definitivo siguen fuera
+de alcance.
+
+Siguiente evolución segura: ampliar el corpus visual con emisores sintéticos adicionales y conectar
+zonas de perfiles activos como **sugerencias** de candidatos, siempre con revisión humana.

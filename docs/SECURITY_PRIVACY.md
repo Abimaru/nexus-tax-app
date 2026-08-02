@@ -59,6 +59,8 @@ dedicada), sin telemetría y sin imágenes ni texto completo en logs. El
 resultado de OCR es efímero, igual que el texto nativo: no se persiste, solo
 las decisiones que el analista confirma. Detalle operativo en
 [`LOCAL_OCR.md`](LOCAL_OCR.md).
+La cadena de suministro, el modelo fijado y las exclusiones del manifiesto se detallan en
+[`OCR_SECURITY.md`](OCR_SECURITY.md).
 
 Los perfiles documentales y el feedback de calibración (`documentProfiles`,
 `extractionFeedback`) evitan persistir texto completo, pero pueden contener

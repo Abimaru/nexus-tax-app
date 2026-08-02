@@ -148,7 +148,9 @@ pnpm install · pnpm dev · pnpm build · pnpm lint · pnpm typecheck · pnpm te
 `TAX_RULES.md`, `CLASSIFICATION_RESOLUTION.md`, `RECONCILIATION.md`,
 `AEGIS_RULES.md`, `DOCUMENT_INTELLIGENCE.md`, `PDF_PROCESSING.md`,
 `DOCUMENT_ADAPTERS.md`, `DOCUMENT_EXTRACTION_REVIEW.md`, `UX_UI.md`,
-`SECURITY_PRIVACY.md`, `ROADMAP.md`, `LOCAL_OCR.md`,
+`SECURITY_PRIVACY.md`, `ROADMAP.md`, `LOCAL_OCR.md`, `OCR_SECURITY.md`,
+`OCR_PERFORMANCE.md`, `DOCUMENT_LAB.md`, `DOCUMENT_PROFILES.md`,
+`EXTRACTION_FEEDBACK.md`,
 `PROJECT_HANDOFF.md`.
 Convenciones de cambios: `COMMIT_CONVENTIONS.md`. Validacion reproducible:
 `SPRINT_2_VALIDATION.md`.

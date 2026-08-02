@@ -181,3 +181,14 @@ no llevan `caseId`. `computeDocumentProfileSignals`/`matchDocumentProfiles` (pur
 `document-intelligence`) comparan dimensiones, número de páginas, secciones y encabezado con pesos
 fijos y explicables; nunca asocian solo por nombre de archivo. Activar, probar u obsoletar un perfil
 es siempre una acción aparte y explícita del analista, nunca automática.
+
+## Sprint 2.2 (Fases F-G): operación y cierre
+
+Las tareas del expediente se extienden con documento, sesión, perfil y página; siguen derivándose
+en `taxCaseAnalysis.ts` y persistiéndose mediante sincronización idempotente. El laboratorio registra
+por página solamente el resultado operacional del OCR, nunca texto ni píxeles. Los fallos ofrecen
+recuperación explícita y generan tareas navegables.
+
+El editor de zonas convierte coordenadas de puntero a rectángulos relativos mediante una función
+pura y testeada. El manifiesto 2.2.0 calcula métricas agregadas desde la sesión más reciente de cada
+documento y no exporta el catálogo global de perfiles/feedback.
