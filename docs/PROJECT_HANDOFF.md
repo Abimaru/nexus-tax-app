@@ -723,3 +723,72 @@ candidatos.
 
 **Siguiente paso exacto:** validar documentos reales únicamente en el navegador del usuario y
 convertir cualquier nueva variante observada en un fixture sintético antes de modificar reglas.
+
+## 18. Diseño previo — Sprint 2.2: laboratorio documental, OCR local y calibración (2026-08-02)
+
+### Por qué existe esta sección
+
+AGENTS.md exige no avanzar hacia OCR sin diseñarlo y validarlo antes. Esta entrada es ese diseño:
+se escribió y se acordó con el propietario del proyecto antes de tocar código, sobre la rama
+`feature/sprint-2.2-document-lab-ocr` creada desde `main` (limpio, con Sprint 2.1.1 ya integrado).
+
+### Estado real encontrado (evita repetir trabajo)
+
+- Ya existe modelo geométrico completo (bloques, líneas, columnas, secciones, tablas simples) desde
+  2.1.1 en `packages/document-intelligence/src/structure.ts` y `contracts.ts`. El diagnóstico por
+  página de este sprint se **extiende** sobre ese modelo, no lo reemplaza.
+- `DocumentPageRepresentation.readConfidence` ya distingue `high/low/insufficient`, pero el valor
+  `medium` está declarado en el tipo y nunca se asignaba en `reader.ts`; el diagnóstico de tipo de
+  PDF debe corregir ese hueco.
+- La extracción posicional "por producto" (Sprint 2.1.1, adaptador financiero 1.1.0) ya reconstruye
+  columnas por coordenadas x/y; el futuro laboratorio de zonas se apoyará en esa heurística existente.
+- `CaseTask` no tiene campo de página; las tareas del tipo "página requiere OCR" necesitarán una
+  migración de esquema, no solo una regla nueva.
+- Los adaptadores comparten una única constante de versión y `selectAdapter` no usa
+  `activationSignals`; "perfil documental" (fases futuras) es un concepto nuevo, no una extensión
+  del adaptador actual.
+- No existe hoy worker para PDF (el análisis corre en el hilo principal); solo el parser de exógena
+  usa Web Worker (`apps/web/src/workers/parser.worker.ts`), que sirve de patrón a replicar.
+- `DocumentExtractionSessionSchema.textPersisted` es `z.literal(false)`: OCR y laboratorio deben
+  seguir sin persistir texto completo.
+
+### Decisión técnica: OCR
+
+**Tesseract.js** (Apache-2.0), vendorizado localmente sin CDN igual que `pdfjs-dist` (assets en
+`apps/web/public/vendor/tesseract`, copiados en `predev`/`prebuild`), con `spa.traineddata` variante
+"fast" (~2.2 MB) como opción por defecto; una variante de mayor calidad queda para una fase futura y
+solo bajo pedido explícito del usuario, nunca descarga automática. El motor de OCR se orquesta desde
+`apps/web` (worker de aplicación); `packages/document-intelligence` se mantiene puro y solo define el
+contrato unificado de tokens y las funciones de comparación nativo/OCR — nunca instancia un Worker ni
+toca el DOM.
+
+### Alcance de este bloque (Fases A, B y C)
+
+El pedido completo (34 secciones: diagnóstico, OCR, laboratorio visual, perfiles documentales,
+feedback de calibración, tareas, métricas, exportación, corpus sintético, E2E) excede un solo bloque
+de trabajo razonable. Se ejecuta en fases dentro de la misma rama, cada una con su propio commit y
+validación (`pnpm typecheck/lint/test/build`):
+
+- **Fase A** — Corrección de codificación: script `check:encoding` (detecta mojibake en
+  ts/tsx/js/json/md/yml) y auditoría real del repo.
+- **Fase B** — Diagnóstico de tipo de PDF y de página (textual/escaneado/híbrido/protegido/dañado),
+  usando y corrigiendo `readConfidence`, expuesto en `DocumentExtractionSession` (migración Dexie).
+- **Fase C** — OCR local bajo demanda: Tesseract.js vendorizado, worker con progreso/cancelación/
+  watchdog, contrato unificado texto nativo/OCR, comparación de fuentes, preprocesamiento de imagen,
+  auditoría de cero solicitudes de red.
+
+Fases D (laboratorio documental visual), E (perfiles y calibración), F (tareas/métricas/exportación/
+fallos) y G (corpus sintético completo, E2E de 14 pasos, rendimiento, documentación final) quedan
+para bloques posteriores, documentadas en la conversación de diseño pero no implementadas aún.
+
+### Riesgos identificados antes de implementar
+
+- Tesseract.js no reduce automáticamente el tamaño de imagen antes de procesarla y su heap WASM solo
+  crece (nunca decrece) durante la vida del worker; hay que limitar resolución y recrear el worker
+  entre documentos grandes, especialmente en móvil.
+- Cualquier variante de mayor calidad del modelo de español pesa ~13 MB; no debe descargarse nunca
+  automáticamente ni desde un CDN en tiempo de ejecución.
+- La migración Dexie debe ser aditiva (no romper sesiones de extracción ya persistidas de 2.1.1).
+
+**Siguiente paso exacto tras cerrar A-C:** ejecutar validación completa, actualizar esta entrada con
+resultados exactos y, con aprobación explícita, continuar con la Fase D (laboratorio documental).
