@@ -445,3 +445,61 @@ solo con `typecheck` y `lint`.
 
 Rediseño del `UploadPanel` (cargues) con estados animados, alineado con la
 biblioteca documental.
+
+## 13. Entrega: Sprint 2.0.3 — fuentes aceptadas y consistencia UX (2026-08-01)
+
+### Estado recibido
+
+Antes de este sprint, Claude había corregido la navegación RSC, establecido el
+modo oscuro predeterminado y rediseñado Documentos, Requisitos, Hechos y el
+grupo laboral. Esos cambios se conservaron. Quedaban enums visibles, dos
+dropzones duplicados, un input PDF aislado y ningún contrato para aceptar
+provisionalmente un valor exógeno o justificar un soporte no emitido.
+
+### Implementación
+
+- Dominio 0.5.0: fuentes de información, aceptación exógena, diez estados,
+  motivos, reconocimiento de ganancias ocasionales, gestión de requisito no
+  emitido e historiales.
+- Dexie v7 agrega `acceptedSources` y `requirementSourceDecisions` sin cambiar
+  claves ni valores existentes. El manifiesto 2.0.3 exporta valor original,
+  provisional, motivo, regla, requisito, reemplazo e historial; no exporta
+  binarios.
+- Aceptación disponible desde Requisitos, Hechos, Conciliaciones, Matriz y
+  Hallazgos. “Otro motivo” y “cobrado para un tercero” exigen explicación.
+- Flujo de premio propio, operación no reconocida y cobro para tercero. Nunca
+  calcula impuesto, presume base gravable ni excluye automáticamente.
+- Una conciliación humana con un hecho respaldado por documento marca la fuente
+  como respaldada, contradicha o no comparable y conserva el historial.
+- La aceptación anota el registro ya presente: no crea otro hecho sumable ni
+  cambia la matriz, evitando doble conteo.
+- Catálogos en español para relaciones, coberturas, métodos, revisiones,
+  conciliaciones, fuentes, decisiones, entidades, documentos y estados. Se
+  corrigieron `active`, estados con guion bajo, categorías de entidad, métodos,
+  revisiones, conciliaciones y códigos técnicos visibles.
+- `FileDropzone` unifica exógena, biblioteca y PDF de requisito con clic,
+  teclado, drag/drop, selección, reemplazo, quitar, formato, tamaño, privacidad,
+  error, deshabilitado y progreso.
+- Quality gate y microcopy obligatorios para Claude y Codex.
+
+### Validaciones exactas
+
+| Paso                  | Comando                                             | Resultado                        |
+| --------------------- | --------------------------------------------------- | -------------------------------- |
+| Typecheck             | `pnpm typecheck`                                    | OK; 6 proyectos                  |
+| Unitarias/integración | `pnpm test`                                         | OK; 133/133 pruebas              |
+| Lint                  | `pnpm lint`                                         | OK; 0 warnings / 0 errors        |
+| Producción            | `pnpm build`                                        | OK; 5 páginas generadas          |
+| E2E                   | `pnpm test:e2e -- apps/web/tests-e2e/smoke.spec.ts` | OK; 2/2 Chromium                 |
+| Visual                | capturas Playwright locales                         | OK; oscuro 1440/390 y claro 1440 |
+
+### Riesgos, pendientes y siguiente paso
+
+La coincidencia con un documento posterior depende de hechos digitados y de una
+confirmación humana; no se interpreta el PDF. El alias de un tercero es opcional
+y deliberadamente no exige identificación sensible. Las fuentes futuras
+asistidas permanecen deshabilitadas.
+
+Siguiente paso: validar manualmente con fixtures sintéticos un valor igual, uno
+contradictorio y uno no comparable; revisar la exportación 2.0.3 y después
+diseñar, sin OCR todavía, un editor N:M de fuentes y documentos.

@@ -38,6 +38,11 @@ progresión y siguiente acción deterministas, modo manual explícito, resumen d
 fuente con SHA-256, persistencia de navegación y stepper responsive accesible.
 Formulario 210 e historial se muestran únicamente como capacidades futuras.
 
+**Sprint 2.0.3.** Catálogos de presentación en español, fuente exógena aceptada
+provisionalmente con historial, requisito no emitido, flujo prudente de premios,
+respaldo/contradicción por documento posterior, Dexie v7, manifiesto 2.0.3 y
+dropzone compartido con quality gate visual obligatorio.
+
 **Experiencia.** Interfaz con **tema claro y oscuro** conmutable, tokens de color
 semánticos, filtros y detalle de Registros reorganizados, accesibilidad y
 `prefers-reduced-motion`.

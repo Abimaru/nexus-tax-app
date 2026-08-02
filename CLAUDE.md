@@ -84,6 +84,13 @@ reglas: **Aegis Engine** (`packages/aegis-rules`).
   `globals.css`. **No** uses `text-slate-*`, `bg-white/x` ni `border-white/x`
   fijos: rompen el modo claro. Acentos de marca (cian/azul/violeta) se conservan.
 - Respetar `prefers-reduced-motion` en toda animación.
+- **Presentación humana:** los enums permanecen estables en el dominio, pero la
+  interfaz siempre usa catálogos en español. Un valor desconocido muestra
+  “Estado no reconocido” y genera un hallazgo técnico; nunca se interpola crudo.
+- Antes de cerrar una pantalla aplica `docs/UX_QUALITY_GATE.md`: inspecciona el
+  lenguaje visual existente, reutiliza patrones, valida teclado y responsive con
+  Playwright y conserva capturas sintéticas locales de escritorio y móvil. Una
+  pantalla no está terminada solo porque compile.
 
 ## Flujo de trabajo esperado
 

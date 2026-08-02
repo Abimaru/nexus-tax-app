@@ -15,3 +15,11 @@ relevante, no comparable, otro producto y dato exógeno cuestionado.
 
 Cada decisión conserva valores, diferencia absoluta y porcentual, producto,
 explicación, decisión del analista, fuentes enlazadas y marcas de tiempo.
+
+## Aceptación exógena y documento posterior
+
+Si un registro fue aceptado provisionalmente, una conciliación humana posterior
+actualiza su estado: respaldado cuando el valor coincide, contradicho cuando
+difiere o no comparable. La aceptación y su historial permanecen. El documento
+no agrega de nuevo el valor a la matriz: solo cambia evidencia, confianza y
+estado de la fuente.

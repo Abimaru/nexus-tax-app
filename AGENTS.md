@@ -59,7 +59,13 @@ el cálculo puro (matriz/resoluciones); React solo presenta.
 4. **Tema claro/oscuro.** Usa tokens semánticos de Tailwind (`surface`,
    `overlay`, `content`, `tone-*`); **nunca** `text-slate-*`, `bg-white/x` ni
    `border-white/x` fijos (rompen el modo claro). Respeta `prefers-reduced-motion`.
-5. **Verifica y reporta resultados exactos**:
+5. **Quality gate visual.** Antes de cerrar una pantalla aplica
+   `docs/UX_QUALITY_GATE.md`, revísala con Playwright y capturas sintéticas en
+   escritorio y móvil. Inspecciona primero las pantallas existentes y reutiliza
+   el lenguaje visual de NexusTax. Prefiere composición, jerarquía y componentes
+   compartidos frente a formularios planos o listas técnicas. Nunca muestres un
+   enum interno directamente.
+6. **Verifica y reporta resultados exactos**:
    ```bash
    pnpm install
    pnpm typecheck
@@ -70,7 +76,7 @@ el cálculo puro (matriz/resoluciones); React solo presenta.
    Si cambiaste `tailwind.config.ts`, **reinicia `pnpm dev`** (no hay recarga en
    caliente de la config TS). Para procesos largos, emite señales de actividad y
    aplica timeouts controlados.
-6. **Documenta.** Actualiza `docs/PROJECT_HANDOFF.md` (estado, decisiones,
+7. **Documenta.** Actualiza `docs/PROJECT_HANDOFF.md` (estado, decisiones,
    pendientes, siguiente paso, riesgos) al cerrar tu tarea.
 
 ## Commits

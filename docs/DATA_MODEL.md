@@ -111,19 +111,22 @@ humana; no equivale a asesoría o determinación administrativa.
 
 ## Persistencia (IndexedDB / Dexie)
 
-| Tabla              | Clave        | Contenido                                    |
-| ------------------ | ------------ | -------------------------------------------- |
-| `cases`            | `id`         | `TaxCase`                                    |
-| `documents`        | `id`         | `UploadedDocument` (metadatos)               |
-| `results`          | `caseId`     | `{ caseId, result, updatedAt }`              |
-| `filingInputs`     | `caseId`     | Respuesta local de responsabilidad de IVA    |
-| `analyses`         | `caseId`     | Relaciones, resoluciones y matriz versionada |
-| `documentBlobs`    | `documentId` | Bytes locales opcionales, nunca exportados   |
-| `products`         | `id`         | Productos asociados o por identificar        |
-| `coverages`        | `id`         | Relación requisito-documento-hecho-entidad   |
-| `facts`            | `id`         | Hechos documentales normalizados e historial |
-| `reconciliations`  | `id`         | Asociaciones documentales con exógena        |
-| `employmentGroups` | `id`         | Grupo laboral e instancias por empleador     |
+| Tabla                        | Clave        | Contenido                                    |
+| ---------------------------- | ------------ | -------------------------------------------- |
+| `cases`                      | `id`         | `TaxCase`                                    |
+| `documents`                  | `id`         | `UploadedDocument` (metadatos)               |
+| `results`                    | `caseId`     | `{ caseId, result, updatedAt }`              |
+| `filingInputs`               | `caseId`     | Respuesta local de responsabilidad de IVA    |
+| `analyses`                   | `caseId`     | Relaciones, resoluciones y matriz versionada |
+| `documentBlobs`              | `documentId` | Bytes locales opcionales, nunca exportados   |
+| `products`                   | `id`         | Productos asociados o por identificar        |
+| `coverages`                  | `id`         | Relación requisito-documento-hecho-entidad   |
+| `facts`                      | `id`         | Hechos documentales normalizados e historial |
+| `reconciliations`            | `id`         | Asociaciones documentales con exógena        |
+| `employmentGroups`           | `id`         | Grupo laboral e instancias por empleador     |
+| `navigationStates`           | `caseId`     | Última etapa, vista y modo manual            |
+| `acceptedSources`            | `id`         | Aceptaciones exógenas, estado e historial    |
+| `requirementSourceDecisions` | `id`         | Gestión de requisitos no emitidos            |
 
 Los binarios solo se persisten cuando el usuario elige `store_locally`; la
 opción predeterminada conserva metadatos. La contraseña nunca forma parte del
@@ -172,3 +175,15 @@ La detección deduplica primero por identificación de entidad y luego por nombr
 normalizado; una coincidencia manual confirmada queda persistida. Solo las
 instancias activas participan en el progreso. El manifiesto 2.0.1 exporta el
 grupo y sus relaciones, nunca los binarios.
+
+## Fuentes aceptadas Sprint 2.0.3
+
+`AcceptedExogenousValue` conserva el registro exógeno inmutable, valor original
+y provisional, fuente primaria/secundarias, método, confianza, motivo,
+observación, estado, requisito, decisión sobre matriz, documento posterior,
+reconocimiento de ganancia ocasional, regla, autoría e historial.
+
+`RequirementSourceDecision` registra que un requisito relevante no fue emitido:
+motivo, gestión, canal, evidencia y resultado. No reutiliza `not_applicable`.
+Dexie v7 agrega ambas tablas de forma aditiva. El manifiesto 2.0.3 exporta las
+decisiones y nunca los binarios.

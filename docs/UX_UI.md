@@ -29,8 +29,7 @@ El color es **semántico y tema-consciente** mediante variables CSS en
 `bg-white/x` ni `border-white/x` fijos: rompen el modo claro.
 
 - **`ThemeProvider`** (`components/theme/ThemeProvider.tsx`) fija `data-theme` en
-  `<html>`, persiste la elección en `localStorage` y respeta
-  `prefers-color-scheme` la primera vez.
+  `<html>`, abre en oscuro por defecto y persiste la elección en `localStorage`.
 - Un **script inline anti-parpadeo** aplica el tema antes de pintar (sin FOUC).
 - **`ThemeToggle`** (sol/luna) vive en la cabecera; es accesible y evita
   desajustes de hidratación.
@@ -47,6 +46,8 @@ extensos, tablas ilegibles y apariencia genérica de dashboard administrativo.
 - Estados de carga claros: **skeletons** y **progreso por fases** (no spinners
   infinitos).
 - **Drag and drop** para cargar archivos.
+- **`FileDropzone` compartido** para exógena, documentos, evidencia y archivos
+  opcionales: clic, teclado, arrastre, formato, tamaño, error, reemplazo y carga.
 - **Empty states orientativos** (explican qué hacer).
 - **Mensajes de error accionables**.
 - **Puntos de estado de color** (además de texto) para identidad/resolución.
@@ -98,6 +99,18 @@ horizontalmente una barra de pestañas.
 - Estados **no dependientes solo del color** (iconos + texto + puntos de estado).
 - Gráficas con **alternativa textual** (tabla desplegable / desglose numérico).
 - Contraste suficiente en **ambos temas** (claro y oscuro).
+
+## Localización y quality gate
+
+Los identificadores internos pueden permanecer en inglés para estabilidad, pero
+la interfaz usa catálogos en español con etiqueta y descripción. Nunca interpola
+un enum. Un valor desconocido muestra “Estado no reconocido” y produce un
+hallazgo técnico sin exponer el identificador crudo.
+
+Toda pantalla nueva o modificada debe superar
+[`UX_QUALITY_GATE.md`](UX_QUALITY_GATE.md), incluida revisión Playwright y
+capturas sintéticas localmente en escritorio y móvil. El tono y las decisiones
+de texto siguen [`MICROCOPY_GUIDE.md`](MICROCOPY_GUIDE.md).
 
 ## Componentes compartidos (`packages/ui`)
 

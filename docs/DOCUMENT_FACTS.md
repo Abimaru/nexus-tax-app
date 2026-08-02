@@ -15,3 +15,14 @@ automática. Crear o modificar un hecho añade un evento al historial.
 Una contraseña de documento no pertenece a este contrato ni al de documento.
 Solo se conserva la bandera `requiresPassword`; la contraseña permanece fuera
 de IndexedDB y del manifiesto.
+
+## Fuente y presentación
+
+El método de captura no sustituye la fuente. Una aceptación exógena usa
+`analyst_resolution` como método de decisión y `exogenous_information` como
+fuente primaria. Los catálogos visuales traducen método, revisión, relación,
+categoría, naturaleza y tratamiento; los enums nunca se interpolan.
+
+La acción provisional anota el registro exógeno existente y no crea un segundo
+hecho sumable. Los hechos documentales posteriores se enlazan mediante la
+conciliación preliminar.

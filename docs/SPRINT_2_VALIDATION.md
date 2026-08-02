@@ -32,7 +32,7 @@ anchos de pantalla.
 | Paso                    | Resultado observado                | Estado |
 | ----------------------- | ---------------------------------- | ------ |
 | Typecheck               | 6 proyectos verificados            | OK     |
-| Unitarias e integración | 122/122 pruebas                    | OK     |
+| Unitarias e integración | 133/133 pruebas                    | OK     |
 | Lint                    | 0 errores y 0 advertencias         | OK     |
 | Build                   | Next.js compiló y generó 5 páginas | OK     |
 | Playwright              | 2/2 escenarios en Chromium         | OK     |
@@ -48,6 +48,13 @@ Usa `pnpm dev` y registra el resultado observado sin reemplazar el esperado.
 | Modo manual         | Crear expediente sin Excel y confirmar el modo manual              | Habilita Documentos y Hechos, no matriz ni declaracion derivada   | Por registrar       | Pendiente | Captura local        |
 | Fuente              | Procesar, revisar SHA-256 e intentar reemplazar y eliminar         | Ambas acciones explican invalidaciones y piden confirmacion       | Por registrar       | Pendiente | Vista Fuente         |
 | Responsive          | Revisar 1440, 1280, 1024, 768 y 390 px                             | No existe scroll horizontal; controles siguen accesibles          | Por registrar       | Pendiente | Capturas             |
+| Etiquetas humanas   | Recorrer hechos, documentos, matriz, hallazgos y conciliaciones    | No aparecen enums internos ni inglés técnico                      | Por registrar       | Pendiente | Capturas             |
+| Fuente provisional  | Aceptar un valor exógeno con motivo y recargar                     | Estado, motivo, evidencia e historial persisten                   | Por registrar       | Pendiente | Manifiesto 2.0.3     |
+| Soporte no emitido  | Registrar gestión, canal y resultado en un requisito               | No se marca No aplica; deja de ser pendiente ordinario            | Por registrar       | Pendiente | Vista Requisitos     |
+| Premio propio       | Reconocer el premio sintético sin certificado                      | Candidato provisional; no calcula impuesto                        | Por registrar       | Pendiente | Hallazgos y matriz   |
+| Premio de tercero   | Indicar cobro para tercero con alias y explicación                 | No se excluye; queda pendiente de revisión                        | Por registrar       | Pendiente | Hallazgo             |
+| Documento posterior | Conciliar valor igual y luego uno diferente                        | Respalda o contradice; conserva historial y no duplica            | Por registrar       | Pendiente | Manifiesto           |
+| Dropzone            | Probar clic, teclado, arrastre, formato inválido y quitar          | Mismo patrón y mensajes humanos en todas las cargas               | Por registrar       | Pendiente | Capturas             |
 | Exogena y matriz    | Cargar la muestra, confirmar secciones y procesar                  | Registros, topes, entidades y matriz son coherentes               | Por registrar       | Pendiente | Manifiesto           |
 | Grupo laboral       | Abrir Requisitos con una entidad laboral                           | Una instancia detectada, sin tarjeta 220 duplicada                | Por registrar       | Pendiente | Captura local        |
 | Varios empleadores  | Agregar segunda instancia y recargar                               | Solo las instancias creadas persisten; maximo tres                | Por registrar       | Pendiente | Captura local        |
@@ -62,7 +69,7 @@ Usa `pnpm dev` y registra el resultado observado sin reemplazar el esperado.
 | Versiones           | Reemplazar un documento                                            | La anterior queda reemplazada y la nueva aumenta version          | Por registrar       | Pendiente | Biblioteca           |
 | Hecho manual        | Crear y editar un hecho                                            | Metodo manual, autoria e historial persisten                      | Por registrar       | Pendiente | Vista Hechos         |
 | Conciliacion        | Elegir una sugerencia y confirmar                                  | Diferencia calculada; conciliado exige confirmacion humana        | Por registrar       | Pendiente | Vista Conciliaciones |
-| Exportacion         | Exportar el manifiesto                                             | Esquema 2.0.2, flujo, grupo laboral y `includesBinaryData: false` | Por registrar       | Pendiente | JSON local           |
+| Exportacion         | Exportar el manifiesto                                             | Esquema 2.0.3, fuentes aceptadas e `includesBinaryData: false`    | Por registrar       | Pendiente | JSON local           |
 | Seguridad           | Buscar claves `password`, bytes o llamadas de red en el manifiesto | No hay contraseñas ni binarios exportados ni procesamiento remoto | Por registrar       | Pendiente | Revision JSON        |
 | Borrado integral    | Eliminar el expediente                                             | Se eliminan sus tablas y binarios locales                         | Por registrar       | Pendiente | IndexedDB vacio      |
 

@@ -18,8 +18,9 @@ Conciliación, Declaración y Exportación** → cargar Excel de exógena → in
 **resolver** decisiones (con historial) → evaluar de forma orientativa la
 **obligación de declarar** AG 2025 → biblioteca y cobertura documental → hechos
 manuales → conciliación documental confirmada por el analista → guardar en
-IndexedDB → exportar un manifiesto sin binarios. Interfaz con **tema claro y
-oscuro**.
+IndexedDB → aceptar provisionalmente valores exógenos con trazabilidad →
+gestionar soportes no emitidos → exportar un manifiesto sin binarios. Interfaz
+con **tema claro y oscuro**.
 
 Fuera de alcance (por ahora): backend, IA, autenticación, extracción avanzada
 de PDFs, OCR, liquidación del impuesto e integración en línea con la DIAN. Un
@@ -84,7 +85,11 @@ Detalles en `docs/SECURITY_PRIVACY.md`.
 - [Navegación por etapas](docs/NAVIGATION_STAGES.md)
 - [Cobertura documental](docs/DOCUMENT_COVERAGE.md)
 - [Hechos documentales](docs/DOCUMENT_FACTS.md)
+- [Fuentes aceptadas](docs/ACCEPTED_SOURCES.md)
+- [Aceptación de valores exógenos](docs/EXOGENOUS_VALUE_ACCEPTANCE.md)
 - [Conciliación documental](docs/PRELIMINARY_RECONCILIATION.md)
+- [Quality gate visual](docs/UX_QUALITY_GATE.md)
+- [Guía de microcopy](docs/MICROCOPY_GUIDE.md)
 - [Validación funcional del Sprint 2](docs/SPRINT_2_VALIDATION.md)
 - [Convenciones de commits](docs/COMMIT_CONVENTIONS.md)
 - [Reglas Aegis](docs/AEGIS_RULES.md)

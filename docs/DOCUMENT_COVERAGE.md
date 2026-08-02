@@ -37,3 +37,15 @@ La cobertura del grupo es `covered` cuando todas las instancias activas están
 cubiertas, `partial` cuando hay mezcla de cobertura y pendientes, `pending`
 cuando todas siguen pendientes y `requires_review` si existe una inconsistencia.
 Las instancias no creadas o marcadas `not_applicable` no reducen el avance.
+
+## Soporte no emitido
+
+“La entidad no emite este soporte” no significa “No aplica”. La gestión conserva
+motivo, fecha, canal, observación y evidencia opcional. El requisito deja de ser
+un pendiente ordinario y queda cubierto por fuente alternativa, pendiente de
+soporte, en revisión o no disponible justificado. Una aceptación exógena puede
+vincularse como fuente alternativa sin fingir que existe un documento.
+
+Las relaciones se presentan como Cubre completamente, Cubre parcialmente,
+Aporta evidencia, Contradice la información o Requiere soporte adicional, cada
+una con ayuda contextual. Los valores persistidos no cambiaron.
