@@ -216,8 +216,9 @@ export function DocumentLabPanel({
             <div>
               <h2 className="text-lg font-semibold text-content-strong">Laboratorio documental</h2>
               <p className="mt-0.5 text-sm text-content-muted">
-                Inspecciona cada página, ejecuta OCR local bajo demanda y crea candidatos manuales
-                asistidos. Nada de esto alimenta la matriz por sí solo.
+                Inspecciona cada página del PDF, ejecuta OCR local bajo demanda y propone
+                candidatos de hechos que <span className="font-medium">solo alimentan la matriz</span>{' '}
+                si tú los confirmas. Aquí no se toma ninguna decisión automática.
               </p>
             </div>
           </div>
@@ -236,6 +237,51 @@ export function DocumentLabPanel({
             </select>
           </label>
         </div>
+
+        {/* Onboarding: 3 pasos guía para que se entienda el flujo del laboratorio. */}
+        <ol className="mt-5 grid gap-3 sm:grid-cols-3">
+          <li className="rounded-xl border border-overlay/10 bg-overlay/[0.02] p-3">
+            <div className="flex items-center gap-2 text-tone-cyan">
+              <span className="grid h-6 w-6 place-items-center rounded-full border border-accent-cyan/30 text-xs font-semibold">
+                1
+              </span>
+              <ScanText className="h-4 w-4" aria-hidden />
+              <span className="text-xs font-semibold uppercase tracking-wide">Diagnóstico</span>
+            </div>
+            <p className="mt-2 text-xs text-content-muted">
+              Revisa qué páginas son textuales, escaneadas o dañadas. Ejecuta OCR local solo cuando
+              haga falta.
+            </p>
+          </li>
+          <li className="rounded-xl border border-overlay/10 bg-overlay/[0.02] p-3">
+            <div className="flex items-center gap-2 text-tone-violet">
+              <span className="grid h-6 w-6 place-items-center rounded-full border border-accent-violet/30 text-xs font-semibold">
+                2
+              </span>
+              <Layers className="h-4 w-4" aria-hidden />
+              <span className="text-xs font-semibold uppercase tracking-wide">Revisar tokens</span>
+            </div>
+            <p className="mt-2 text-xs text-content-muted">
+              Contrasta el texto nativo con el OCR y con los candidatos. Nunca se fusionan
+              automáticamente: aquí sale a la luz cualquier contradicción.
+            </p>
+          </li>
+          <li className="rounded-xl border border-overlay/10 bg-overlay/[0.02] p-3">
+            <div className="flex items-center gap-2 text-tone-emerald">
+              <span className="grid h-6 w-6 place-items-center rounded-full border border-emerald-500/30 text-xs font-semibold">
+                3
+              </span>
+              <Sparkles className="h-4 w-4" aria-hidden />
+              <span className="text-xs font-semibold uppercase tracking-wide">
+                Confirmar candidatos
+              </span>
+            </div>
+            <p className="mt-2 text-xs text-content-muted">
+              Cada valor propuesto pasa por revisión humana. Solo tras confirmar se crea un hecho{' '}
+              <code className="rounded bg-overlay/10 px-1">assisted</code> visible para conciliación.
+            </p>
+          </li>
+        </ol>
       </GlassPanel>
 
       <DocumentLabWorkspace
