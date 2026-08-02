@@ -106,12 +106,37 @@ export async function readPdfText(
             },
           ];
         });
-        const normalizedText = normalizeDocumentText(blocks.map((block) => block.text).join('\n'));
-        const structure = buildPageStructure(blocks, limits.verticalLineTolerance);
+        // pdfjs devuelve los items en el orden interno del stream, que no siempre
+        // coincide con el orden de lectura visual. Ordenamos por posición: primero
+        // por línea (y descendente porque el eje Y crece hacia arriba en PDF) con
+        // una tolerancia para agrupar la misma fila, y luego por columna (x asc).
+        // Los adapters siguen apoyándose en `index`, que se preserva intacto.
+        const tolerance = Math.max(1, limits.verticalLineTolerance);
+        const orderedBlocks = [...blocks].sort((a, b) => {
+          if (Math.abs(a.y - b.y) > tolerance) return b.y - a.y;
+          return a.x - b.x;
+        });
+        // Reconstruye el texto insertando saltos de línea al cambiar de fila
+        // (usando la misma tolerancia) para mantener la separación semántica.
+        const lineTexts: string[] = [];
+        let currentLine: string[] = [];
+        let currentY: number | null = null;
+        for (const block of orderedBlocks) {
+          if (currentY === null || Math.abs(block.y - currentY) <= tolerance) {
+            currentLine.push(block.text);
+          } else {
+            if (currentLine.length) lineTexts.push(currentLine.join(' '));
+            currentLine = [block.text];
+          }
+          currentY = block.y;
+        }
+        if (currentLine.length) lineTexts.push(currentLine.join(' '));
+        const normalizedText = normalizeDocumentText(lineTexts.join('\n'));
+        const structure = buildPageStructure(orderedBlocks, limits.verticalLineTolerance);
         pages.push({
           pageNumber,
           normalizedText,
-          blocks,
+          blocks: orderedBlocks,
           ...structure,
           width: viewport.width,
           height: viewport.height,
