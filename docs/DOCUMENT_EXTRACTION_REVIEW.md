@@ -22,10 +22,19 @@ Cada tarjeta distingue:
 - entidad, producto, requisito y registro exógeno relacionados;
 - observación y confianza expresada en palabras.
 
-Las acciones son confirmar y crear hecho, solo informativo, duplicado, rechazar
-y restaurar propuesta. Una corrección de categoría o superior al 5 % exige
-observación. Confirmar crea un `DocumentFact` `assisted`; rechazar o clasificar
-como informativo no afecta la matriz.
+Las acciones son confirmar y crear hecho, solo informativo, duplicado y
+rechazar. Al descartar una propuesta, desaparece inmediatamente de la revisión
+activa. La sección plegable **Ver descartados** conserva la trazabilidad y
+permite restaurarla; los candidatos obsoletos de una ejecución anterior son de
+solo lectura. Una corrección de categoría o superior al 5 % exige observación.
+Confirmar crea un `DocumentFact` `assisted`; rechazar o clasificar como
+informativo no afecta la matriz.
+
+Cada nueva carga genera su propia sesión y muestra únicamente los candidatos de
+ese documento. Si el extractor reconoce filas o secciones de producto, la
+cabecera enumera **Productos detectados** y cada candidato conserva la etiqueta
+original. La asociación con un producto ya registrado es sugerida por tipo,
+etiqueta y entidad, pero sigue siendo editable antes de confirmar.
 
 ## Después de confirmar
 

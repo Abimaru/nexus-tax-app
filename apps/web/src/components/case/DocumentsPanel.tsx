@@ -121,6 +121,7 @@ export function DocumentsPanel({
           password,
           forcedKind: kind,
           result,
+          products,
           signal: abortRef.current.signal,
           onProgress: setProgress,
         });
@@ -470,72 +471,79 @@ export function DocumentsPanel({
             const relatedCoverage = coverages.filter((coverage) => coverage.documentId === item.id);
             const DocIcon = documentIcon(DOCUMENT_KIND_LABEL[item.kind]);
             return (
-              <GlassPanel key={item.id} className="p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex min-w-0 items-start gap-3">
-                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-overlay/10 bg-overlay/5 text-content-muted">
-                      <DocIcon className="h-4 w-4" aria-hidden />
-                    </span>
-                    <div className="min-w-0">
-                      <h3 className="truncate font-medium text-content-strong">{item.fileName}</h3>
-                      <p className="text-xs text-content-subtle">
-                        {DOCUMENT_KIND_LABEL[item.kind]} · v{item.version} ·{' '}
-                        {formatBytes(item.fileSizeBytes)}
-                      </p>
+              <article key={item.id} aria-labelledby={`${item.id}-document-title`}>
+                <GlassPanel className="h-full p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-start gap-3">
+                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-overlay/10 bg-overlay/5 text-content-muted">
+                        <DocIcon className="h-4 w-4" aria-hidden />
+                      </span>
+                      <div className="min-w-0">
+                        <h3
+                          id={`${item.id}-document-title`}
+                          className="truncate font-medium text-content-strong"
+                        >
+                          {item.fileName}
+                        </h3>
+                        <p className="text-xs text-content-subtle">
+                          {DOCUMENT_KIND_LABEL[item.kind]} · v{item.version} ·{' '}
+                          {formatBytes(item.fileSizeBytes)}
+                        </p>
+                      </div>
                     </div>
+                    <Badge tone={item.status === 'active' ? 'emerald' : 'neutral'}>
+                      {DOCUMENT_STATUS_PRESENTATION[item.status].label}
+                    </Badge>
                   </div>
-                  <Badge tone={item.status === 'active' ? 'emerald' : 'neutral'}>
-                    {DOCUMENT_STATUS_PRESENTATION[item.status].label}
-                  </Badge>
-                </div>
-                <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
-                  <Info label="Hash" value={`${item.sha256.slice(0, 12)}…`} />
-                  <Info
-                    label="Persistencia"
-                    value={DOCUMENT_STORAGE_PRESENTATION[item.storageMode].label}
-                  />
-                  <Info
-                    label="Coberturas"
-                    value={`${relatedCoverage.filter((value) => value.status === 'covered').length} completas · ${relatedCoverage.filter((value) => value.status === 'partial').length} parciales`}
-                  />
-                  <Info label="Corte" value={item.cutoffDate ?? 'No informado'} />
-                </dl>
-                {item.requiresPassword ? (
-                  <p className="mt-2 text-xs text-tone-amber">
-                    Requiere contraseña; no fue almacenada.
-                  </p>
-                ) : null}
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {item.storageMode === 'store_locally' ? (
-                    <>
-                      <Button
-                        variant="secondary"
-                        className="px-3 py-1.5 text-xs"
-                        leadingIcon={<Download className="h-3.5 w-3.5" />}
-                        onClick={() => void download(item.id)}
-                      >
-                        Descargar local
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        className="px-3 py-1.5 text-xs"
-                        leadingIcon={<Trash2 className="h-3.5 w-3.5" />}
-                        onClick={() => void removeDocumentBinary(item.id)}
-                      >
-                        Eliminar archivo
-                      </Button>
-                    </>
+                  <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                    <Info label="Hash" value={`${item.sha256.slice(0, 12)}…`} />
+                    <Info
+                      label="Persistencia"
+                      value={DOCUMENT_STORAGE_PRESENTATION[item.storageMode].label}
+                    />
+                    <Info
+                      label="Coberturas"
+                      value={`${relatedCoverage.filter((value) => value.status === 'covered').length} completas · ${relatedCoverage.filter((value) => value.status === 'partial').length} parciales`}
+                    />
+                    <Info label="Corte" value={item.cutoffDate ?? 'No informado'} />
+                  </dl>
+                  {item.requiresPassword ? (
+                    <p className="mt-2 text-xs text-tone-amber">
+                      Requiere contraseña; no fue almacenada.
+                    </p>
                   ) : null}
-                  <Button
-                    variant="ghost"
-                    className="px-3 py-1.5 text-xs"
-                    leadingIcon={<HardDrive className="h-3.5 w-3.5" />}
-                    onClick={() => void markDocumentObsolete(item.id)}
-                  >
-                    Marcar obsoleto
-                  </Button>
-                </div>
-              </GlassPanel>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {item.storageMode === 'store_locally' ? (
+                      <>
+                        <Button
+                          variant="secondary"
+                          className="px-3 py-1.5 text-xs"
+                          leadingIcon={<Download className="h-3.5 w-3.5" />}
+                          onClick={() => void download(item.id)}
+                        >
+                          Descargar local
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          className="px-3 py-1.5 text-xs"
+                          leadingIcon={<Trash2 className="h-3.5 w-3.5" />}
+                          onClick={() => void removeDocumentBinary(item.id)}
+                        >
+                          Eliminar archivo
+                        </Button>
+                      </>
+                    ) : null}
+                    <Button
+                      variant="ghost"
+                      className="px-3 py-1.5 text-xs"
+                      leadingIcon={<HardDrive className="h-3.5 w-3.5" />}
+                      onClick={() => void markDocumentObsolete(item.id)}
+                    >
+                      Marcar obsoleto
+                    </Button>
+                  </div>
+                </GlassPanel>
+              </article>
             );
           })}
         </div>

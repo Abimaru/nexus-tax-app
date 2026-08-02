@@ -130,6 +130,20 @@ function makeUnsupportedPdfFile(): string {
   return file;
 }
 
+function makeBalanceSupportFile(): string {
+  const dir = mkdtempSync(join(tmpdir(), 'nexustax-balance-'));
+  const file = join(dir, 'saldos-sinteticos.pdf');
+  writeFileSync(
+    file,
+    makeTextPdf([
+      'Certificado de saldos',
+      'Cuenta de ahorros sintética',
+      'Saldo al 31 de diciembre: $ 4051577',
+    ]),
+  );
+  return file;
+}
+
 function makeTextPdf(lines: readonly string[]): Buffer {
   const escape = (value: string) => value.replace(/([\\()])/g, '\\$1');
   const commands = ['BT', '/F1 11 Tf', '72 740 Td'];
@@ -180,6 +194,7 @@ test('flujo guiado completo del expediente', async ({ page }, testInfo) => {
   const samplePath = makeSampleFile();
   const supportPath = makeSupportFile();
   const unsupportedPath = makeUnsupportedPdfFile();
+  const balanceSupportPath = makeBalanceSupportFile();
   let offOriginRequests = 0;
   page.on('request', (request) => {
     const url = new URL(request.url());
@@ -359,6 +374,20 @@ test('flujo guiado completo del expediente', async ({ page }, testInfo) => {
   await incomeCandidate.getByRole('button', { name: 'Confirmar y crear hecho' }).click();
   await expect(incomeCandidate.getByText('Hecho asistido creado y trazado.')).toBeVisible();
 
+  // Rechazar retira la propuesta de la revisión activa sin perder la auditoría.
+  const withholdingCandidate = page.getByRole('article', {
+    name: 'Retenciones en la fuente',
+    exact: true,
+  });
+  await withholdingCandidate.getByRole('button', { name: 'Rechazar' }).click();
+  await expect(withholdingCandidate).toHaveCount(0);
+  await page.getByRole('button', { name: 'Ver descartados (1)' }).click();
+  const discardedList = page.getByRole('list', { name: 'Candidatos descartados' });
+  await expect(discardedList.getByText('Rechazado', { exact: false })).toBeVisible();
+  await discardedList.getByRole('button', { name: 'Restaurar' }).click();
+  await expect(withholdingCandidate).toBeVisible();
+  await withholdingCandidate.getByRole('button', { name: 'Rechazar' }).click();
+
   await page.screenshot({
     path: testInfo.outputPath('revision-documental-1280.png'),
     fullPage: true,
@@ -433,6 +462,28 @@ test('flujo guiado completo del expediente', async ({ page }, testInfo) => {
 
   await selectView(page, 'Documentos');
   await page.getByRole('button', { name: 'Marcar obsoleto' }).click();
+  await selectView(page, 'Revisión de extracción');
+  await expect(page.getByText('Sin extracciones documentales')).toBeVisible();
+
+  // Un documento posterior muestra su propia sesión y sus candidatos.
+  await selectView(page, 'Documentos');
+  await page.setInputFiles('#case-document-file', balanceSupportPath);
+  await page.getByLabel('Tipo documental').selectOption('balance_certificate');
+  await page.getByLabel(/Decisi.n de persistencia/).selectOption('store_locally');
+  await page.getByRole('button', { name: 'Registrar y analizar' }).click();
+  await expect(page).toHaveURL(/\/organizacion\/revision-documental$/);
+  await expect(page.getByRole('heading', { name: 'saldos-sinteticos.pdf' })).toBeVisible();
+  const balanceCandidate = page.getByRole('article', {
+    name: 'Saldo al 31 de diciembre',
+    exact: true,
+  });
+  await expect(balanceCandidate.locator('dd').filter({ hasText: '4.051.577' })).toBeVisible();
+  await selectView(page, 'Documentos');
+  await page
+    .locator('article')
+    .filter({ hasText: 'saldos-sinteticos.pdf' })
+    .getByRole('button', { name: 'Marcar obsoleto' })
+    .click();
   await selectView(page, 'Revisión de extracción');
   await expect(page.getByText('Sin extracciones documentales')).toBeVisible();
 

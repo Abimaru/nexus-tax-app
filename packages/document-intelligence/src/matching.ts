@@ -1,4 +1,5 @@
 import type {
+  CaseProduct,
   DocumentFactCandidate,
   DocumentaryRequirement,
   NormalizedExogenousRecord,
@@ -54,6 +55,34 @@ export function suggestRequirements(
       );
     })
     .map((requirement) => requirement.id);
+}
+
+export function suggestProduct(
+  candidate: DocumentFactCandidate,
+  products: readonly CaseProduct[],
+): { productId: string | null; ambiguous: boolean } {
+  const label = comparableText(candidate.productLabel ?? '');
+  const ranked = products
+    .filter((product) => product.status !== 'obsolete')
+    .map((product) => {
+      let score = product.type === candidate.productType ? 50 : 0;
+      const productLabel = comparableText(product.label);
+      if (label && (label.includes(productLabel) || productLabel.includes(label))) score += 50;
+      else if (
+        label &&
+        label.split(' ').some((word) => word.length > 4 && productLabel.includes(word))
+      )
+        score += 20;
+      if (candidate.proposedEntityId && product.entityId === candidate.proposedEntityId)
+        score += 20;
+      return { product, score };
+    })
+    .filter((item) => item.score >= 50)
+    .sort((a, b) => b.score - a.score || a.product.id.localeCompare(b.product.id));
+  return {
+    productId: ranked[0]?.product.id ?? null,
+    ambiguous: Boolean(ranked[1] && ranked[0]?.score === ranked[1].score),
+  };
 }
 
 export function suggestExogenousMatches(

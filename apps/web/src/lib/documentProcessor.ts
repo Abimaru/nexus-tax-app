@@ -1,4 +1,9 @@
-import type { DocumentKind, ProcessingResult, UploadedDocument } from '@nexus-tax/domain';
+import type {
+  CaseProduct,
+  DocumentKind,
+  ProcessingResult,
+  UploadedDocument,
+} from '@nexus-tax/domain';
 import {
   PdfReadError,
   analyzePdfDocument,
@@ -18,6 +23,7 @@ export async function processDocumentLocally(input: {
   password?: string;
   forcedKind?: DocumentKind;
   result?: ProcessingResult;
+  products?: readonly CaseProduct[];
   signal?: AbortSignal;
   onProgress?: (event: DocumentProgressEvent) => void;
 }) {
@@ -48,6 +54,7 @@ export async function processDocumentLocally(input: {
       entities: input.result?.entities,
       requirements: input.result?.requirements,
       exogenousRecords: input.result?.normalizedRecords,
+      products: input.products,
       documentEntityIds: input.document.entityIds,
       entityId: entity?.id ?? input.document.entityIds[0] ?? null,
       entityName: entity?.name ?? null,

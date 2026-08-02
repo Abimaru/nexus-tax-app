@@ -23,7 +23,7 @@ import {
 } from '@nexus-tax/domain';
 import { Badge, Button, EmptyState, GlassPanel, formatCurrencyCOP } from '@nexus-tax/ui';
 import { CATEGORY_LABEL } from '@/lib/analysisPresentation';
-import { DOCUMENT_KIND_LABEL } from '@/lib/dossierPresentation';
+import { DOCUMENT_KIND_LABEL, PRODUCT_LABEL } from '@/lib/dossierPresentation';
 import { processDocumentLocally } from '@/lib/documentProcessor';
 import {
   correctExtractionClassification,
@@ -52,6 +52,21 @@ const CONFIDENCE_LABEL = {
   low: 'Baja',
   insufficient: 'Insuficiente',
 } as const;
+
+const DISCARDED_STATUS = ['rejected', 'duplicate', 'informational', 'obsolete'] as const;
+
+const DISCARDED_LABEL: Record<(typeof DISCARDED_STATUS)[number], string> = {
+  rejected: 'Rechazado',
+  duplicate: 'Duplicado',
+  informational: 'Solo informativo',
+  obsolete: 'Obsoleto',
+};
+
+function isDiscardedStatus(
+  status: DocumentFactCandidate['status'],
+): status is (typeof DISCARDED_STATUS)[number] {
+  return DISCARDED_STATUS.some((discardedStatus) => discardedStatus === status);
+}
 
 export function DocumentExtractionReviewPanel({
   result,
@@ -154,8 +169,14 @@ function ExtractionSessionCard({
   const [kind, setKind] = useState(proposedKind);
   const [password, setPassword] = useState('');
   const [reprocessing, setReprocessing] = useState(false);
+  const [showDiscarded, setShowDiscarded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const confirmed = candidates.filter((candidate) => candidate.factId).length;
+  const discarded = candidates.filter((candidate) => isDiscardedStatus(candidate.status));
+  const visibleCandidates = candidates.filter((candidate) => !isDiscardedStatus(candidate.status));
+  const detectedProducts = Array.from(
+    new Set(candidates.map((candidate) => candidate.productLabel).filter(Boolean)),
+  ) as string[];
 
   useEffect(() => setKind(proposedKind), [proposedKind]);
 
@@ -168,7 +189,7 @@ function ExtractionSessionCard({
     setReprocessing(true);
     setError(null);
     try {
-      await processDocumentLocally({ document, password, forcedKind: kind, result });
+      await processDocumentLocally({ document, password, forcedKind: kind, result, products });
       setPassword('');
     } catch (caught) {
       setError(
@@ -242,6 +263,19 @@ function ExtractionSessionCard({
           </div>
         ) : null}
 
+        {detectedProducts.length ? (
+          <div className="mt-3 rounded-xl border border-accent-cyan/15 bg-accent-cyan/[0.04] p-3">
+            <p className="text-xs font-medium text-content">Productos detectados</p>
+            <ul className="mt-2 flex flex-wrap gap-2" aria-label="Productos detectados">
+              {detectedProducts.map((label) => (
+                <li key={label}>
+                  <Badge tone="cyan">{label}</Badge>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
         {session.status === 'password_required' ? (
           <label className="mt-3 block text-xs text-content-muted">
             Contraseña temporal
@@ -278,17 +312,29 @@ function ExtractionSessionCard({
         </ul>
       ) : null}
 
-      {!candidates.length ? (
+      {!visibleCandidates.length ? (
         <div className="p-5">
           <EmptyState
-            icon={<Info className="h-7 w-7" />}
-            title="Sin valores candidatos"
-            description="Corrige el tipo documental, vuelve a intentar con el archivo o registra los valores manualmente desde Hechos."
+            icon={
+              candidates.length ? (
+                <CheckCircle2 className="h-7 w-7" />
+              ) : (
+                <Info className="h-7 w-7" />
+              )
+            }
+            title={
+              candidates.length ? 'No quedan candidatos por revisar' : 'Sin valores candidatos'
+            }
+            description={
+              candidates.length
+                ? 'Las propuestas descartadas se ocultaron de la revisión activa, pero su decisión permanece trazable.'
+                : 'Corrige el tipo documental, vuelve a intentar con el archivo o registra los valores manualmente desde Hechos.'
+            }
           />
         </div>
       ) : (
         <ul className="divide-y divide-overlay/8">
-          {candidates.map((candidate) => (
+          {visibleCandidates.map((candidate) => (
             <li key={candidate.id} className="p-4 sm:p-5">
               <CandidateReviewCard
                 candidate={candidate}
@@ -301,6 +347,43 @@ function ExtractionSessionCard({
           ))}
         </ul>
       )}
+
+      {discarded.length ? (
+        <div className="border-t border-overlay/8 p-4 sm:p-5">
+          <Button variant="ghost" onClick={() => setShowDiscarded((current) => !current)}>
+            {showDiscarded ? 'Ocultar descartados' : `Ver descartados (${discarded.length})`}
+          </Button>
+          {showDiscarded ? (
+            <ul className="mt-3 space-y-2" aria-label="Candidatos descartados">
+              {discarded.map((candidate) => (
+                <li
+                  key={candidate.id}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-overlay/8 bg-overlay/[0.02] p-3"
+                >
+                  <div>
+                    <p className="text-sm font-medium text-content">{candidate.originalConcept}</p>
+                    <p className="mt-0.5 text-xs text-content-subtle">
+                      {isDiscardedStatus(candidate.status)
+                        ? DISCARDED_LABEL[candidate.status]
+                        : 'Descartado'}{' '}
+                      · {formatCurrencyCOP(candidate.extractedValue)} · página {candidate.page}
+                    </p>
+                  </div>
+                  {candidate.status !== 'obsolete' ? (
+                    <Button
+                      variant="ghost"
+                      onClick={() => void restoreDocumentCandidate(candidate.id)}
+                      leadingIcon={<RotateCcw className="h-4 w-4" aria-hidden />}
+                    >
+                      Restaurar
+                    </Button>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      ) : null}
     </GlassPanel>
   );
 }
@@ -331,9 +414,6 @@ function CandidateReviewCard({
   const [observation, setObservation] = useState(candidate.observation);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const decided = ['confirmed', 'corrected', 'rejected', 'duplicate', 'informational'].includes(
-    candidate.status,
-  );
 
   async function decide(action: 'confirm' | 'reject' | 'informational' | 'duplicate') {
     setSaving(true);
@@ -467,6 +547,11 @@ function CandidateReviewCard({
                   </option>
                 ))}
               </select>
+              {candidate.productLabel ? (
+                <span className="mt-1 block text-content-subtle">
+                  Detectado: {candidate.productLabel} · {PRODUCT_LABEL[candidate.productType]}
+                </span>
+              ) : null}
             </Field>
             <div className="md:col-span-2">
               <Field label="Requisito sugerido">
@@ -577,17 +662,6 @@ function CandidateReviewCard({
           </div>
         </div>
       )}
-
-      {decided && !candidate.factId && candidate.status !== 'obsolete' ? (
-        <Button
-          className="mt-3"
-          variant="ghost"
-          onClick={() => void restoreDocumentCandidate(candidate.id)}
-          leadingIcon={<RotateCcw className="h-4 w-4" aria-hidden />}
-        >
-          Restaurar propuesta
-        </Button>
-      ) : null}
     </article>
   );
 }

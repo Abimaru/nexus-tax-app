@@ -585,14 +585,14 @@ durante la extracción.
 
 ### Validaciones exactas
 
-| Paso | Resultado |
-| --- | --- |
-| `pnpm typecheck` | OK; 7 de 8 proyectos del workspace, 0 errores |
-| `pnpm test` | OK; 153/153 pruebas (11 dominio, 26 Aegis, 14 documentos, 43 parser, 59 web) |
-| `pnpm lint` | OK; 0 warnings / 0 errors |
-| `NEXUSTAX_NEXT_DIST_DIR=.next-build pnpm build` | OK; compilación y 5 páginas generadas |
-| `PLAYWRIGHT_BASE_URL=http://localhost:3000 pnpm --filter @nexus-tax/web test:e2e` | OK; 2/2 Chromium |
-| Visual | capturas sintéticas de revisión a 1280 px y 390 px, sin overflow |
+| Paso                                                                              | Resultado                                                                    |
+| --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `pnpm typecheck`                                                                  | OK; 7 de 8 proyectos del workspace, 0 errores                                |
+| `pnpm test`                                                                       | OK; 153/153 pruebas (11 dominio, 26 Aegis, 14 documentos, 43 parser, 59 web) |
+| `pnpm lint`                                                                       | OK; 0 warnings / 0 errors                                                    |
+| `NEXUSTAX_NEXT_DIST_DIR=.next-build pnpm build`                                   | OK; compilación y 5 páginas generadas                                        |
+| `PLAYWRIGHT_BASE_URL=http://localhost:3000 pnpm --filter @nexus-tax/web test:e2e` | OK; 2/2 Chromium                                                             |
+| Visual                                                                            | capturas sintéticas de revisión a 1280 px y 390 px, sin overflow             |
 
 El build aislado evita competir con el `pnpm dev` activo en `.next`. Los tests
 PDF usan archivos sintéticos creados en memoria; no se añadió información
@@ -627,3 +627,61 @@ temas.
 
 Validación: typecheck web OK, lint web sin advertencias, ruta `rel="icon"`
 generada por Next y smoke responsive Chromium OK sin desbordamiento horizontal.
+
+## 17. Corrección: descarte y extracción financiera por producto (2026-08-01)
+
+### Problemas reproducidos
+
+- Rechazar, marcar duplicado o dejar un candidato como informativo guardaba la
+  decisión, pero la tarjeta seguía ocupando la revisión activa.
+- Una frase explicativa sobre el artículo 115 ET producía el falso importe
+  `$115`; numeraciones, años y porcentajes también podían parecer dinero.
+- Los certificados financieros con tablas perdían la relación entre producto,
+  columna e importe. Una carga posterior resultaba poco clara porque la sesión
+  anterior seguía dominando visualmente la revisión.
+
+### Implementación y decisiones
+
+- Los estados descartados se ocultan de inmediato y quedan en una sección
+  plegable, restaurable y trazable. Los obsoletos permanecen como evidencia de
+  una ejecución sustituida, sin acción de restauración.
+- El adaptador financiero sube a 1.1.0. El detector monetario excluye referencias
+  normativas, porcentajes, años y numeración de apartados; además evita duplicar
+  totales cuando ya existen filas de detalle.
+- La posición de los bloques PDF permite reconstruir columnas y encabezados de
+  una o varias líneas. Cada candidato conserva `productLabel`, evidencia, regla,
+  página y columna conceptual; la UI muestra los productos detectados.
+- El pipeline intenta asociar el producto detectado con los productos del caso
+  mediante tipo, etiqueta y entidad. La sugerencia nunca confirma ni crea un
+  hecho automáticamente.
+- El flujo E2E carga dos PDFs sintéticos consecutivos y comprueba que la segunda
+  sesión presenta sus propios valores. No se añadieron documentos tributarios
+  reales al repositorio.
+
+### Cobertura incorporada
+
+Se añadieron fixtures sintéticos para referencias legales, certificados de
+fondos de empleados, tablas financieras posicionadas, encabezados partidos y
+asociación de producto. El navegador valida rechazo, ocultamiento, restauración
+y sustitución por una nueva carga.
+
+### Validaciones exactas
+
+| Paso                                                                                                         | Resultado                                                                    |
+| ------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
+| `pnpm typecheck`                                                                                             | OK; 7 de 8 proyectos del workspace, 0 errores                                |
+| `pnpm test`                                                                                                  | OK; 158/158 pruebas (11 dominio, 26 Aegis, 19 documentos, 43 parser, 59 web) |
+| `pnpm lint`                                                                                                  | OK; 0 warnings / 0 errors                                                    |
+| `NEXUSTAX_NEXT_DIST_DIR=.next-build pnpm build`                                                              | OK; compilación y 6 rutas generadas                                          |
+| `PLAYWRIGHT_BASE_URL=http://localhost:3000 pnpm --filter @nexus-tax/web test:e2e -- tests-e2e/smoke.spec.ts` | OK; 2/2 Chromium                                                             |
+
+### Riesgos y siguiente paso
+
+El motor sigue siendo local y determinista, sin OCR ni IA. Un PDF escaneado o
+una tabla cuya capa de texto no conserve posiciones requiere registro manual.
+Los formatos nuevos deben incorporarse con ejemplos anonimizados o fixtures
+sintéticos; no se deben codificar nombres de emisores ni datos personales.
+
+**Siguiente paso exacto:** validar documentos reales únicamente en el navegador
+del usuario, registrar qué columnas o etiquetas no se reconocen y convertir
+esas variantes en fixtures sintéticos antes de extender otra regla.

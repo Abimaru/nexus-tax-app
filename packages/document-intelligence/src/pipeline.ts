@@ -1,4 +1,5 @@
 import type {
+  CaseProduct,
   DocumentExtractionFinding,
   DocumentClassification,
   DocumentFactCandidate,
@@ -15,7 +16,12 @@ import type {
 import { DEFAULT_PDF_LIMITS } from './contracts';
 import { classifyDocument } from './classifier';
 import { extractCandidates } from './adapters';
-import { suggestEntity, suggestExogenousMatches, suggestRequirements } from './matching';
+import {
+  suggestEntity,
+  suggestExogenousMatches,
+  suggestProduct,
+  suggestRequirements,
+} from './matching';
 import { PdfReadError, readPdfText } from './reader';
 
 export interface AnalyzePdfInput extends CandidateBuildContext {
@@ -28,6 +34,7 @@ export interface AnalyzePdfInput extends CandidateBuildContext {
   entities?: readonly ReportingEntity[];
   requirements?: readonly DocumentaryRequirement[];
   exogenousRecords?: readonly NormalizedExogenousRecord[];
+  products?: readonly CaseProduct[];
   documentEntityIds?: readonly string[];
   forcedKind?: DocumentClassification['proposedKind'];
   onProgress?: (progress: DocumentProgressEvent) => void;
@@ -102,13 +109,16 @@ function enrichCandidate(
   const entityName =
     input.entities?.find((item) => item.id === entity.entityId)?.name ?? candidate.entityName;
   const enriched = { ...candidate, proposedEntityId: entity.entityId, entityName };
+  const product = suggestProduct(enriched, input.products ?? []);
   return {
     ...enriched,
+    proposedProductId: product.productId,
     suggestedRequirementIds: suggestRequirements(enriched, input.requirements ?? []),
     suggestedExogenousMatches: suggestExogenousMatches(enriched, input.exogenousRecords ?? []),
     warnings: [
       ...enriched.warnings,
       ...(entity.ambiguous ? ['Varias entidades podrían corresponder al documento.'] : []),
+      ...(product.ambiguous ? ['Varios productos podrían corresponder al valor.'] : []),
     ],
   };
 }
