@@ -30,6 +30,9 @@ import type {
   ResolutionStatus,
   TaxCase,
   TaxCaseStatus,
+  TaxCategory,
+  TaxNature,
+  TaxTreatment,
   UploadedDocument,
   WorkflowStageId,
   WorkflowViewId,
@@ -1071,6 +1074,126 @@ export async function listExtractionSessions(caseId: string): Promise<DocumentEx
 
 export async function listDocumentCandidates(caseId: string): Promise<DocumentFactCandidate[]> {
   return getDb().documentCandidates.where('caseId').equals(caseId).sortBy('updatedAt');
+}
+
+export const MANUAL_CANDIDATE_FIELDS = [
+  'entity',
+  'nit',
+  'product',
+  'date',
+  'concept',
+  'value',
+  'withholding',
+  'balance',
+  'debt',
+  'income',
+  'other',
+] as const;
+export type ManualCandidateField = (typeof MANUAL_CANDIDATE_FIELDS)[number];
+
+export const MANUAL_CANDIDATE_FIELD_LABEL: Record<ManualCandidateField, string> = {
+  entity: 'Entidad',
+  nit: 'NIT',
+  product: 'Producto',
+  date: 'Fecha',
+  concept: 'Concepto',
+  value: 'Valor',
+  withholding: 'Retención',
+  balance: 'Saldo',
+  debt: 'Deuda',
+  income: 'Ingreso',
+  other: 'Otro',
+};
+
+export interface CreateManualDocumentCandidateInput {
+  caseId: string;
+  documentId: string;
+  extractionSessionId: string;
+  page: number;
+  field: ManualCandidateField;
+  originalConcept: string;
+  extractedValue: number;
+  category: TaxCategory;
+  nature: TaxNature;
+  treatment: TaxTreatment;
+  excerpt: string;
+  x: number | null;
+  y: number | null;
+  method: 'native' | 'ocr';
+}
+
+/**
+ * Candidato manual asistido creado desde el laboratorio documental: pasa por
+ * la revisión normal como cualquier otro candidato, nunca alimenta la matriz
+ * directamente (§13 del laboratorio).
+ */
+export async function createManualDocumentCandidate(
+  input: CreateManualDocumentCandidateInput,
+): Promise<DocumentFactCandidate> {
+  const timestamp = nowIso();
+  const candidate: DocumentFactCandidate = {
+    id: newId('doc-candidate'),
+    caseId: input.caseId,
+    documentId: input.documentId,
+    extractionSessionId: input.extractionSessionId,
+    page: input.page,
+    proposedEntityId: null,
+    entityName: null,
+    proposedProductId: null,
+    productType: 'unidentified',
+    productLabel: null,
+    section: null,
+    originalConcept: input.originalConcept,
+    normalizedConcept: input.originalConcept.trim().toLowerCase(),
+    proposedCategory: input.category,
+    proposedNature: input.nature,
+    proposedTreatment: input.treatment,
+    correctedCategory: null,
+    correctedNature: null,
+    correctedTreatment: null,
+    extractedValue: input.extractedValue,
+    correctedValue: null,
+    finalValue: null,
+    currency: 'COP',
+    period: null,
+    cutoffDate: null,
+    evidence: {
+      page: input.page,
+      excerpt: input.excerpt.slice(0, 240),
+      detectedLabel: `Selección manual: ${MANUAL_CANDIDATE_FIELD_LABEL[input.field]}`,
+      detectedValue: String(input.extractedValue).slice(0, 80),
+      location:
+        input.method === 'ocr'
+          ? `Laboratorio documental (OCR), página ${input.page}`
+          : `Laboratorio documental (texto nativo), página ${input.page}`,
+      x: input.x,
+      y: input.y,
+    },
+    adapterId: 'manual.lab',
+    adapterVersion: '1.0.0',
+    ruleId: 'manual.lab.selection',
+    confidence: {
+      level: 'high',
+      score: 100,
+      reasons: ['El analista seleccionó y confirmó este valor manualmente.'],
+    },
+    warnings: [],
+    status: 'pending',
+    possibleDuplicateIds: [],
+    suggestedRequirementIds: [],
+    suggestedExogenousMatches: [],
+    selectedExogenousRecordId: null,
+    observation: '',
+    rejectionReason: null,
+    relatedCandidateId: null,
+    factId: null,
+    decisions: [],
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+  await getDb().documentCandidates.add(candidate);
+  await refreshExtractionMetrics(input.extractionSessionId);
+  return candidate;
 }
 
 function candidateSignature(candidate: DocumentFactCandidate): string {
