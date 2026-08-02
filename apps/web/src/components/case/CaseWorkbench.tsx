@@ -5,11 +5,13 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { ArrowLeft } from 'lucide-react';
-import type {
-  CaseAnalysis,
-  ProcessingResult,
-  WorkflowStageId,
-  WorkflowViewId,
+import {
+  WorkflowStageIdSchema,
+  WorkflowViewIdSchema,
+  type CaseAnalysis,
+  type ProcessingResult,
+  type WorkflowStageId,
+  type WorkflowViewId,
 } from '@nexus-tax/domain';
 import { Badge } from '@nexus-tax/ui';
 import {
@@ -156,15 +158,23 @@ export function CaseWorkbench({
   const viewDefinition = stageDefinition.views.find((item) => item.id === view);
 
   function focusContent() {
-    window.setTimeout(() => contentRef.current?.focus(), 0);
+    // `preventScroll` evita el salto de scroll al mover el foco al contenido.
+    window.setTimeout(() => contentRef.current?.focus({ preventScroll: true }), 0);
   }
 
   function applyDestination(nextStage: WorkflowStageId, nextView: WorkflowViewId, replace = false) {
     setStage(nextStage);
     setView(nextView);
     const path = workflowPath(caseId, nextStage, nextView);
-    if (replace) router.replace(path);
-    else router.push(path);
+    // El contenido se renderiza desde el estado local `stage`/`view`, así que la
+    // URL se actualiza de forma SUPERFICIAL con la History API (soportada por
+    // Next 14.2): sin navegación RSC, sin remonta ni salto de scroll. Esto evita
+    // el parpadeo al cambiar de paso y la URL sigue sirviendo para recarga y
+    // deep-link (la ruta profunda la resuelve el servidor en un reload).
+    if (typeof window !== 'undefined' && window.location.pathname !== path) {
+      if (replace) window.history.replaceState(null, '', path);
+      else window.history.pushState(null, '', path);
+    }
     void saveCaseNavigation({
       caseId,
       stage: nextStage,
@@ -224,6 +234,20 @@ export function CaseWorkbench({
     // El resultado es el único disparador; hash y fecha pertenecen a la misma sesión.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionResult]);
+
+  // Atrás/adelante del navegador: como la URL se actualiza con la History API,
+  // sincronizamos el estado local leyendo la ruta al recibir `popstate`.
+  useEffect(() => {
+    function onPopState() {
+      const segments = window.location.pathname.split('/').filter(Boolean);
+      const parsedStage = WorkflowStageIdSchema.safeParse(segments[2]);
+      const parsedView = WorkflowViewIdSchema.safeParse(segments[3]);
+      if (parsedStage.success) setStage(parsedStage.data);
+      if (parsedView.success) setView(parsedView.data);
+    }
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
 
   function selectStage(nextStage: WorkflowStageId) {
     const selected = stages.find((item) => item.id === nextStage);
