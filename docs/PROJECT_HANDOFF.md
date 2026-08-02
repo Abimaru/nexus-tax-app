@@ -614,3 +614,16 @@ tributaria real.
 **Siguiente paso exacto:** probar localmente certificados sintéticos con tablas
 y etiquetas partidas en varios bloques, ampliar fixtures por adaptador y diseñar
 una comparación de ejecuciones antes de evaluar OCR local.
+
+## 16. Identidad visual: icono y marca de cabecera (2026-08-01)
+
+Se incorporaron los PNG entregados por el propietario del proyecto: el isotipo
+vive como `apps/web/src/app/icon.png` y Next lo publica como icono de pestaña; la
+marca horizontal vive en `apps/web/public/branding/nexustax-home.png` y reemplaza
+la marca anterior en la cabecera global. Los originales conservan transparencia
+y no se modificaron; la cabecera recorta visualmente sus márgenes con CSS y
+superpone el subtítulo usando tokens semánticos para mantener contraste en ambos
+temas.
+
+Validación: typecheck web OK, lint web sin advertencias, ruta `rel="icon"`
+generada por Next y smoke responsive Chromium OK sin desbordamiento horizontal.
