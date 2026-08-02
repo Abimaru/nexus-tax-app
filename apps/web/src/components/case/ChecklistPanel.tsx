@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Info, Trash2, Upload } from 'lucide-react';
+import { Info, Trash2 } from 'lucide-react';
 import type {
   DocumentaryRequirement,
   EntityCategory,
@@ -14,6 +14,7 @@ import {
   removeRequirementPdf,
   updateRequirementStatus,
 } from '@/lib/repository';
+import { FileDropzone } from '@/components/FileDropzone';
 
 const CATEGORY_LABEL: Record<EntityCategory, string> = {
   employer: 'Empleador',
@@ -103,7 +104,12 @@ export function ChecklistPanel({ result, caseId }: { result: ProcessingResult; c
                     >
                       {CONFIDENCE_LABEL[req.confidence]}
                     </Badge>
-                    <span className="text-content-subtle">Origen: {req.recommendationSource}</span>
+                    <span
+                      className="text-content-subtle"
+                      title="Recomendación generada por una regla local versionada."
+                    >
+                      Origen: regla determinista local
+                    </span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -138,16 +144,16 @@ export function ChecklistPanel({ result, caseId }: { result: ProcessingResult; c
                       <Trash2 className="h-3.5 w-3.5" aria-hidden /> Eliminar PDF
                     </button>
                   ) : (
-                    <label className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-overlay/10 px-2 py-1.5 text-xs text-content hover:bg-overlay/5">
-                      <Upload className="h-3.5 w-3.5" aria-hidden /> Asociar PDF
-                      <input
-                        type="file"
+                    <div className="w-52">
+                      <FileDropzone
+                        id={`requirement-pdf-${req.id}`}
+                        variant="evidence"
+                        compact
+                        file={null}
                         accept="application/pdf,.pdf"
-                        className="sr-only"
-                        aria-label={`Asociar PDF a ${req.documentName}`}
-                        onChange={(event) => {
-                          const file = event.target.files?.[0];
-                          if (!file) return;
+                        allowedExtensions={['pdf']}
+                        maxSizeBytes={10 * 1024 * 1024}
+                        onSelect={(file) => {
                           setAttachmentError(null);
                           void attachRequirementPdf(caseId, req.id, file).catch((error: unknown) =>
                             setAttachmentError(
@@ -156,10 +162,9 @@ export function ChecklistPanel({ result, caseId }: { result: ProcessingResult; c
                                 : 'No fue posible asociar el PDF.',
                             ),
                           );
-                          event.target.value = '';
                         }}
                       />
-                    </label>
+                    </div>
                   )}
                 </div>
                 {req.attachment ? (

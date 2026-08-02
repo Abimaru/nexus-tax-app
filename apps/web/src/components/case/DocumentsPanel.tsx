@@ -1,17 +1,14 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Download,
   FileArchive,
-  FileText,
   HardDrive,
   Library,
   ShieldCheck,
   Trash2,
   Upload,
-  UploadCloud,
-  X,
 } from 'lucide-react';
 import {
   DOCUMENT_CATALOG,
@@ -24,19 +21,18 @@ import {
 } from '@nexus-tax/domain';
 import { Badge, Button, EmptyState, GlassPanel, formatBytes } from '@nexus-tax/ui';
 import { DOCUMENT_KIND_LABEL } from '@/lib/dossierPresentation';
+import {
+  DOCUMENT_STATUS_PRESENTATION,
+  DOCUMENT_STORAGE_PRESENTATION,
+} from '@/lib/presentationCatalogs';
 import { documentIcon, entityVisual, TONE_BOX_CLASS } from '@/lib/entityVisuals';
+import { FileDropzone } from '@/components/FileDropzone';
 import {
   addCaseDocument,
   getDocumentBinary,
   markDocumentObsolete,
   removeDocumentBinary,
 } from '@/lib/repository';
-
-const STORAGE_LABEL: Record<string, string> = {
-  metadata_only: 'Solo metadatos',
-  store_locally: 'Archivo local',
-  do_not_keep: 'No conservado',
-};
 
 export function DocumentsPanel({
   caseId,
@@ -55,9 +51,7 @@ export function DocumentsPanel({
   coverages: RequirementCoverage[];
   localBytes: number;
 }) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
-  const [dragActive, setDragActive] = useState(false);
   const [kind, setKind] = useState<(typeof DocumentKindSchema.options)[number]>(
     'consolidated_tax_certificate',
   );
@@ -111,7 +105,6 @@ export function DocumentsPanel({
       setFile(null);
       setNotes('');
       setCovered([]);
-      if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'No fue posible registrar el documento.');
     } finally {
@@ -161,75 +154,18 @@ export function DocumentsPanel({
         </div>
 
         <form onSubmit={submit} className="mt-5 space-y-4">
-          {/* Zona de carga (drag & drop) */}
-          <div
-            role="button"
-            tabIndex={0}
-            aria-label="Zona para arrastrar o seleccionar un documento"
-            onClick={() => fileInputRef.current?.click()}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                fileInputRef.current?.click();
-              }
-            }}
-            onDragOver={(event) => {
-              event.preventDefault();
-              setDragActive(true);
-            }}
-            onDragLeave={() => setDragActive(false)}
-            onDrop={(event) => {
-              event.preventDefault();
-              setDragActive(false);
-              setFile(event.dataTransfer.files?.[0] ?? null);
-            }}
-            className={`flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-8 text-center transition-colors motion-reduce:transition-none ${
-              dragActive
-                ? 'border-accent-cyan bg-accent-cyan/5'
-                : 'border-overlay/15 hover:border-accent-cyan/40 hover:bg-overlay/[0.02]'
-            }`}
-          >
-            {file ? (
-              <div className="flex items-center gap-3">
-                <span className="grid h-10 w-10 place-items-center rounded-lg bg-accent-cyan/10 text-tone-cyan">
-                  <FileText className="h-5 w-5" aria-hidden />
-                </span>
-                <div className="text-left">
-                  <p className="text-sm font-medium text-content-strong">{file.name}</p>
-                  <p className="text-xs text-content-subtle">{formatBytes(file.size)}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    setFile(null);
-                    if (fileInputRef.current) fileInputRef.current.value = '';
-                  }}
-                  className="ml-2 rounded-lg p-1.5 text-content-subtle transition-colors hover:bg-overlay/10 hover:text-tone-rose"
-                  aria-label="Quitar archivo"
-                >
-                  <X className="h-4 w-4" aria-hidden />
-                </button>
-              </div>
-            ) : (
-              <>
-                <UploadCloud className="h-8 w-8 text-tone-cyan" aria-hidden />
-                <p className="mt-2 text-sm font-medium text-content">
-                  Arrastra un soporte o haz clic para seleccionarlo
-                </p>
-                <p className="mt-0.5 text-xs text-content-subtle">
-                  Se procesa localmente; tú eliges si se conserva el archivo.
-                </p>
-              </>
-            )}
-            <input
-              id="case-document-file"
-              ref={fileInputRef}
-              type="file"
-              className="sr-only"
-              onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-            />
-          </div>
+          <FileDropzone
+            id="case-document-file"
+            variant="document"
+            file={file}
+            onSelect={setFile}
+            onRemove={() => setFile(null)}
+            allowedExtensions={catalog.acceptedExtensions}
+            accept={catalog.acceptedExtensions.map((extension) => `.${extension}`).join(',')}
+            maxSizeBytes={25 * 1024 * 1024}
+            busy={saving}
+            error={error}
+          />
 
           {/* Metadatos */}
           <div className="grid gap-3 lg:grid-cols-2">
@@ -340,9 +276,7 @@ export function DocumentsPanel({
           <div>
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium text-content">Requisitos que cubre</p>
-              {covered.length ? (
-                <Badge tone="cyan">{covered.length} seleccionado(s)</Badge>
-              ) : null}
+              {covered.length ? <Badge tone="cyan">{covered.length} seleccionado(s)</Badge> : null}
             </div>
             {requirementGroups.length ? (
               <div className="mt-2 space-y-2">
@@ -363,7 +297,9 @@ export function DocumentsPanel({
                         >
                           <Icon className="h-4 w-4" aria-hidden />
                         </span>
-                        <span className="text-sm font-medium text-content-strong">{entityName}</span>
+                        <span className="text-sm font-medium text-content-strong">
+                          {entityName}
+                        </span>
                         <span className="ml-auto text-[11px] text-content-subtle">
                           {selectedInGroup}/{entityRequirements.length}
                         </span>
@@ -458,11 +394,16 @@ export function DocumentsPanel({
                       </p>
                     </div>
                   </div>
-                  <Badge tone={item.status === 'active' ? 'emerald' : 'neutral'}>{item.status}</Badge>
+                  <Badge tone={item.status === 'active' ? 'emerald' : 'neutral'}>
+                    {DOCUMENT_STATUS_PRESENTATION[item.status].label}
+                  </Badge>
                 </div>
                 <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
                   <Info label="Hash" value={`${item.sha256.slice(0, 12)}…`} />
-                  <Info label="Persistencia" value={STORAGE_LABEL[item.storageMode] ?? item.storageMode} />
+                  <Info
+                    label="Persistencia"
+                    value={DOCUMENT_STORAGE_PRESENTATION[item.storageMode].label}
+                  />
                   <Info
                     label="Coberturas"
                     value={`${relatedCoverage.filter((value) => value.status === 'covered').length} completas · ${relatedCoverage.filter((value) => value.status === 'partial').length} parciales`}
