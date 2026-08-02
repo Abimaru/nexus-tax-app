@@ -19,7 +19,18 @@ pnpm test
 pnpm lint
 pnpm build
 pnpm --filter @nexus-tax/web test:e2e
+pnpm check:encoding
 ```
+
+`pnpm check:encoding` recorre el repositorio (excluyendo `node_modules` y los
+directorios de build) buscando mojibake: una vocal acentuada o eñe cuyos bytes
+UTF-8 quedaron reinterpretados como dos caracteres Latin-1/Windows-1252
+distintos, o el carácter de reemplazo Unicode por bytes inválidos. Falla con
+código distinto de cero si
+encuentra alguna coincidencia fuera de una fixture explícita de codificación
+(ruta bajo `fixtures/encoding` o archivo con la marca `nexustax:allow-mojibake`
+en sus primeras líneas). No requiere red ni dependencias nuevas
+(`scripts/check-encoding.mjs`, Node puro).
 
 El E2E crea un expediente en Fuente, procesa una exogena sintetica, comprueba el grupo
 laboral y su persistencia, resuelve un hallazgo, registra un soporte local,
