@@ -92,6 +92,53 @@ export const DocumentClassificationSchema = z.object({
 });
 export type DocumentClassification = z.infer<typeof DocumentClassificationSchema>;
 
+// `diagnosePdfDocument` (document-intelligence) solo produce textual, scanned,
+// hybrid, insufficient_text y damaged a partir de una lectura exitosa.
+// password_protected y unsupported describen fallas de lectura completas
+// (PdfReadError) y se reservan para cuando la UI necesite un único badge de
+// tipo de documento independientemente de en qué etapa falló la lectura.
+export const PdfDocumentTypeSchema = z.enum([
+  'textual',
+  'scanned',
+  'hybrid',
+  'insufficient_text',
+  'password_protected',
+  'damaged',
+  'unsupported',
+]);
+export type PdfDocumentType = z.infer<typeof PdfDocumentTypeSchema>;
+
+export const PdfPageTypeSchema = z.enum(['textual', 'scanned', 'insufficient_text', 'damaged']);
+export type PdfPageType = z.infer<typeof PdfPageTypeSchema>;
+
+export const PdfPageReadMethodSchema = z.enum(['native_text', 'ocr', 'hybrid', 'manual_review']);
+export type PdfPageReadMethod = z.infer<typeof PdfPageReadMethodSchema>;
+
+export const PdfPageDiagnosisSchema = z.object({
+  pageNumber: z.number().int().positive(),
+  type: PdfPageTypeSchema,
+  characterCount: z.number().int().nonnegative(),
+  tokenCount: z.number().int().nonnegative(),
+  textCoverage: z.number().min(0).max(1),
+  orientation: z.enum(['portrait', 'landscape', 'unknown']),
+  width: z.number().nonnegative().nullable(),
+  height: z.number().nonnegative().nullable(),
+  warnings: z.array(z.string()),
+  recommendedMethod: PdfPageReadMethodSchema,
+});
+export type PdfPageDiagnosis = z.infer<typeof PdfPageDiagnosisSchema>;
+
+export const PdfDocumentDiagnosisSchema = z.object({
+  type: PdfDocumentTypeSchema,
+  pages: z.array(PdfPageDiagnosisSchema),
+  textualPageCount: z.number().int().nonnegative(),
+  scannedPageCount: z.number().int().nonnegative(),
+  insufficientPageCount: z.number().int().nonnegative(),
+  damagedPageCount: z.number().int().nonnegative(),
+  signals: z.array(z.string()),
+});
+export type PdfDocumentDiagnosis = z.infer<typeof PdfDocumentDiagnosisSchema>;
+
 export const CandidateExogenousMatchSchema = z.object({
   recordId: z.string(),
   status: z.enum([
@@ -226,6 +273,7 @@ export const DocumentExtractionSessionSchema = z.object({
   pageCount: z.number().int().nonnegative(),
   readablePageCount: z.number().int().nonnegative(),
   metrics: DocumentExtractionMetricsSchema.optional(),
+  diagnosis: PdfDocumentDiagnosisSchema.nullable().optional(),
   candidateIds: z.array(z.string()),
   classification: DocumentClassificationSchema.nullable(),
   adapterId: z.string().nullable(),
@@ -242,4 +290,4 @@ export const DocumentExtractionSessionSchema = z.object({
 });
 export type DocumentExtractionSession = z.infer<typeof DocumentExtractionSessionSchema>;
 
-export const DOCUMENT_EXTRACTION_SCHEMA_VERSION = '2.1.1';
+export const DOCUMENT_EXTRACTION_SCHEMA_VERSION = '2.2.0';
