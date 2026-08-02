@@ -853,3 +853,88 @@ la Fase D, que sí agrega UI.
 que debe primero relajar el `throw` de `no_text` en `reader.ts` y agregar el renderizado de página a
 `<canvas>` antes de construir la vista, ya que ambas piezas se necesitan para que el flujo de OCR bajo
 demanda sea utilizable de punta a punta.
+
+## 19. Entrega: Fases D y E — laboratorio documental, OCR real y perfiles (2026-08-02)
+
+### Fase D — Laboratorio documental
+
+Se relajó el `throw` de `no_text` en `reader.ts` (bloqueaba que `diagnosePdfDocument` evaluara el
+caso más común de un documento escaneado) y se agregó `apps/web/src/lib/pdfPageRenderer.ts`, que
+renderiza una página específica a píxeles usando el mismo módulo vendorizado de PDF.js que ya usa el
+lector de texto.
+
+Nueva vista `laboratorio` en la etapa Organización (`DocumentLabPanel.tsx`): selección de documento y
+página, diagnóstico por página, modo básico/avanzado, ejecución de OCR local bajo demanda (con
+progreso, cancelación y comparación de texto nativo contra OCR vía `compareTextSources`), overlay SVG
+de capas (tokens nativos, tokens OCR, candidatos, con bordes sólidos/punteados/círculos para no
+depender solo del color) y selección manual de campo que crea un `DocumentFactCandidate` real vía
+`createManualDocumentCandidate` (nueva función en `repository.ts`), pasando por la revisión normal.
+
+**Bugs reales encontrados y corregidos durante la verificación en navegador** (no solo compilación):
+
+- Un servidor de Playwright de una validación anterior quedó vivo en el puerto 3101 tras un `kill`
+  que no llegó al proceso real (particularidad de Windows/Git Bash con procesos hijos); el nuevo
+  intento de arranque fallaba en silencio y el servidor viejo servía un build ya borrado, devolviendo
+  500 en todos los assets. Se diagnosticó con capturas de consola del navegador antes de asumir un bug
+  de código, y se documenta aquí porque puede repetirse: verificar `netstat` por el PID real antes de
+  reintentar un `next start` en un puerto que debería estar libre.
+- La vista previa de página ocupaba toda la altura del PDF (rectángulo casi vacío enorme en páginas
+  con poco contenido); se limitó a `max-h-[70vh]` con scroll interno tras verlo en una captura real.
+- `getByLabel('Concepto')` en el E2E coincidía también con el `<select>` de "Campo" porque Playwright
+  arma el nombre accesible de un `<label>` concatenando el texto de todas sus opciones internas; se
+  corrigió usando `getByRole` con el rol específico de cada campo.
+- De paso, se corrigieron tres aserciones obsoletas en `smoke.spec.ts` (preexistentes, no
+  relacionadas con este sprint): la pregunta de responsabilidad de IVA pasó de un `<select>` a tres
+  botones en un sprint anterior sin actualizar el E2E.
+
+### Fase E — Perfiles documentales y calibración
+
+`DocumentProfile` y `ExtractionFeedback` (`packages/domain`), Dexie v10. Ambas tablas viven a nivel de
+instalación, no de expediente: un perfil debe reconocerse en expedientes de años distintos, así que
+`caseId` se dejó fuera deliberadamente (`entityId` queda como indicio, no como clave estable entre
+expedientes). El catálogo de "campo capturable" (entidad/NIT/producto/fecha/concepto/valor/
+retención/saldo/deuda/ingreso/otro) se movió a `DocumentCapturedFieldSchema` en el dominio para que el
+candidato manual y los perfiles compartan la misma fuente de verdad.
+
+`computeDocumentProfileSignals` y `matchDocumentProfiles` (`document-intelligence`, puro) comparan
+dimensiones, número de páginas, secciones y encabezado con pesos fijos y explicables (25% cada uno);
+nunca asocian solo por nombre de archivo y excluyen perfiles obsoletos. El laboratorio muestra las
+coincidencias con su confianza y motivos, y permite crear un perfil en borrador desde el documento
+actual — activarlo, probarlo u obsoletarlo sigue siendo una acción aparte
+(`updateDocumentProfileStatus`), nunca automática. La selección manual de campo ahora también registra
+un `ExtractionFeedback` con el alcance que el analista elige (solo este documento / sugerencia para
+similares / actualización de perfil); ninguna de las tres opciones aplica nada por sí sola.
+
+**Deliberadamente fuera de este bloque:**
+
+- Editor de zonas por arrastre (dibujar un rectángulo a mano): las zonas de un perfil existen en el
+  modelo (`DocumentProfileZone`, coordenadas relativas 0-1) pero hoy no hay UI para crearlas
+  dibujando; un perfil nuevo se crea con `zones: []`. Encaja mejor como iteración sobre el overlay ya
+  construido que como trabajo nuevo desde cero.
+- Aplicar automáticamente las zonas de un perfil activo para pre-rellenar candidatos: el perfil se
+  sugiere y se puede crear, pero todavía no alimenta la extracción — es el siguiente enganche natural
+  una vez que existan perfiles reales probados con documentos similares.
+- Registrar feedback desde las acciones de corrección/rechazo de `DocumentExtractionReviewPanel.tsx`
+  (el panel de revisión ya existente y muy probado): se priorizó no tocar ese componente bajo presión
+  de tiempo. El feedback sí se registra desde la selección manual de campo del laboratorio (mismo
+  espíritu, menor riesgo de regresión).
+- Precedencia de estrategias expuesta al usuario (perfil exacto > adaptador específico > genérico >
+  OCR/manual): existe como orden conceptual documentado, pero no hay todavía un campo visible que
+  diga "este candidato salió de un perfil" — los candidatos manuales sí distinguen
+  `adapterId: 'manual.lab'` como estrategia identificable.
+
+### Validación exacta (2026-08-02)
+
+| Paso | Resultado |
+| --- | --- |
+| `pnpm typecheck` | OK; 7 de 8 proyectos del workspace, 0 errores |
+| `pnpm lint` | OK; 0 warnings / 0 errors |
+| `pnpm test` | OK; 219/219 pruebas (13 dominio, 26 Aegis, 61 document-intelligence, 44 parser, 75 web) |
+| `NEXUSTAX_NEXT_DIST_DIR=.next-build pnpm build` | OK; compilación y 7 rutas generadas |
+| `pnpm --filter @nexus-tax/web test:e2e` (servidor aislado, puerto 3101) | OK; 4/4 escenarios Chromium, incluyendo OCR real (no mockeado) |
+| `pnpm check:encoding` | OK; 244 archivos revisados, 0 mojibake |
+| Visual | capturas Playwright reales: escritorio 1280, móvil 390, tema claro — sin desbordamiento horizontal, contraste correcto en ambos temas |
+
+**Siguiente paso exacto:** con aprobación explícita, evaluar si conviene un editor de zonas por
+arrastre antes o después de conectar un perfil activo a la extracción automática — ambos dependen del
+mismo overlay ya construido, y decidir el orden evita construir la UI de zonas dos veces.
