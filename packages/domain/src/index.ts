@@ -29,6 +29,8 @@ export * from './employment';
 export * from './navigation';
 export * from './acceptedSources';
 export * from './documentExtraction';
+export * from './documentProfile';
+export * from './extractionFeedback';
 export * from './caseTasks';
 
 /** Versión del contrato de dominio. Se incrementa ante cambios incompatibles. */

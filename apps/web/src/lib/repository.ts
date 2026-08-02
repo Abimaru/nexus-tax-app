@@ -8,6 +8,7 @@ import type {
   CaseProduct,
   ClassificationSnapshot,
   CreateTaxCaseInput,
+  DocumentCapturedField,
   DocumentFact,
   DocumentFactCandidate,
   DocumentClassification,
@@ -37,7 +38,11 @@ import type {
   WorkflowStageId,
   WorkflowViewId,
 } from '@nexus-tax/domain';
-import { ACCEPTED_SOURCE_RULE_VERSION, DOCUMENT_CATALOG } from '@nexus-tax/domain';
+import {
+  ACCEPTED_SOURCE_RULE_VERSION,
+  DOCUMENT_CATALOG,
+  DocumentCapturedFieldSchema,
+} from '@nexus-tax/domain';
 import type { FilingObligationInputs } from '@nexus-tax/aegis-rules';
 import {
   ANALYSIS_RULE_VERSION,
@@ -1076,20 +1081,8 @@ export async function listDocumentCandidates(caseId: string): Promise<DocumentFa
   return getDb().documentCandidates.where('caseId').equals(caseId).sortBy('updatedAt');
 }
 
-export const MANUAL_CANDIDATE_FIELDS = [
-  'entity',
-  'nit',
-  'product',
-  'date',
-  'concept',
-  'value',
-  'withholding',
-  'balance',
-  'debt',
-  'income',
-  'other',
-] as const;
-export type ManualCandidateField = (typeof MANUAL_CANDIDATE_FIELDS)[number];
+export const MANUAL_CANDIDATE_FIELDS = DocumentCapturedFieldSchema.options;
+export type ManualCandidateField = DocumentCapturedField;
 
 export const MANUAL_CANDIDATE_FIELD_LABEL: Record<ManualCandidateField, string> = {
   entity: 'Entidad',

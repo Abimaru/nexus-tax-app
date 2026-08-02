@@ -97,6 +97,24 @@ export type DocumentClassification = z.infer<typeof DocumentClassificationSchema
 // password_protected y unsupported describen fallas de lectura completas
 // (PdfReadError) y se reservan para cuando la UI necesite un único badge de
 // tipo de documento independientemente de en qué etapa falló la lectura.
+// Campo semántico que el analista asigna a una selección manual del
+// laboratorio documental (§13) o que un DocumentProfile espera encontrar en
+// zonas conocidas (§14). Vive aquí para que ambos lo compartan sin duplicar.
+export const DocumentCapturedFieldSchema = z.enum([
+  'entity',
+  'nit',
+  'product',
+  'date',
+  'concept',
+  'value',
+  'withholding',
+  'balance',
+  'debt',
+  'income',
+  'other',
+]);
+export type DocumentCapturedField = z.infer<typeof DocumentCapturedFieldSchema>;
+
 export const PdfDocumentTypeSchema = z.enum([
   'textual',
   'scanned',
