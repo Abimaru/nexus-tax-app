@@ -5,6 +5,7 @@ const nextConfig = {
   transpilePackages: [
     '@nexus-tax/aegis-rules',
     '@nexus-tax/domain',
+    '@nexus-tax/document-intelligence',
     '@nexus-tax/exogenous-parser',
     '@nexus-tax/ui',
     '@nexus-tax/config',
