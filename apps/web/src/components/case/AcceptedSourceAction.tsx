@@ -17,6 +17,7 @@ import {
   OCCASIONAL_GAIN_PRESENTATION,
 } from '@/lib/presentationCatalogs';
 import { acceptExogenousValue, confirmAcceptedExogenousValue } from '@/lib/repository';
+import { ModalPortal } from '@/components/ModalPortal';
 
 export function AcceptedSourceAction({
   caseId,
@@ -102,182 +103,194 @@ export function AcceptedSourceAction({
       </Button>
 
       {open ? (
-        <div
-          className="fixed inset-0 z-50 grid place-items-center bg-surface-base/80 p-4 backdrop-blur-sm"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="accepted-source-title"
-        >
-          <GlassPanel className="max-h-[92vh] w-full max-w-2xl overflow-y-auto p-5">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h2
-                  id="accepted-source-title"
-                  className="text-lg font-semibold text-content-strong"
-                >
-                  Aceptar información exógena como fuente provisional
-                </h2>
-                <p className="mt-1 text-sm text-content-muted">
-                  La decisión queda trazada y no convierte la conciliación en definitiva.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="rounded-lg p-2 text-content-muted hover:bg-overlay/10"
-                aria-label="Cerrar panel de aceptación"
-              >
-                <X className="h-4 w-4" aria-hidden />
-              </button>
-            </div>
-
-            <form onSubmit={submit} className="mt-5 space-y-4">
-              <Field label="Registro exógeno">
-                <select
-                  value={selected?.id ?? ''}
-                  onChange={(event) => setRecordId(event.target.value)}
-                  className={inputClass}
-                >
-                  {candidates.map((record) => (
-                    <option className="bg-surface-raised" key={record.id} value={record.id}>
-                      {record.entityName} · {record.conceptLabel ?? 'Concepto sin etiqueta'} · fila{' '}
-                      {record.source.row}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-
-              {selected ? (
-                <dl className="grid gap-3 rounded-xl border border-overlay/10 bg-overlay/[0.03] p-4 text-xs sm:grid-cols-2">
-                  <Data label="Entidad" value={selected.entityName || 'Entidad sin identificar'} />
-                  <Data label="Concepto" value={selected.conceptLabel ?? 'Concepto sin etiqueta'} />
-                  <Data label="Valor" value={formatCurrencyCOP(selected.reportedValue ?? 0)} />
-                  <Data
-                    label="Origen"
-                    value={`${selected.source.sheet} · fila ${selected.source.row}`}
-                  />
-                  <Data label="Categoría" value={CATEGORY_LABEL[selected.category]} />
-                  <Data
-                    label="Requisito relacionado"
-                    value={requirement?.documentName ?? 'Sin requisito asociado'}
-                  />
-                  <Data
-                    label="Estado documental"
-                    value={requirement ? 'Sin soporte confirmado' : 'Por revisar'}
-                  />
-                  <Data
-                    label="Impacto en la matriz"
-                    value={
-                      includeInMatrix
-                        ? 'Se conserva una sola vez como provisional'
-                        : 'No se incluirá por esta decisión'
-                    }
-                  />
-                </dl>
-              ) : null}
-
-              <Field label="Motivo">
-                <select
-                  value={reason}
-                  onChange={(event) => setReason(event.target.value as typeof reason)}
-                  className={inputClass}
-                >
-                  {ExogenousAcceptanceReasonSchema.options.map((option) => (
-                    <option className="bg-surface-raised" key={option} value={option}>
-                      {ACCEPTANCE_REASON_PRESENTATION[option].label}
-                    </option>
-                  ))}
-                </select>
-                <Help>{ACCEPTANCE_REASON_PRESENTATION[reason].description}</Help>
-              </Field>
-
-              {isOccasionalGain ? (
-                <div className="space-y-3 rounded-xl border border-tone-amber/25 bg-tone-amber/5 p-4">
-                  <div>
-                    <p className="text-sm font-medium text-content-strong">
-                      Premio o ganancia ocasional sin certificado
-                    </p>
-                    <p className="text-xs text-content-muted">
-                      Reconoce la operación sin asumir que todo el valor sea gravable.
-                    </p>
-                  </div>
-                  <Field label="¿Reconoces esta operación?">
-                    <select
-                      value={recognition}
-                      onChange={(event) => setRecognition(event.target.value as typeof recognition)}
-                      className={inputClass}
-                      required
-                    >
-                      <option className="bg-surface-raised" value="">
-                        Selecciona una respuesta
-                      </option>
-                      {OccasionalGainRecognitionSchema.options.map((option) => (
-                        <option className="bg-surface-raised" key={option} value={option}>
-                          {OCCASIONAL_GAIN_PRESENTATION[option].label}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-                  {recognition === 'collected_for_third_party' ? (
-                    <Field label="Alias o relación del beneficiario (opcional)">
-                      <input
-                        value={beneficiaryAlias}
-                        onChange={(event) => setBeneficiaryAlias(event.target.value)}
-                        className={inputClass}
-                        placeholder="Ej. familiar A"
-                      />
-                      <Help>
-                        No registres datos sensibles adicionales. La operación no se excluirá
-                        automáticamente.
-                      </Help>
-                    </Field>
-                  ) : null}
+        <ModalPortal onClose={() => setOpen(false)}>
+          <div
+            className="fixed inset-0 z-50 grid place-items-center bg-surface-base/80 p-4 backdrop-blur-sm"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="accepted-source-title"
+            tabIndex={-1}
+            autoFocus
+          >
+            <GlassPanel className="max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto overscroll-contain p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2
+                    id="accepted-source-title"
+                    className="text-lg font-semibold text-content-strong"
+                  >
+                    Aceptar información exógena como fuente provisional
+                  </h2>
+                  <p className="mt-1 text-sm text-content-muted">
+                    La decisión queda trazada y no convierte la conciliación en definitiva.
+                  </p>
                 </div>
-              ) : null}
-
-              <Field label={reason === 'other' ? 'Observación obligatoria' : 'Observación'}>
-                <textarea
-                  value={observation}
-                  onChange={(event) => setObservation(event.target.value)}
-                  className={`${inputClass} min-h-20`}
-                  required={reason === 'other' || recognition === 'collected_for_third_party'}
-                />
-              </Field>
-
-              <label className="flex items-start gap-2 text-sm text-content-muted">
-                <input
-                  type="checkbox"
-                  checked={includeInMatrix}
-                  onChange={(event) => setIncludeInMatrix(event.target.checked)}
-                  className="mt-0.5"
-                />
-                <span>
-                  Incluir provisionalmente en la matriz. El registro ya existente se anota; no se
-                  suma de nuevo.
-                </span>
-              </label>
-
-              <div className="flex gap-2 rounded-xl border border-tone-amber/25 bg-tone-amber/5 p-3 text-xs text-content-muted">
-                <ShieldAlert className="h-4 w-4 shrink-0 text-tone-amber" aria-hidden />
-                La información exógena no reemplaza siempre el soporte. Esta acción no calcula un
-                impuesto definitivo.
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="rounded-lg p-2 text-content-muted hover:bg-overlay/10"
+                  aria-label="Cerrar panel de aceptación"
+                >
+                  <X className="h-4 w-4" aria-hidden />
+                </button>
               </div>
-              {error ? (
-                <p role="alert" className="text-sm text-tone-rose">
-                  {error}
-                </p>
-              ) : null}
-              <div className="flex justify-end gap-2">
-                <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button type="submit" disabled={saving || !selected}>
-                  {saving ? 'Guardando…' : 'Aceptar provisionalmente'}
-                </Button>
-              </div>
-            </form>
-          </GlassPanel>
-        </div>
+
+              <form onSubmit={submit} className="mt-5 space-y-4">
+                <Field label="Registro exógeno">
+                  <select
+                    value={selected?.id ?? ''}
+                    onChange={(event) => setRecordId(event.target.value)}
+                    className={inputClass}
+                  >
+                    {candidates.map((record) => (
+                      <option className="bg-surface-raised" key={record.id} value={record.id}>
+                        {record.entityName} · {record.conceptLabel ?? 'Concepto sin etiqueta'} ·
+                        fila {record.source.row}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+
+                {selected ? (
+                  <dl className="grid gap-3 rounded-xl border border-overlay/10 bg-overlay/[0.03] p-4 text-xs sm:grid-cols-2">
+                    <Data
+                      label="Entidad"
+                      value={selected.entityName || 'Entidad sin identificar'}
+                    />
+                    <Data
+                      label="Concepto"
+                      value={selected.conceptLabel ?? 'Concepto sin etiqueta'}
+                    />
+                    <Data label="Valor" value={formatCurrencyCOP(selected.reportedValue ?? 0)} />
+                    <Data
+                      label="Origen"
+                      value={`${selected.source.sheet} · fila ${selected.source.row}`}
+                    />
+                    <Data label="Categoría" value={CATEGORY_LABEL[selected.category]} />
+                    <Data
+                      label="Requisito relacionado"
+                      value={requirement?.documentName ?? 'Sin requisito asociado'}
+                    />
+                    <Data
+                      label="Estado documental"
+                      value={requirement ? 'Sin soporte confirmado' : 'Por revisar'}
+                    />
+                    <Data
+                      label="Impacto en la matriz"
+                      value={
+                        includeInMatrix
+                          ? 'Se conserva una sola vez como provisional'
+                          : 'No se incluirá por esta decisión'
+                      }
+                    />
+                  </dl>
+                ) : null}
+
+                <Field label="Motivo">
+                  <select
+                    value={reason}
+                    onChange={(event) => setReason(event.target.value as typeof reason)}
+                    className={inputClass}
+                  >
+                    {ExogenousAcceptanceReasonSchema.options.map((option) => (
+                      <option className="bg-surface-raised" key={option} value={option}>
+                        {ACCEPTANCE_REASON_PRESENTATION[option].label}
+                      </option>
+                    ))}
+                  </select>
+                  <Help>{ACCEPTANCE_REASON_PRESENTATION[reason].description}</Help>
+                </Field>
+
+                {isOccasionalGain ? (
+                  <div className="space-y-3 rounded-xl border border-tone-amber/25 bg-tone-amber/5 p-4">
+                    <div>
+                      <p className="text-sm font-medium text-content-strong">
+                        Premio o ganancia ocasional sin certificado
+                      </p>
+                      <p className="text-xs text-content-muted">
+                        Reconoce la operación sin asumir que todo el valor sea gravable.
+                      </p>
+                    </div>
+                    <Field label="¿Reconoces esta operación?">
+                      <select
+                        value={recognition}
+                        onChange={(event) =>
+                          setRecognition(event.target.value as typeof recognition)
+                        }
+                        className={inputClass}
+                        required
+                      >
+                        <option className="bg-surface-raised" value="">
+                          Selecciona una respuesta
+                        </option>
+                        {OccasionalGainRecognitionSchema.options.map((option) => (
+                          <option className="bg-surface-raised" key={option} value={option}>
+                            {OCCASIONAL_GAIN_PRESENTATION[option].label}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                    {recognition === 'collected_for_third_party' ? (
+                      <Field label="Alias o relación del beneficiario (opcional)">
+                        <input
+                          value={beneficiaryAlias}
+                          onChange={(event) => setBeneficiaryAlias(event.target.value)}
+                          className={inputClass}
+                          placeholder="Ej. familiar A"
+                        />
+                        <Help>
+                          No registres datos sensibles adicionales. La operación no se excluirá
+                          automáticamente.
+                        </Help>
+                      </Field>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                <Field label={reason === 'other' ? 'Observación obligatoria' : 'Observación'}>
+                  <textarea
+                    value={observation}
+                    onChange={(event) => setObservation(event.target.value)}
+                    className={`${inputClass} min-h-20`}
+                    required={reason === 'other' || recognition === 'collected_for_third_party'}
+                  />
+                </Field>
+
+                <label className="flex items-start gap-2 text-sm text-content-muted">
+                  <input
+                    type="checkbox"
+                    checked={includeInMatrix}
+                    onChange={(event) => setIncludeInMatrix(event.target.checked)}
+                    className="mt-0.5"
+                  />
+                  <span>
+                    Incluir provisionalmente en la matriz. El registro ya existente se anota; no se
+                    suma de nuevo.
+                  </span>
+                </label>
+
+                <div className="flex gap-2 rounded-xl border border-tone-amber/25 bg-tone-amber/5 p-3 text-xs text-content-muted">
+                  <ShieldAlert className="h-4 w-4 shrink-0 text-tone-amber" aria-hidden />
+                  La información exógena no reemplaza siempre el soporte. Esta acción no calcula un
+                  impuesto definitivo.
+                </div>
+                {error ? (
+                  <p role="alert" className="text-sm text-tone-rose">
+                    {error}
+                  </p>
+                ) : null}
+                <div className="flex justify-end gap-2">
+                  <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
+                    Cancelar
+                  </Button>
+                  <Button type="submit" disabled={saving || !selected}>
+                    {saving ? 'Guardando…' : 'Aceptar provisionalmente'}
+                  </Button>
+                </div>
+              </form>
+            </GlassPanel>
+          </div>
+        </ModalPortal>
       ) : null}
 
       {acceptedSources.length && !compact ? (

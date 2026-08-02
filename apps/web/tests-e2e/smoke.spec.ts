@@ -128,7 +128,7 @@ async function selectView(page: import('@playwright/test').Page, name: string) {
     .click();
 }
 
-test('flujo guiado completo del expediente', async ({ page }) => {
+test('flujo guiado completo del expediente', async ({ page }, testInfo) => {
   const samplePath = makeSampleFile();
   const supportPath = makeSupportFile();
 
@@ -193,6 +193,39 @@ test('flujo guiado completo del expediente', async ({ page }) => {
   await expect(page.getByRole('heading', { name: /Formulario 220/ })).toHaveCount(1);
   await page.getByRole('button', { name: /Agregar otro empleador/ }).click();
   await expect(page.getByRole('heading', { name: 'Empleador 2' })).toBeVisible();
+
+  // Los diálogos de requisitos viven en document.body, fuera de la tarjeta
+  // animada con overflow que antes los recortaba.
+  const occasionalGainGroup = page.locator('section').filter({ hasText: 'Juegos Sintéticos SAS' });
+  await occasionalGainGroup
+    .getByRole('button', { name: 'La entidad no emite este soporte' })
+    .click();
+  const requirementDialog = page.getByRole('dialog', {
+    name: 'La entidad no emite este soporte',
+  });
+  await expect(requirementDialog).toBeVisible();
+  expect(
+    await requirementDialog.evaluate((element) => element.parentElement === document.body),
+  ).toBe(true);
+  const modalGeometry = await requirementDialog
+    .locator(':scope > *')
+    .first()
+    .evaluate((element) => {
+      const bounds = element.getBoundingClientRect();
+      return {
+        top: bounds.top,
+        bottom: bounds.bottom,
+        viewportHeight: window.innerHeight,
+        overflowY: window.getComputedStyle(element).overflowY,
+      };
+    });
+  expect(modalGeometry.top).toBeGreaterThanOrEqual(0);
+  expect(modalGeometry.bottom).toBeLessThanOrEqual(modalGeometry.viewportHeight);
+  expect(modalGeometry.overflowY).toBe('auto');
+  await page.screenshot({
+    path: testInfo.outputPath('requisito-modal-fuera-de-tarjeta.png'),
+  });
+  await requirementDialog.getByRole('button', { name: 'Cerrar gestión del requisito' }).click();
   await page.reload();
   await expect(page).toHaveURL(/\/organizacion\/requisitos$/);
   await expect(page.getByRole('heading', { name: 'Empleador 2' })).toBeVisible();
@@ -259,6 +292,12 @@ test('flujo guiado completo del expediente', async ({ page }) => {
     .getByRole('button', { name: 'Usar valor de la exógena provisionalmente' })
     .first()
     .click();
+  const acceptedSourceDialog = page.getByRole('dialog', {
+    name: 'Aceptar información exógena como fuente provisional',
+  });
+  expect(
+    await acceptedSourceDialog.evaluate((element) => element.parentElement === document.body),
+  ).toBe(true);
   const recordSelect = page.getByLabel('Registro exógeno');
   const prizeValue = await recordSelect
     .locator('option')

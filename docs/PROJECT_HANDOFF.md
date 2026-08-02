@@ -503,3 +503,37 @@ asistidas permanecen deshabilitadas.
 Siguiente paso: validar manualmente con fixtures sintéticos un valor igual, uno
 contradictorio y uno no comparable; revisar la exportación 2.0.3 y después
 diseñar, sin OCR todavía, un editor N:M de fuentes y documentos.
+
+## 14. Corrección: modales de requisitos fuera de las tarjetas (2026-08-01)
+
+### Problema y causa
+
+Los diálogos de “La entidad no emite este soporte” y “Usar valor de la exógena
+provisionalmente” se montaban dentro de las tarjetas animadas de Requisitos. El
+`transform` de Framer Motion convertía ese ancestro en el contenedor del
+posicionamiento `fixed` y el `overflow-hidden` de `GlassPanel` recortaba el
+contenido, especialmente en ganancias ocasionales.
+
+### Implementación
+
+- `ModalPortal` monta ambos diálogos directamente en `document.body`.
+- El panel limita su alto con unidades de viewport dinámico y conserva scroll
+  vertical y `overscroll-contain`, sin depender de la tarjeta de entidad.
+- Mientras el diálogo está abierto se bloquea el scroll del fondo; Escape y los
+  controles visibles permiten cerrarlo, y el foco entra al diálogo.
+- Playwright acepta `PLAYWRIGHT_BASE_URL` para validar contra un servidor de
+  desarrollo ya activo sin reconstruir ni alterar su directorio `.next`.
+
+### Validaciones exactas
+
+| Paso                  | Comando                                                                                               | Resultado                   |
+| --------------------- | ----------------------------------------------------------------------------------------------------- | --------------------------- |
+| Typecheck             | `pnpm typecheck`                                                                                      | OK; 6 proyectos             |
+| Unitarias/integración | `pnpm test`                                                                                           | OK; 134/134 pruebas         |
+| Lint                  | `pnpm lint`                                                                                           | OK; 0 warnings / 0 errors   |
+| E2E                   | `$env:PLAYWRIGHT_BASE_URL='http://localhost:3000'; pnpm test:e2e -- apps/web/tests-e2e/smoke.spec.ts` | OK; 2/2 Chromium            |
+| Visual                | captura Playwright del modal en Requisitos                                                            | OK; panel completo y scroll |
+
+No se ejecutó `pnpm build` porque había una sesión `pnpm dev` activa y
+ambos procesos comparten `.next`; el build queda cubierto por el quality gate al
+cerrar esa sesión.
