@@ -180,6 +180,17 @@ test('flujo guiado completo del expediente', async ({ page }, testInfo) => {
   const samplePath = makeSampleFile();
   const supportPath = makeSupportFile();
   const unsupportedPath = makeUnsupportedPdfFile();
+  let offOriginRequests = 0;
+  page.on('request', (request) => {
+    const url = new URL(request.url());
+    if (
+      (url.protocol === 'http:' || url.protocol === 'https:') &&
+      url.hostname !== 'localhost' &&
+      url.hostname !== '127.0.0.1'
+    ) {
+      offOriginRequests += 1;
+    }
+  });
 
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
@@ -330,11 +341,12 @@ test('flujo guiado completo del expediente', async ({ page }, testInfo) => {
   await expect(page).toHaveURL(/\/organizacion\/revision-documental$/);
   await expect(page.getByRole('heading', { name: 'Revisión de extracción' })).toBeVisible();
   await expect(page.getByLabel('Tipo documental propuesto')).toHaveValue('form_220');
+  expect(offOriginRequests).toBe(0);
   const incomeCandidate = page.getByRole('article', {
     name: 'Ingresos laborales',
     exact: true,
   });
-  await expect(incomeCandidate.getByText(/48\.000\.000/)).toBeVisible();
+  await expect(incomeCandidate.locator('dd').filter({ hasText: '48.000.000' })).toBeVisible();
   const suggestedRequirement = incomeCandidate.getByLabel('Requisito sugerido');
   const firstRequirementValue = await suggestedRequirement
     .locator('option')
