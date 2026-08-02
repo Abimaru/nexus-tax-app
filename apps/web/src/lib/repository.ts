@@ -777,59 +777,62 @@ export async function removeDocumentBinary(documentId: string): Promise<void> {
 export async function deleteDocumentPermanently(documentId: string): Promise<void> {
   const db = getDb();
   const timestamp = nowIso();
+  const document = await db.documents.get(documentId);
+  if (!document) return;
+
+  // Fase 1: borrado en cascada del documento y sus dependencias exclusivas.
+  // Se hace en una transacción con los mismos tables para atomicidad; Dexie 4
+  // acepta hasta 7 argumentos posicionales, así que agrupamos aquí y hacemos
+  // las tablas restantes (facts, employmentGroups) en transacciones aparte.
   await db.transaction(
     'rw',
-    [
-      db.documents,
-      db.documentBlobs,
-      db.documentCandidates,
-      db.extractionSessions,
-      db.coverages,
-      db.facts,
-      db.employmentGroups,
-    ],
+    db.documents,
+    db.documentBlobs,
+    db.documentCandidates,
+    db.extractionSessions,
+    db.coverages,
     async () => {
-      const document = await db.documents.get(documentId);
-      if (!document) return;
-
       await db.documents.delete(documentId);
       await db.documentBlobs.delete(documentId);
       await db.documentCandidates.where('documentId').equals(documentId).delete();
       await db.extractionSessions.where('documentId').equals(documentId).delete();
       await db.coverages.where('documentId').equals(documentId).delete();
-
-      // Los hechos son decisiones humanas: se conservan, pero pierden su
-      // referencia al documento borrado.
-      const linkedFacts = await db.facts.where('documentId').equals(documentId).toArray();
-      for (const fact of linkedFacts) {
-        await db.facts.update(fact.id, { documentId: null, updatedAt: timestamp });
-      }
-
-      // Actualiza las instancias de empleador del expediente que referenciaban
-      // el documento como principal o complementario.
-      const groups = await db.employmentGroups.where('caseId').equals(document.caseId).toArray();
-      for (const group of groups) {
-        let changed = false;
-        const instances = group.instances.map((instance) => {
-          const wasPrimary = instance.form220DocumentId === documentId;
-          const complements = instance.complementaryDocumentIds.filter((id) => id !== documentId);
-          if (wasPrimary || complements.length !== instance.complementaryDocumentIds.length) {
-            changed = true;
-            return {
-              ...instance,
-              form220DocumentId: wasPrimary ? null : instance.form220DocumentId,
-              complementaryDocumentIds: complements,
-              updatedAt: timestamp,
-            };
-          }
-          return instance;
-        });
-        if (changed) {
-          await db.employmentGroups.update(group.id, { instances, updatedAt: timestamp });
-        }
-      }
     },
   );
+
+  // Fase 2: los hechos son decisiones humanas; se conservan, pero pierden su
+  // referencia al documento borrado.
+  await db.transaction('rw', db.facts, async () => {
+    const linkedFacts = await db.facts.where('documentId').equals(documentId).toArray();
+    for (const fact of linkedFacts) {
+      await db.facts.update(fact.id, { documentId: null, updatedAt: timestamp });
+    }
+  });
+
+  // Fase 3: retirar la referencia del documento de las instancias de empleador.
+  await db.transaction('rw', db.employmentGroups, async () => {
+    const groups = await db.employmentGroups.where('caseId').equals(document.caseId).toArray();
+    for (const group of groups) {
+      let changed = false;
+      const instances = group.instances.map((instance) => {
+        const wasPrimary = instance.form220DocumentId === documentId;
+        const complements = instance.complementaryDocumentIds.filter((id) => id !== documentId);
+        if (wasPrimary || complements.length !== instance.complementaryDocumentIds.length) {
+          changed = true;
+          return {
+            ...instance,
+            form220DocumentId: wasPrimary ? null : instance.form220DocumentId,
+            complementaryDocumentIds: complements,
+            updatedAt: timestamp,
+          };
+        }
+        return instance;
+      });
+      if (changed) {
+        await db.employmentGroups.update(group.id, { instances, updatedAt: timestamp });
+      }
+    }
+  });
 }
 
 export async function markDocumentObsolete(documentId: string): Promise<void> {

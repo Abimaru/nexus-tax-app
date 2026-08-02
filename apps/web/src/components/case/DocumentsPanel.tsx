@@ -79,6 +79,8 @@ export function DocumentsPanel({
   const [showCoveredRequirements, setShowCoveredRequirements] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [deletionError, setDeletionError] = useState<Record<string, string>>({});
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const catalog = DOCUMENT_CATALOG.find((entry) => entry.kind === kind)!;
 
   // Agrupa los requisitos por entidad para evitar la repetición del prefijo.
@@ -616,20 +618,43 @@ export function DocumentsPanel({
                     <Button
                       variant="danger"
                       className="px-3 py-1.5 text-xs"
+                      disabled={deletingId === item.id}
                       leadingIcon={<Trash2 className="h-3.5 w-3.5" />}
-                      onClick={() => {
+                      onClick={async () => {
                         if (
-                          window.confirm(
+                          !window.confirm(
                             `Vas a eliminar definitivamente "${item.fileName}" y todo lo asociado (blob, candidatos, sesiones, coberturas). Los hechos manuales del analista se conservan pero pierden la referencia al documento. Esta acción es irreversible. ¿Continuar?`,
                           )
-                        ) {
-                          void deleteDocumentPermanently(item.id);
+                        )
+                          return;
+                        setDeletingId(item.id);
+                        setDeletionError((current) => {
+                          const next = { ...current };
+                          delete next[item.id];
+                          return next;
+                        });
+                        try {
+                          await deleteDocumentPermanently(item.id);
+                        } catch (caught) {
+                          const message =
+                            caught instanceof Error
+                              ? caught.message
+                              : 'No fue posible eliminar el documento.';
+                          console.error('deleteDocumentPermanently failed', caught);
+                          setDeletionError((current) => ({ ...current, [item.id]: message }));
+                        } finally {
+                          setDeletingId((current) => (current === item.id ? null : current));
                         }
                       }}
                     >
-                      Eliminar definitivamente
+                      {deletingId === item.id ? 'Eliminando…' : 'Eliminar definitivamente'}
                     </Button>
                   </div>
+                  {deletionError[item.id] ? (
+                    <p role="alert" className="mt-2 text-xs text-tone-rose">
+                      {deletionError[item.id]}
+                    </p>
+                  ) : null}
                 </GlassPanel>
               </article>
             );
