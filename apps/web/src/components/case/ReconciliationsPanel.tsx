@@ -1,11 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { GitCompareArrows } from 'lucide-react';
+import { ChevronDown, GitCompareArrows, Wrench } from 'lucide-react';
 import type {
   AcceptedExogenousValue,
   DocumentFact,
   PreliminaryReconciliation,
+  PreliminaryReconciliationStatus,
   ProcessingResult,
   ReconciliationSuggestion,
 } from '@nexus-tax/domain';
@@ -14,6 +15,16 @@ import { savePreliminaryReconciliation, saveTaxResolutionDecision } from '@/lib/
 import { evaluateReconciliationDifference } from '@nexus-tax/exogenous-parser';
 import { PRELIMINARY_RECONCILIATION_PRESENTATION } from '@/lib/presentationCatalogs';
 import { AcceptedSourceAction } from './AcceptedSourceAction';
+
+/** Estados finales que el analista puede elegir al resolver manualmente. */
+const MANUAL_STATUSES: readonly PreliminaryReconciliationStatus[] = [
+  'reconciled',
+  'minor_difference',
+  'relevant_difference',
+  'not_comparable',
+  'other_product',
+  'exogenous_data_questioned',
+];
 
 export function ReconciliationsPanel({
   caseId,
@@ -34,6 +45,11 @@ export function ReconciliationsPanel({
     'Coincidencia revisada por entidad, categoría, concepto y valor.',
   );
   const [dismissed, setDismissed] = useState<string[]>([]);
+  const [manualForm, setManualForm] = useState<{
+    suggestionId: string | null;
+    status: PreliminaryReconciliationStatus;
+    reason: string;
+  }>({ suggestionId: null, status: 'reconciled', reason: '' });
   const existingSuggestionIds = new Set(
     reconciliations.flatMap((item) =>
       item.factIds.flatMap((factId) =>
@@ -76,6 +92,31 @@ export function ReconciliationsPanel({
       confirmedByHuman: true,
     });
   }
+  /**
+   * Guarda una conciliación con el estado que el analista elige explícitamente.
+   * Habilita cerrar sugerencias que la heurística no considera "seguras" pero
+   * que la revisión humana justifica (o al revés: dejar constancia de que la
+   * diferencia es relevante o de que la exógena está en duda).
+   */
+  async function resolveManually(suggestion: ReconciliationSuggestion) {
+    if (manualForm.suggestionId !== suggestion.id) return;
+    if (!manualForm.reason.trim()) return;
+    await savePreliminaryReconciliation(caseId, {
+      factIds: [suggestion.factId],
+      exogenousRecordIds: [suggestion.exogenousRecordId],
+      status: manualForm.status,
+      exogenousValue: suggestion.exogenousValue,
+      documentaryValue: suggestion.documentaryValue,
+      productId: facts.find((fact) => fact.id === suggestion.factId)?.productId ?? null,
+      explanation,
+      analystDecision: manualForm.reason.trim(),
+      suggestionScore: suggestion.score,
+      suggestionSignals: suggestion.signals,
+      confirmedByHuman: true,
+    });
+    setManualForm({ suggestionId: null, status: 'reconciled', reason: '' });
+  }
+
   async function reject(suggestion: ReconciliationSuggestion) {
     await saveTaxResolutionDecision(caseId, {
       type: 'reject_suggestion',
@@ -169,12 +210,33 @@ export function ReconciliationsPanel({
                     {!safeToConfirm ? (
                       <p className="mt-3 text-xs text-tone-amber">
                         La confianza, diferencia o naturaleza no permite recomendar una confirmación
-                        directa.
+                        directa. Usa <span className="font-medium">Resolver manualmente</span> para
+                        registrar tu decisión con justificación.
                       </p>
                     ) : null}
                     <div className="mt-3 flex flex-wrap justify-end gap-2">
                       <Button variant="ghost" onClick={() => void reject(suggestion)}>
                         Rechazar sugerencia
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        leadingIcon={<Wrench className="h-4 w-4" aria-hidden />}
+                        onClick={() =>
+                          setManualForm((current) =>
+                            current.suggestionId === suggestion.id
+                              ? { suggestionId: null, status: 'reconciled', reason: '' }
+                              : { suggestionId: suggestion.id, status: 'reconciled', reason: '' },
+                          )
+                        }
+                        aria-expanded={manualForm.suggestionId === suggestion.id}
+                      >
+                        Resolver manualmente
+                        <ChevronDown
+                          className={`ml-1 h-3.5 w-3.5 transition-transform motion-reduce:transition-none ${
+                            manualForm.suggestionId === suggestion.id ? 'rotate-180' : ''
+                          }`}
+                          aria-hidden
+                        />
                       </Button>
                       {safeToConfirm ? (
                         <Button variant="secondary" onClick={() => void confirm(suggestion)}>
@@ -182,6 +244,65 @@ export function ReconciliationsPanel({
                         </Button>
                       ) : null}
                     </div>
+
+                    {manualForm.suggestionId === suggestion.id ? (
+                      <div className="mt-3 rounded-xl border border-overlay/10 bg-overlay/[0.02] p-3">
+                        <p className="text-xs font-medium uppercase tracking-wide text-content-subtle">
+                          Registrar decisión del analista
+                        </p>
+                        <div className="mt-2 grid gap-2 md:grid-cols-[220px_1fr]">
+                          <label className="block text-xs text-content-muted">
+                            Estado final
+                            <select
+                              value={manualForm.status}
+                              onChange={(event) =>
+                                setManualForm((current) => ({
+                                  ...current,
+                                  status: event.target.value as PreliminaryReconciliationStatus,
+                                }))
+                              }
+                              className="mt-1 min-h-10 w-full rounded-lg border border-overlay/12 bg-overlay/5 px-2 py-1.5 text-sm text-content-strong"
+                            >
+                              {MANUAL_STATUSES.map((status) => (
+                                <option
+                                  key={status}
+                                  value={status}
+                                  className="bg-surface-raised"
+                                >
+                                  {PRELIMINARY_RECONCILIATION_PRESENTATION[status].label}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <label className="block text-xs text-content-muted">
+                            Justificación (obligatoria)
+                            <textarea
+                              value={manualForm.reason}
+                              onChange={(event) =>
+                                setManualForm((current) => ({
+                                  ...current,
+                                  reason: event.target.value,
+                                }))
+                              }
+                              placeholder="Explica por qué esta asociación queda en el estado seleccionado (p. ej. la diferencia se explica por una retención adicional del banco)."
+                              className="mt-1 min-h-16 w-full rounded-lg border border-overlay/12 bg-overlay/5 p-2 text-sm text-content-strong"
+                            />
+                          </label>
+                        </div>
+                        <p className="mt-2 text-xs text-content-subtle">
+                          {PRELIMINARY_RECONCILIATION_PRESENTATION[manualForm.status].description}
+                        </p>
+                        <div className="mt-3 flex justify-end">
+                          <Button
+                            variant="primary"
+                            disabled={!manualForm.reason.trim()}
+                            onClick={() => void resolveManually(suggestion)}
+                          >
+                            Guardar decisión
+                          </Button>
+                        </div>
+                      </div>
+                    ) : null}
                   </GlassPanel>
                 );
               })}
