@@ -595,6 +595,8 @@ export function CaseWorkbench({
                 acceptedSources={workspace.acceptedSources}
                 tasks={tasks}
                 onOpenTasks={() => applyDestination('organizacion', 'pendientes')}
+                onNavigateToRecord={navigateToRecord}
+                onNavigateToFindings={() => applyDestination('conciliacion', 'hallazgos')}
               />
             )}
           </AnalysisGate>

@@ -1,6 +1,6 @@
 'use client';
 
-import { RotateCcw } from 'lucide-react';
+import { ArrowRight, RotateCcw } from 'lucide-react';
 import type {
   AcceptedExogenousValue,
   CaseAnalysis,
@@ -33,6 +33,8 @@ export function MatrixPanel({
   acceptedSources,
   tasks,
   onOpenTasks,
+  onNavigateToRecord,
+  onNavigateToFindings,
 }: {
   caseId: string;
   result: ProcessingResult;
@@ -40,6 +42,10 @@ export function MatrixPanel({
   acceptedSources: AcceptedExogenousValue[];
   tasks: readonly CaseTask[];
   onOpenTasks: () => void;
+  /** Salta a Registros enfocando un registro concreto (para resolver un pendiente). */
+  onNavigateToRecord?: (recordId: string) => void;
+  /** Salta a Hallazgos, donde el analista puede confirmar/modificar/excluir. */
+  onNavigateToFindings?: () => void;
 }) {
   const invoice = analysis.matrix.electronicInvoicing;
   return (
@@ -166,9 +172,31 @@ export function MatrixPanel({
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <h3 className="text-sm font-medium text-content-strong">{group.label}</h3>
-                    <p className="mt-1 text-xs text-content-subtle">
-                      {group.includedCount} incluidos · {group.excludedCount} excluidos ·{' '}
-                      {group.pendingCount} pendientes
+                    <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-content-subtle">
+                      <span>{group.includedCount} incluidos</span>
+                      <span aria-hidden>·</span>
+                      <span>{group.excludedCount} excluidos</span>
+                      <span aria-hidden>·</span>
+                      {group.pendingCount > 0 && onNavigateToRecord ? (
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            const first = group.entries.find(
+                              (entry) => entry.disposition === 'pending',
+                            );
+                            if (first) onNavigateToRecord(first.recordId);
+                          }}
+                          className="inline-flex items-center gap-1 rounded-full border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 font-medium text-tone-amber hover:bg-amber-400/20"
+                          aria-label={`Ir al primer pendiente de ${group.label}`}
+                        >
+                          {group.pendingCount} pendiente(s)
+                          <ArrowRight className="h-3 w-3" aria-hidden />
+                        </button>
+                      ) : (
+                        <span>{group.pendingCount} pendientes</span>
+                      )}
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
@@ -215,10 +243,42 @@ export function MatrixPanel({
                   </p>
                 ))}
                 <p className="mt-2 text-xs text-tone-cyan">Acción: {group.recommendedAction}</p>
-                {task ? (
-                  <Button className="mt-3" variant="secondary" onClick={onOpenTasks}>
-                    Ver tarea relacionada
-                  </Button>
+                {group.pendingCount > 0 || task ? (
+                  <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                    {group.pendingCount > 0 && onNavigateToRecord ? (
+                      <Button
+                        variant="secondary"
+                        className="px-3 py-1.5 text-xs"
+                        leadingIcon={<ArrowRight className="h-3.5 w-3.5" aria-hidden />}
+                        onClick={() => {
+                          const first = group.entries.find(
+                            (entry) => entry.disposition === 'pending',
+                          );
+                          if (first) onNavigateToRecord(first.recordId);
+                        }}
+                      >
+                        Resolver primer pendiente
+                      </Button>
+                    ) : null}
+                    {group.pendingCount > 0 && onNavigateToFindings ? (
+                      <Button
+                        variant="ghost"
+                        className="px-3 py-1.5 text-xs"
+                        onClick={onNavigateToFindings}
+                      >
+                        Abrir en Hallazgos
+                      </Button>
+                    ) : null}
+                    {task ? (
+                      <Button
+                        variant="ghost"
+                        className="px-3 py-1.5 text-xs"
+                        onClick={onOpenTasks}
+                      >
+                        Ver tarea relacionada
+                      </Button>
+                    ) : null}
+                  </div>
                 ) : null}
                 <div className="mt-4 overflow-x-auto">
                   <table className="min-w-full text-left text-xs">
@@ -242,10 +302,23 @@ export function MatrixPanel({
                         const accepted = acceptedSources.find(
                           (item) => item.exogenousRecordId === entry.recordId,
                         );
+                        const isPending = entry.disposition === 'pending';
                         return (
                           <tr
                             key={entry.recordId}
-                            className="border-t border-overlay/5 text-content"
+                            className={`border-t border-overlay/5 text-content ${
+                              onNavigateToRecord
+                                ? 'cursor-pointer hover:bg-overlay/[0.03]'
+                                : ''
+                            } ${isPending ? 'bg-amber-400/[0.03]' : ''}`}
+                            onClick={
+                              onNavigateToRecord
+                                ? () => onNavigateToRecord(entry.recordId)
+                                : undefined
+                            }
+                            title={
+                              onNavigateToRecord ? 'Abrir este registro en Registros' : undefined
+                            }
                           >
                             <td className="px-2 py-2">
                               {record?.source.sheet} · {record?.source.row}
