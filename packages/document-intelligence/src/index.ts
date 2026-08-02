@@ -6,6 +6,7 @@ export * from './unifiedTokens';
 export * from './comparison';
 export * from './imagePreprocessing';
 export * from './ocrRecommendation';
+export * from './profileMatching';
 export * from './adapters';
 export * from './matching';
 export * from './reader';
