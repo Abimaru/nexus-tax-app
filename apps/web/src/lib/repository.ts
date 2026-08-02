@@ -9,6 +9,7 @@ import type {
   ClassificationSnapshot,
   CreateTaxCaseInput,
   DocumentCapturedField,
+  DocumentConfidenceLevel,
   DocumentFact,
   DocumentFactCandidate,
   DocumentClassification,
@@ -16,10 +17,19 @@ import type {
   DocumentExtractionMetrics,
   DocumentExtractionSession,
   DocumentKind,
+  DocumentProfile,
+  DocumentProfileOrigin,
+  DocumentProfileSignals,
+  DocumentProfileStatus,
+  DocumentProfileZone,
   DocumentStorageMode,
   EmployerInstance,
   EmployerInstanceStatus,
   EmploymentIncomeGroup,
+  ExtractionFeedback,
+  ExtractionFeedbackApplicability,
+  ExtractionFeedbackDecision,
+  ExtractionFeedbackMethod,
   FactRequirementRelation,
   PdfDocumentDiagnosis,
   PreliminaryReconciliation,
@@ -1187,6 +1197,117 @@ export async function createManualDocumentCandidate(
   await getDb().documentCandidates.add(candidate);
   await refreshExtractionMetrics(input.extractionSessionId);
   return candidate;
+}
+
+export interface CreateDocumentProfileInput {
+  name: string;
+  documentKind: DocumentKind;
+  entityId: string | null;
+  brandName: string | null;
+  signals: DocumentProfileSignals;
+  expectedPageCount: number | null;
+  zones: DocumentProfileZone[];
+  fields: DocumentCapturedField[];
+  adapterId: string | null;
+  confidence: DocumentConfidenceLevel;
+  origin: DocumentProfileOrigin;
+}
+
+/** Todo perfil nace en borrador: activarlo u obsoletarlo exige una acción explícita del analista. */
+export async function createDocumentProfile(
+  input: CreateDocumentProfileInput,
+): Promise<DocumentProfile> {
+  const timestamp = nowIso();
+  const profile: DocumentProfile = {
+    id: newId('profile'),
+    name: input.name,
+    documentKind: input.documentKind,
+    entityId: input.entityId,
+    brandName: input.brandName,
+    signals: input.signals,
+    expectedPageCount: input.expectedPageCount,
+    zones: input.zones,
+    fields: input.fields,
+    adapterId: input.adapterId,
+    version: '1.0.0',
+    confidence: input.confidence,
+    origin: input.origin,
+    status: 'draft',
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+  await getDb().documentProfiles.add(profile);
+  return profile;
+}
+
+export async function listDocumentProfiles(): Promise<DocumentProfile[]> {
+  return getDb().documentProfiles.toArray();
+}
+
+export async function updateDocumentProfileStatus(
+  profileId: string,
+  status: DocumentProfileStatus,
+): Promise<void> {
+  await getDb().documentProfiles.update(profileId, { status, updatedAt: nowIso() });
+}
+
+export async function deleteDocumentProfile(profileId: string): Promise<void> {
+  await getDb().documentProfiles.delete(profileId);
+}
+
+export interface RecordExtractionFeedbackInput {
+  documentId: string;
+  extractionSessionId: string;
+  candidateId: string | null;
+  decision: ExtractionFeedbackDecision;
+  reason: string;
+  method: ExtractionFeedbackMethod | null;
+  adapterId: string | null;
+  profileId: string | null;
+  beforeValue: string | null;
+  afterValue: string | null;
+  page: number | null;
+  zoneId: string | null;
+  applicability: ExtractionFeedbackApplicability;
+}
+
+/**
+ * Registra una decisión de calibración tal como el analista la eligió. Nunca
+ * modifica un perfil por sí sola: `applicability: 'profile_update'` solo dice
+ * que el analista quiso que se recordara así; aplicarlo a un perfil sigue
+ * siendo una acción aparte y explícita (createDocumentProfile /
+ * updateDocumentProfileStatus).
+ */
+export async function recordExtractionFeedback(
+  input: RecordExtractionFeedbackInput,
+): Promise<ExtractionFeedback> {
+  const feedback: ExtractionFeedback = {
+    id: newId('feedback'),
+    documentId: input.documentId,
+    extractionSessionId: input.extractionSessionId,
+    candidateId: input.candidateId,
+    decision: input.decision,
+    reason: input.reason.slice(0, 240),
+    method: input.method,
+    adapterId: input.adapterId,
+    profileId: input.profileId,
+    beforeValue: input.beforeValue?.slice(0, 160) ?? null,
+    afterValue: input.afterValue?.slice(0, 160) ?? null,
+    page: input.page,
+    zoneId: input.zoneId,
+    applicability: input.applicability,
+    createdAt: nowIso(),
+  };
+  await getDb().extractionFeedback.add(feedback);
+  return feedback;
+}
+
+export async function listExtractionFeedback(documentId?: string): Promise<ExtractionFeedback[]> {
+  const db = getDb();
+  if (documentId) {
+    return db.extractionFeedback.where('documentId').equals(documentId).sortBy('createdAt');
+  }
+  return db.extractionFeedback.orderBy('createdAt').toArray();
 }
 
 function candidateSignature(candidate: DocumentFactCandidate): string {
