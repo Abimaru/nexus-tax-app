@@ -31,3 +31,10 @@ Centro de resolución y borrador 210 reutilizan `GlassPanel`, badges, botones y 
 presentan estados en español, requieren motivo para decisiones, mantienen foco visible y no usan
 color como única señal. Playwright cubre navegación, persistencia de ajuste, exportación JSON y
 ausencia de desbordamiento horizontal a 390–1440 px.
+
+### Verificación del plan UX 2026-08-02
+
+P6 elimina jerga técnica de los flujos Documentos, Revisión de extracción, Laboratorio,
+Conciliaciones y fuentes aceptadas. Los mensajes de privacidad y borrado explican consecuencias; el
+progreso OCR está localizado; las acciones principales describen el resultado. Playwright valida
+las nuevas etiquetas, navegación, OCR local real y responsive.

@@ -1029,3 +1029,19 @@ El estado vigente, la validación final y el siguiente paso se consolidan en la 
 - Consolidar las resoluciones históricas de clasificación y el nuevo evento transversal bajo una
   única proyección de lectura, sin migración destructiva.
 - Realizar validación tributaria manual de las fórmulas implementadas antes de ampliar el ruleset.
+
+## 22. Cierre del plan de mejoras UX 2026-08-02
+
+- P1–P3: borrado permanente con error visible, resolución manual de conciliaciones y onboarding del
+  laboratorio.
+- P0 adicional: contraseña temporal para PDF cifrado, solo en memoria y propagada a lectura/OCR.
+- P4 acotado: aceptar exógena provisionalmente retira el registro de sugerencias; queda pendiente
+  investigar otros usos de `suggestedUse` vinculados al borrador 210.
+- P5: sugerencias consumidas se deduplican por hecho o registro ya conciliado.
+- P6: microcopy centrado en tareas, resultados y consecuencias; no expone `token`, `assisted`,
+  `blob`, `IndexedDB`, estados Tesseract ni nombres de tablas.
+
+Validación de P6: `check:encoding` revisó 272 archivos; typecheck y lint completos sin errores;
+240/240 pruebas unitarias y 4/4 E2E Chromium sobre el preview activo. El build se ejecutó con
+`NEXUSTAX_NEXT_DIST_DIR=.next-build` para no interferir con el servidor de desarrollo del usuario:
+compilación correcta y 5 páginas generadas.

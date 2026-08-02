@@ -19,3 +19,16 @@ Se localizaron estados de documentos, hechos, conciliaciones, resoluciones,
 entidades, empleadores y relaciones de requisitos. Los códigos técnicos de
 hallazgos dejaron de mostrarse en pantalla y permanecen disponibles en la
 exportación trazable.
+
+## Pulido UX 2026-08-02
+
+- En pantalla se usa “archivo original”, no “binario” o `blob`; “almacenamiento”, no
+  “persistencia/IndexedDB”; y “huella del archivo”, no “hash”.
+- En el laboratorio se habla de texto original, texto reconocido, datos propuestos y áreas de la
+  página. `token`, `assisted` y los estados internos del motor OCR no llegan a la interfaz.
+- En conciliación, el puntaje se presenta como “Coincidencia N/100”. La acción riesgosa es “Revisar
+  y decidir” y siempre explica por qué requiere criterio humano.
+- “Candidato” y “hecho” se reservan para documentación técnica. La UI prefiere “propuesta”, “dato” e
+  “incorporar al expediente”.
+- Una acción destructiva describe información eliminada, información conservada e irreversibilidad
+  sin enumerar tablas o estructuras internas.
