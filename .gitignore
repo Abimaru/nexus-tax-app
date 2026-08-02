@@ -22,6 +22,7 @@ test-results/
 .playwright/
 /apps/web/public/vendor/pdfjs/
 /apps/web/.next-build-*/
+/apps/web/.next-build/
 
 # Entornos
 .env

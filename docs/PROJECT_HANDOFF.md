@@ -590,7 +590,7 @@ durante la extracción.
 | `pnpm typecheck` | OK; 7 de 8 proyectos del workspace, 0 errores |
 | `pnpm test` | OK; 153/153 pruebas (11 dominio, 26 Aegis, 14 documentos, 43 parser, 59 web) |
 | `pnpm lint` | OK; 0 warnings / 0 errors |
-| `NEXUSTAX_NEXT_DIST_DIR=.next-build-sprint21 pnpm build` | OK; compilación y 5 páginas generadas |
+| `NEXUSTAX_NEXT_DIST_DIR=.next-build pnpm build` | OK; compilación y 5 páginas generadas |
 | `PLAYWRIGHT_BASE_URL=http://localhost:3000 pnpm --filter @nexus-tax/web test:e2e` | OK; 2/2 Chromium |
 | Visual | capturas sintéticas de revisión a 1280 px y 390 px, sin overflow |
 
