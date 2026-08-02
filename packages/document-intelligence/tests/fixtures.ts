@@ -1,4 +1,30 @@
-import type { DocumentRepresentation } from '../src';
+import type { DocumentPageRepresentation, DocumentRepresentation } from '../src';
+
+export function diagnosisPage(
+  overrides: Partial<DocumentPageRepresentation> & { pageNumber: number },
+): DocumentPageRepresentation {
+  return {
+    normalizedText: '',
+    blocks: [],
+    errors: [],
+    readConfidence: 'insufficient',
+    width: 612,
+    height: 792,
+    ...overrides,
+  };
+}
+
+export function documentFromPages(
+  pages: readonly DocumentPageRepresentation[],
+): DocumentRepresentation {
+  return {
+    pageCount: pages.length,
+    pages: [...pages],
+    metadata: {},
+    encrypted: false,
+    warnings: pages.flatMap((page) => page.errors),
+  };
+}
 
 export function representation(...pages: string[]): DocumentRepresentation {
   return {
