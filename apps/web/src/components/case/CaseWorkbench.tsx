@@ -60,6 +60,7 @@ import { FactsPanel } from './FactsPanel';
 import { ReconciliationsPanel } from './ReconciliationsPanel';
 import { RequirementsPanel } from './RequirementsPanel';
 import { DocumentExtractionReviewPanel } from './DocumentExtractionReviewPanel';
+import { DocumentLabPanel } from './DocumentLabPanel';
 import { CaseTasksPanel } from './CaseTasksPanel';
 import { ContextualNavigation, WorkflowStepper } from './WorkflowNavigation';
 import {
@@ -548,6 +549,14 @@ export function CaseWorkbench({
             sessions={workspace.extractionSessions}
             candidates={workspace.documentCandidates}
             onOpenReconciliations={() => applyDestination('conciliacion', 'conciliaciones')}
+          />
+        ) : null}
+        {stage === 'organizacion' && view === 'laboratorio' ? (
+          <DocumentLabPanel
+            caseId={caseId}
+            documents={workspace.documents}
+            sessions={workspace.extractionSessions}
+            candidates={workspace.documentCandidates}
           />
         ) : null}
         {stage === 'organizacion' && view === 'pendientes' ? (

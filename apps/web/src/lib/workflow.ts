@@ -73,6 +73,7 @@ export const WORKFLOW_STAGES: readonly WorkflowStageDefinition[] = [
       { id: 'entidades', label: 'Entidades' },
       { id: 'documentos', label: 'Documentos' },
       { id: 'revision-documental', label: 'Revisión de extracción' },
+      { id: 'laboratorio', label: 'Laboratorio documental' },
       { id: 'pendientes', label: 'Pendientes' },
       { id: 'requisitos', label: 'Requisitos' },
       { id: 'hechos', label: 'Hechos' },
