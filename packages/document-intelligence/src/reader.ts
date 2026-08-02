@@ -1,4 +1,5 @@
 import type { DocumentRepresentation, PdfReadOptions } from './contracts';
+import type * as PdfJsApi from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { DEFAULT_PDF_LIMITS } from './contracts';
 import { normalizeDocumentText } from './normalize';
 
@@ -36,7 +37,7 @@ export async function readPdfText(
   }
   if (options.signal?.aborted) throw cancelled();
 
-  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  const pdfjs = await loadPdfJs(options.browserModuleUrl);
   if (options.workerSrc) pdfjs.GlobalWorkerOptions.workerSrc = options.workerSrc;
   const loadingTask = pdfjs.getDocument({
     data,
@@ -166,6 +167,17 @@ export async function readPdfText(
   } finally {
     if (timeoutId) globalThis.clearTimeout(timeoutId);
   }
+}
+
+type PdfJsModule = typeof PdfJsApi;
+
+async function loadPdfJs(browserModuleUrl?: string): Promise<PdfJsModule> {
+  if (typeof window !== 'undefined' && browserModuleUrl) {
+    // La distribución se sirve desde el mismo origen y queda fuera de la
+    // transformación de Webpack, que no es compatible con el bundle de PDF.js.
+    return import(/* webpackIgnore: true */ browserModuleUrl) as Promise<PdfJsModule>;
+  }
+  return import('pdfjs-dist/legacy/build/pdf.mjs');
 }
 
 function cancelled() {

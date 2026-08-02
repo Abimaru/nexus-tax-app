@@ -1,7 +1,10 @@
 export function normalizeDocumentText(value: string): string {
-  return value
+  const withoutControls = Array.from(value, (character) => {
+    const code = character.charCodeAt(0);
+    return code < 32 && code !== 9 && code !== 10 && code !== 13 ? '' : character;
+  }).join('');
+  return withoutControls
     .normalize('NFKC')
-    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '')
     .replace(/[ \t]+/g, ' ')
     .replace(/\s*\n\s*/g, '\n')
     .trim();

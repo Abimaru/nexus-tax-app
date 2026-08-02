@@ -63,6 +63,8 @@ export interface PdfReadOptions {
   signal?: AbortSignal;
   limits?: Partial<PdfReadLimits>;
   workerSrc?: string;
+  /** URL local del módulo de PDF.js cuando el empaquetador no debe transformarlo. */
+  browserModuleUrl?: string;
   onProgress?: (progress: DocumentProgressEvent) => void;
 }
 

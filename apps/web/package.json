@@ -4,7 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "prepare:pdfjs": "node scripts/prepare-pdfjs.mjs",
+    "predev": "pnpm prepare:pdfjs",
     "dev": "next dev",
+    "prebuild": "pnpm prepare:pdfjs",
     "build": "next build",
     "start": "next start",
     "lint": "next lint --max-warnings 0",
@@ -25,6 +28,7 @@
     "framer-motion": "^11.11.9",
     "lucide-react": "^0.454.0",
     "next": "14.2.15",
+    "pdfjs-dist": "5.4.624",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "recharts": "^2.13.3",

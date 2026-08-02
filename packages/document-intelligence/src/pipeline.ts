@@ -1,5 +1,6 @@
 import type {
   DocumentExtractionFinding,
+  DocumentClassification,
   DocumentFactCandidate,
   DocumentaryRequirement,
   NormalizedExogenousRecord,
@@ -21,12 +22,14 @@ export interface AnalyzePdfInput extends CandidateBuildContext {
   bytes: ArrayBuffer | Uint8Array;
   password?: string;
   workerSrc?: string;
+  browserModuleUrl?: string;
   signal?: AbortSignal;
   limits?: Partial<PdfReadLimits>;
   entities?: readonly ReportingEntity[];
   requirements?: readonly DocumentaryRequirement[];
   exogenousRecords?: readonly NormalizedExogenousRecord[];
   documentEntityIds?: readonly string[];
+  forcedKind?: DocumentClassification['proposedKind'];
   onProgress?: (progress: DocumentProgressEvent) => void;
 }
 
@@ -34,6 +37,7 @@ export async function analyzePdfDocument(input: AnalyzePdfInput) {
   const readOptions: PdfReadOptions = {
     password: input.password,
     workerSrc: input.workerSrc,
+    browserModuleUrl: input.browserModuleUrl,
     signal: input.signal,
     limits: input.limits,
     onProgress: input.onProgress,
@@ -45,7 +49,18 @@ export async function analyzePdfDocument(input: AnalyzePdfInput) {
     total: 1,
     message: 'Clasificando el documento…',
   });
-  const classification = classifyDocument(representation);
+  const automaticClassification = classifyDocument(representation);
+  const classification = input.forcedKind
+    ? {
+        ...automaticClassification,
+        correctedKind: input.forcedKind,
+        requiresReview: true,
+        supportingSignals: [
+          ...automaticClassification.supportingSignals,
+          'Tipo seleccionado por el analista para este reprocesamiento.',
+        ],
+      }
+    : automaticClassification;
   input.onProgress?.({
     phase: 'extracting',
     completed: 0,
