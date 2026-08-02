@@ -790,5 +790,66 @@ para bloques posteriores, documentadas en la conversación de diseño pero no im
   automáticamente ni desde un CDN en tiempo de ejecución.
 - La migración Dexie debe ser aditiva (no romper sesiones de extracción ya persistidas de 2.1.1).
 
-**Siguiente paso exacto tras cerrar A-C:** ejecutar validación completa, actualizar esta entrada con
-resultados exactos y, con aprobación explícita, continuar con la Fase D (laboratorio documental).
+### Cierre de Fases A, B y C (2026-08-02)
+
+**Fase A** — `scripts/check-encoding.mjs` (Node puro) detecta mojibake por patrón de bytes
+(UTF-8 reinterpretado como Latin-1/Windows-1252, carácter de reemplazo Unicode) y se expone como
+`pnpm check:encoding`. Encontró y permitió corregir 31 coincidencias reales de codificación dañada
+en 6 archivos (tildes/eñes/¿?/· rotos) que venían de un editor o copia intermedia anterior; ninguna
+eran datos tributarios, solo texto de interfaz y mensajes.
+
+**Fase B** — `diagnosePdfDocument` (`document-intelligence`) clasifica documento y página como
+textual/escaneado/texto insuficiente/dañado a partir de `readConfidence` (que por fin asigna
+`'medium'`, declarado desde 2.1.1 pero nunca usado) y los errores de lectura existentes. Se expone
+como campo opcional de `DocumentExtractionSession`; no requirió migración de Dexie. La detección de
+imágenes grandes por página queda fuera de este cambio (ver más abajo).
+
+**Fase C** — Se agregó `tesseract.js` 7.0.0 vendorizado sin CDN (`docs/ARCHITECTURE.md` documenta la
+justificación) y `OcrClient` en `apps/web`, que reutiliza el Web Worker interno de Tesseract con
+watchdog, timeout, cancelación por `AbortSignal` y un único trabajo local concurrente (el heap WASM
+de Tesseract solo crece durante la vida del worker). Escribir las pruebas de `OcrClient` encontró y
+corrigió dos bugs reales antes de que llegaran a producción: el watchdog comparaba con `>` en vez de
+`>=` (nunca disparaba en el límite exacto) y una señal de cancelación ya abortada antes de registrar
+el listener de `abort` nunca rechazaba la promesa. `document-intelligence` gana `UnifiedTextToken`
+(contrato común nativo/OCR), `compareTextSources` (los seis estados del punto 9 del pedido original,
+sin fusionar nunca dos valores en conflicto), preprocesamiento de imagen puro (escala, contraste,
+escala de grises, binarización, rotación en múltiplos de 90°, recorte de márgenes, mediana 3x3 para
+ruido) y `recommendOcrPages` (recomienda página por página sin ejecutar OCR automáticamente, con
+estimación cualitativa rápida/moderada/intensiva).
+
+**Deliberadamente fuera de este bloque** (para no entregar código sin poder verificarlo):
+
+- **Detección de imágenes grandes por página**: requiere interpretar el `operatorList` de PDF.js con
+  su pila de transformaciones geométricas; se evaluó y se decidió no improvisarla sin poder
+  verificarla visualmente. El diagnóstico de página usa señales de cobertura de texto, que ya
+  distinguen escaneado/textual de forma confiable.
+- **Renderizado de página a `<canvas>` para alimentar OCR real sobre un PDF**: `reader.ts` solo
+  extrae texto hoy, nunca renderiza píxeles. Esta pieza conecta naturalmente con la Fase D (el
+  laboratorio documental necesita renderizar la página de todos modos para mostrarla), así que se
+  deja para entonces en vez de construirla sin una vista que la ejercite.
+- Como consecuencia de lo anterior, **`reader.ts` sigue lanzando `no_text` cuando ninguna página
+  tiene texto**: un PDF totalmente escaneado nunca llega a generar una `DocumentRepresentation` hoy.
+  Antes de que el flujo de OCR bajo demanda sea utilizable de punta a punta, ese `throw` debe
+  relajarse (Fase D), porque hoy le impide a `diagnosePdfDocument` siquiera evaluar ese caso.
+- Corrección automática de orientación: requeriría el motor "legacy" de Tesseract (`osd`); se dejó
+  `rotateQuarterTurns` como corrección manual seleccionada por el analista.
+
+### Validación exacta (2026-08-02)
+
+| Paso | Resultado |
+| --- | --- |
+| `pnpm typecheck` | OK; 7 de 8 proyectos del workspace, 0 errores |
+| `pnpm lint` | OK; 0 warnings / 0 errors |
+| `pnpm test` | OK; 204/204 pruebas (11 dominio, 26 Aegis, 55 document-intelligence, 44 parser, 68 web) |
+| `NEXUSTAX_NEXT_DIST_DIR=.next-build pnpm build` | OK; compilación y 7 rutas generadas |
+| `pnpm check:encoding` | OK; 236 archivos revisados, 0 mojibake |
+
+No se ejecutó `pnpm --filter @nexus-tax/web test:e2e` en este cierre: no se tocó ninguna vista ni
+flujo de UI en las Fases A-C (todo el trabajo fue dominio, paquete puro y un cliente de aplicación sin
+componentes React), así que no hay superficie nueva que el E2E existente pueda ejercitar; se retoma en
+la Fase D, que sí agrega UI.
+
+**Siguiente paso exacto:** con aprobación explícita, continuar con la Fase D (laboratorio documental),
+que debe primero relajar el `throw` de `no_text` en `reader.ts` y agregar el renderizado de página a
+`<canvas>` antes de construir la vista, ya que ambas piezas se necesitan para que el flujo de OCR bajo
+demanda sea utilizable de punta a punta.
