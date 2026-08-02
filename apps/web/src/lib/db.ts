@@ -9,7 +9,9 @@ import type {
   DocumentFact,
   DocumentFactCandidate,
   DocumentExtractionSession,
+  DocumentProfile,
   EmploymentIncomeGroup,
+  ExtractionFeedback,
   PreliminaryReconciliation,
   ProcessingResult,
   RequirementCoverage,
@@ -69,6 +71,8 @@ class NexusTaxDatabase extends Dexie {
   extractionSessions!: Table<DocumentExtractionSession, string>;
   documentCandidates!: Table<DocumentFactCandidate, string>;
   caseTasks!: Table<CaseTask, string>;
+  documentProfiles!: Table<DocumentProfile, string>;
+  extractionFeedback!: Table<ExtractionFeedback, string>;
 
   constructor() {
     super('nexustax');
@@ -201,6 +205,29 @@ class NexusTaxDatabase extends Dexie {
       extractionSessions: 'id, caseId, documentId, status, updatedAt',
       documentCandidates: 'id, caseId, documentId, extractionSessionId, status, updatedAt',
       caseTasks: 'id, caseId, status, priority, stage, type, updatedAt',
+    });
+    // Los perfiles y el feedback viven a nivel de instalación, no de
+    // expediente (§14-15): reconocen el mismo formato entre años distintos.
+    this.version(10).stores({
+      cases: 'id, updatedAt, taxYear, status',
+      documents: 'id, caseId, uploadedAt, sha256, status, kind, *entityIds',
+      results: 'caseId, updatedAt',
+      filingInputs: 'caseId, updatedAt',
+      analyses: 'caseId, updatedAt, ruleVersion',
+      documentBlobs: 'documentId, caseId, storedAt',
+      products: 'id, caseId, entityId, type, status',
+      coverages: 'id, caseId, requirementId, documentId, factId, entityId, status',
+      facts: 'id, caseId, documentId, entityId, productId, category, reviewStatus, updatedAt',
+      reconciliations: 'id, caseId, status, *factIds, *exogenousRecordIds, updatedAt',
+      employmentGroups: 'id, caseId, coverage, updatedAt',
+      navigationStates: 'caseId, lastStage, recommendedStage, updatedAt',
+      acceptedSources: 'id, caseId, exogenousRecordId, requirementId, status, updatedAt',
+      requirementSourceDecisions: 'id, caseId, requirementId, status, updatedAt',
+      extractionSessions: 'id, caseId, documentId, status, updatedAt',
+      documentCandidates: 'id, caseId, documentId, extractionSessionId, status, updatedAt',
+      caseTasks: 'id, caseId, status, priority, stage, type, updatedAt',
+      documentProfiles: 'id, documentKind, status, updatedAt',
+      extractionFeedback: 'id, documentId, extractionSessionId, candidateId, applicability, createdAt',
     });
   }
 }
