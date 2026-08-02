@@ -32,6 +32,7 @@ import { processDocumentLocally } from '@/lib/documentProcessor';
 import type { DocumentProgressEvent } from '@nexus-tax/document-intelligence';
 import {
   addCaseDocument,
+  deleteDocumentPermanently,
   getDocumentBinary,
   markDocumentObsolete,
   removeDocumentBinary,
@@ -611,6 +612,22 @@ export function DocumentsPanel({
                       onClick={() => void markDocumentObsolete(item.id)}
                     >
                       Marcar obsoleto
+                    </Button>
+                    <Button
+                      variant="danger"
+                      className="px-3 py-1.5 text-xs"
+                      leadingIcon={<Trash2 className="h-3.5 w-3.5" />}
+                      onClick={() => {
+                        if (
+                          window.confirm(
+                            `Vas a eliminar definitivamente "${item.fileName}" y todo lo asociado (blob, candidatos, sesiones, coberturas). Los hechos manuales del analista se conservan pero pierden la referencia al documento. Esta acción es irreversible. ¿Continuar?`,
+                          )
+                        ) {
+                          void deleteDocumentPermanently(item.id);
+                        }
+                      }}
+                    >
+                      Eliminar definitivamente
                     </Button>
                   </div>
                 </GlassPanel>

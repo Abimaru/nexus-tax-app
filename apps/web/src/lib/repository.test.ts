@@ -51,6 +51,7 @@ import {
   reviewDocumentCandidate,
   updateDocumentProfileStatus,
   markDocumentObsolete,
+  deleteDocumentPermanently,
   synchronizeCaseTasks,
   saveTaxResolutionDecision,
   revertTaxResolutionDecision,
@@ -385,6 +386,49 @@ describe('repositorio (IndexedDB local)', () => {
     await removeDocumentBinary(first.id);
     expect(await getDocumentBinary(first.id)).toBeUndefined();
     expect((await getTaxCaseWorkspace(created.id)).documents[0]?.storageMode).toBe('metadata_only');
+  });
+
+  it('elimina definitivamente un documento en cascada preservando hechos manuales', async () => {
+    const created = await createCase({ alias: 'BorradoDefinitivo', taxYear: 2025 });
+    const document = await addCaseDocument(
+      created.id,
+      localFile('borrar.pdf', 'contenido a borrar'),
+      { kind: 'other', storageMode: 'store_locally', taxYear: 2025 },
+    );
+    const fact = await saveDocumentFact(created.id, {
+      documentId: document.id,
+      entityId: null,
+      productId: null,
+      originalConcept: 'Hecho ligado al doc',
+      category: 'asset',
+      nature: 'asset',
+      treatment: 'add_to_assets',
+      value: 100000,
+      currency: 'COP',
+      cutoffDate: null,
+      period: '',
+      pageOrSection: '',
+      evidence: '',
+      captureMethod: 'manual',
+      confidence: 'medium',
+      reviewStatus: 'pending',
+      requirementIds: [],
+      author: 'Analista',
+    });
+
+    // Estado previo: existe binario y hecho referenciando el documento.
+    expect(await getDocumentBinary(document.id)).toBeDefined();
+
+    await deleteDocumentPermanently(document.id);
+
+    // El documento y su binario ya no existen.
+    const workspace = await getTaxCaseWorkspace(created.id);
+    expect(workspace.documents.find((item) => item.id === document.id)).toBeUndefined();
+    expect(await getDocumentBinary(document.id)).toBeUndefined();
+
+    // El hecho manual sobrevive pero pierde su referencia al documento.
+    const remainingFact = workspace.facts.find((item) => item.id === fact.id);
+    expect(remainingFact?.documentId).toBeNull();
   });
 
   it('mantiene versiones al reemplazar un documento', async () => {
