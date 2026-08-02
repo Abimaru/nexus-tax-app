@@ -37,8 +37,8 @@ celdas de error se tratan como nulas.
 
 Los bytes opcionales viven separados de los metadatos. Se muestra el espacio
 ocupado y se permite descarga o eliminación local. SHA-256 detecta duplicados
-sin revelar contenido. La contraseña nunca se persiste. No existe extracción
-de imágenes, OCR ni ejecución de contenido activo.
+sin revelar contenido. La contraseña nunca se persiste y no se ejecuta contenido
+activo. El renderizado de páginas y el OCR son locales, efímeros y bajo demanda.
 
 Los PDFs con texto se leen con PDF.js desde bytes locales. El módulo y worker se
 sirven desde el mismo origen sin CDN; se desactiva evaluación dinámica y se
@@ -49,6 +49,22 @@ breve, candidatos y decisiones. Consulta `DOCUMENT_EXTRACTION_SECURITY.md`.
 El manifiesto declara `includesBinaryData: false`; las pruebas verifican que no
 contiene bytes. No se registran nombres sensibles ni contenido completo en
 consola.
+
+## OCR local (Sprint 2.2)
+
+El OCR corre íntegramente en el navegador (Tesseract.js vendorizado, sin CDN) y
+**nunca se ejecuta automáticamente**: el analista elige la página. No hay
+solicitudes de red durante el reconocimiento (auditado con una prueba
+dedicada), sin telemetría y sin imágenes ni texto completo en logs. El
+resultado de OCR es efímero, igual que el texto nativo: no se persiste, solo
+las decisiones que el analista confirma. Detalle operativo en
+[`LOCAL_OCR.md`](LOCAL_OCR.md).
+
+Los perfiles documentales y el feedback de calibración (`documentProfiles`,
+`extractionFeedback`) evitan persistir texto completo, pero pueden contener
+fragmentos sensibles confirmados por el analista: señales estructurales,
+encabezados normalizados y valores antes/después acotados a 160 caracteres.
+Permanecen exclusivamente en IndexedDB local. Ver [`DATA_MODEL.md`](DATA_MODEL.md).
 
 ## Superficie de ataque
 

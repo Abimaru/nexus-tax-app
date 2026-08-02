@@ -60,3 +60,11 @@ ejecuciones anteriores es consultable.
 Rechazar exige un motivo estructurado; `otro` exige nota. Las acciones múltiples permiten rechazar,
 informar, duplicar, asociar entidad/producto o restaurar tras confirmación de impacto. Nunca existe
 confirmación tributaria masiva. Restaurar conserva la cadena de decisiones.
+
+## Candidatos manuales del laboratorio (Sprint 2.2)
+
+Desde el laboratorio documental (ver [OCR local](LOCAL_OCR.md)) el analista puede crear un candidato a partir de
+texto nativo o de OCR de una página. Llega a esta misma revisión con `adapterId: 'manual.lab'`
+(identificable como estrategia distinta de los adaptadores automáticos), categoría/naturaleza
+`unclassified` y tratamiento `requires_review` por defecto: pasa por exactamente el mismo flujo de
+confirmar/corregir/rechazar que un candidato automático, nunca alimenta la matriz por sí solo.

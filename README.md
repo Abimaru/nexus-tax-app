@@ -18,14 +18,21 @@ Conciliación, Declaración y Exportación** → cargar Excel de exógena → in
 **resolver** decisiones (con historial) → evaluar de forma orientativa la
 **obligación de declarar** AG 2025 → biblioteca y cobertura documental → hechos
 manuales o **asistidos desde PDF textual local** → revisión de candidatos →
+**laboratorio documental** (diagnóstico por página, OCR local bajo demanda,
+overlay de capas, candidatos manuales, perfiles documentales reutilizables) →
 conciliación documental confirmada por el analista → guardar en
 IndexedDB → aceptar provisionalmente valores exógenos con trazabilidad →
 gestionar soportes no emitidos → exportar un manifiesto sin binarios. Interfaz
 con **tema claro y oscuro**.
 
-Fuera de alcance (por ahora): backend, IA, autenticación, OCR y PDFs escaneados,
-liquidación del impuesto e integración en línea con la DIAN. Un
-soporte puede conservarse opcionalmente en IndexedDB, siempre local y por
+Un PDF escaneado o con texto insuficiente ya no se rechaza: se diagnostica y el
+analista decide si ejecuta OCR local (Tesseract.js vendorizado, sin red) sobre
+una página, varias o ninguna. El OCR nunca se ejecuta automáticamente ni
+alimenta la matriz directamente.
+
+Fuera de alcance (por ahora): backend, IA externa/en la nube, autenticación,
+liquidación del impuesto (Formulario 210) e integración en línea con la DIAN.
+Un soporte puede conservarse opcionalmente en IndexedDB, siempre local y por
 decisión explícita.
 
 ## Arquitectura (monorepo pnpm)
@@ -92,6 +99,7 @@ Detalles en `docs/SECURITY_PRIVACY.md`.
 - [Adaptadores documentales](docs/DOCUMENT_ADAPTERS.md)
 - [Revisión de extracción](docs/DOCUMENT_EXTRACTION_REVIEW.md)
 - [Seguridad de extracción](docs/DOCUMENT_EXTRACTION_SECURITY.md)
+- [OCR local](docs/LOCAL_OCR.md)
 - [Contrato de enriquecimiento futuro](docs/AI_DOCUMENT_ENRICHMENT_CONTRACT.md)
 - [Fuentes aceptadas](docs/ACCEPTED_SOURCES.md)
 - [Aceptación de valores exógenos](docs/EXOGENOUS_VALUE_ACCEPTANCE.md)
@@ -115,3 +123,15 @@ separada para entidad/marca/grupo/producto y una presentación independiente de 
 preparación operativa. Consulta [cobertura de extracción](docs/DOCUMENT_EXTRACTION_COVERAGE.md),
 [identidad](docs/ENTITY_IDENTITY_MODEL.md), [tareas](docs/CASE_TASKS.md) y
 [preparación](docs/DECLARATION_READINESS.md).
+
+## Sprint 2.2 (en curso) — laboratorio documental, OCR local y perfiles
+
+Script de codificación (`pnpm check:encoding`) para detectar mojibake. Diagnóstico de tipo de PDF
+(textual/escaneado/texto insuficiente/dañado) por documento y por página. OCR local bajo demanda con
+Tesseract.js vendorizado (sin CDN, sin red durante el reconocimiento), contrato unificado de texto
+nativo/OCR y comparación explícita entre ambas fuentes. **Laboratorio documental**: modo básico/
+avanzado, overlay de capas y candidatos manuales asistidos. **Perfiles documentales** reutilizables
+entre expedientes (por señales estructurales, nunca por nombre de archivo) y registro de feedback de
+calibración con el alcance que elige el analista. Faltan: tareas ligadas a página/OCR, métricas
+extendidas en el manifiesto, corpus sintético completo y documentación final de seguridad,
+rendimiento, laboratorio, perfiles y feedback (Fases F y G).

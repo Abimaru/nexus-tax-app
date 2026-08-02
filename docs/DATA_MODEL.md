@@ -111,22 +111,27 @@ humana; no equivale a asesoría o determinación administrativa.
 
 ## Persistencia (IndexedDB / Dexie)
 
-| Tabla                        | Clave        | Contenido                                    |
-| ---------------------------- | ------------ | -------------------------------------------- |
-| `cases`                      | `id`         | `TaxCase`                                    |
-| `documents`                  | `id`         | `UploadedDocument` (metadatos)               |
-| `results`                    | `caseId`     | `{ caseId, result, updatedAt }`              |
-| `filingInputs`               | `caseId`     | Respuesta local de responsabilidad de IVA    |
-| `analyses`                   | `caseId`     | Relaciones, resoluciones y matriz versionada |
-| `documentBlobs`              | `documentId` | Bytes locales opcionales, nunca exportados   |
-| `products`                   | `id`         | Productos asociados o por identificar        |
-| `coverages`                  | `id`         | Relación requisito-documento-hecho-entidad   |
-| `facts`                      | `id`         | Hechos documentales normalizados e historial |
-| `reconciliations`            | `id`         | Asociaciones documentales con exógena        |
-| `employmentGroups`           | `id`         | Grupo laboral e instancias por empleador     |
-| `navigationStates`           | `caseId`     | Última etapa, vista y modo manual            |
-| `acceptedSources`            | `id`         | Aceptaciones exógenas, estado e historial    |
-| `requirementSourceDecisions` | `id`         | Gestión de requisitos no emitidos            |
+| Tabla                        | Clave        | Contenido                                          |
+| ---------------------------- | ------------ | -------------------------------------------------- |
+| `cases`                      | `id`         | `TaxCase`                                          |
+| `documents`                  | `id`         | `UploadedDocument` (metadatos)                     |
+| `results`                    | `caseId`     | `{ caseId, result, updatedAt }`                    |
+| `filingInputs`               | `caseId`     | Respuesta local de responsabilidad de IVA          |
+| `analyses`                   | `caseId`     | Relaciones, resoluciones y matriz versionada       |
+| `documentBlobs`              | `documentId` | Bytes locales opcionales, nunca exportados         |
+| `products`                   | `id`         | Productos asociados o por identificar              |
+| `coverages`                  | `id`         | Relación requisito-documento-hecho-entidad         |
+| `facts`                      | `id`         | Hechos documentales normalizados e historial       |
+| `reconciliations`            | `id`         | Asociaciones documentales con exógena              |
+| `employmentGroups`           | `id`         | Grupo laboral e instancias por empleador           |
+| `navigationStates`           | `caseId`     | Última etapa, vista y modo manual                  |
+| `acceptedSources`            | `id`         | Aceptaciones exógenas, estado e historial          |
+| `requirementSourceDecisions` | `id`         | Gestión de requisitos no emitidos                  |
+| `extractionSessions`         | `id`         | Sesión de extracción, con diagnóstico opcional     |
+| `documentCandidates`         | `id`         | Candidatos, incluidos los manuales del laboratorio |
+| `caseTasks`                  | `id`         | Pendientes accionables del expediente              |
+| `documentProfiles`           | `id`         | Perfiles reutilizables (sin `caseId`)              |
+| `extractionFeedback`         | `id`         | Feedback de calibración (sin `caseId`)             |
 
 Los binarios solo se persisten cuando el usuario elige `store_locally`; la
 opción predeterminada conserva metadatos. La contraseña nunca forma parte del
@@ -214,3 +219,28 @@ texto completo.
 
 Las sesiones y candidatos obsoletos se conservan para auditoría. Al reemplazar u obsoletar un
 documento se invalidan coberturas relacionadas y se recalculan tareas derivadas.
+
+## Diagnóstico, OCR y perfiles — Sprint 2.2
+
+`PdfDocumentDiagnosis`/`PdfPageDiagnosis` (dominio) clasifican documento y página como
+`textual|scanned|hybrid|insufficient_text|damaged` (más `password_protected`/`unsupported`,
+reservados para cuando falla la lectura completa). Viven como campo opcional de
+`DocumentExtractionSession`; no requirieron migración de Dexie porque no son un índice.
+
+`DocumentCapturedField` (entidad/NIT/producto/fecha/concepto/valor/retención/saldo/deuda/ingreso/
+otro) es el catálogo compartido entre el candidato manual del laboratorio y los campos esperados de
+un `DocumentProfile`.
+
+`DocumentProfile`: nombre, tipo documental, entidad/marca opcionales, señales estructurales
+(dimensiones, número de páginas, secciones, palabras del encabezado), páginas esperadas, zonas
+(`DocumentProfileZone`, coordenadas relativas 0-1 por propósito), campos, adaptador, versión,
+confianza, origen (`manual|promoted_from_feedback`) y estado (`draft|tested|active|obsolete`). **No
+lleva `caseId`**: vive a nivel de instalación para reconocerse en expedientes de años distintos.
+
+`ExtractionFeedback`: documento, sesión, candidato, decisión (categoría/producto/valor corregido,
+falso positivo, zona ignorada, campo seleccionado), motivo, método (nativo/OCR), adaptador, perfil,
+valores antes/después (acotados a 160 caracteres, sin texto completo), página, zona, y la
+aplicabilidad que el analista elige explícitamente (`this_document_only|similar_documents|
+profile_update`). Tampoco lleva `caseId`.
+
+Dexie v10 agrega `documentProfiles` y `extractionFeedback`, ambas sin índice por expediente.

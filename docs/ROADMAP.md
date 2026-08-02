@@ -71,7 +71,6 @@ semánticos, filtros y detalle de Registros reorganizados, accesibilidad y
 
 - Propuestas de valores para el **Formulario 210** con explicación y confianza
   (nunca liquidación automática sin revisión humana).
-- OCR local para documentos escaneados, sujeto a evaluación de memoria y UX.
 - Enriquecimiento opcional mediante el contrato abstracto, sin habilitar envío
   de documentos ni texto completo por defecto.
 - Sincronización opcional cifrada entre dispositivos del usuario.
@@ -91,5 +90,25 @@ identidad financiera versionada, requisitos depurados, tareas accionables y sepa
 obligación y preparación.
 
 Siguiente evolución segura: ampliar adaptadores con nuevas variantes convertidas a fixtures
-sintéticos y calibrar detección de tablas por emisor. OCR, IA externa, backend, Formulario 210
+sintéticos y calibrar detección de tablas por emisor. IA externa, backend, Formulario 210
 definitivo y conciliación irrevocable siguen fuera de alcance.
+
+## Sprint 2.2 (en curso) — laboratorio documental, OCR local y perfiles
+
+Implementado (Fases A-E): script de detección de mojibake; diagnóstico de tipo de PDF por documento
+y por página (textual/escaneado/texto insuficiente/dañado); OCR local bajo demanda con Tesseract.js
+vendorizado (sin CDN, sin red durante el reconocimiento, cancelable, con watchdog); contrato
+unificado de texto nativo/OCR y comparación explícita entre ambas fuentes (nunca se fusionan);
+preprocesamiento de imagen puro (escala, contraste, binarización, rotación, recorte, reducción de
+ruido); laboratorio documental con overlay de capas y candidatos manuales asistidos; perfiles
+documentales reutilizables por señales estructurales (nunca por nombre de archivo) y feedback de
+calibración con el alcance que elige el analista.
+
+Pendiente (Fases F y G, ver `docs/PROJECT_HANDOFF.md`): tareas del expediente ligadas a
+documento+página (`page requiere OCR`, candidato OCR contradictorio, perfil listo para probar);
+métricas de OCR y perfiles en el manifiesto de exportación; manejo de fallos con acciones de
+recuperación (reducir resolución, reintentar, continuar con texto nativo); editor de zonas por
+arrastre sobre el overlay ya construido; corpus sintético ampliado (documentos escaneados/híbridos/
+rotados/dos columnas reales, no solo PDFs de texto renderizados) y E2E de flujo completo; mediciones
+de rendimiento con hardware real. IA externa, backend obligatorio y Formulario 210 definitivo
+siguen fuera de alcance.

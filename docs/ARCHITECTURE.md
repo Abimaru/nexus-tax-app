@@ -140,7 +140,7 @@ columnas, secciones y tablas simples. El dominio define métricas, decisiones es
 incorporar reglas de extracción ni de identidad. El catálogo versionado de entidades vive en
 `exogenous-parser` y Aegis mantiene separada la evaluación legal.
 
-## Sprint 2.2: diagnóstico de PDF y OCR local (en curso)
+## Sprint 2.2 (Fases A-E): diagnóstico de PDF y OCR local
 
 `diagnosePdfDocument` (puro, en `document-intelligence`) clasifica documento y páginas como
 textual/escaneado/híbrido/texto insuficiente/dañado a partir de `readConfidence` y los errores de
@@ -157,5 +157,27 @@ el binario WASM embebido) desde `tesseract.js`/`tesseract.js-core` instalados, y
 vez `spa.traineddata` (modelo "fast", ~2.2 MB) a `public/vendor/tesseract/`, directorio ignorado por
 Git y regenerado en `predev`/`prebuild`. La descarga del modelo de idioma requiere red solo en tiempo
 de desarrollo/build, nunca durante el procesamiento de un documento del usuario. El motor de OCR se
-orquesta desde `apps/web` (nunca desde el paquete puro, que solo definirá el contrato unificado de
-tokens nativo/OCR y la comparación entre ambas fuentes).
+orquesta desde `apps/web` (nunca desde el paquete puro, que define el contrato unificado de tokens
+nativo/OCR y la comparación entre ambas fuentes).
+
+`reader.ts` ya no rechaza un PDF sin texto en ninguna página (antes lanzaba `PdfReadError('no_text')`,
+impidiendo diagnosticarlo); ahora `diagnosePdfDocument` lo clasifica como `scanned` y
+`recommendOcrPages` recomienda OCR bajo demanda. `apps/web/src/lib/pdfPageRenderer.ts` renderiza una
+página a píxeles reutilizando el mismo módulo vendorizado de PDF.js, para preprocesar (funciones
+puras en `document-intelligence`: escala de grises, contraste, binarización, rotación, recorte,
+reducción de ruido) y pasar a Tesseract.
+
+## Sprint 2.2 (Fases A-E): laboratorio documental y perfiles
+
+Nueva vista `laboratorio` en la etapa Organización (`DocumentLabPanel.tsx`): diagnóstico por página,
+modo básico/avanzado, ejecución de OCR con progreso/cancelación, overlay SVG de capas (tokens
+nativos/OCR/candidatos, con transformación de coordenadas PDF↔imagen pura y testeable en
+`labGeometry.ts`) y selección manual de campo que crea un `DocumentFactCandidate` real
+(`createManualDocumentCandidate`), siempre sujeto a revisión normal.
+
+`DocumentProfile` y `ExtractionFeedback` (`packages/domain`), Dexie v10, viven a **nivel de
+instalación, no de expediente**: un perfil debe reconocerse en expedientes de años distintos, así que
+no llevan `caseId`. `computeDocumentProfileSignals`/`matchDocumentProfiles` (puro, en
+`document-intelligence`) comparan dimensiones, número de páginas, secciones y encabezado con pesos
+fijos y explicables; nunca asocian solo por nombre de archivo. Activar, probar u obsoletar un perfil
+es siempre una acción aparte y explícita del analista, nunca automática.

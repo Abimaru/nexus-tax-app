@@ -14,8 +14,10 @@ exógena (Excel) → lectura robusta (fullRows) → detección de secciones
 → normalización + identidad DIAN → clasificación tributaria v1
 → agregación + matriz de análisis (relaciones, consolidación, conciliación)
 → hallazgos → resolución humana (con historial) → checklist + adjuntos PDF (metadatos)
-→ lectura PDF textual local → candidatos documentales → revisión humana
-→ obligación de declarar orientativa (Aegis, AG 2025) → IndexedDB → export JSON
+→ lectura PDF local + diagnóstico de tipo (textual/escaneado/insuficiente/dañado)
+→ candidatos documentales → laboratorio documental (OCR local bajo demanda,
+comparación nativo/OCR, candidatos manuales, perfiles reutilizables) → revisión
+humana → obligación de declarar orientativa (Aegis, AG 2025) → IndexedDB → export JSON
 ```
 
 Todo es **orientativo y revisado por un humano**. **No** hay backend ni IA, **no**
@@ -100,6 +102,10 @@ presente imperativo, una sola intencion y primera linea de maximo recomendado de
 ## Límite de alcance
 
 El motor de reglas evoluciona de forma **incremental, versionada y explicable**.
-La lectura de PDF textual local está habilitada; no avanzar hacia OCR, IA,
-backend o **liquidación del impuesto** sin diseñarlo y validarlo antes.
-`apps/api` permanece reservado.
+La lectura de PDF local, el diagnóstico de tipo de PDF y el **OCR local bajo
+demanda** (Tesseract.js vendorizado, sin red durante el reconocimiento, nunca
+automático) ya están
+habilitados; el OCR no alimenta la matriz directamente y siempre pasa por
+revisión humana. No avanzar hacia IA externa/en la nube, backend obligatorio o
+**liquidación del impuesto** sin diseñarlo y validarlo antes. `apps/api`
+permanece reservado.

@@ -56,9 +56,21 @@ reglas: **Aegis Engine** (`packages/aegis-rules`).
   explicación, evidencia, versión y **fuentes DIAN**.
 - **Biblioteca documental** con metadatos por defecto y almacenamiento binario
   local opcional, explícito y eliminable; nunca se envía ni exporta por defecto.
-- **Aegis Document Intelligence**: lee PDF con texto en el navegador, clasifica
-  orientativamente, ejecuta adaptadores versionados y crea candidatos. Solo una
-  confirmación humana crea un hecho `assisted`; no hay OCR ni IA conectada.
+- **Aegis Document Intelligence**: lee PDF con texto en el navegador, **diagnostica**
+  el tipo de PDF y de cada página (textual/escaneado/texto insuficiente/dañado),
+  clasifica orientativamente, ejecuta adaptadores versionados y crea candidatos.
+  Solo una confirmación humana crea un hecho `assisted`; no hay IA conectada.
+- **OCR local bajo demanda**: Tesseract.js vendorizado sin CDN, corre en el
+  navegador y **nunca automáticamente**; nunca hace solicitudes de red durante el
+  reconocimiento; compara texto nativo contra OCR y muestra contradicciones sin
+  fusionarlas.
+- **Laboratorio documental**: diagnóstico por página, overlay de capas (tokens
+  nativos/OCR/candidatos), modo básico/avanzado y candidatos manuales asistidos
+  que pasan por la revisión normal (nunca alimentan la matriz directo).
+- **Perfiles documentales**: reconocen el mismo formato entre expedientes por
+  señales estructurales (nunca por nombre de archivo); activarlos siempre exige
+  confirmación explícita. El feedback de calibración registra el alcance que
+  elige el analista (solo el documento / similares / actualización de perfil).
 - **Persistencia local** en IndexedDB y **exportación JSON** versionada.
 
 ## Límites de arquitectura (no cruzar)
@@ -68,6 +80,9 @@ reglas: **Aegis Engine** (`packages/aegis-rules`).
   `packages/aegis-rules` (reglas puras versionadas).
 - `packages/document-intelligence` es puro respecto de React y persistencia: no
   accede a IndexedDB, no consolida la matriz y no realiza solicitudes de red.
+  El motor de OCR (Tesseract.js), el renderizado de página a `<canvas>` y su
+  orquestación viven en `apps/web`; el paquete puro solo define el contrato
+  unificado de tokens y las funciones de comparación/preprocesamiento.
 - `packages/exogenous-parser` y `packages/aegis-rules` son **puros**: sin DOM, sin
   red, sin React. `aegis-rules` no consulta la DIAN en tiempo de ejecución.
 - La **matriz y las resoluciones** se calculan en el paquete puro; la web solo
@@ -133,13 +148,15 @@ pnpm install · pnpm dev · pnpm build · pnpm lint · pnpm typecheck · pnpm te
 `TAX_RULES.md`, `CLASSIFICATION_RESOLUTION.md`, `RECONCILIATION.md`,
 `AEGIS_RULES.md`, `DOCUMENT_INTELLIGENCE.md`, `PDF_PROCESSING.md`,
 `DOCUMENT_ADAPTERS.md`, `DOCUMENT_EXTRACTION_REVIEW.md`, `UX_UI.md`,
-`SECURITY_PRIVACY.md`, `ROADMAP.md`,
+`SECURITY_PRIVACY.md`, `ROADMAP.md`, `LOCAL_OCR.md`,
 `PROJECT_HANDOFF.md`.
 Convenciones de cambios: `COMMIT_CONVENTIONS.md`. Validacion reproducible:
 `SPRINT_2_VALIDATION.md`.
 
 ## Límite de alcance
 
-El motor de reglas crece de forma **incremental, versionada y explicable**. No
-avanzar hacia backend, OCR, IA o **liquidación del impuesto** sin diseñarlo y
-validarlo antes. `apps/api` permanece reservado.
+El motor de reglas crece de forma **incremental, versionada y explicable**. La
+lectura de PDF local y el **OCR local bajo demanda** (nunca automático, nunca
+por red) ya están habilitados. No avanzar hacia backend obligatorio, IA
+externa/en la nube o **liquidación del impuesto** sin diseñarlo y validarlo
+antes. `apps/api` permanece reservado.

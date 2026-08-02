@@ -27,7 +27,12 @@ inmutable aunque el analista lo corrija.
 - `adapters.ts`: catálogo versionado y extractor genérico de baja confianza.
 - `matching.ts`: sugerencias de entidad, requisito y registro exógeno.
 - `pipeline.ts`: orquestación pura y hallazgos recuperables.
-- `contracts.ts`: representación independiente de PDF.js, límites y progreso.
+- `contracts.ts`: representación independiente de PDF.js, límites, progreso y
+  contrato unificado de tokens nativo/OCR.
+- `diagnosis.ts` / `ocrRecommendation.ts`: tipo de PDF/página y recomendación de OCR.
+- `unifiedTokens.ts` / `comparison.ts`: normalización y comparación nativo/OCR.
+- `imagePreprocessing.ts`: transformaciones puras de píxeles para OCR.
+- `profileMatching.ts`: señales estructurales y coincidencia con perfiles.
 
 ## Estados y persistencia
 
@@ -43,7 +48,7 @@ candidatos no confirmados, sin borrar sus decisiones.
 Se soportan PDFs con texto seleccionable. Formulario 220, certificados
 financieros multipropósito, deuda, saldos, vivienda, cesantías y predial tienen
 adaptadores iniciales; los demás tipos usan reglas genéricas y revisión
-obligatoria. OCR, imágenes, anotación geométrica precisa e IA están fuera.
+obligatoria. IA conectada e integración en línea siguen fuera de alcance.
 
 Consulta también [procesamiento PDF](PDF_PROCESSING.md), [adaptadores](DOCUMENT_ADAPTERS.md),
 [revisión](DOCUMENT_EXTRACTION_REVIEW.md) y [seguridad](DOCUMENT_EXTRACTION_SECURITY.md).
@@ -55,3 +60,23 @@ secciones y tablas simples. `maxCandidates` funciona como umbral preventivo: inf
 recorta. Las métricas permiten comparar candidatos generados, persistidos y revisados. La firma
 estable de evidencia permite conservar rechazos durante el reproceso y marcar como obsoletos los
 valores que ya no aparecen. Véase [cobertura técnica](DOCUMENT_EXTRACTION_COVERAGE.md).
+
+## Sprint 2.2: diagnóstico, OCR local y perfiles
+
+`diagnosis.ts` clasifica documento y página como textual/escaneado/texto insuficiente/dañado a
+partir de `readConfidence` (que ahora sí asigna `'medium'`) y los errores de lectura existentes; un
+PDF completamente escaneado ya no se rechaza (ver [procesamiento PDF](PDF_PROCESSING.md)).
+`ocrRecommendation.ts` sugiere qué páginas se beneficiarían de OCR sin ejecutarlo nunca
+automáticamente.
+
+`unifiedTokens.ts` normaliza bloques nativos y tokens OCR crudos bajo un mismo contrato
+(`UnifiedTextToken`: método, página, coordenadas, confianza técnica). `comparison.ts` decide entre
+seis estados (coinciden/OCR complementa/nativo más confiable/OCR más completo/contradicción/requiere
+revisión) sin fusionar nunca dos valores en conflicto. `imagePreprocessing.ts` ofrece
+transformaciones puras (escala, contraste, escala de grises, binarización, rotación en múltiplos de
+90°, recorte, reducción de ruido) sobre arreglos RGBA planos, sin tocar `<canvas>`.
+
+`profileMatching.ts` calcula señales estructurales y compara documentos contra perfiles existentes
+(ver [modelo de datos](DATA_MODEL.md)). El motor de OCR (Tesseract.js), el renderizado
+de página y el `<canvas>` viven en `apps/web`, nunca aquí: ver [OCR local](LOCAL_OCR.md) y
+la descripción de arquitectura en [ARCHITECTURE.md](ARCHITECTURE.md).
