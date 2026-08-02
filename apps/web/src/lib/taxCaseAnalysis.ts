@@ -16,6 +16,8 @@ import type {
   CaseNavigationState,
   EmploymentIncomeGroup,
   EmployerInstance,
+  DocumentExtractionSession,
+  DocumentFactCandidate,
 } from '@nexus-tax/domain';
 import { MAX_EMPLOYER_INSTANCES, TAX_CASE_EXPORT_SCHEMA_VERSION } from '@nexus-tax/domain';
 
@@ -398,6 +400,8 @@ export function buildTaxCaseManifest(input: {
   navigation?: CaseNavigationState;
   acceptedSources?: readonly AcceptedExogenousValue[];
   requirementSourceDecisions?: readonly RequirementSourceDecision[];
+  extractionSessions?: readonly DocumentExtractionSession[];
+  documentCandidates?: readonly DocumentFactCandidate[];
 }) {
   return {
     schema: 'nexustax.tax-case.manifest',
@@ -416,5 +420,11 @@ export function buildTaxCaseManifest(input: {
     workflow: input.navigation ?? null,
     acceptedSources: input.acceptedSources ?? [],
     requirementSourceDecisions: input.requirementSourceDecisions ?? [],
+    documentExtraction: {
+      sessions: input.extractionSessions ?? [],
+      candidates: input.documentCandidates ?? [],
+      includesFullText: false as const,
+      includesPasswords: false as const,
+    },
   };
 }

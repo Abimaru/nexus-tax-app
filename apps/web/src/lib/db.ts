@@ -6,6 +6,8 @@ import type {
   CaseNavigationState,
   CaseProduct,
   DocumentFact,
+  DocumentFactCandidate,
+  DocumentExtractionSession,
   EmploymentIncomeGroup,
   PreliminaryReconciliation,
   ProcessingResult,
@@ -63,6 +65,8 @@ class NexusTaxDatabase extends Dexie {
   navigationStates!: Table<CaseNavigationState, string>;
   acceptedSources!: Table<AcceptedExogenousValue, string>;
   requirementSourceDecisions!: Table<RequirementSourceDecision, string>;
+  extractionSessions!: Table<DocumentExtractionSession, string>;
+  documentCandidates!: Table<DocumentFactCandidate, string>;
 
   constructor() {
     super('nexustax');
@@ -158,6 +162,24 @@ class NexusTaxDatabase extends Dexie {
       navigationStates: 'caseId, lastStage, recommendedStage, updatedAt',
       acceptedSources: 'id, caseId, exogenousRecordId, requirementId, status, updatedAt',
       requirementSourceDecisions: 'id, caseId, requirementId, status, updatedAt',
+    });
+    this.version(8).stores({
+      cases: 'id, updatedAt, taxYear, status',
+      documents: 'id, caseId, uploadedAt, sha256, status, kind, *entityIds',
+      results: 'caseId, updatedAt',
+      filingInputs: 'caseId, updatedAt',
+      analyses: 'caseId, updatedAt, ruleVersion',
+      documentBlobs: 'documentId, caseId, storedAt',
+      products: 'id, caseId, entityId, type, status',
+      coverages: 'id, caseId, requirementId, documentId, factId, entityId, status',
+      facts: 'id, caseId, documentId, entityId, productId, category, reviewStatus, updatedAt',
+      reconciliations: 'id, caseId, status, *factIds, *exogenousRecordIds, updatedAt',
+      employmentGroups: 'id, caseId, coverage, updatedAt',
+      navigationStates: 'caseId, lastStage, recommendedStage, updatedAt',
+      acceptedSources: 'id, caseId, exogenousRecordId, requirementId, status, updatedAt',
+      requirementSourceDecisions: 'id, caseId, requirementId, status, updatedAt',
+      extractionSessions: 'id, caseId, documentId, status, updatedAt',
+      documentCandidates: 'id, caseId, documentId, extractionSessionId, status, updatedAt',
     });
   }
 }

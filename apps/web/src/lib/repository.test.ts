@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { ProcessingResult } from '@nexus-tax/domain';
+import type { DocumentFactCandidate, ProcessingResult } from '@nexus-tax/domain';
 import { processWorkbookFile } from '@nexus-tax/exogenous-parser';
 import * as XLSX from 'xlsx';
 import {
@@ -38,6 +38,11 @@ import {
   acceptExogenousValue,
   confirmAcceptedExogenousValue,
   saveRequirementSourceDecision,
+  completeExtractionSession,
+  createExtractionSession,
+  restoreDocumentCandidate,
+  reviewDocumentCandidate,
+  markDocumentObsolete,
 } from './repository';
 import { buildTaxCaseManifest } from './taxCaseAnalysis';
 
@@ -109,6 +114,62 @@ function localFile(name: string, contents: string) {
     size: bytes.byteLength,
     type: 'application/pdf',
     arrayBuffer: async () => bytes.buffer.slice(0),
+  };
+}
+
+function extractionCandidate(input: {
+  caseId: string;
+  documentId: string;
+  sessionId: string;
+  requirementId?: string;
+}): DocumentFactCandidate {
+  const timestamp = '2026-08-01T00:00:00.000Z';
+  return {
+    id: `candidate:${input.documentId}`,
+    caseId: input.caseId,
+    documentId: input.documentId,
+    extractionSessionId: input.sessionId,
+    page: 1,
+    proposedEntityId: null,
+    entityName: 'Banco Ficticio',
+    proposedProductId: null,
+    productType: 'savings_account',
+    productLabel: 'Cuenta sintética',
+    originalConcept: 'Saldo al cierre',
+    normalizedConcept: 'saldo al cierre',
+    proposedCategory: 'asset',
+    proposedNature: 'asset',
+    proposedTreatment: 'add_to_assets',
+    correctedCategory: null,
+    correctedNature: null,
+    correctedTreatment: null,
+    extractedValue: 100_000,
+    correctedValue: null,
+    finalValue: null,
+    currency: 'COP',
+    period: '2025',
+    cutoffDate: '2025-12-31',
+    evidence: {
+      page: 1,
+      excerpt: 'Saldo al cierre: $ 100.000',
+      detectedLabel: 'closing-balance',
+      detectedValue: '$ 100.000',
+      location: 'Página 1',
+    },
+    adapterId: 'co.balance.generic',
+    adapterVersion: '1.0.0',
+    ruleId: 'closing-balance',
+    confidence: { level: 'medium', score: 72, reasons: ['Regla sintética.'] },
+    warnings: [],
+    status: 'pending',
+    possibleDuplicateIds: [],
+    suggestedRequirementIds: input.requirementId ? [input.requirementId] : [],
+    suggestedExogenousMatches: [],
+    observation: '',
+    factId: null,
+    decisions: [],
+    createdAt: timestamp,
+    updatedAt: timestamp,
   };
 }
 
@@ -432,7 +493,7 @@ describe('repositorio (IndexedDB local)', () => {
       acceptedSources: workspace.acceptedSources,
       requirementSourceDecisions: workspace.requirementSourceDecisions,
     });
-    expect(manifest.schemaVersion).toBe('2.0.3');
+    expect(manifest.schemaVersion).toBe('2.1.0');
     expect(manifest.includesBinaryData).toBe(false);
     expect(JSON.stringify(manifest)).not.toContain('secreto sintetico');
     expect(JSON.stringify(manifest)).not.toContain('bytes');
@@ -831,5 +892,150 @@ describe('repositorio (IndexedDB local)', () => {
     const supported = (await getTaxCaseWorkspace(created.id)).acceptedSources[0]!;
     expect(supported).toMatchObject({ id: accepted.id, status: 'supported_by_document' });
     expect(supported.history).toHaveLength(2);
+  });
+
+  it('persiste una extracción sin texto completo ni contraseña', async () => {
+    const created = await createCase({ alias: 'Extracción local', taxYear: 2025 });
+    const document = await addCaseDocument(created.id, localFile('saldo.pdf', 'PDF sintético'), {
+      kind: 'balance_certificate',
+      storageMode: 'store_locally',
+      taxYear: 2025,
+    });
+    const session = await createExtractionSession(created.id, document.id);
+    const candidate = extractionCandidate({
+      caseId: created.id,
+      documentId: document.id,
+      sessionId: session.id,
+    });
+    await completeExtractionSession({
+      sessionId: session.id,
+      pageCount: 1,
+      readablePageCount: 1,
+      classification: {
+        proposedKind: 'balance_certificate',
+        confidence: 'high',
+        alternatives: [],
+        supportingSignals: ['Certificado de saldos.'],
+        opposingSignals: [],
+        requiresReview: false,
+        correctedKind: null,
+      },
+      adapterId: candidate.adapterId,
+      adapterVersion: candidate.adapterVersion,
+      findings: [],
+      candidates: [candidate],
+    });
+    const workspace = await getTaxCaseWorkspace(created.id);
+    expect(workspace.extractionSessions[0]).toMatchObject({
+      status: 'ready_for_review',
+      textPersisted: false,
+      candidateIds: [candidate.id],
+    });
+    expect(JSON.stringify(workspace.extractionSessions)).not.toMatch(/password|PDF sintético/);
+  });
+
+  it('exige justificar una corrección y crea un hecho asistido trazable', async () => {
+    const created = await createCase({ alias: 'Revisión asistida', taxYear: 2025 });
+    const result = financialResult();
+    await saveResult(created.id, result);
+    const requirement = result.requirements[0]!;
+    const document = await addCaseDocument(created.id, localFile('saldo.pdf', 'PDF'), {
+      kind: 'balance_certificate',
+      storageMode: 'metadata_only',
+      taxYear: 2025,
+    });
+    const session = await createExtractionSession(created.id, document.id);
+    const candidate = extractionCandidate({
+      caseId: created.id,
+      documentId: document.id,
+      sessionId: session.id,
+      requirementId: requirement.id,
+    });
+    await completeExtractionSession({
+      sessionId: session.id,
+      pageCount: 1,
+      readablePageCount: 1,
+      classification: {
+        proposedKind: 'balance_certificate',
+        confidence: 'medium',
+        alternatives: [],
+        supportingSignals: [],
+        opposingSignals: [],
+        requiresReview: true,
+        correctedKind: null,
+      },
+      adapterId: candidate.adapterId,
+      adapterVersion: candidate.adapterVersion,
+      findings: [],
+      candidates: [candidate],
+    });
+    await expect(
+      reviewDocumentCandidate(candidate.id, { action: 'confirm', correctedValue: 120_000 }),
+    ).rejects.toThrow(/Explica/);
+    const fact = await reviewDocumentCandidate(candidate.id, {
+      action: 'confirm',
+      correctedValue: 120_000,
+      observation: 'El separador del PDF cambió el valor; se verificó en la página 1.',
+    });
+    expect(fact).toMatchObject({
+      captureMethod: 'assisted',
+      extractedValue: 100_000,
+      correctedValue: 120_000,
+      extractionCandidateId: candidate.id,
+      reviewStatus: 'confirmed',
+    });
+    const workspace = await getTaxCaseWorkspace(created.id);
+    expect(workspace.documentCandidates[0]).toMatchObject({
+      status: 'corrected',
+      finalValue: 120_000,
+      factId: fact?.id,
+    });
+    expect(workspace.coverages.some((item) => item.factId === fact?.id)).toBe(true);
+  });
+
+  it('conserva decisiones al restaurar y limpia temporales al eliminar el documento', async () => {
+    const created = await createCase({ alias: 'Limpieza documental', taxYear: 2025 });
+    const document = await addCaseDocument(created.id, localFile('saldo.pdf', 'PDF'), {
+      kind: 'balance_certificate',
+      storageMode: 'store_locally',
+      taxYear: 2025,
+    });
+    const session = await createExtractionSession(created.id, document.id);
+    const candidate = extractionCandidate({
+      caseId: created.id,
+      documentId: document.id,
+      sessionId: session.id,
+    });
+    await completeExtractionSession({
+      sessionId: session.id,
+      pageCount: 1,
+      readablePageCount: 1,
+      classification: {
+        proposedKind: 'balance_certificate',
+        confidence: 'high',
+        alternatives: [],
+        supportingSignals: [],
+        opposingSignals: [],
+        requiresReview: false,
+        correctedKind: null,
+      },
+      adapterId: candidate.adapterId,
+      adapterVersion: candidate.adapterVersion,
+      findings: [],
+      candidates: [candidate],
+    });
+    await reviewDocumentCandidate(candidate.id, {
+      action: 'reject',
+      observation: 'No corresponde al periodo sintético.',
+    });
+    await restoreDocumentCandidate(candidate.id);
+    expect((await getTaxCaseWorkspace(created.id)).documentCandidates[0]?.decisions).toHaveLength(
+      2,
+    );
+    await markDocumentObsolete(document.id);
+    const workspace = await getTaxCaseWorkspace(created.id);
+    expect(workspace.extractionSessions).toHaveLength(0);
+    expect(workspace.documentCandidates).toHaveLength(0);
+    expect(await getDocumentBinary(document.id)).toBeUndefined();
   });
 });

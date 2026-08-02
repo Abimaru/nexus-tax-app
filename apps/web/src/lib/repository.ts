@@ -7,6 +7,10 @@ import type {
   ClassificationSnapshot,
   CreateTaxCaseInput,
   DocumentFact,
+  DocumentFactCandidate,
+  DocumentClassification,
+  DocumentExtractionFinding,
+  DocumentExtractionSession,
   DocumentKind,
   DocumentStorageMode,
   EmployerInstance,
@@ -93,6 +97,8 @@ export async function deleteCase(caseId: string): Promise<void> {
       db.navigationStates,
       db.acceptedSources,
       db.requirementSourceDecisions,
+      db.extractionSessions,
+      db.documentCandidates,
     ],
     async () => {
       await db.results.delete(caseId);
@@ -107,6 +113,8 @@ export async function deleteCase(caseId: string): Promise<void> {
       await db.navigationStates.delete(caseId);
       await db.acceptedSources.where('caseId').equals(caseId).delete();
       await db.requirementSourceDecisions.where('caseId').equals(caseId).delete();
+      await db.extractionSessions.where('caseId').equals(caseId).delete();
+      await db.documentCandidates.where('caseId').equals(caseId).delete();
       await db.documents.where('caseId').equals(caseId).delete();
       await db.cases.delete(caseId);
     },
@@ -514,6 +522,8 @@ export async function clearAllData(): Promise<void> {
       db.navigationStates,
       db.acceptedSources,
       db.requirementSourceDecisions,
+      db.extractionSessions,
+      db.documentCandidates,
     ],
     async () => {
       await db.results.clear();
@@ -528,6 +538,8 @@ export async function clearAllData(): Promise<void> {
       await db.navigationStates.clear();
       await db.acceptedSources.clear();
       await db.requirementSourceDecisions.clear();
+      await db.extractionSessions.clear();
+      await db.documentCandidates.clear();
       await db.documents.clear();
       await db.cases.clear();
     },
@@ -691,7 +703,25 @@ export async function removeDocumentBinary(documentId: string): Promise<void> {
 }
 
 export async function markDocumentObsolete(documentId: string): Promise<void> {
-  await getDb().documents.update(documentId, { status: 'obsolete', updatedAt: nowIso() });
+  const db = getDb();
+  const timestamp = nowIso();
+  await db.transaction(
+    'rw',
+    db.documents,
+    db.documentBlobs,
+    db.extractionSessions,
+    db.documentCandidates,
+    async () => {
+      await db.documents.update(documentId, {
+        status: 'obsolete',
+        storageMode: 'metadata_only',
+        updatedAt: timestamp,
+      });
+      await db.documentBlobs.delete(documentId);
+      await db.extractionSessions.where('documentId').equals(documentId).delete();
+      await db.documentCandidates.where('documentId').equals(documentId).delete();
+    },
+  );
 }
 
 export async function getLocalStorageUsage(caseId: string): Promise<number> {
@@ -825,6 +855,288 @@ export async function updateDocumentFact(
 
 export async function listDocumentFacts(caseId: string): Promise<DocumentFact[]> {
   return getDb().facts.where('caseId').equals(caseId).sortBy('updatedAt');
+}
+
+export async function createExtractionSession(
+  caseId: string,
+  documentId: string,
+): Promise<DocumentExtractionSession> {
+  const db = getDb();
+  const document = await db.documents.get(documentId);
+  if (!document || document.caseId !== caseId) throw new Error('El documento ya no existe.');
+  const previous = await db.extractionSessions
+    .where('documentId')
+    .equals(documentId)
+    .sortBy('runNumber');
+  const prior = previous.at(-1);
+  const priorCandidates = prior
+    ? await db.documentCandidates.where('extractionSessionId').equals(prior.id).toArray()
+    : [];
+  const timestamp = nowIso();
+  const session: DocumentExtractionSession = {
+    id: newId('extraction'),
+    caseId,
+    documentId,
+    runNumber: (prior?.runNumber ?? 0) + 1,
+    status: 'reading',
+    phase: 'reading',
+    completedPhases: [],
+    pageCount: 0,
+    readablePageCount: 0,
+    candidateIds: [],
+    classification: null,
+    adapterId: null,
+    adapterVersion: null,
+    findings: [],
+    textPersisted: false,
+    errorCode: null,
+    errorMessage: null,
+    supersedesSessionId: prior?.id ?? null,
+    obsoleteCandidateIds: priorCandidates.map((candidate) => candidate.id),
+    startedAt: timestamp,
+    finishedAt: null,
+    updatedAt: timestamp,
+  };
+  await db.transaction('rw', db.extractionSessions, db.documentCandidates, async () => {
+    await db.extractionSessions.add(session);
+    for (const candidate of priorCandidates.filter((item) => !item.factId)) {
+      await db.documentCandidates.update(candidate.id, {
+        status: 'obsolete',
+        updatedAt: timestamp,
+      });
+    }
+  });
+  return session;
+}
+
+export async function completeExtractionSession(input: {
+  sessionId: string;
+  pageCount: number;
+  readablePageCount: number;
+  classification: DocumentClassification;
+  adapterId: string;
+  adapterVersion: string;
+  findings: DocumentExtractionFinding[];
+  candidates: DocumentFactCandidate[];
+}): Promise<void> {
+  const db = getDb();
+  const session = await db.extractionSessions.get(input.sessionId);
+  if (!session) throw new Error('La sesión de extracción ya no existe.');
+  const timestamp = nowIso();
+  await db.transaction('rw', db.extractionSessions, db.documentCandidates, async () => {
+    await db.documentCandidates.bulkPut(input.candidates);
+    await db.extractionSessions.update(session.id, {
+      status: input.readablePageCount < input.pageCount ? 'partially_read' : 'ready_for_review',
+      phase: 'review',
+      completedPhases: ['reading', 'classifying', 'extracting'],
+      pageCount: input.pageCount,
+      readablePageCount: input.readablePageCount,
+      candidateIds: input.candidates.map((candidate) => candidate.id),
+      classification: input.classification,
+      adapterId: input.adapterId,
+      adapterVersion: input.adapterVersion,
+      findings: input.findings,
+      finishedAt: timestamp,
+      updatedAt: timestamp,
+    });
+  });
+}
+
+export async function failExtractionSession(
+  sessionId: string,
+  input: {
+    status: Extract<
+      DocumentExtractionSession['status'],
+      'password_required' | 'unsupported' | 'failed' | 'cancelled'
+    >;
+    errorCode: string;
+    errorMessage: string;
+    finding: DocumentExtractionFinding;
+  },
+): Promise<void> {
+  await getDb().extractionSessions.update(sessionId, {
+    status: input.status,
+    phase: 'complete',
+    errorCode: input.errorCode,
+    errorMessage: input.errorMessage,
+    findings: [input.finding],
+    finishedAt: nowIso(),
+    updatedAt: nowIso(),
+  });
+}
+
+export async function listExtractionSessions(caseId: string): Promise<DocumentExtractionSession[]> {
+  return getDb().extractionSessions.where('caseId').equals(caseId).sortBy('updatedAt');
+}
+
+export async function listDocumentCandidates(caseId: string): Promise<DocumentFactCandidate[]> {
+  return getDb().documentCandidates.where('caseId').equals(caseId).sortBy('updatedAt');
+}
+
+export interface ReviewDocumentCandidateInput {
+  action: 'confirm' | 'reject' | 'informational' | 'duplicate';
+  correctedValue?: number | null;
+  category?: DocumentFactCandidate['proposedCategory'];
+  nature?: DocumentFactCandidate['proposedNature'];
+  treatment?: DocumentFactCandidate['proposedTreatment'];
+  entityId?: string | null;
+  productId?: string | null;
+  requirementIds?: string[];
+  observation?: string;
+  author?: string;
+}
+
+export async function reviewDocumentCandidate(
+  candidateId: string,
+  input: ReviewDocumentCandidateInput,
+): Promise<DocumentFact | null> {
+  const db = getDb();
+  const candidate = await db.documentCandidates.get(candidateId);
+  if (!candidate) throw new Error('El candidato ya no existe.');
+  if (candidate.factId) return (await db.facts.get(candidate.factId)) ?? null;
+  const correctedValue = input.correctedValue ?? candidate.correctedValue;
+  const value = correctedValue ?? candidate.extractedValue;
+  const category = input.category ?? candidate.correctedCategory ?? candidate.proposedCategory;
+  const nature = input.nature ?? candidate.correctedNature ?? candidate.proposedNature;
+  const treatment = input.treatment ?? candidate.correctedTreatment ?? candidate.proposedTreatment;
+  const hasCorrection =
+    value !== candidate.extractedValue ||
+    category !== candidate.proposedCategory ||
+    nature !== candidate.proposedNature ||
+    treatment !== candidate.proposedTreatment;
+  const relativeChange =
+    candidate.extractedValue === 0
+      ? value === 0
+        ? 0
+        : 1
+      : Math.abs(value - candidate.extractedValue) / Math.abs(candidate.extractedValue);
+  const observation = input.observation?.trim() ?? '';
+  if (
+    hasCorrection &&
+    (relativeChange > 0.05 || category !== candidate.proposedCategory) &&
+    !observation
+  ) {
+    throw new Error('Explica la corrección sustancial antes de confirmarla.');
+  }
+  const timestamp = nowIso();
+  const author = input.author?.trim() || 'Analista local';
+  const nextStatus: DocumentFactCandidate['status'] =
+    input.action === 'reject'
+      ? 'rejected'
+      : input.action === 'informational'
+        ? 'informational'
+        : input.action === 'duplicate'
+          ? 'duplicate'
+          : hasCorrection
+            ? 'corrected'
+            : 'confirmed';
+  const decisionAction =
+    input.action === 'confirm'
+      ? hasCorrection
+        ? 'corrected'
+        : 'confirmed'
+      : input.action === 'reject'
+        ? 'rejected'
+        : input.action;
+  let fact: DocumentFact | null = null;
+  if (input.action === 'confirm') {
+    fact = await saveDocumentFact(
+      candidate.caseId,
+      {
+        documentId: candidate.documentId,
+        entityId: input.entityId ?? candidate.proposedEntityId,
+        productId: input.productId ?? candidate.proposedProductId,
+        originalConcept: candidate.originalConcept,
+        category,
+        nature,
+        treatment,
+        value,
+        currency: candidate.currency,
+        cutoffDate: candidate.cutoffDate,
+        period: candidate.period ?? '',
+        pageOrSection: `Página ${candidate.page}`,
+        evidence: candidate.evidence.excerpt,
+        captureMethod: 'assisted',
+        confidence:
+          candidate.confidence.level === 'insufficient' ? 'low' : candidate.confidence.level,
+        reviewStatus: 'confirmed',
+        requirementIds: input.requirementIds ?? candidate.suggestedRequirementIds,
+        author,
+        extractionCandidateId: candidate.id,
+        extractedValue: candidate.extractedValue,
+        correctedValue: hasCorrection ? value : null,
+        adapterId: candidate.adapterId,
+        adapterVersion: candidate.adapterVersion,
+        finalConfidence: hasCorrection ? 'low' : candidate.confidence.level,
+        analystDecision: observation || 'Propuesta documental confirmada por el analista.',
+      },
+      'provides_evidence',
+    );
+  }
+  await db.documentCandidates.update(candidate.id, {
+    correctedValue: hasCorrection ? value : candidate.correctedValue,
+    correctedCategory: category === candidate.proposedCategory ? null : category,
+    correctedNature: nature === candidate.proposedNature ? null : nature,
+    correctedTreatment: treatment === candidate.proposedTreatment ? null : treatment,
+    finalValue: input.action === 'confirm' ? value : null,
+    proposedEntityId: input.entityId ?? candidate.proposedEntityId,
+    proposedProductId: input.productId ?? candidate.proposedProductId,
+    suggestedRequirementIds: input.requirementIds ?? candidate.suggestedRequirementIds,
+    status: nextStatus,
+    observation,
+    factId: fact?.id ?? null,
+    decisions: [
+      ...candidate.decisions,
+      {
+        id: newId('candidate-decision'),
+        action: decisionAction,
+        previousStatus: candidate.status,
+        nextStatus,
+        previousValue: candidate.finalValue,
+        nextValue: input.action === 'confirm' ? value : null,
+        observation,
+        decidedAt: timestamp,
+        author,
+      },
+    ],
+    updatedAt: timestamp,
+  });
+  return fact;
+}
+
+export async function restoreDocumentCandidate(candidateId: string): Promise<void> {
+  const db = getDb();
+  const candidate = await db.documentCandidates.get(candidateId);
+  if (!candidate) throw new Error('El candidato ya no existe.');
+  if (candidate.factId)
+    throw new Error(
+      'El hecho confirmado debe conservarse; crea un reprocesamiento para comparar versiones.',
+    );
+  const timestamp = nowIso();
+  await db.documentCandidates.update(candidate.id, {
+    correctedValue: null,
+    correctedCategory: null,
+    correctedNature: null,
+    correctedTreatment: null,
+    finalValue: null,
+    status: 'pending',
+    observation: '',
+    decisions: [
+      ...candidate.decisions,
+      {
+        id: newId('candidate-decision'),
+        action: 'restored',
+        previousStatus: candidate.status,
+        nextStatus: 'pending',
+        previousValue: candidate.correctedValue,
+        nextValue: candidate.extractedValue,
+        observation: 'Se restauró la propuesta determinista original.',
+        decidedAt: timestamp,
+        author: 'Analista local',
+      },
+    ],
+    updatedAt: timestamp,
+  });
 }
 
 export type AcceptExogenousValueInput = Pick<
@@ -1453,6 +1765,8 @@ export async function getTaxCaseWorkspace(caseId: string) {
     storedResult,
     acceptedSources,
     requirementSourceDecisions,
+    extractionSessions,
+    documentCandidates,
   ] = await Promise.all([
     getCase(caseId),
     getResult(caseId),
@@ -1469,6 +1783,8 @@ export async function getTaxCaseWorkspace(caseId: string) {
     getStoredResult(caseId),
     listAcceptedExogenousValues(caseId),
     listRequirementSourceDecisions(caseId),
+    listExtractionSessions(caseId),
+    listDocumentCandidates(caseId),
   ]);
   return {
     taxCase,
@@ -1485,6 +1801,8 @@ export async function getTaxCaseWorkspace(caseId: string) {
     navigation,
     acceptedSources,
     requirementSourceDecisions,
+    extractionSessions,
+    documentCandidates,
     sourceInfo: storedResult
       ? {
           sha256: storedResult.sourceSha256 ?? null,

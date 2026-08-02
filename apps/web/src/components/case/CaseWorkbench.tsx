@@ -284,6 +284,8 @@ export function CaseWorkbench({
       navigation: workspace.navigation,
       acceptedSources: workspace.acceptedSources,
       requirementSourceDecisions: workspace.requirementSourceDecisions,
+      extractionSessions: workspace.extractionSessions,
+      documentCandidates: workspace.documentCandidates,
     });
     downloadTextFile(
       `${safeBaseName(taxCase.alias)}-manifiesto.json`,
