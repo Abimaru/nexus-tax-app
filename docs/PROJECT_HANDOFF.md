@@ -716,7 +716,7 @@ Fixtures exclusivamente sintéticos cubren 550 candidatos sin pérdida, líneas/
 productos ambiguos, identidad Grupo Bancolombia, tareas, persistencia, rechazo, restauración y
 reproceso. El smoke Playwright añade un PDF de 55 candidatos, paginación y operación masiva.
 
-Validación cerrada: `pnpm typecheck`, `pnpm test` (169 pruebas), `pnpm lint`, `pnpm build` y
+Validación cerrada: `pnpm typecheck`, `pnpm test` (165 pruebas), `pnpm lint`, `pnpm build` y
 `pnpm --filter @nexus-tax/web test:e2e` (2 escenarios Chromium) finalizan correctamente. El smoke
 incluye capturas de escritorio/móvil, ausencia de scroll horizontal y revisión paginada de 55
 candidatos.
