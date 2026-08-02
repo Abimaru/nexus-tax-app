@@ -12,6 +12,8 @@ import {
   RequirementSourceDecisionSchema,
   DocumentExtractionSessionSchema,
   DocumentFactCandidateSchema,
+  DocumentProfileSchema,
+  ExtractionFeedbackSchema,
 } from '../src/index';
 
 describe('esquemas de dominio', () => {
@@ -275,5 +277,96 @@ describe('esquemas de dominio', () => {
         updatedAt: timestamp,
       }).success,
     ).toBe(true);
+  });
+
+  it('valida un DocumentProfile completo y rechaza coordenadas de zona fuera de rango', () => {
+    const timestamp = new Date().toISOString();
+    const base = {
+      id: 'profile-1',
+      name: 'Certificado de saldos — Banco Ficticio',
+      documentKind: 'balance_certificate',
+      entityId: null,
+      brandName: 'Banco Ficticio',
+      signals: {
+        pageWidth: 612,
+        pageHeight: 792,
+        pageCount: 1,
+        sectionLabels: ['balances'],
+        headerKeywords: ['certificado de saldos'],
+      },
+      expectedPageCount: 1,
+      zones: [
+        {
+          id: 'zone-1',
+          purpose: 'totals',
+          page: 1,
+          relativeX: 0.1,
+          relativeY: 0.2,
+          relativeWidth: 0.5,
+          relativeHeight: 0.05,
+          field: 'balance',
+          adapterId: 'co.balance-certificate.generic',
+          version: '1.0.0',
+          evidence: 'Saldo al cierre: $ 900.000',
+          createdBy: 'analyst',
+        },
+      ],
+      fields: ['balance'],
+      adapterId: 'co.balance-certificate.generic',
+      version: '1.0.0',
+      confidence: 'medium',
+      origin: 'manual',
+      status: 'draft',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    };
+    expect(DocumentProfileSchema.safeParse(base).success).toBe(true);
+    expect(
+      DocumentProfileSchema.safeParse({
+        ...base,
+        zones: [{ ...base.zones[0], relativeX: 1.5 }],
+      }).success,
+    ).toBe(false);
+  });
+
+  it('un ExtractionFeedback nunca decide aplicabilidad por sí mismo', () => {
+    const timestamp = new Date().toISOString();
+    const parsed = ExtractionFeedbackSchema.safeParse({
+      id: 'feedback-1',
+      documentId: 'doc-1',
+      extractionSessionId: 'session-1',
+      candidateId: 'candidate-1',
+      decision: 'value_corrected',
+      reason: 'El monto detectado incluía el símbolo de pesos.',
+      method: 'ocr',
+      adapterId: 'co.balance-certificate.generic',
+      profileId: null,
+      beforeValue: '$900000',
+      afterValue: '900000',
+      page: 1,
+      zoneId: null,
+      applicability: 'this_document_only',
+      createdAt: timestamp,
+    });
+    expect(parsed.success).toBe(true);
+    expect(
+      ExtractionFeedbackSchema.safeParse({
+        id: 'feedback-2',
+        documentId: 'doc-1',
+        extractionSessionId: 'session-1',
+        candidateId: null,
+        decision: 'value_corrected',
+        reason: 'x',
+        method: null,
+        adapterId: null,
+        profileId: null,
+        beforeValue: null,
+        afterValue: null,
+        page: null,
+        zoneId: null,
+        applicability: 'automatic',
+        createdAt: timestamp,
+      }).success,
+    ).toBe(false);
   });
 });
