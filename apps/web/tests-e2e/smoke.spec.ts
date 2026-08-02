@@ -356,9 +356,11 @@ test('flujo guiado completo del expediente', async ({ page }, testInfo) => {
       .getByRole('navigation', { name: 'Vistas de la etapa' })
       .getByRole('button', { name: /Formulario 210/ }),
   ).toBeDisabled();
-  await expect(page.getByRole('heading', { name: 'Obligación de declarar' })).toBeVisible();
-  await page.getByLabel('Responsabilidad de IVA al cierre de 2025').selectOption('false');
-  await expect(page.getByText('No se detectan criterios que activen la obligación')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Confirmar responsabilidad de IVA' })).toBeVisible();
+  await page.getByRole('button', { name: 'No', exact: true }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Por ahora, no se activa ningún criterio para declarar' }),
+  ).toBeVisible();
   await expect(page.getByText(/19 de octubre de 2026/)).toBeVisible();
   await expect(page.getByText(/co-renta-pn-2025\.1\.0\.0/)).toBeVisible();
 
@@ -545,7 +547,10 @@ test('flujo guiado completo del expediente', async ({ page }, testInfo) => {
   await page.getByRole('button', { name: 'Aplicar a seleccionados' }).click();
   await expect(page.getByText('Informativos 20')).toBeVisible();
 
-  // Salida recuperable para PDF sin texto y control de contraseña por teclado.
+  // Un PDF sin texto ya no se rechaza: se lee, se diagnostica como escaneado
+  // (Sprint 2.2) y queda con lectura parcial hasta que se registre manualmente
+  // o se ejecute OCR bajo demanda. También valida el control de contraseña
+  // por teclado.
   await selectView(page, 'Documentos');
   await page.setInputFiles('#case-document-file', unsupportedPath);
   const passwordToggle = page.getByLabel('El archivo requiere contraseña');
@@ -555,14 +560,11 @@ test('flujo guiado completo del expediente', async ({ page }, testInfo) => {
   await page.getByLabel('Contraseña temporal').fill('solo-en-memoria');
   await passwordToggle.press('Space');
   await page.getByRole('button', { name: 'Registrar y analizar' }).click();
-  await expect(page.locator('#case-document-file-error')).toContainText(
-    /no contiene texto seleccionable/i,
-  );
-  await selectView(page, 'Revisión de extracción');
-  await expect(page.getByText('No compatible')).toBeVisible();
+  await expect(page).toHaveURL(/\/organizacion\/revision-documental$/);
   await expect(
-    page.getByText('registra los valores manualmente', { exact: false }).first(),
+    page.getByRole('heading', { name: 'escaneado-sin-texto-sintetico.pdf' }),
   ).toBeVisible();
+  await expect(page.getByText('Lectura parcial').first()).toBeVisible();
 
   await selectStage(page, 'Exportación');
   await selectView(page, 'Manifiesto');
