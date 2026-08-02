@@ -58,6 +58,25 @@ describe('OcrClient', () => {
     vi.resetModules();
   });
 
+  it('nunca configura Tesseract.js con un CDN: solo rutas locales same-origin', async () => {
+    const { OcrClient } = await import('./ocrClient');
+    recognizeMock.mockResolvedValue({ data: fakePage() });
+    const client = new OcrClient();
+
+    await client.recognizePage(new Blob());
+
+    expect(createWorkerMock).toHaveBeenCalledTimes(1);
+    const options = createWorkerMock.mock.calls[0]?.[2];
+    for (const key of ['corePath', 'workerPath', 'langPath'] as const) {
+      const value = options[key] as string;
+      expect(value.startsWith('/vendor/tesseract/')).toBe(true);
+      expect(value).not.toMatch(/^https?:\/\//);
+      expect(value).not.toContain('cdn.jsdelivr.net');
+      expect(value).not.toContain('unpkg.com');
+    }
+    expect(options.gzip).toBe(false);
+  });
+
   it('reconoce una página y normaliza tokens con sus coordenadas', async () => {
     const { OcrClient } = await import('./ocrClient');
     recognizeMock.mockResolvedValue({ data: fakePage() });
