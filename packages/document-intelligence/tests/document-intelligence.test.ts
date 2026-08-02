@@ -36,8 +36,14 @@ describe('lector PDF local', () => {
     expect(passwordErrorForReason(2).code).toBe('incorrect_password');
   });
 
-  it('rechaza un documento sin texto y respeta cancelación y límites', async () => {
-    await expect(readPdfText(syntheticTextPdf([]))).rejects.toMatchObject({ code: 'no_text' });
+  it('lee un documento sin texto en vez de rechazarlo (queda para diagnóstico y OCR)', async () => {
+    const result = await readPdfText(syntheticTextPdf([]));
+    expect(result.pageCount).toBe(1);
+    expect(result.pages[0]?.normalizedText).toBe('');
+    expect(result.pages[0]?.readConfidence).toBe('insufficient');
+  });
+
+  it('respeta cancelación y límites', async () => {
     const controller = new AbortController();
     controller.abort();
     await expect(

@@ -166,12 +166,9 @@ export async function readPdfText(
     const metadataResult = await pdf.getMetadata().catch(() => null);
     const info = metadataResult?.info as Record<string, unknown> | undefined;
     await pdf.destroy();
-    if (!pages.some((page) => page.normalizedText)) {
-      throw new PdfReadError(
-        'no_text',
-        'El PDF no contiene texto seleccionable. Puedes registrar los valores manualmente o dejarlo pendiente para OCR futuro.',
-      );
-    }
+    // Un PDF sin texto en ninguna página ya no se rechaza aquí: el diagnóstico
+    // (diagnosePdfDocument) lo clasifica como 'scanned' y recomienda OCR bajo
+    // demanda. Rechazarlo de entrada le impedía a esa clasificación evaluarlo.
     return {
       pageCount,
       pages,
