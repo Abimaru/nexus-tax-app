@@ -26,3 +26,15 @@ categoría, naturaleza y tratamiento; los enums nunca se interpolan.
 La acción provisional anota el registro exógeno existente y no crea un segundo
 hecho sumable. Los hechos documentales posteriores se enlazan mediante la
 conciliación preliminar.
+
+## Captura asistida
+
+Un `DocumentFactCandidate` conserva la propuesta determinista y no participa en
+la matriz. Al confirmarlo, el hecho usa `captureMethod: assisted` y registra ID
+del candidato, valor extraído, valor corregido, adaptador/versión, confianza
+final y decisión del analista. El fragmento y la página se copian como evidencia
+mínima; el texto completo del PDF no se guarda.
+
+Una corrección sustancial exige observación. Rechazar, marcar duplicado o dejar
+informativo conserva la decisión sin crear hecho. Restaurar afecta la propuesta,
+no elimina hechos previamente confirmados.

@@ -14,6 +14,7 @@ exógena (Excel) → lectura robusta (fullRows) → detección de secciones
 → normalización + identidad DIAN → clasificación tributaria v1
 → agregación + matriz de análisis (relaciones, consolidación, conciliación)
 → hallazgos → resolución humana (con historial) → checklist + adjuntos PDF (metadatos)
+→ lectura PDF textual local → candidatos documentales → revisión humana
 → obligación de declarar orientativa (Aegis, AG 2025) → IndexedDB → export JSON
 ```
 
@@ -42,6 +43,7 @@ Formulario 210). Motor de reglas: **Aegis Engine** (`packages/aegis-rules`).
 apps/web (Next.js, App Router)      ·  apps/api (RESERVADO)
 packages/domain (tipos + Zod)       ·  packages/exogenous-parser (motor puro)
 packages/aegis-rules (reglas puras) ·  packages/ui (presentación)
+packages/document-intelligence (PDF y candidatos, puro)
 packages/config (constantes/tsconfig)
 ```
 
@@ -53,7 +55,8 @@ el cálculo puro (matriz/resoluciones); React solo presenta.
 
 1. **Explora antes de editar.** No borres configuración existente.
 2. **Cambios mínimos y localizados.** Componentes pequeños, funciones puras.
-3. **Pruebas.** Si tocas `exogenous-parser`, `aegis-rules` o `domain`,
+3. **Pruebas.** Si tocas `exogenous-parser`, `aegis-rules`,
+   `document-intelligence` o `domain`,
    añade/ajusta tests en Vitest con fixtures sintéticos (builders en memoria o
    `samples/generate-sample.mjs`), nunca datos reales.
 4. **Tema claro/oscuro.** Usa tokens semánticos de Tailwind (`surface`,
@@ -97,5 +100,6 @@ presente imperativo, una sola intencion y primera linea de maximo recomendado de
 ## Límite de alcance
 
 El motor de reglas evoluciona de forma **incremental, versionada y explicable**.
-No avanzar hacia backend, IA, extracción avanzada de PDFs o **liquidación del
-impuesto** sin diseñarlo y validarlo antes. `apps/api` permanece reservado.
+La lectura de PDF textual local está habilitada; no avanzar hacia OCR, IA,
+backend o **liquidación del impuesto** sin diseñarlo y validarlo antes.
+`apps/api` permanece reservado.

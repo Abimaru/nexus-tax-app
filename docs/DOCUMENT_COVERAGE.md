@@ -49,3 +49,11 @@ vincularse como fuente alternativa sin fingir que existe un documento.
 Las relaciones se presentan como Cubre completamente, Cubre parcialmente,
 Aporta evidencia, Contradice la información o Requiere soporte adicional, cada
 una con ayuda contextual. Los valores persistidos no cambiaron.
+
+## Cobertura sugerida por extracción
+
+Los adaptadores pueden proponer uno o varios requisitos usando entidad, tipo y
+categoría. La propuesta vive en el candidato; no cambia la cobertura definitiva.
+Al confirmar, el analista selecciona requisitos y `saveDocumentFact` crea una
+relación `provides_evidence` aún revisable. Un certificado consolidado conserva
+varios candidatos y coberturas independientes sin duplicar el documento.

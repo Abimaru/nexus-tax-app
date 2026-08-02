@@ -116,3 +116,18 @@ la fuente (SHA-256 y fecha), nunca el archivo original. Las rutas estables sigue
 `/expedientes/:caseId/:stage/:view`; el destino se valida antes de restaurarlo.
 La eliminación de una fuente borra derivados exógenos de forma selectiva y
 mantiene documentos y hechos manuales.
+
+## Sprint 2.1: inteligencia documental
+
+`packages/document-intelligence` agrega una frontera pura entre la librería PDF
+y el dominio. Recibe bytes y contexto, devuelve representación efímera,
+clasificación, adaptador, candidatos y hallazgos. No importa React, Dexie ni
+funciones de matriz. `apps/web/src/lib/documentProcessor.ts` es la capa de
+aplicación que obtiene bytes locales y persiste el resultado.
+
+PDF.js se sirve desde el mismo origen como artefacto generado en `predev` y
+`prebuild`; el lector nunca recibe una URL remota de documento. Dexie v8 añade
+`extractionSessions` y `documentCandidates`. El texto completo y los buffers no
+cruzan la frontera de persistencia. La confirmación humana transforma un
+candidato en hecho y la conciliación posterior sigue siendo una decisión
+separada.

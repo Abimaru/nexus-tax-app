@@ -43,6 +43,12 @@ provisionalmente con historial, requisito no emitido, flujo prudente de premios,
 respaldo/contradicción por documento posterior, Dexie v7, manifiesto 2.0.3 y
 dropzone compartido con quality gate visual obligatorio.
 
+**Sprint 2.1.** Aegis Document Intelligence lee PDFs textuales sin salir del
+navegador, clasifica documentos, ejecuta adaptadores deterministas, propone
+hechos con página y evidencia, y exige revisión humana antes de crear hechos
+`assisted`. Incluye reprocesamiento, contraseñas solo en memoria, límites,
+manifiesto seguro y vista responsive de revisión.
+
 **Experiencia.** Interfaz con **tema claro y oscuro** conmutable, tokens de color
 semánticos, filtros y detalle de Registros reorganizados, accesibilidad y
 `prefers-reduced-motion`.
@@ -58,12 +64,16 @@ semánticos, filtros y detalle de Registros reorganizados, accesibilidad y
 - **Conciliación**: edición avanzada de asociaciones múltiples y revisión
   independiente de relaciones sugeridas.
 - **Rendimiento**: virtualización de tablas grandes y métricas del Web Worker.
+- **Documentos**: ampliar adaptadores con fixtures de más emisores y mejorar la
+  comparación explícita entre ejecuciones de extracción.
 
 ## Más adelante (no comprometido)
 
 - Propuestas de valores para el **Formulario 210** con explicación y confianza
   (nunca liquidación automática sin revisión humana).
-- Extracción asistida de valores desde certificados PDF.
+- OCR local para documentos escaneados, sujeto a evaluación de memoria y UX.
+- Enriquecimiento opcional mediante el contrato abstracto, sin habilitar envío
+  de documentos ni texto completo por defecto.
 - Sincronización opcional cifrada entre dispositivos del usuario.
 - Reportes exportables (PDF) y firmas de trazabilidad. Internacionalización.
 

@@ -187,3 +187,19 @@ reconocimiento de ganancia ocasional, regla, autoría e historial.
 motivo, gestión, canal, evidencia y resultado. No reutiliza `not_applicable`.
 Dexie v7 agrega ambas tablas de forma aditiva. El manifiesto 2.0.3 exporta las
 decisiones y nunca los binarios.
+
+## Extracción documental Sprint 2.1
+
+`DocumentExtractionSession` conserva documento, número de ejecución, estado,
+fase final, páginas legibles, clasificación, adaptador, hallazgos y vínculo con
+la sesión anterior. `textPersisted` es literalmente `false`.
+
+`DocumentFactCandidate` mantiene valor extraído, correcciones separadas, valor
+final, evidencia breve/página, regla, confianza y sugerencias de entidad,
+producto, requisito y exógena. Su estado y decisiones son independientes de
+`DocumentFact`; solo `confirmed`/`corrected` mediante acción humana crea un hecho
+`assisted` y registra `extractionCandidateId`.
+
+Dexie v8 agrega `extractionSessions` y `documentCandidates`. El manifiesto 2.1.0
+incluye metadatos y decisiones seguras, y declara que no contiene contraseñas ni
+texto completo.

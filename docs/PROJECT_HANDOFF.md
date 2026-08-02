@@ -537,3 +537,80 @@ contenido, especialmente en ganancias ocasionales.
 No se ejecutó `pnpm build` porque había una sesión `pnpm dev` activa y
 ambos procesos comparten `.next`; el build queda cubierto por el quality gate al
 cerrar esa sesión.
+
+## 15. Entrega: Sprint 2.1 — extracción documental local y asistida (2026-08-01)
+
+### Estado inicial
+
+`main` ya contenía expediente Sprint 2.0.3, documentos/binarios locales, hechos,
+coberturas, fuentes aceptadas, conciliación y matriz. No existían lector PDF,
+sesiones de extracción, candidatos, adaptadores ni revisión. Los adjuntos eran
+metadatos/binarios y los hechos se registraban manualmente.
+
+### Decisiones y arquitectura
+
+- Se creó `@nexus-tax/document-intelligence`, puro respecto de React, Dexie y la
+  matriz. Separa lector, normalizador, clasificador, adaptadores, matching,
+  pipeline, límites y contratos.
+- Se eligió `pdfjs-dist` 5.4.624 por su lectura desde bytes, worker,
+  `onPassword`, progreso y destrucción de recursos. Para compatibilidad con
+  Next 14, `predev`/`prebuild` copian sus módulos al mismo origen y el navegador
+  los importa sin transformación Webpack; no se usa CDN.
+- Node mínimo sube a 20.16 por la versión elegida. Los límites son 25 MiB, 250
+  páginas, 500 candidatos y 120 segundos.
+- Dexie v8 agrega `extractionSessions` y `documentCandidates`. El manifiesto
+  2.1.0 exporta trazabilidad mínima con `includesFullText: false` e
+  `includesPasswords: false`.
+- El candidato es distinto del hecho. Solo `confirm` crea `DocumentFact` con
+  captura `assisted`; correcciones sustanciales exigen observación y conservan
+  antes/después. Reprocesar crea una sesión nueva y deja candidatos previos
+  obsoletos sin borrar decisiones.
+- La vista **Revisión de extracción** permite corregir tipo, reprocesar,
+  confirmar/corregir/rechazar/restaurar y asociar entidad, producto, requisito y
+  registro exógeno. La conciliación sigue requiriendo confirmación separada.
+
+### Modelos, adaptadores y privacidad
+
+Se añadieron `DocumentExtractionSession`, `DocumentFactCandidate`,
+`DocumentClassification`, hallazgos y decisiones. Los adaptadores v1 cubren
+Formulario 220, certificado financiero multipropósito, deuda, saldos, intereses
+de vivienda, cesantías y predial; un octavo extractor concepto–valor actúa como
+fallback de baja confianza.
+
+La contraseña vive solo en estado de UI durante el intento. No se persisten
+buffers, workers, objetos PDF ni texto completo; la evidencia se limita a un
+fragmento. Marcar el documento obsoleto elimina binario, sesiones y candidatos.
+La prueba de navegador afirma cero solicitudes HTTP fuera del origen local
+durante la extracción.
+
+### Validaciones exactas
+
+| Paso | Resultado |
+| --- | --- |
+| `pnpm typecheck` | OK; 7 de 8 proyectos del workspace, 0 errores |
+| `pnpm test` | OK; 153/153 pruebas (11 dominio, 26 Aegis, 14 documentos, 43 parser, 59 web) |
+| `pnpm lint` | OK; 0 warnings / 0 errors |
+| `NEXUSTAX_NEXT_DIST_DIR=.next-build-sprint21 pnpm build` | OK; compilación y 5 páginas generadas |
+| `PLAYWRIGHT_BASE_URL=http://localhost:3000 pnpm --filter @nexus-tax/web test:e2e` | OK; 2/2 Chromium |
+| Visual | capturas sintéticas de revisión a 1280 px y 390 px, sin overflow |
+
+El build aislado evita competir con el `pnpm dev` activo en `.next`. Los tests
+PDF usan archivos sintéticos creados en memoria; no se añadió información
+tributaria real.
+
+### Riesgos, no soportado y siguiente paso
+
+- PDF.js advierte en fixtures Node sobre `standardFontDataUrl`; no afecta la
+  extracción de texto, pero debe configurarse si futuros adaptadores dependen de
+  renderizado o fuentes estándar.
+- No hay OCR: PDF escaneado, imagen, estructura dañada o cifrado no resuelto
+  termina con salida recuperable y registro manual. Tampoco hay anotación visual
+  exacta, IA, backend ni cálculo del Formulario 210.
+- Los adaptadores son genéricos; variantes de emisores reales deben incorporarse
+  únicamente mediante fixtures anonimizados/sintéticos y reglas versionadas.
+- La comparación entre ejecuciones existe en datos, pero la UI solo muestra la
+  última por documento; una comparación lado a lado queda pendiente.
+
+**Siguiente paso exacto:** probar localmente certificados sintéticos con tablas
+y etiquetas partidas en varios bloques, ampliar fixtures por adaptador y diseñar
+una comparación de ejecuciones antes de evaluar OCR local.

@@ -1,7 +1,7 @@
 # NexusTax
 
 **Estación personal de análisis tributario** para Colombia. Local, privada y
-extensible. Motor futuro de reglas: **Aegis Engine**.
+extensible. Motor de reglas y análisis: **Aegis Engine**.
 
 > NexusTax ayuda a un analista humano a organizar expedientes, leer información
 > exógena, normalizar y **clasificar** registros, conciliar contra topes, detectar
@@ -17,13 +17,14 @@ Conciliación, Declaración y Exportación** → cargar Excel de exógena → in
 → ver resumen y gráficas → revisar la **matriz de análisis** y los hallazgos →
 **resolver** decisiones (con historial) → evaluar de forma orientativa la
 **obligación de declarar** AG 2025 → biblioteca y cobertura documental → hechos
-manuales → conciliación documental confirmada por el analista → guardar en
+manuales o **asistidos desde PDF textual local** → revisión de candidatos →
+conciliación documental confirmada por el analista → guardar en
 IndexedDB → aceptar provisionalmente valores exógenos con trazabilidad →
 gestionar soportes no emitidos → exportar un manifiesto sin binarios. Interfaz
 con **tema claro y oscuro**.
 
-Fuera de alcance (por ahora): backend, IA, autenticación, extracción avanzada
-de PDFs, OCR, liquidación del impuesto e integración en línea con la DIAN. Un
+Fuera de alcance (por ahora): backend, IA, autenticación, OCR y PDFs escaneados,
+liquidación del impuesto e integración en línea con la DIAN. Un
 soporte puede conservarse opcionalmente en IndexedDB, siempre local y por
 decisión explícita.
 
@@ -37,6 +38,7 @@ packages/
   domain/            Tipos + esquemas Zod (puro)
   exogenous-parser/  Motor de Excel: parseo, normalización, hallazgos, checklist
   aegis-rules/        Reglas tributarias locales, explicables y versionadas
+  document-intelligence/ Lectura PDF, clasificación y candidatos (puro)
   ui/                Primitivas visuales reutilizables
   config/            Constantes y tsconfig compartidos
 docs/                Documentación del proyecto
@@ -48,7 +50,7 @@ vive en componentes React** (ver `docs/ARCHITECTURE.md`).
 
 ## Requisitos
 
-- Node.js ≥ 20.11
+- Node.js ≥ 20.16
 - pnpm 9 (`corepack enable` activa la versión declarada en `package.json`)
 
 ## Comandos
@@ -85,6 +87,12 @@ Detalles en `docs/SECURITY_PRIVACY.md`.
 - [Navegación por etapas](docs/NAVIGATION_STAGES.md)
 - [Cobertura documental](docs/DOCUMENT_COVERAGE.md)
 - [Hechos documentales](docs/DOCUMENT_FACTS.md)
+- [Inteligencia documental](docs/DOCUMENT_INTELLIGENCE.md)
+- [Procesamiento PDF](docs/PDF_PROCESSING.md)
+- [Adaptadores documentales](docs/DOCUMENT_ADAPTERS.md)
+- [Revisión de extracción](docs/DOCUMENT_EXTRACTION_REVIEW.md)
+- [Seguridad de extracción](docs/DOCUMENT_EXTRACTION_SECURITY.md)
+- [Contrato de enriquecimiento futuro](docs/AI_DOCUMENT_ENRICHMENT_CONTRACT.md)
 - [Fuentes aceptadas](docs/ACCEPTED_SOURCES.md)
 - [Aceptación de valores exógenos](docs/EXOGENOUS_VALUE_ACCEPTANCE.md)
 - [Conciliación documental](docs/PRELIMINARY_RECONCILIATION.md)

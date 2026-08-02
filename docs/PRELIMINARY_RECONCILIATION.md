@@ -23,3 +23,14 @@ actualiza su estado: respaldado cuando el valor coincide, contradicho cuando
 difiere o no comparable. La aceptación y su historial permanecen. El documento
 no agrega de nuevo el valor a la matriz: solo cambia evidencia, confianza y
 estado de la fuente.
+
+## Candidatos extraídos
+
+La extracción sugiere registros con estados fuerte, probable, múltiples, sin
+coincidencia o posible contradicción. El analista puede asociar un registro al
+candidato, pero esa selección no concilia. Después de crear el hecho, la vista
+de conciliación calcula de nuevo señales y diferencias y exige confirmación.
+
+Las fuentes aceptadas solo cambian a `supported_by_document`,
+`contradicted_by_document` o `not_comparable` dentro de una conciliación humana;
+se conserva el historial y se evita sumar por segunda vez el mismo valor.

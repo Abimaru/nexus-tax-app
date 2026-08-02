@@ -56,6 +56,9 @@ reglas: **Aegis Engine** (`packages/aegis-rules`).
   explicación, evidencia, versión y **fuentes DIAN**.
 - **Biblioteca documental** con metadatos por defecto y almacenamiento binario
   local opcional, explícito y eliminable; nunca se envía ni exporta por defecto.
+- **Aegis Document Intelligence**: lee PDF con texto en el navegador, clasifica
+  orientativamente, ejecuta adaptadores versionados y crea candidatos. Solo una
+  confirmación humana crea un hecho `assisted`; no hay OCR ni IA conectada.
 - **Persistencia local** en IndexedDB y **exportación JSON** versionada.
 
 ## Límites de arquitectura (no cruzar)
@@ -63,6 +66,8 @@ reglas: **Aegis Engine** (`packages/aegis-rules`).
 - La **lógica de dominio, de parsing y de reglas NO vive en componentes React**.
   Va en `packages/domain` (tipos/Zod), `packages/exogenous-parser` (motor puro) y
   `packages/aegis-rules` (reglas puras versionadas).
+- `packages/document-intelligence` es puro respecto de React y persistencia: no
+  accede a IndexedDB, no consolida la matriz y no realiza solicitudes de red.
 - `packages/exogenous-parser` y `packages/aegis-rules` son **puros**: sin DOM, sin
   red, sin React. `aegis-rules` no consulta la DIAN en tiempo de ejecución.
 - La **matriz y las resoluciones** se calculan en el paquete puro; la web solo
@@ -95,8 +100,8 @@ reglas: **Aegis Engine** (`packages/aegis-rules`).
 ## Flujo de trabajo esperado
 
 1. Antes de modificar: inspecciona el repo y no destruyas configuración.
-2. Cambios acompañados de pruebas cuando toquen `exogenous-parser`, `aegis-rules`
-   o `domain`. Usa fixtures **sintéticos**.
+2. Cambios acompañados de pruebas cuando toquen `exogenous-parser`, `aegis-rules`,
+   `document-intelligence` o `domain`. Usa fixtures **sintéticos**.
 3. Ejecuta y reporta **resultados exactos**: `pnpm typecheck`, `pnpm lint`,
    `pnpm test`, `pnpm build`. Para tareas largas, muestra actividad y timeouts.
 4. Si cambias `tailwind.config.ts`, **reinicia `pnpm dev`** (la config TS no se
@@ -126,7 +131,9 @@ pnpm install · pnpm dev · pnpm build · pnpm lint · pnpm typecheck · pnpm te
 
 `docs/PRODUCT_VISION.md`, `ARCHITECTURE.md`, `DATA_MODEL.md`, `EXOGENOUS_PARSER.md`,
 `TAX_RULES.md`, `CLASSIFICATION_RESOLUTION.md`, `RECONCILIATION.md`,
-`AEGIS_RULES.md`, `UX_UI.md`, `SECURITY_PRIVACY.md`, `ROADMAP.md`,
+`AEGIS_RULES.md`, `DOCUMENT_INTELLIGENCE.md`, `PDF_PROCESSING.md`,
+`DOCUMENT_ADAPTERS.md`, `DOCUMENT_EXTRACTION_REVIEW.md`, `UX_UI.md`,
+`SECURITY_PRIVACY.md`, `ROADMAP.md`,
 `PROJECT_HANDOFF.md`.
 Convenciones de cambios: `COMMIT_CONVENTIONS.md`. Validacion reproducible:
 `SPRINT_2_VALIDATION.md`.
@@ -134,5 +141,5 @@ Convenciones de cambios: `COMMIT_CONVENTIONS.md`. Validacion reproducible:
 ## Límite de alcance
 
 El motor de reglas crece de forma **incremental, versionada y explicable**. No
-avanzar hacia backend, IA, extracción avanzada de PDFs o **liquidación del
-impuesto** sin diseñarlo y validarlo antes. `apps/api` permanece reservado.
+avanzar hacia backend, OCR, IA o **liquidación del impuesto** sin diseñarlo y
+validarlo antes. `apps/api` permanece reservado.

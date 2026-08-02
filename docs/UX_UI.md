@@ -91,6 +91,10 @@ horizontalmente una barra de pestañas.
     evidencia, condición de IVA, vencimiento, versión y **fuentes DIAN**.
 12. **Exportación** — estado de integridad y manifiesto local; comunica de forma
     explícita cuando el expediente todavía está incompleto.
+13. **Revisión de extracción** — sesiones por documento, clasificación
+    corregible, evidencia breve y candidatos editables. Distingue valor extraído
+    inmutable, corrección y valor final; solo “Confirmar y crear hecho” afecta el
+    expediente documental.
 
 ## Accesibilidad (§14)
 
@@ -118,3 +122,15 @@ de texto siguen [`MICROCOPY_GUIDE.md`](MICROCOPY_GUIDE.md).
 `SeverityBadge`, `ProgressBar`, `Spinner`, `Skeleton`, `EmptyState`,
 `PrivacyNotice`. Todos de presentación pura, sin reglas de negocio. El control de
 tema (`ThemeProvider`, `ThemeToggle`) vive en `apps/web/src/components/theme`.
+
+## Patrón visual de extracción
+
+La carga conserva el `FileDropzone` compartido y añade privacidad, contraseña
+temporal y progreso por fase. La revisión usa una cabecera de confianza y
+tarjetas por candidato, no una tabla densa ni un formulario plano. Confianza y
+estado siempre combinan texto, icono y color. Las asociaciones secundarias se
+agrupan debajo del valor para mantener una acción primaria clara.
+
+Los diálogos y paneles no deben quedar dentro de ancestros transformados o con
+`overflow` que recorten contenido. La revisión se validó en escritorio y móvil,
+con controles nativos operables por teclado y sin desplazamiento horizontal.

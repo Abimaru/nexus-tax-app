@@ -38,7 +38,13 @@ celdas de error se tratan como nulas.
 Los bytes opcionales viven separados de los metadatos. Se muestra el espacio
 ocupado y se permite descarga o eliminación local. SHA-256 detecta duplicados
 sin revelar contenido. La contraseña nunca se persiste. No existe extracción
-profunda, OCR ni ejecución de contenido activo.
+de imágenes, OCR ni ejecución de contenido activo.
+
+Los PDFs con texto se leen con PDF.js desde bytes locales. El módulo y worker se
+sirven desde el mismo origen sin CDN; se desactiva evaluación dinámica y se
+aplican límites de 25 MiB, 250 páginas, 500 candidatos y 120 segundos. La
+representación completa es efímera: solo persisten clasificación, evidencia
+breve, candidatos y decisiones. Consulta `DOCUMENT_EXTRACTION_SECURITY.md`.
 
 El manifiesto declara `includesBinaryData: false`; las pruebas verifican que no
 contiene bytes. No se registran nombres sensibles ni contenido completo en
@@ -46,7 +52,7 @@ consola.
 
 ## Superficie de ataque
 
-- **Sin backend** en el Sprint 1 (`apps/api` está reservado y vacío) ⇒ no hay
+- **Sin backend obligatorio** (`apps/api` está reservado y vacío) ⇒ no hay
   endpoints ni almacenamiento remoto que proteger.
 - Los datos viven en IndexedDB del navegador del usuario, bajo su control.
 
