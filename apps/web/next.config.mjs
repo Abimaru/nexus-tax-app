@@ -9,6 +9,7 @@ const nextConfig = {
     '@nexus-tax/domain',
     '@nexus-tax/document-intelligence',
     '@nexus-tax/exogenous-parser',
+    '@nexus-tax/form-210',
     '@nexus-tax/ui',
     '@nexus-tax/config',
   ],

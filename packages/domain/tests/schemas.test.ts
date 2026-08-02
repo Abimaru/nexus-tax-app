@@ -15,9 +15,38 @@ import {
   DocumentProfileSchema,
   ExtractionFeedbackSchema,
   CaseTaskSchema,
+  TaxResolutionDecisionSchema,
 } from '../src/index';
 
 describe('esquemas de dominio', () => {
+  it('exige motivo y conserva la referencia de una decisión tributaria', () => {
+    const base = {
+      id: 'resolution:1',
+      caseId: 'case:1',
+      type: 'adjust_form_box',
+      objectType: 'form_box',
+      objectId: '29',
+      previousState: 'suggested',
+      finalState: 'confirmed',
+      selectedAlternative: 'Ajustar casilla 29',
+      originalValue: 100,
+      finalValue: 105,
+      originalCategory: null,
+      finalCategory: null,
+      proposedBox: 29,
+      note: '',
+      evidence: [],
+      localAuthor: 'Analista local',
+      decidedAt: '2026-08-02T10:00:00.000Z',
+      ruleVersion: 'test.v1',
+      reversible: true,
+      replacesDecisionId: null,
+    };
+    expect(
+      TaxResolutionDecisionSchema.safeParse({ ...base, reason: 'Soporte sintético.' }).success,
+    ).toBe(true);
+    expect(TaxResolutionDecisionSchema.safeParse({ ...base, reason: '' }).success).toBe(false);
+  });
   it('valida el año gravable dentro del rango', () => {
     expect(TaxYearSchema.safeParse(2024).success).toBe(true);
     expect(TaxYearSchema.safeParse(1999).success).toBe(false);

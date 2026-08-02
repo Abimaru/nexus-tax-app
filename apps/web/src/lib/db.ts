@@ -1,5 +1,6 @@
 import Dexie, { type Table } from 'dexie';
 import type { FilingObligationInputs } from '@nexus-tax/aegis-rules';
+import type { Form210Draft } from '@nexus-tax/form-210';
 import type {
   CaseAnalysis,
   CaseTask,
@@ -18,6 +19,7 @@ import type {
   RequirementSourceDecision,
   TaxCase,
   UploadedDocument,
+  TaxResolutionDecision,
 } from '@nexus-tax/domain';
 
 /**
@@ -73,6 +75,8 @@ class NexusTaxDatabase extends Dexie {
   caseTasks!: Table<CaseTask, string>;
   documentProfiles!: Table<DocumentProfile, string>;
   extractionFeedback!: Table<ExtractionFeedback, string>;
+  resolutionDecisions!: Table<TaxResolutionDecision, string>;
+  form210Drafts!: Table<Form210Draft, string>;
 
   constructor() {
     super('nexustax');
@@ -227,7 +231,32 @@ class NexusTaxDatabase extends Dexie {
       documentCandidates: 'id, caseId, documentId, extractionSessionId, status, updatedAt',
       caseTasks: 'id, caseId, status, priority, stage, type, updatedAt',
       documentProfiles: 'id, documentKind, status, updatedAt',
-      extractionFeedback: 'id, documentId, extractionSessionId, candidateId, applicability, createdAt',
+      extractionFeedback:
+        'id, documentId, extractionSessionId, candidateId, applicability, createdAt',
+    });
+    this.version(11).stores({
+      cases: 'id, updatedAt, taxYear, status',
+      documents: 'id, caseId, uploadedAt, sha256, status, kind, *entityIds',
+      results: 'caseId, updatedAt',
+      filingInputs: 'caseId, updatedAt',
+      analyses: 'caseId, updatedAt, ruleVersion',
+      documentBlobs: 'documentId, caseId, storedAt',
+      products: 'id, caseId, entityId, type, status',
+      coverages: 'id, caseId, requirementId, documentId, factId, entityId, status',
+      facts: 'id, caseId, documentId, entityId, productId, category, reviewStatus, updatedAt',
+      reconciliations: 'id, caseId, status, *factIds, *exogenousRecordIds, updatedAt',
+      employmentGroups: 'id, caseId, coverage, updatedAt',
+      navigationStates: 'caseId, lastStage, recommendedStage, updatedAt',
+      acceptedSources: 'id, caseId, exogenousRecordId, requirementId, status, updatedAt',
+      requirementSourceDecisions: 'id, caseId, requirementId, status, updatedAt',
+      extractionSessions: 'id, caseId, documentId, status, updatedAt',
+      documentCandidates: 'id, caseId, documentId, extractionSessionId, status, updatedAt',
+      caseTasks: 'id, caseId, status, priority, stage, type, updatedAt',
+      documentProfiles: 'id, documentKind, status, updatedAt',
+      extractionFeedback:
+        'id, documentId, extractionSessionId, candidateId, applicability, createdAt',
+      resolutionDecisions: 'id, caseId, objectType, objectId, type, decidedAt',
+      form210Drafts: 'id, caseId, taxYear, generatedAt',
     });
   }
 }

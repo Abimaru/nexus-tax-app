@@ -12,7 +12,7 @@ import type {
 } from '@nexus-tax/domain';
 import { normalizeForCompare } from './text';
 
-export const CLASSIFICATION_VERSION = '2.0.0';
+export const CLASSIFICATION_VERSION = '2.3.0';
 
 export interface TaxClassification {
   classificationVersion: string;
@@ -188,6 +188,23 @@ function detailRule(detail: string): ClassificationCore | null {
     return core('expense_indicator', 'purchase', 'support_purchases_threshold', 'high', [
       'purchases_threshold',
     ]);
+  }
+  if (
+    /aporte.*(?:obligatorio|trabajador).*(?:salud|pension)|(?:salud|pension).*cargo.*trabajador|fondo.*solidaridad/.test(
+      detail,
+    )
+  ) {
+    return core(
+      'informational',
+      'employment_non_constitutive_income',
+      'income_not_constitutive',
+      /empleador|laboral|nomina|formulario 220|vacaciones|prestaciones/.test(detail)
+        ? 'high'
+        : 'medium',
+      ['document_checklist'],
+      'pending',
+      'Aporte laboral obligatorio propuesto para rentas de trabajo; requiere confirmación humana.',
+    );
   }
   if (/aporte.*(?:salud|pension)|seguridad social/.test(detail)) {
     return core(

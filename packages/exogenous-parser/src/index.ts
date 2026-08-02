@@ -54,6 +54,13 @@ export {
   buildRecordRelationships,
   buildTaxMatrix,
 } from './analysis';
+export {
+  evaluateReconciliationDifference,
+  RECONCILIATION_POLICY_VERSION,
+  type ReconciliationPolicyInput,
+  type ReconciliationPolicyResult,
+  type ReconciliationPolicyStatus,
+} from './reconciliationPolicy';
 export { inferEntityCategory } from './category';
 export { detectFindings, type QualityInputs } from './quality';
 

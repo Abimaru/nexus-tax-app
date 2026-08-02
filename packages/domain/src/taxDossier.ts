@@ -198,4 +198,4 @@ export const CaseEntitySummarySchema = z.object({
 });
 export type CaseEntitySummary = z.infer<typeof CaseEntitySummarySchema>;
 
-export const TAX_CASE_EXPORT_SCHEMA_VERSION = '2.2.0';
+export const TAX_CASE_EXPORT_SCHEMA_VERSION = '2.3.0';

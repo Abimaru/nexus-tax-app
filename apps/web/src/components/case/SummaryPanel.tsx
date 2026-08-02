@@ -95,9 +95,7 @@ export function SummaryPanel({
 
       <div className="grid gap-4 lg:grid-cols-2">
         <GlassPanel className="p-5">
-          <h3 className="mb-3 text-sm font-medium text-content">
-            Valores reportados por entidad
-          </h3>
+          <h3 className="mb-3 text-sm font-medium text-content">Valores reportados por entidad</h3>
           <EntityBarChart entities={result.entities} />
         </GlassPanel>
         <GlassPanel className="p-5">

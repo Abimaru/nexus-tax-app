@@ -21,8 +21,11 @@ import type {
   DocumentFactCandidate,
   DocumentProfile,
   ExtractionFeedback,
+  TaxResolutionDecision,
 } from '@nexus-tax/domain';
+import type { Form210Draft } from '@nexus-tax/form-210';
 import { MAX_EMPLOYER_INSTANCES, TAX_CASE_EXPORT_SCHEMA_VERSION } from '@nexus-tax/domain';
+import { compareCaseTasks } from './caseTaskPriority';
 
 function percentage(numerator: number, denominator: number): number {
   return denominator === 0 ? 0 : Math.round((numerator / denominator) * 100);
@@ -237,6 +240,8 @@ export function buildCaseTasks(input: {
   extractionSessions?: readonly DocumentExtractionSession[];
   documentProfiles?: readonly DocumentProfile[];
   extractionFeedback?: readonly ExtractionFeedback[];
+  resolutionDecisions?: readonly TaxResolutionDecision[];
+  form210Draft?: Form210Draft;
   reconciliations: readonly PreliminaryReconciliation[];
   requirementSourceDecisions?: readonly RequirementSourceDecision[];
   vatResponsibility: boolean | null;
@@ -548,6 +553,41 @@ export function buildCaseTasks(input: {
       updatedAt: timestamp,
     });
   }
+
+  const form210Draft = input.form210Draft;
+  for (const box of form210Draft?.boxes ?? []) {
+    if (!['incomplete', 'requires_decision', 'contradicted'].includes(box.status)) continue;
+    tasks.push({
+      id: `task:${input.caseId}:form210:${box.number}`,
+      caseId: input.caseId,
+      type: 'resolve_form_box',
+      title: `Revisar casilla ${box.number}: ${box.name}`,
+      explanation:
+        box.warnings[0] ?? 'La casilla necesita una decisión o una fuente antes de continuar.',
+      source: 'filing',
+      stage: 'declaracion',
+      view: 'formulario-210',
+      entityId: null,
+      documentId: null,
+      requirementId: null,
+      candidateId: null,
+      reconciliationId: null,
+      matrixGroupId: null,
+      extractionSessionId: null,
+      profileId: null,
+      page: null,
+      formBoxNumber: box.number,
+      resolutionDecisionId: box.resolutionId,
+      priority: box.status === 'contradicted' ? 'high' : 'medium',
+      blocking: box.status === 'contradicted',
+      status: 'pending',
+      recommendedAction: `Abrir casilla ${box.number}`,
+      ruleId: `${form210Draft?.ruleVersion ?? 'form210.pending'}.box.${box.number}`,
+      evidence: box.sources.map((source) => source.evidence),
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+  }
   if (input.result && input.vatResponsibility === null) {
     tasks.push({
       id: `task:filing:vat:${input.caseId}`,
@@ -577,10 +617,34 @@ export function buildCaseTasks(input: {
       updatedAt: timestamp,
     });
   }
-  const priority = { high: 0, medium: 1, low: 2 } as const;
-  return tasks.sort(
-    (a, b) => priority[a.priority] - priority[b.priority] || a.title.localeCompare(b.title, 'es'),
+  const replacedDecisionIds = new Set(
+    (input.resolutionDecisions ?? [])
+      .map((decision) => decision.replacesDecisionId)
+      .filter((id): id is string => Boolean(id)),
   );
+  const resolvedTargets = new Set(
+    (input.resolutionDecisions ?? [])
+      .filter(
+        (decision) =>
+          !replacedDecisionIds.has(decision.id) &&
+          !['leave_pending', 'revert_decision', 'restore_automatic_value'].includes(decision.type),
+      )
+      .map((decision) => `${decision.objectType}:${decision.objectId}`),
+  );
+  const targetForTask = (task: CaseTask): string | null => {
+    if (task.formBoxNumber) return `form_box:${task.formBoxNumber}`;
+    if (task.matrixGroupId) return `matrix_group:${task.matrixGroupId}`;
+    if (task.reconciliationId) return `reconciliation:${task.reconciliationId}`;
+    if (task.candidateId) return `candidate:${task.candidateId}`;
+    if (task.requirementId) return `requirement:${task.requirementId}`;
+    return null;
+  };
+  return tasks
+    .filter((task) => {
+      const target = targetForTask(task);
+      return !target || !resolvedTargets.has(target);
+    })
+    .sort(compareCaseTasks);
 }
 
 function normalize(value: string): string {
@@ -767,6 +831,8 @@ export function buildTaxCaseManifest(input: {
   tasks?: readonly CaseTask[];
   documentProfiles?: readonly DocumentProfile[];
   extractionFeedback?: readonly ExtractionFeedback[];
+  resolutionDecisions?: readonly TaxResolutionDecision[];
+  form210Draft?: Form210Draft;
 }) {
   const latestSessions = new Map<string, DocumentExtractionSession>();
   for (const session of input.extractionSessions ?? []) {
@@ -848,5 +914,7 @@ export function buildTaxCaseManifest(input: {
       },
     },
     tasks: input.tasks ?? [],
+    resolutionDecisions: input.resolutionDecisions ?? [],
+    form210Draft: input.form210Draft ?? null,
   };
 }

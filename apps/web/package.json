@@ -23,6 +23,7 @@
     "@nexus-tax/domain": "workspace:*",
     "@nexus-tax/document-intelligence": "workspace:*",
     "@nexus-tax/exogenous-parser": "workspace:*",
+    "@nexus-tax/form-210": "workspace:*",
     "@nexus-tax/ui": "workspace:*",
     "dexie": "^4.0.9",
     "dexie-react-hooks": "^1.1.7",

@@ -20,6 +20,8 @@ import {
 } from '@/lib/repository';
 import {
   CATEGORY_LABEL,
+  CONFIDENCE_LABEL,
+  IDENTITY_LABEL,
   NATURE_LABEL,
   RELATION_LABEL,
   RESOLUTION_LABEL,
@@ -152,7 +154,7 @@ export function ResolutionDrawer({
               label="Uso sugerido original"
               value={record.suggestedUse?.originalText ?? 'No disponible'}
             />
-            <Data label="Coincidencia de identidad" value={record.identityMatch} />
+            <Data label="Coincidencia de identidad" value={IDENTITY_LABEL[record.identityMatch]} />
           </dl>
         </section>
 
@@ -160,7 +162,7 @@ export function ResolutionDrawer({
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h3 className="text-sm font-medium text-content-strong">Clasificación</h3>
             <Badge tone={record.confidence === 'low' ? 'amber' : 'cyan'}>
-              Confianza automática: {record.confidence}
+              Confianza automática: {CONFIDENCE_LABEL[record.confidence]}
             </Badge>
           </div>
           <p className="mt-2 text-xs text-content-subtle">
@@ -213,7 +215,10 @@ export function ResolutionDrawer({
             <Select
               label="Confianza final"
               value={classification.confidence}
-              options={TaxConfidenceSchema.options.map((value) => ({ value, label: value }))}
+              options={TaxConfidenceSchema.options.map((value) => ({
+                value,
+                label: CONFIDENCE_LABEL[value],
+              }))}
               onChange={(value) =>
                 setClassification({
                   ...classification,
@@ -243,7 +248,7 @@ export function ResolutionDrawer({
                 return (
                   <li key={item.id} className="rounded-lg border border-overlay/5 p-2">
                     {RELATION_LABEL[item.type]} · fila {other?.source.row ?? '—'} · confianza{' '}
-                    {item.confidence} ·{' '}
+                    {CONFIDENCE_LABEL[item.confidence]} ·{' '}
                     {item.evidence.map((evidence) => evidence.description).join(' ')}
                   </li>
                 );

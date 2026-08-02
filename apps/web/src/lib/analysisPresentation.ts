@@ -6,10 +6,27 @@ import type {
   TaxCategory,
   TaxNature,
   TaxTreatment,
+  TaxConfidence,
+  IdentityMatchStatus,
 } from '@nexus-tax/domain';
+
+export const CONFIDENCE_LABEL: Record<TaxConfidence, string> = {
+  high: 'Alta',
+  medium: 'Media',
+  low: 'Baja',
+};
+
+export const IDENTITY_LABEL: Record<IdentityMatchStatus, string> = {
+  matched: 'Coincide',
+  mismatched: 'No coincide',
+  unavailable: 'No disponible',
+};
 
 export const CATEGORY_LABEL: Record<TaxCategory, string> = {
   employment_income: 'Ingresos laborales',
+  employment_non_constitutive_income: 'Aportes laborales no constitutivos de renta',
+  pension_income: 'Ingresos por pensiones',
+  dividend_income: 'Dividendos y participaciones',
   financial_income: 'Rendimientos financieros',
   other_income: 'Otros ingresos',
   occasional_gain: 'Ganancia ocasional',
@@ -58,6 +75,7 @@ export const TREATMENT_LABEL: Record<TaxTreatment, string> = {
   add_to_employment_income: 'Sumar a ingresos laborales',
   analyze_investment_threshold: 'Analizar tope de movimientos',
   reconcile_with_certificate: 'Conciliar con certificado',
+  income_not_constitutive: 'Ingreso no constitutivo de renta',
 };
 
 export const RESOLUTION_LABEL: Record<ResolutionStatus, string> = {
@@ -88,8 +106,10 @@ export const DISPOSITION_LABEL: Record<MatrixEntryDisposition, string> = {
 export const RECONCILIATION_LABEL: Record<ReconciliationStatus, string> = {
   reconciled: 'Conciliado',
   rounding_difference: 'Diferencia menor por redondeo',
+  minor_difference: 'Diferencia menor aceptable',
   relevant_difference: 'Diferencia relevante',
   incomplete: 'Incompleto',
   not_comparable: 'No comparable',
   pending_documents: 'Pendiente de documentos',
+  contradicted: 'Contradicho',
 };

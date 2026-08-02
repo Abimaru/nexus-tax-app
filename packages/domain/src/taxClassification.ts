@@ -15,6 +15,9 @@ export type TaxNature = z.infer<typeof TaxNatureSchema>;
 
 export const TaxCategorySchema = z.enum([
   'employment_income',
+  'employment_non_constitutive_income',
+  'pension_income',
+  'dividend_income',
   'financial_income',
   'other_income',
   'occasional_gain',
@@ -52,6 +55,7 @@ export const TaxTreatmentSchema = z.enum([
   'add_to_employment_income',
   'analyze_investment_threshold',
   'reconcile_with_certificate',
+  'income_not_constitutive',
 ]);
 export type TaxTreatment = z.infer<typeof TaxTreatmentSchema>;
 

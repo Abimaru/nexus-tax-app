@@ -4,5 +4,12 @@
   "rules": {
     "no-console": ["warn", { "allow": ["warn", "error"] }]
   },
-  "ignorePatterns": ["node_modules", ".next", "out", "coverage", "playwright-report", "test-results"]
+  "ignorePatterns": [
+    "node_modules",
+    ".next",
+    "out",
+    "coverage",
+    "playwright-report",
+    "test-results"
+  ]
 }

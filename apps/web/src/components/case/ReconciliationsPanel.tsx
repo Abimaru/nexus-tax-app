@@ -10,7 +10,8 @@ import type {
   ReconciliationSuggestion,
 } from '@nexus-tax/domain';
 import { Badge, Button, EmptyState, GlassPanel, formatCurrencyCOP } from '@nexus-tax/ui';
-import { savePreliminaryReconciliation } from '@/lib/repository';
+import { savePreliminaryReconciliation, saveTaxResolutionDecision } from '@/lib/repository';
+import { evaluateReconciliationDifference } from '@nexus-tax/exogenous-parser';
 import { PRELIMINARY_RECONCILIATION_PRESENTATION } from '@/lib/presentationCatalogs';
 import { AcceptedSourceAction } from './AcceptedSourceAction';
 
@@ -32,6 +33,7 @@ export function ReconciliationsPanel({
   const [explanation, setExplanation] = useState(
     'Coincidencia revisada por entidad, categoría, concepto y valor.',
   );
+  const [dismissed, setDismissed] = useState<string[]>([]);
   const existingSuggestionIds = new Set(
     reconciliations.flatMap((item) =>
       item.factIds.flatMap((factId) =>
@@ -42,16 +44,24 @@ export function ReconciliationsPanel({
   const pendingSuggestions = suggestions
     .filter(
       (suggestion) =>
-        !existingSuggestionIds.has(`${suggestion.factId}:${suggestion.exogenousRecordId}`),
+        !existingSuggestionIds.has(`${suggestion.factId}:${suggestion.exogenousRecordId}`) &&
+        !dismissed.includes(suggestion.id),
     )
     .slice(0, 20);
   async function confirm(suggestion: ReconciliationSuggestion) {
+    const policy = evaluateReconciliationDifference({
+      leftValue: suggestion.documentaryValue,
+      rightValue: suggestion.exogenousValue,
+      source: 'document',
+      roundingUnit: 5,
+      groupNature: 'other',
+    });
     const status =
-      suggestion.difference === 0
+      policy.status === 'reconciled'
         ? 'reconciled'
-        : suggestion.difference <= 1
-          ? 'minor_difference'
-          : 'relevant_difference';
+        : policy.status === 'relevant_difference'
+          ? 'relevant_difference'
+          : 'minor_difference';
     await savePreliminaryReconciliation(caseId, {
       factIds: [suggestion.factId],
       exogenousRecordIds: [suggestion.exogenousRecordId],
@@ -65,6 +75,25 @@ export function ReconciliationsPanel({
       suggestionSignals: suggestion.signals,
       confirmedByHuman: true,
     });
+  }
+  async function reject(suggestion: ReconciliationSuggestion) {
+    await saveTaxResolutionDecision(caseId, {
+      type: 'reject_suggestion',
+      objectType: 'reconciliation',
+      objectId: suggestion.id,
+      previousState: 'suggested',
+      finalState: 'rejected',
+      selectedAlternative: 'Rechazar sugerencia',
+      reason: explanation,
+      originalValue: suggestion.exogenousValue,
+      finalValue: suggestion.documentaryValue,
+      evidence: suggestion.signals.map((description) => ({
+        kind: 'rule' as const,
+        referenceId: suggestion.id,
+        description,
+      })),
+    });
+    setDismissed((current) => [...current, suggestion.id]);
   }
   return (
     <div className="space-y-5">
@@ -109,6 +138,11 @@ export function ReconciliationsPanel({
                 const record = result.normalizedRecords.find(
                   (item) => item.id === suggestion.exogenousRecordId,
                 );
+                const safeToConfirm =
+                  suggestion.score >= 75 &&
+                  suggestion.difference <= 5 &&
+                  fact?.nature === record?.nature &&
+                  fact?.category === record?.category;
                 return (
                   <GlassPanel key={suggestion.id} className="p-4">
                     <div className="flex flex-wrap items-start justify-between gap-3">
@@ -132,10 +166,21 @@ export function ReconciliationsPanel({
                       />
                       <Value label="Diferencia" value={formatCurrencyCOP(suggestion.difference)} />
                     </dl>
-                    <div className="mt-3 flex justify-end">
-                      <Button variant="secondary" onClick={() => void confirm(suggestion)}>
-                        Confirmar asociación
+                    {!safeToConfirm ? (
+                      <p className="mt-3 text-xs text-tone-amber">
+                        La confianza, diferencia o naturaleza no permite recomendar una confirmación
+                        directa.
+                      </p>
+                    ) : null}
+                    <div className="mt-3 flex flex-wrap justify-end gap-2">
+                      <Button variant="ghost" onClick={() => void reject(suggestion)}>
+                        Rechazar sugerencia
                       </Button>
+                      {safeToConfirm ? (
+                        <Button variant="secondary" onClick={() => void confirm(suggestion)}>
+                          Confirmar asociación
+                        </Button>
+                      ) : null}
                     </div>
                   </GlassPanel>
                 );

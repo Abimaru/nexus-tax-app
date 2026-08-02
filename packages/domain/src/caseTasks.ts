@@ -22,6 +22,8 @@ export const CaseTaskTypeSchema = z.enum([
   'review_ocr_contradiction',
   'recover_document_extraction',
   'test_document_profile',
+  'resolve_form_box',
+  'review_resolution',
 ]);
 export type CaseTaskType = z.infer<typeof CaseTaskTypeSchema>;
 
@@ -61,6 +63,8 @@ export const CaseTaskSchema = z.object({
   extractionSessionId: z.string().nullable(),
   profileId: z.string().nullable(),
   page: z.number().int().positive().nullable(),
+  formBoxNumber: z.number().int().positive().nullable().optional(),
+  resolutionDecisionId: z.string().nullable().optional(),
   priority: z.enum(['high', 'medium', 'low']),
   blocking: z.boolean(),
   status: CaseTaskStatusSchema,
@@ -72,4 +76,4 @@ export const CaseTaskSchema = z.object({
 });
 export type CaseTask = z.infer<typeof CaseTaskSchema>;
 
-export const CASE_TASK_SCHEMA_VERSION = '2.2.0';
+export const CASE_TASK_SCHEMA_VERSION = '2.3.0';

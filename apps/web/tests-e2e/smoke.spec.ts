@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import * as XLSX from 'xlsx';
@@ -350,19 +350,45 @@ test('flujo guiado completo del expediente', async ({ page }, testInfo) => {
   await expect(page).toHaveURL(/\/conciliacion\/hallazgos$/);
   await expect(page.getByText(/Resuelto: Modificado por el analista/).first()).toBeVisible();
 
+  await selectView(page, 'Centro de resolución');
+  await expect(page.getByRole('heading', { name: 'Centro de resolución' })).toBeVisible();
+  await expect(page.getByText(/Decide pendientes desde un solo lugar/)).toBeVisible();
+
   await selectStage(page, 'Declaración');
   await expect(
     page
       .getByRole('navigation', { name: 'Vistas de la etapa' })
-      .getByRole('button', { name: /Formulario 210/ }),
-  ).toBeDisabled();
-  await expect(page.getByRole('heading', { name: 'Confirmar responsabilidad de IVA' })).toBeVisible();
+      .getByRole('button', { name: /Borrador Formulario 210/ }),
+  ).toBeEnabled();
+  await expect(
+    page.getByRole('heading', { name: 'Confirmar responsabilidad de IVA' }),
+  ).toBeVisible();
   await page.getByRole('button', { name: 'No', exact: true }).click();
   await expect(
     page.getByRole('heading', { name: 'Por ahora, no se activa ningún criterio para declarar' }),
   ).toBeVisible();
   await expect(page.getByText(/19 de octubre de 2026/)).toBeVisible();
   await expect(page.getByText(/co-renta-pn-2025\.1\.0\.0/)).toBeVisible();
+
+  await selectView(page, 'Borrador Formulario 210');
+  await expect(page.getByRole('heading', { name: 'Borrador Formulario 210' })).toBeVisible();
+  await expect(page.getByText(/no presentado ante la DIAN/i)).toBeVisible();
+  const box29 = page.locator('#form210-box-29');
+  await box29.getByRole('button', { name: 'Crear ajuste trazable' }).click();
+  await box29.getByLabel('Valor ajustado').fill('1250001');
+  await box29.getByLabel('Motivo obligatorio').fill('Ajuste sintético validado en E2E.');
+  await box29.getByRole('button', { name: 'Confirmar ajuste' }).click();
+  await expect(box29.getByText('Confirmada')).toBeVisible();
+  await page.reload();
+  await expect(page.locator('#form210-box-29').getByText('Confirmada')).toBeVisible();
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Exportar JSON' }).click();
+  const download = await downloadPromise;
+  const downloadPath = await download.path();
+  expect(downloadPath).not.toBeNull();
+  expect(JSON.parse(readFileSync(downloadPath!, 'utf8')).schema).toBe(
+    'nexustax.form210.working-draft',
+  );
 
   await selectStage(page, 'Organización');
   await selectView(page, 'Documentos');

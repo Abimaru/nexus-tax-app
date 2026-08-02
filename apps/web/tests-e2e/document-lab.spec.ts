@@ -235,12 +235,10 @@ test('el laboratorio documental diagnostica, ejecuta OCR real y crea un candidat
   await page.getByRole('button', { name: 'Ejecutar OCR en esta página' }).click();
 
   await expect(
-    page
-      .locator('span.inline-flex')
-      .filter({
-        hasText:
-          /^(Coinciden|El OCR complementa el texto nativo|El texto nativo es más confiable|El OCR es más completo|Contradicción: requiere revisión|Requiere revisión)$/,
-      }),
+    page.locator('span.inline-flex').filter({
+      hasText:
+        /^(Coinciden|El OCR complementa el texto nativo|El texto nativo es más confiable|El OCR es más completo|Contradicción: requiere revisión|Requiere revisión)$/,
+    }),
   ).toBeVisible({ timeout: 90_000 });
   await expect(page.getByAltText('Vista previa de la página renderizada')).toBeVisible();
   await expect(page.getByLabel('Tokens nativos')).toBeVisible();

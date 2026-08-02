@@ -45,6 +45,9 @@ import type {
   TaxCategory,
   TaxNature,
   TaxTreatment,
+  TaxResolutionDecision,
+  TaxResolutionDecisionType,
+  TaxResolutionEvidence,
   UploadedDocument,
   WorkflowStageId,
   WorkflowViewId,
@@ -55,6 +58,7 @@ import {
   DocumentCapturedFieldSchema,
 } from '@nexus-tax/domain';
 import type { FilingObligationInputs } from '@nexus-tax/aegis-rules';
+import { buildForm210Draft, type Form210Draft } from '@nexus-tax/form-210';
 import {
   ANALYSIS_RULE_VERSION,
   automaticClassificationSnapshot,
@@ -123,6 +127,8 @@ export async function deleteCase(caseId: string): Promise<void> {
       db.extractionSessions,
       db.documentCandidates,
       db.caseTasks,
+      db.resolutionDecisions,
+      db.form210Drafts,
     ],
     async () => {
       await db.results.delete(caseId);
@@ -140,6 +146,8 @@ export async function deleteCase(caseId: string): Promise<void> {
       await db.extractionSessions.where('caseId').equals(caseId).delete();
       await db.documentCandidates.where('caseId').equals(caseId).delete();
       await db.caseTasks.where('caseId').equals(caseId).delete();
+      await db.resolutionDecisions.where('caseId').equals(caseId).delete();
+      await db.form210Drafts.where('caseId').equals(caseId).delete();
       await db.documents.where('caseId').equals(caseId).delete();
       await db.cases.delete(caseId);
     },
@@ -209,6 +217,7 @@ export async function saveResult(
       updatedAt: timestamp,
     });
   });
+  await rebuildForm210Draft(caseId);
 }
 
 export async function getResult(caseId: string): Promise<ProcessingResult | undefined> {
@@ -389,6 +398,7 @@ export async function saveRecordResolution(
     generatedAt: timestamp,
   });
   await db.analyses.put({ ...analysis, resolutions, matrix, updatedAt: timestamp });
+  await rebuildForm210Draft(caseId);
   return resolution;
 }
 
@@ -448,6 +458,7 @@ export async function restoreAutomaticClassification(
     generatedAt: timestamp,
   });
   await db.analyses.put({ ...analysis, resolutions, matrix, updatedAt: timestamp });
+  await rebuildForm210Draft(caseId);
   return resolution;
 }
 
@@ -457,6 +468,7 @@ export async function restoreAutomaticAnalysis(caseId: string): Promise<void> {
   if (!storedResult) return;
   const timestamp = nowIso();
   await db.analyses.put(reconcileAnalysis(caseId, storedResult.result, undefined, timestamp));
+  await rebuildForm210Draft(caseId);
 }
 
 /** Actualiza el estado de un requisito documental dentro del resultado persistido. */
@@ -549,6 +561,9 @@ export async function clearAllData(): Promise<void> {
       db.requirementSourceDecisions,
       db.extractionSessions,
       db.documentCandidates,
+      db.caseTasks,
+      db.resolutionDecisions,
+      db.form210Drafts,
     ],
     async () => {
       await db.results.clear();
@@ -565,6 +580,9 @@ export async function clearAllData(): Promise<void> {
       await db.requirementSourceDecisions.clear();
       await db.extractionSessions.clear();
       await db.documentCandidates.clear();
+      await db.caseTasks.clear();
+      await db.resolutionDecisions.clear();
+      await db.form210Drafts.clear();
       await db.documents.clear();
       await db.cases.clear();
     },
@@ -880,6 +898,7 @@ export async function saveDocumentFact(
       });
     }
   });
+  await rebuildForm210Draft(caseId);
   return fact;
 }
 
@@ -908,6 +927,7 @@ export async function updateDocumentFact(
       },
     ],
   });
+  await rebuildForm210Draft(fact.caseId);
 }
 
 export async function listDocumentFacts(caseId: string): Promise<DocumentFact[]> {
@@ -1788,6 +1808,7 @@ export async function acceptExogenousValue(
       }
     }
   });
+  await rebuildForm210Draft(caseId);
   return accepted;
 }
 
@@ -1813,6 +1834,7 @@ export async function confirmAcceptedExogenousValue(id: string): Promise<void> {
       },
     ],
   });
+  await rebuildForm210Draft(current.caseId);
 }
 
 export async function listAcceptedExogenousValues(
@@ -1943,6 +1965,7 @@ export async function savePreliminaryReconciliation(
       });
     }
   });
+  await rebuildForm210Draft(caseId);
   return reconciliation;
 }
 
@@ -2267,6 +2290,162 @@ export async function synchronizeCaseTasks(caseId: string, derivedTasks: readonl
   });
 }
 
+export interface SaveTaxResolutionDecisionInput {
+  type: TaxResolutionDecisionType;
+  objectType: TaxResolutionDecision['objectType'];
+  objectId: string;
+  previousState?: string | null;
+  finalState: string;
+  selectedAlternative: string;
+  originalValue?: number | null;
+  finalValue?: number | null;
+  originalCategory?: TaxCategory | null;
+  finalCategory?: TaxCategory | null;
+  proposedBox?: number | null;
+  reason: string;
+  note?: string;
+  evidence?: readonly TaxResolutionEvidence[];
+  replacesDecisionId?: string | null;
+}
+
+export async function listTaxResolutionDecisions(caseId: string): Promise<TaxResolutionDecision[]> {
+  return getDb().resolutionDecisions.where('caseId').equals(caseId).sortBy('decidedAt');
+}
+
+export async function saveTaxResolutionDecision(
+  caseId: string,
+  input: SaveTaxResolutionDecisionInput,
+): Promise<TaxResolutionDecision> {
+  const reason = input.reason.trim();
+  if (!reason) throw new Error('Explica el motivo de la decisión.');
+  const db = getDb();
+  if (input.replacesDecisionId) {
+    const replaced = await db.resolutionDecisions.get(input.replacesDecisionId);
+    if (!replaced || replaced.caseId !== caseId || !replaced.reversible) {
+      throw new Error('La decisión que intentas reemplazar no existe o no es reversible.');
+    }
+  }
+  const decision: TaxResolutionDecision = {
+    id: newId('resolution'),
+    caseId,
+    type: input.type,
+    objectType: input.objectType,
+    objectId: input.objectId,
+    previousState: input.previousState ?? null,
+    finalState: input.finalState,
+    selectedAlternative: input.selectedAlternative,
+    originalValue: input.originalValue ?? null,
+    finalValue: input.finalValue ?? null,
+    originalCategory: input.originalCategory ?? null,
+    finalCategory: input.finalCategory ?? null,
+    proposedBox: input.proposedBox ?? null,
+    reason,
+    note: input.note?.trim() ?? '',
+    evidence: [...(input.evidence ?? [])],
+    localAuthor: 'Analista local',
+    decidedAt: nowIso(),
+    ruleVersion: 'nexustax.resolution.2025.v1',
+    reversible: input.type !== 'revert_decision',
+    replacesDecisionId: input.replacesDecisionId ?? null,
+  };
+  await db.resolutionDecisions.add(decision);
+  if (decision.objectType === 'matrix_group') {
+    const [stored, analysis, allDecisions] = await Promise.all([
+      db.results.get(caseId),
+      db.analyses.get(caseId),
+      db.resolutionDecisions.where('caseId').equals(caseId).toArray(),
+    ]);
+    if (stored && analysis) {
+      const matrix = buildTaxMatrix({
+        records: stored.result.normalizedRecords,
+        thresholds: stored.result.report.thresholds,
+        relationships: analysis.relationships,
+        findings: stored.result.findings,
+        resolutions: analysis.resolutions,
+        resolutionDecisions: allDecisions,
+        generatedAt: decision.decidedAt,
+      });
+      await db.analyses.put({ ...analysis, matrix, updatedAt: decision.decidedAt });
+    }
+  }
+  await rebuildForm210Draft(caseId);
+  return decision;
+}
+
+export async function revertTaxResolutionDecision(
+  caseId: string,
+  decisionId: string,
+  reason: string,
+): Promise<TaxResolutionDecision> {
+  const prior = await getDb().resolutionDecisions.get(decisionId);
+  if (!prior || prior.caseId !== caseId) throw new Error('No se encontró la decisión a revertir.');
+  return saveTaxResolutionDecision(caseId, {
+    type: prior.objectType === 'form_box' ? 'restore_automatic_value' : 'revert_decision',
+    objectType: prior.objectType,
+    objectId: prior.objectId,
+    previousState: prior.finalState,
+    finalState: prior.previousState ?? 'pending',
+    selectedAlternative: 'Revertir decisión',
+    originalValue: prior.finalValue,
+    finalValue: prior.originalValue,
+    originalCategory: prior.finalCategory,
+    finalCategory: prior.originalCategory,
+    proposedBox: prior.proposedBox,
+    reason,
+    evidence: prior.evidence,
+    replacesDecisionId: prior.id,
+  });
+}
+
+function form210RecordStates(analysis?: CaseAnalysis) {
+  const states = new Map<
+    string,
+    {
+      recordId: string;
+      category: TaxCategory;
+      disposition: 'included' | 'excluded' | 'informational' | 'pending';
+    }
+  >();
+  for (const entry of analysis?.matrix.groups.flatMap((group) => group.entries) ?? []) {
+    states.set(entry.recordId, {
+      recordId: entry.recordId,
+      category: entry.effectiveClassification.category,
+      disposition: entry.disposition,
+    });
+  }
+  return [...states.values()];
+}
+
+export async function rebuildForm210Draft(caseId: string): Promise<Form210Draft | undefined> {
+  const db = getDb();
+  const [taxCase, stored, analysis, facts, resolutions, acceptedSources] = await Promise.all([
+    db.cases.get(caseId),
+    db.results.get(caseId),
+    db.analyses.get(caseId),
+    db.facts.where('caseId').equals(caseId).toArray(),
+    db.resolutionDecisions.where('caseId').equals(caseId).sortBy('decidedAt'),
+    db.acceptedSources.where('caseId').equals(caseId).toArray(),
+  ]);
+  if (!taxCase || taxCase.taxYear !== 2025) return undefined;
+  const draft = buildForm210Draft({
+    caseId,
+    taxYear: taxCase.taxYear,
+    records: stored?.result.normalizedRecords ?? [],
+    facts,
+    resolutions,
+    recordStates: form210RecordStates(analysis),
+    provisionalRecordIds: acceptedSources
+      .filter((item) => ['provisionally_accepted', 'pending_support'].includes(item.status))
+      .map((item) => item.exogenousRecordId),
+  });
+  await db.form210Drafts.put(draft);
+  return draft;
+}
+
+export async function getForm210Draft(caseId: string): Promise<Form210Draft | undefined> {
+  return getDb().form210Drafts.where('caseId').equals(caseId).first();
+}
+
 export async function removeExogenousSource(caseId: string): Promise<void> {
   const db = getDb();
   const timestamp = nowIso();
@@ -2329,6 +2508,7 @@ export async function removeExogenousSource(caseId: string): Promise<void> {
       });
     },
   );
+  await rebuildForm210Draft(caseId);
 }
 
 export async function getTaxCaseWorkspace(caseId: string) {
@@ -2353,6 +2533,8 @@ export async function getTaxCaseWorkspace(caseId: string) {
     caseTasks,
     documentProfiles,
     extractionFeedback,
+    resolutionDecisions,
+    form210Draft,
   ] = await Promise.all([
     getCase(caseId),
     getResult(caseId),
@@ -2374,6 +2556,8 @@ export async function getTaxCaseWorkspace(caseId: string) {
     listCaseTasks(caseId),
     listDocumentProfiles(),
     listExtractionFeedback(),
+    listTaxResolutionDecisions(caseId),
+    getForm210Draft(caseId),
   ]);
   const documentIds = new Set(documents.map((document) => document.id));
   return {
@@ -2395,6 +2579,8 @@ export async function getTaxCaseWorkspace(caseId: string) {
     documentCandidates,
     caseTasks,
     documentProfiles,
+    resolutionDecisions,
+    form210Draft,
     extractionFeedback: extractionFeedback.filter((item) => documentIds.has(item.documentId)),
     sourceInfo: storedResult
       ? {

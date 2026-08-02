@@ -8,12 +8,7 @@ import Tesseract from 'tesseract.js';
  */
 
 export type OcrErrorCode =
-  | 'worker_unavailable'
-  | 'language_unavailable'
-  | 'timeout'
-  | 'stalled'
-  | 'cancelled'
-  | 'unknown';
+  'worker_unavailable' | 'language_unavailable' | 'timeout' | 'stalled' | 'cancelled' | 'unknown';
 
 export class OcrError extends Error {
   constructor(
@@ -125,10 +120,7 @@ export class OcrClient {
     return this.worker;
   }
 
-  async recognizePage(
-    image: Blob,
-    options: OcrRecognizeOptions = {},
-  ): Promise<OcrPageResult> {
+  async recognizePage(image: Blob, options: OcrRecognizeOptions = {}): Promise<OcrPageResult> {
     if (this.disposed) {
       throw new OcrError('worker_unavailable', 'El cliente de OCR ya fue liberado.');
     }

@@ -72,8 +72,8 @@ export function EmploymentIncomeGroupPanel({
           <div className="flex-1">
             <h2 className="font-semibold text-content-strong">Ingresos laborales y empleadores</h2>
             <p className="mt-1 text-sm text-content-muted">
-              No se detectaron ingresos laborales. Si recibiste este tipo de ingreso, crea la primera
-              instancia para iniciar la conciliación.
+              No se detectaron ingresos laborales. Si recibiste este tipo de ingreso, crea la
+              primera instancia para iniciar la conciliación.
             </p>
             <Button
               className="mt-4"
@@ -105,8 +105,8 @@ export function EmploymentIncomeGroupPanel({
           <div>
             <h2 className="font-semibold text-content-strong">{group.title}</h2>
             <p className="mt-1 max-w-3xl text-sm text-content-muted">
-              La primera instancia es requerida para completar la conciliación de ingresos laborales.
-              Las adicionales solo existen cuando se detectan o las agregas.
+              La primera instancia es requerida para completar la conciliación de ingresos
+              laborales. Las adicionales solo existen cuando se detectan o las agregas.
             </p>
           </div>
         </div>

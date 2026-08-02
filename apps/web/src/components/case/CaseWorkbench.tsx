@@ -24,6 +24,7 @@ import {
   saveResult,
   updateCaseStatus,
   synchronizeCaseTasks,
+  rebuildForm210Draft,
 } from '@/lib/repository';
 import {
   buildEntitySummaries,
@@ -62,6 +63,8 @@ import { RequirementsPanel } from './RequirementsPanel';
 import { DocumentExtractionReviewPanel } from './DocumentExtractionReviewPanel';
 import { DocumentLabPanel } from './DocumentLabPanel';
 import { CaseTasksPanel } from './CaseTasksPanel';
+import { ResolutionCenterPanel } from './ResolutionCenterPanel';
+import { Form210DraftPanel } from './Form210DraftPanel';
 import { ContextualNavigation, WorkflowStepper } from './WorkflowNavigation';
 import {
   BasicCaseDataPanel,
@@ -69,7 +72,6 @@ import {
   EmptySourceIntro,
   ExportWorkflowPanel,
   ExtractionSummaryPanel,
-  FutureCapabilityPanel,
   HistoryFuturePanel,
   SourceSummaryPanel,
   WorkflowGuidancePanel,
@@ -149,6 +151,8 @@ export function CaseWorkbench({
         extractionSessions: workspace?.extractionSessions ?? [],
         documentProfiles: workspace?.documentProfiles ?? [],
         extractionFeedback: workspace?.extractionFeedback ?? [],
+        resolutionDecisions: workspace?.resolutionDecisions ?? [],
+        form210Draft: workspace?.form210Draft,
         reconciliations: workspace?.reconciliations ?? [],
         requirementSourceDecisions: workspace?.requirementSourceDecisions ?? [],
         vatResponsibility: workspace?.filingInputs?.isVatResponsibleAtYearEnd ?? null,
@@ -160,6 +164,11 @@ export function CaseWorkbench({
     if (!workspace) return;
     void synchronizeCaseTasks(caseId, tasks);
   }, [caseId, tasks, workspace]);
+  useEffect(() => {
+    if (result && taxCase?.taxYear === 2025 && !workspace?.form210Draft) {
+      void rebuildForm210Draft(caseId);
+    }
+  }, [caseId, result, taxCase?.taxYear, workspace?.form210Draft]);
   const workflowContext = useMemo<WorkflowContext>(
     () => ({
       taxCase,
@@ -327,6 +336,8 @@ export function CaseWorkbench({
       tasks: workspace.caseTasks,
       documentProfiles: workspace.documentProfiles,
       extractionFeedback: workspace.extractionFeedback,
+      resolutionDecisions: workspace.resolutionDecisions,
+      form210Draft: workspace.form210Draft,
     });
     downloadTextFile(
       `${safeBaseName(taxCase.alias)}-manifiesto.json`,
@@ -617,7 +628,7 @@ export function CaseWorkbench({
             )}
           </AnalysisGate>
         ) : null}
-        {stage === 'conciliacion' && ['hallazgos', 'resoluciones'].includes(view) ? (
+        {stage === 'conciliacion' && view === 'hallazgos' ? (
           <ResultGate result={result}>
             {(current) => (
               <FindingsPanel
@@ -631,6 +642,14 @@ export function CaseWorkbench({
             )}
           </ResultGate>
         ) : null}
+        {stage === 'conciliacion' && view === 'resoluciones' ? (
+          <ResolutionCenterPanel
+            caseId={caseId}
+            tasks={tasks}
+            decisions={workspace.resolutionDecisions}
+            onNavigate={navigateToTask}
+          />
+        ) : null}
 
         {stage === 'declaracion' && view === 'obligacion' ? (
           <ResultGate result={result}>
@@ -641,9 +660,12 @@ export function CaseWorkbench({
         ) : null}
         {stage === 'declaracion' && view === 'calendario' ? <CalendarCapabilityPanel /> : null}
         {stage === 'declaracion' && view === 'formulario-210' ? (
-          <FutureCapabilityPanel
-            title="Formulario 210"
-            description="El constructor definitivo del formulario no está disponible en este sprint. Esta etapa permanecerá explicable y sujeta a revisión humana."
+          <Form210DraftPanel
+            caseId={caseId}
+            alias={taxCase.alias}
+            draft={workspace.form210Draft}
+            decisions={workspace.resolutionDecisions}
+            focusBoxNumber={tasks.find((task) => task.id === activeTaskId)?.formBoxNumber}
           />
         ) : null}
 

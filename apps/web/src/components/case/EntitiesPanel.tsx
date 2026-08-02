@@ -211,9 +211,7 @@ function EntityCard({
           {/* En vista agrupada omitimos la nota "Grupo empresarial: X" porque
               ya la muestra la cabecera del grupo. */}
           {!inGroup && entity.groupName ? (
-            <p className="mt-1 text-xs text-tone-violet">
-              Grupo empresarial: {entity.groupName}
-            </p>
+            <p className="mt-1 text-xs text-tone-violet">Grupo empresarial: {entity.groupName}</p>
           ) : null}
         </div>
         <Badge tone={entity.status === 'al_dia' ? 'emerald' : 'amber'}>

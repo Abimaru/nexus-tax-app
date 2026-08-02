@@ -3,12 +3,46 @@
 import { ArrowRight, CheckCircle2, ClipboardList } from 'lucide-react';
 import type { CaseTask, WorkflowStageId, WorkflowViewId } from '@nexus-tax/domain';
 import { Badge, Button, EmptyState, GlassPanel } from '@nexus-tax/ui';
+import { compareCaseTasks } from '@/lib/caseTaskPriority';
 
 const PRIORITY_COPY = {
   high: { label: 'Prioridad alta', tone: 'amber' as const },
   medium: { label: 'Prioridad media', tone: 'cyan' as const },
   low: { label: 'Prioridad baja', tone: 'neutral' as const },
 };
+
+const TASK_GROUPS = [
+  {
+    id: 'blocking-high',
+    label: 'Bloqueantes · prioridad alta',
+    tone: 'amber' as const,
+    match: (task: CaseTask) => task.blocking && task.priority === 'high',
+  },
+  {
+    id: 'blocking-medium',
+    label: 'Bloqueantes · prioridad media',
+    tone: 'amber' as const,
+    match: (task: CaseTask) => task.blocking && task.priority === 'medium',
+  },
+  {
+    id: 'high',
+    label: PRIORITY_COPY.high.label,
+    tone: PRIORITY_COPY.high.tone,
+    match: (task: CaseTask) => !task.blocking && task.priority === 'high',
+  },
+  {
+    id: 'medium',
+    label: PRIORITY_COPY.medium.label,
+    tone: PRIORITY_COPY.medium.tone,
+    match: (task: CaseTask) => !task.blocking && task.priority === 'medium',
+  },
+  {
+    id: 'low',
+    label: PRIORITY_COPY.low.label,
+    tone: PRIORITY_COPY.low.tone,
+    match: (task: CaseTask) => task.priority === 'low',
+  },
+] as const;
 
 export function CaseTasksPanel({
   tasks,
@@ -17,9 +51,9 @@ export function CaseTasksPanel({
   tasks: readonly CaseTask[];
   onNavigate: (stage: WorkflowStageId, view: WorkflowViewId, taskId: string) => void;
 }) {
-  const active = tasks.filter((task) =>
-    ['pending', 'in_progress', 'blocked'].includes(task.status),
-  );
+  const active = tasks
+    .filter((task) => ['pending', 'in_progress', 'blocked'].includes(task.status))
+    .sort(compareCaseTasks);
   if (!active.length) {
     return (
       <EmptyState
@@ -44,16 +78,16 @@ export function CaseTasksPanel({
           </div>
         </div>
       </GlassPanel>
-      {(['high', 'medium', 'low'] as const).map((priority) => {
-        const priorityTasks = active.filter((task) => task.priority === priority);
+      {TASK_GROUPS.map((group) => {
+        const priorityTasks = active.filter(group.match);
         if (!priorityTasks.length) return null;
         return (
-          <section key={priority} aria-labelledby={`tasks-${priority}`}>
+          <section key={group.id} aria-labelledby={`tasks-${group.id}`}>
             <div className="mb-2 flex items-center gap-2">
-              <h3 id={`tasks-${priority}`} className="text-sm font-medium text-content-strong">
-                {PRIORITY_COPY[priority].label}
+              <h3 id={`tasks-${group.id}`} className="text-sm font-medium text-content-strong">
+                {group.label}
               </h3>
-              <Badge tone={PRIORITY_COPY[priority].tone}>{priorityTasks.length}</Badge>
+              <Badge tone={group.tone}>{priorityTasks.length}</Badge>
             </div>
             <div className="grid gap-3 lg:grid-cols-2">
               {priorityTasks.map((task) => (

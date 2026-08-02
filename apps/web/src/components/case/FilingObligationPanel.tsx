@@ -182,10 +182,7 @@ export function FilingObligationPanel({
                           {formatCurrencyCOP(reason.observedValue)}
                         </span>
                         {reason.officialRoundedAmount ? (
-                          <>
-                            {' '}
-                            · límite oficial: {formatCurrencyCOP(reason.officialRoundedAmount)}
-                          </>
+                          <> · límite oficial: {formatCurrencyCOP(reason.officialRoundedAmount)}</>
                         ) : null}
                       </p>
                     ) : reason.criterionId === 'vat_responsible_at_year_end' &&
@@ -294,8 +291,8 @@ export function FilingObligationPanel({
           className="flex w-full items-center gap-2 p-5 text-left"
         >
           <span className="text-sm font-medium text-content-strong">
-            Ver evaluación por criterio ({metCriteria.length} cumplidos · {notMetCriteria.length}{' '}
-            no cumplidos · {notEvaluable.length} no evaluables)
+            Ver evaluación por criterio ({metCriteria.length} cumplidos · {notMetCriteria.length} no
+            cumplidos · {notEvaluable.length} no evaluables)
           </span>
           <ChevronDown
             className={`ml-auto h-4 w-4 text-content-muted transition-transform motion-reduce:transition-none ${

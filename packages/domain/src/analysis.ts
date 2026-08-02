@@ -132,10 +132,12 @@ export type MatrixEntryDisposition = z.infer<typeof MatrixEntryDispositionSchema
 export const ReconciliationStatusSchema = z.enum([
   'reconciled',
   'rounding_difference',
+  'minor_difference',
   'relevant_difference',
   'incomplete',
   'not_comparable',
   'pending_documents',
+  'contradicted',
 ]);
 export type ReconciliationStatus = z.infer<typeof ReconciliationStatusSchema>;
 

@@ -13,6 +13,7 @@ import type {
   WorkflowStageStatus,
   WorkflowViewId,
 } from '@nexus-tax/domain';
+import { compareCaseTasks } from './caseTaskPriority';
 
 export interface WorkflowViewDefinition {
   id: WorkflowViewId;
@@ -90,7 +91,7 @@ export const WORKFLOW_STAGES: readonly WorkflowStageDefinition[] = [
       { id: 'conciliaciones', label: 'Conciliaciones' },
       { id: 'matriz', label: 'Matriz' },
       { id: 'hallazgos', label: 'Hallazgos' },
-      { id: 'resoluciones', label: 'Resoluciones' },
+      { id: 'resoluciones', label: 'Centro de resolución' },
     ],
   },
   {
@@ -103,7 +104,7 @@ export const WORKFLOW_STAGES: readonly WorkflowStageDefinition[] = [
     views: [
       { id: 'obligacion', label: 'Obligación' },
       { id: 'calendario', label: 'Calendario' },
-      { id: 'formulario-210', label: 'Formulario 210', future: true },
+      { id: 'formulario-210', label: 'Borrador Formulario 210' },
     ],
   },
   {
@@ -306,12 +307,9 @@ export function defaultWorkflowDestination(context: WorkflowContext): {
 }
 
 export function recommendedWorkflowAction(context: WorkflowContext): RecommendedAction {
-  const priorityRank = { high: 0, medium: 1, low: 2 } as const;
   const topTask = [...(context.tasks ?? [])]
     .filter((task) => ['pending', 'in_progress', 'blocked'].includes(task.status))
-    .sort(
-      (a, b) => priorityRank[a.priority] - priorityRank[b.priority] || a.id.localeCompare(b.id),
-    )[0];
+    .sort(compareCaseTasks)[0];
   if (topTask) {
     return {
       id: topTask.id,

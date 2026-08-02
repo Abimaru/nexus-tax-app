@@ -14,11 +14,13 @@ import type {
   TaxCategory,
   TaxConfidence,
   TaxMatrix,
+  TaxResolutionDecision,
 } from '@nexus-tax/domain';
 import { prefixedId } from './ids';
+import { evaluateReconciliationDifference } from './reconciliationPolicy';
 import { normalizeForCompare } from './text';
 
-export const ANALYSIS_RULE_VERSION = '2.0.0';
+export const ANALYSIS_RULE_VERSION = '2.3.0';
 
 export function automaticClassificationSnapshot(
   record: NormalizedExogenousRecord,
@@ -191,7 +193,7 @@ const GROUPS: readonly GroupDefinition[] = [
   {
     id: 'gross_income_total',
     label: 'Ingresos consolidados',
-    categories: ['employment_income', 'financial_income', 'other_income', 'occasional_gain'],
+    categories: ['employment_income', 'financial_income', 'other_income'],
     thresholdNumber: 1,
     comparable: true,
   },
@@ -447,8 +449,20 @@ function reconciliation(
       confidence: 'low',
     };
   }
-  const difference = Math.abs(consolidatedValue - threshold.value);
-  const percentage = threshold.value === 0 ? null : (difference / Math.abs(threshold.value)) * 100;
+  const policy = evaluateReconciliationDifference({
+    leftValue: consolidatedValue,
+    rightValue: threshold.value,
+    source: 'exogenous_threshold',
+    roundingUnit: 5,
+    groupNature:
+      definition.id === 'assets'
+        ? 'asset'
+        : definition.id === 'financial_movements'
+          ? 'movement'
+          : 'income',
+  });
+  const difference = policy.differenceAbsolute;
+  const percentage = policy.differencePercentage;
   if (pendingCount > 0) {
     return {
       status: 'incomplete',
@@ -469,7 +483,7 @@ function reconciliation(
       confidence: 'medium',
     };
   }
-  if (difference === 0) {
+  if (policy.status === 'reconciled') {
     return {
       status: 'reconciled',
       differenceAbsolute: 0,
@@ -479,14 +493,24 @@ function reconciliation(
       confidence: 'high',
     };
   }
-  if (difference <= 1) {
+  if (policy.status === 'rounding_difference') {
     return {
       status: 'rounding_difference',
       differenceAbsolute: difference,
       differencePercentage: percentage,
-      warning: 'Diferencia menor compatible con redondeo.',
-      action: 'Confirmar el criterio de redondeo de la fuente.',
+      warning: policy.explanation,
+      action: 'Confirmar si se acepta la diferencia bajo la política de redondeo aplicada.',
       confidence: 'high',
+    };
+  }
+  if (policy.status === 'minor_difference') {
+    return {
+      status: 'minor_difference',
+      differenceAbsolute: difference,
+      differencePercentage: percentage,
+      warning: policy.explanation,
+      action: 'Revisar y confirmar si la diferencia menor es aceptable.',
+      confidence: 'medium',
     };
   }
   return {
@@ -565,6 +589,7 @@ export function buildTaxMatrix(input: {
   relationships: readonly RecordRelation[];
   findings?: readonly DataQualityFinding[];
   resolutions?: readonly RecordResolution[];
+  resolutionDecisions?: readonly TaxResolutionDecision[];
   generatedAt: string;
 }): TaxMatrix {
   const resolutions = input.resolutions ?? [];
@@ -615,6 +640,23 @@ export function buildTaxMatrix(input: {
       pendingCount,
       relatedRecords.some((record) => record.treatment === 'reconcile_with_certificate'),
     );
+    const replacedDecisionIds = new Set(
+      (input.resolutionDecisions ?? [])
+        .map((decision) => decision.replacesDecisionId)
+        .filter((id): id is string => Boolean(id)),
+    );
+    const groupDecision = [...(input.resolutionDecisions ?? [])]
+      .filter(
+        (decision) =>
+          decision.objectType === 'matrix_group' &&
+          decision.objectId === definition.id &&
+          !replacedDecisionIds.has(decision.id),
+      )
+      .sort((a, b) => b.decidedAt.localeCompare(a.decidedAt))[0];
+    const decidedStatus =
+      groupDecision?.type === 'declare_not_comparable'
+        ? ('not_comparable' as const)
+        : comparison.status;
     return {
       id: definition.id,
       label: definition.label,
@@ -626,10 +668,15 @@ export function buildTaxMatrix(input: {
       thresholdValue: threshold?.value ?? null,
       differenceAbsolute: comparison.differenceAbsolute,
       differencePercentage: comparison.differencePercentage,
-      reconciliationStatus: comparison.status,
+      reconciliationStatus: decidedStatus,
       confidence: comparison.confidence,
-      warnings: comparison.warning ? [comparison.warning] : [],
-      recommendedAction: comparison.action,
+      warnings: [
+        comparison.warning,
+        groupDecision ? `Decisión del analista: ${groupDecision.reason}` : null,
+      ].filter((warning): warning is string => Boolean(warning)),
+      recommendedAction: groupDecision
+        ? 'Decisión registrada; puede revertirse desde el centro de resolución.'
+        : comparison.action,
       sourceEvidence: relatedRecords.map((record) => record.source),
       entries,
     };

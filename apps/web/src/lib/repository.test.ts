@@ -52,6 +52,9 @@ import {
   updateDocumentProfileStatus,
   markDocumentObsolete,
   synchronizeCaseTasks,
+  saveTaxResolutionDecision,
+  revertTaxResolutionDecision,
+  listTaxResolutionDecisions,
 } from './repository';
 import { buildTaxCaseManifest } from './taxCaseAnalysis';
 
@@ -502,8 +505,10 @@ describe('repositorio (IndexedDB local)', () => {
       navigation: workspace.navigation,
       acceptedSources: workspace.acceptedSources,
       requirementSourceDecisions: workspace.requirementSourceDecisions,
+      resolutionDecisions: workspace.resolutionDecisions,
+      form210Draft: workspace.form210Draft,
     });
-    expect(manifest.schemaVersion).toBe('2.2.0');
+    expect(manifest.schemaVersion).toBe('2.3.0');
     expect(manifest.documentExtraction.includesRenderedImages).toBe(false);
     expect(manifest.documentExtraction.metrics).toMatchObject({
       pagesProcessedWithOcr: 0,
@@ -515,6 +520,47 @@ describe('repositorio (IndexedDB local)', () => {
     expect(JSON.stringify(manifest)).not.toContain('bytes');
     expect(manifest.employmentIncomeGroup?.instances).toHaveLength(1);
     expect(manifest.workflow?.lastView).toBe('manifiesto');
+    expect(manifest.resolutionDecisions).toEqual([]);
+    expect(manifest.form210Draft).toBeNull();
+  });
+
+  it('conserva el historial al ajustar y restaurar una casilla del borrador 210', async () => {
+    const created = await createCase({ alias: 'Borrador 210', taxYear: 2025 });
+    await saveResult(created.id, financialResult());
+    const initial = (await getTaxCaseWorkspace(created.id)).form210Draft;
+    expect(initial?.notice).toContain('no presentado ante la DIAN');
+
+    const adjustment = await saveTaxResolutionDecision(created.id, {
+      type: 'adjust_form_box',
+      objectType: 'form_box',
+      objectId: '29',
+      previousState: 'suggested',
+      finalState: 'confirmed',
+      selectedAlternative: 'Ajustar casilla 29',
+      originalValue: initial?.boxes.find((box) => box.number === 29)?.suggestedValue ?? null,
+      finalValue: 123_456,
+      proposedBox: 29,
+      reason: 'Ajuste sintético respaldado por revisión manual.',
+    });
+    expect(
+      (await getTaxCaseWorkspace(created.id)).form210Draft?.boxes.find((box) => box.number === 29),
+    ).toMatchObject({ confirmedValue: 123_456, status: 'confirmed' });
+
+    await revertTaxResolutionDecision(
+      created.id,
+      adjustment.id,
+      'Restaurar el cálculo sugerido para la prueba.',
+    );
+    expect(
+      (await getTaxCaseWorkspace(created.id)).form210Draft?.boxes.find((box) => box.number === 29)
+        ?.confirmedValue,
+    ).toBeNull();
+    const history = await listTaxResolutionDecisions(created.id);
+    expect(history).toHaveLength(2);
+    expect(history[1]).toMatchObject({
+      type: 'restore_automatic_value',
+      replacesDecisionId: adjustment.id,
+    });
   });
 
   it('registra cobertura parcial sin duplicar el documento', async () => {

@@ -34,8 +34,7 @@ export async function renderPdfPage(
   const moduleUrl = '/vendor/pdfjs/pdf.mjs';
   const pdfjs = (await import(/* webpackIgnore: true */ moduleUrl)) as typeof PdfJsApi;
   pdfjs.GlobalWorkerOptions.workerSrc = '/vendor/pdfjs/pdf.worker.mjs';
-  const data =
-    bytes instanceof Uint8Array ? bytes.slice() : new Uint8Array(bytes.slice(0));
+  const data = bytes instanceof Uint8Array ? bytes.slice() : new Uint8Array(bytes.slice(0));
   const loadingTask = pdfjs.getDocument({
     data,
     password: options.password,

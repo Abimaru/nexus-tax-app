@@ -20,6 +20,7 @@ import { Badge, Button, EmptyState, GlassPanel, formatCurrencyCOP } from '@nexus
 import { downloadTextFile, safeBaseName } from '@/lib/download';
 import {
   CATEGORY_LABEL,
+  CONFIDENCE_LABEL,
   DISPOSITION_LABEL,
   NATURE_LABEL,
   RELATION_LABEL,
@@ -36,12 +37,6 @@ const IDENTITY_LABEL: Record<IdentityMatchStatus, string> = {
   matched: 'Coincide',
   mismatched: 'No coincide',
   unavailable: 'No disponible',
-};
-
-const CONFIDENCE_LABEL: Record<string, string> = {
-  high: 'Alta',
-  medium: 'Media',
-  low: 'Baja',
 };
 
 type BadgeToneName = 'neutral' | 'cyan' | 'violet' | 'amber' | 'rose' | 'emerald';
@@ -704,7 +699,8 @@ function RecordRow({
                   <ul className="space-y-1 text-xs text-content">
                     {state.relations.map((relation) => (
                       <li key={relation.id}>
-                        {RELATION_LABEL[relation.type]} · confianza {relation.confidence}
+                        {RELATION_LABEL[relation.type]} · confianza{' '}
+                        {CONFIDENCE_LABEL[relation.confidence]}
                       </li>
                     ))}
                   </ul>

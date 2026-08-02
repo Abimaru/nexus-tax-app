@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { ArrowRight, RotateCcw } from 'lucide-react';
 import type {
   AcceptedExogenousValue,
@@ -8,9 +9,10 @@ import type {
   ProcessingResult,
 } from '@nexus-tax/domain';
 import { Badge, Button, GlassPanel, formatCurrencyCOP, formatNumber } from '@nexus-tax/ui';
-import { restoreAutomaticAnalysis } from '@/lib/repository';
+import { restoreAutomaticAnalysis, saveTaxResolutionDecision } from '@/lib/repository';
 import {
   CATEGORY_LABEL,
+  CONFIDENCE_LABEL,
   DISPOSITION_LABEL,
   RECONCILIATION_LABEL,
   RELATION_LABEL,
@@ -48,6 +50,33 @@ export function MatrixPanel({
   onNavigateToFindings?: () => void;
 }) {
   const invoice = analysis.matrix.electronicInvoicing;
+  const [resolvingGroup, setResolvingGroup] = useState<string | null>(null);
+  const [resolutionReason, setResolutionReason] = useState('');
+  async function resolveGroup(
+    groupId: string,
+    type: 'accept_rounding_difference' | 'declare_not_comparable' | 'leave_pending',
+    previousState: string,
+  ) {
+    await saveTaxResolutionDecision(caseId, {
+      type,
+      objectType: 'matrix_group',
+      objectId: groupId,
+      previousState,
+      finalState: type === 'leave_pending' ? 'pending' : 'resolved',
+      selectedAlternative:
+        type === 'accept_rounding_difference'
+          ? 'Aceptar diferencia por redondeo'
+          : type === 'declare_not_comparable'
+            ? 'Declarar no comparable'
+            : 'Dejar pendiente',
+      reason: resolutionReason,
+      evidence: [
+        { kind: 'rule', referenceId: groupId, description: `Estado previo: ${previousState}` },
+      ],
+    });
+    setResolvingGroup(null);
+    setResolutionReason('');
+  }
   return (
     <div className="flex flex-col gap-5">
       <GlassPanel className="p-5">
@@ -235,7 +264,7 @@ export function MatrixPanel({
                         : `${group.differencePercentage.toFixed(2)} %`
                     }
                   />
-                  <Data label="Confianza" value={group.confidence} />
+                  <Data label="Confianza" value={CONFIDENCE_LABEL[group.confidence]} />
                 </dl>
                 {group.warnings.map((warning) => (
                   <p key={warning} className="mt-3 text-xs text-tone-amber">
@@ -243,6 +272,76 @@ export function MatrixPanel({
                   </p>
                 ))}
                 <p className="mt-2 text-xs text-tone-cyan">Acción: {group.recommendedAction}</p>
+                {!['reconciled', 'not_comparable'].includes(group.reconciliationStatus) ? (
+                  resolvingGroup === group.id ? (
+                    <div className="mt-3 space-y-3 rounded-xl border border-accent-cyan/20 bg-accent-cyan/5 p-3">
+                      <label className="block text-xs text-content-muted">
+                        Motivo de la decisión
+                        <textarea
+                          value={resolutionReason}
+                          onChange={(event) => setResolutionReason(event.target.value)}
+                          className="mt-1 min-h-16 w-full rounded-lg border border-overlay/12 bg-surface-raised p-2 text-sm text-content-strong"
+                        />
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        {group.reconciliationStatus === 'rounding_difference' ? (
+                          <Button
+                            disabled={!resolutionReason.trim()}
+                            onClick={() =>
+                              void resolveGroup(
+                                group.id,
+                                'accept_rounding_difference',
+                                group.reconciliationStatus,
+                              )
+                            }
+                          >
+                            Aceptar redondeo
+                          </Button>
+                        ) : null}
+                        {[
+                          'relevant_difference',
+                          'incomplete',
+                          'pending_documents',
+                          'contradicted',
+                        ].includes(group.reconciliationStatus) ? (
+                          <Button
+                            disabled={!resolutionReason.trim()}
+                            variant="secondary"
+                            onClick={() =>
+                              void resolveGroup(
+                                group.id,
+                                'declare_not_comparable',
+                                group.reconciliationStatus,
+                              )
+                            }
+                          >
+                            Marcar no comparable
+                          </Button>
+                        ) : null}
+                        <Button
+                          disabled={!resolutionReason.trim()}
+                          variant="ghost"
+                          onClick={() =>
+                            void resolveGroup(group.id, 'leave_pending', group.reconciliationStatus)
+                          }
+                        >
+                          Dejar pendiente
+                        </Button>
+                        <Button variant="ghost" onClick={() => setResolvingGroup(null)}>
+                          Cancelar
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <Button
+                      className="mt-3"
+                      variant="secondary"
+                      onClick={() => setResolvingGroup(group.id)}
+                    >
+                      Resolver grupo aquí
+                    </Button>
+                  )
+                ) : null}
                 {group.pendingCount > 0 || task ? (
                   <div className="mt-3 flex flex-wrap gap-2 text-xs">
                     {group.pendingCount > 0 && onNavigateToRecord ? (
@@ -270,11 +369,7 @@ export function MatrixPanel({
                       </Button>
                     ) : null}
                     {task ? (
-                      <Button
-                        variant="ghost"
-                        className="px-3 py-1.5 text-xs"
-                        onClick={onOpenTasks}
-                      >
+                      <Button variant="ghost" className="px-3 py-1.5 text-xs" onClick={onOpenTasks}>
                         Ver tarea relacionada
                       </Button>
                     ) : null}
@@ -307,9 +402,7 @@ export function MatrixPanel({
                           <tr
                             key={entry.recordId}
                             className={`border-t border-overlay/5 text-content ${
-                              onNavigateToRecord
-                                ? 'cursor-pointer hover:bg-overlay/[0.03]'
-                                : ''
+                              onNavigateToRecord ? 'cursor-pointer hover:bg-overlay/[0.03]' : ''
                             } ${isPending ? 'bg-amber-400/[0.03]' : ''}`}
                             onClick={
                               onNavigateToRecord
