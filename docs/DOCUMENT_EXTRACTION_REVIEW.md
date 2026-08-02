@@ -50,3 +50,13 @@ teclado y foco; botones tienen nombres de acción. Las grillas colapsan en móvi
 no deben crear desplazamiento horizontal y siguen los tokens claro/oscuro. El
 quality gate se valida con capturas sintéticas a 1280 y 390 px, además de zoom y
 `prefers-reduced-motion`.
+
+## Revisión 2.1.1
+
+La vista inicia en pendientes y permite localizar cualquier candidato mediante estado, confianza,
+página, producto y categoría. La paginación admite 10, 20, 50 o 100 tarjetas y el historial de
+ejecuciones anteriores es consultable.
+
+Rechazar exige un motivo estructurado; `otro` exige nota. Las acciones múltiples permiten rechazar,
+informar, duplicar, asociar entidad/producto o restaurar tras confirmación de impacto. Nunca existe
+confirmación tributaria masiva. Restaurar conserva la cadena de decisiones.

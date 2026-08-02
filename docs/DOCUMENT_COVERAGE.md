@@ -57,3 +57,10 @@ categoría. La propuesta vive en el candidato; no cambia la cobertura definitiva
 Al confirmar, el analista selecciona requisitos y `saveDocumentFact` crea una
 relación `provides_evidence` aún revisable. Un certificado consolidado conserva
 varios candidatos y coberturas independientes sin duplicar el documento.
+
+## Recalculo 2.1.1
+
+El selector presenta pendientes y parciales; los cubiertos por otros documentos permanecen ocultos
+por defecto y pueden mostrarse explícitamente. Las selecciones actuales se identifican como
+`Cubierto por este documento`. Reemplazar u obsoletar invalida coberturas dependientes sin borrar su
+historial y evita que una asociación antigua continúe apareciendo como vigente.

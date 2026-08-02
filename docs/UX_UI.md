@@ -134,3 +134,12 @@ agrupan debajo del valor para mantener una acción primaria clara.
 Los diálogos y paneles no deben quedar dentro de ancestros transformados o con
 `overflow` que recorten contenido. La revisión se validó en escritorio y móvil,
 con controles nativos operables por teclado y sin desplazamiento horizontal.
+
+## Quality gate 2.1.1
+
+- La revisión pagina grandes volúmenes y ofrece conteos explicables.
+- Rechazar retira el candidato del flujo pendiente, pero filtros e historial permiten localizarlo.
+- Los requisitos cubiertos no saturan el selector; parciales siguen visibles.
+- Entidad, marca, grupo y producto tienen etiquetas diferenciadas.
+- Cada tarea ofrece motivo, dato afectado, forma de resolver y botón con destino.
+- Obligación legal no usa porcentaje; preparación operativa se presenta aparte.

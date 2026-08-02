@@ -203,3 +203,14 @@ producto, requisito y exógena. Su estado y decisiones son independientes de
 Dexie v8 agrega `extractionSessions` y `documentCandidates`. El manifiesto 2.1.0
 incluye metadatos y decisiones seguras, y declara que no contiene contraseñas ni
 texto completo.
+
+## Cambios 2.1.1
+
+- `DocumentExtractionSession.metrics` audita generación, persistencia, páginas y estados.
+- `DocumentFactCandidate` conserva firma, sección, línea, bloques, geometría y motivo de rechazo.
+- `ReportingEntity` diferencia razón social, marca, grupo y versión de identidad sin sustituir NIT.
+- `CaseTask` modela pendientes con destino, prioridad, bloqueo, regla y evidencia.
+- Dexie v9 agrega `caseTasks`; el manifiesto pasa a 2.1.1 y puede incluir tareas sin datos binarios.
+
+Las sesiones y candidatos obsoletos se conservan para auditoría. Al reemplazar u obsoletar un
+documento se invalidan coberturas relacionadas y se recalculan tareas derivadas.

@@ -44,3 +44,10 @@ que React monte los paneles.
 acción. `WorkflowNavigation.test.tsx` cubre semántica accesible y activación. El
 smoke Playwright recorre el expediente y verifica que no exista desbordamiento
 horizontal en 1440, 1280, 1024, 768 y 390 px.
+
+## Pendientes accionables
+
+Organización incorpora la vista `pendientes`. El siguiente paso recomendado se deriva de la tarea
+abierta de mayor prioridad y lleva a su etapa/vista concreta. Al llegar se muestra y enfoca un
+contexto resaltado con retorno a la bandeja; el identificador permanece en estado interno y no se
+expone en la URL. Declaración etiqueta cualquier avance como `Preparación`.

@@ -685,3 +685,41 @@ sintéticos; no se deben codificar nombres de emisores ni datos personales.
 **Siguiente paso exacto:** validar documentos reales únicamente en el navegador
 del usuario, registrar qué columnas o etiquetas no se reconocen y convertir
 esas variantes en fixtures sintéticos antes de extender otra regla.
+
+---
+
+## Sprint 2.1.1 — estabilización documental y pendientes accionables
+
+### Estado
+
+- El extractor ya no corta candidatos en `maxCandidates`; registra advertencia y conserva el total.
+- La sesión audita páginas, bloques, secciones, candidatos generados/persistidos y estados.
+- La revisión pagina 10/20/50/100, filtra, conserva historial y soporta decisiones masivas.
+- El rechazo exige motivo y el reproceso empareja por firma estable para no reactivar descartes.
+- La identidad separa NIT, razón social, marca, grupo y producto; Bancolombia, Fiduciaria
+  Bancolombia y Nequi conservan entidades independientes.
+- Los requisitos cubiertos por otros soportes se ocultan por defecto y coberturas inválidas se
+  recalculan al reemplazar u obsoletar.
+- `CaseTask` y la vista `Pendientes del expediente` entregan acciones con destino concreto.
+- Obligación legal y preparación operativa se presentan como conceptos independientes.
+
+### Decisiones y riesgos
+
+La detección de tabla es deliberadamente simple y determinista; no sustituye revisión humana. El
+catálogo de alias es versionado y nunca fusiona NIT diferentes. Las tareas son derivadas: cuando una
+causa desaparece se marcan resueltas para preservar auditoría. No se incorporaron OCR, red, backend
+ni IA externa.
+
+### Validación
+
+Fixtures exclusivamente sintéticos cubren 550 candidatos sin pérdida, líneas/columnas/secciones,
+productos ambiguos, identidad Grupo Bancolombia, tareas, persistencia, rechazo, restauración y
+reproceso. El smoke Playwright añade un PDF de 55 candidatos, paginación y operación masiva.
+
+Validación cerrada: `pnpm typecheck`, `pnpm test` (169 pruebas), `pnpm lint`, `pnpm build` y
+`pnpm --filter @nexus-tax/web test:e2e` (2 escenarios Chromium) finalizan correctamente. El smoke
+incluye capturas de escritorio/móvil, ausencia de scroll horizontal y revisión paginada de 55
+candidatos.
+
+**Siguiente paso exacto:** validar documentos reales únicamente en el navegador del usuario y
+convertir cualquier nueva variante observada en un fixture sintético antes de modificar reglas.

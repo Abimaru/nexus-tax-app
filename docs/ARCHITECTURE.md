@@ -131,3 +131,11 @@ PDF.js se sirve desde el mismo origen como artefacto generado en `predev` y
 cruzan la frontera de persistencia. La confirmación humana transforma un
 candidato en hecho y la conciliación posterior sigue siendo una decisión
 separada.
+
+## Evolución 2.1.1
+
+PDF.js entrega bloques geométricos al paquete puro `document-intelligence`, que reconstruye líneas,
+columnas, secciones y tablas simples. El dominio define métricas, decisiones estructuradas y
+`CaseTask`; Dexie v9 persiste sesiones, candidatos y tareas. React consume estas salidas sin
+incorporar reglas de extracción ni de identidad. El catálogo versionado de entidades vive en
+`exogenous-parser` y Aegis mantiene separada la evaluación legal.

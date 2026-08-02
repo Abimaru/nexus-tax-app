@@ -106,3 +106,12 @@ Detalles en `docs/SECURITY_PRIVACY.md`.
 - [Handoff del proyecto](docs/PROJECT_HANDOFF.md)
 
 Reglas permanentes para agentes: [`CLAUDE.md`](CLAUDE.md) · [`AGENTS.md`](AGENTS.md).
+
+## Sprint 2.1.1
+
+La revisión documental conserva todos los candidatos, ofrece filtros, paginación y decisiones
+masivas trazables. El expediente incorpora una bandeja de pendientes accionables, identidad
+separada para entidad/marca/grupo/producto y una presentación independiente de obligación legal y
+preparación operativa. Consulta [cobertura de extracción](docs/DOCUMENT_EXTRACTION_COVERAGE.md),
+[identidad](docs/ENTITY_IDENTITY_MODEL.md), [tareas](docs/CASE_TASKS.md) y
+[preparación](docs/DECLARATION_READINESS.md).

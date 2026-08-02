@@ -47,3 +47,11 @@ obligatoria. OCR, imágenes, anotación geométrica precisa e IA están fuera.
 
 Consulta también [procesamiento PDF](PDF_PROCESSING.md), [adaptadores](DOCUMENT_ADAPTERS.md),
 [revisión](DOCUMENT_EXTRACTION_REVIEW.md) y [seguridad](DOCUMENT_EXTRACTION_SECURITY.md).
+
+## Estabilización 2.1.1
+
+La representación incluye fuente cuando está disponible, posición, tamaño, orden, líneas,
+secciones y tablas simples. `maxCandidates` funciona como umbral preventivo: informa, pero no
+recorta. Las métricas permiten comparar candidatos generados, persistidos y revisados. La firma
+estable de evidencia permite conservar rechazos durante el reproceso y marcar como obsoletos los
+valores que ya no aparecen. Véase [cobertura técnica](DOCUMENT_EXTRACTION_COVERAGE.md).

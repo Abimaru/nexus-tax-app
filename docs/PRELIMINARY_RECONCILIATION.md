@@ -34,3 +34,9 @@ de conciliación calcula de nuevo señales y diferencias y exige confirmación.
 Las fuentes aceptadas solo cambian a `supported_by_document`,
 `contradicted_by_document` o `not_comparable` dentro de una conciliación humana;
 se conserva el historial y se evita sumar por segunda vez el mismo valor.
+
+## Integración con pendientes
+
+Una conciliación no confirmada o con diferencia relevante genera una `CaseTask` con destino directo.
+Los grupos incompletos de matriz muestran la tarea relacionada y su acción. Resolver la evidencia
+provoca un nuevo cálculo; la tarea previa queda resuelta de forma trazable, no eliminada.

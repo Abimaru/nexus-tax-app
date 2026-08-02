@@ -82,3 +82,14 @@ semánticos, filtros y detalle de Registros reorganizados, accesibilidad y
 Privacidad y ejecución local por defecto, trazabilidad, evidencia, revisión
 humana, determinismo/versionado de reglas y **nunca** afirmar obligaciones
 legales que sean solo recomendaciones.
+
+## Sprint 2.1.1 — estabilización documental
+
+Implementado: extracción sin truncamiento silencioso, estructura geométrica básica, métricas de
+cobertura, paginación/filtros, rechazo estructurado y por lotes, reproceso con decisiones,
+identidad financiera versionada, requisitos depurados, tareas accionables y separación entre
+obligación y preparación.
+
+Siguiente evolución segura: ampliar adaptadores con nuevas variantes convertidas a fixtures
+sintéticos y calibrar detección de tablas por emisor. OCR, IA externa, backend, Formulario 210
+definitivo y conciliación irrevocable siguen fuera de alcance.
