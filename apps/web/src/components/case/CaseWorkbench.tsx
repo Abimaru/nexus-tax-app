@@ -57,6 +57,7 @@ import { EntitiesPanel } from './EntitiesPanel';
 import { FactsPanel } from './FactsPanel';
 import { ReconciliationsPanel } from './ReconciliationsPanel';
 import { RequirementsPanel } from './RequirementsPanel';
+import { DocumentExtractionReviewPanel } from './DocumentExtractionReviewPanel';
 import { ContextualNavigation, WorkflowStepper } from './WorkflowNavigation';
 import {
   BasicCaseDataPanel,
@@ -137,6 +138,7 @@ export function CaseWorkbench({
       analysis,
       documents: workspace?.documents ?? [],
       facts: workspace?.facts ?? [],
+      documentCandidates: workspace?.documentCandidates ?? [],
       reconciliations: workspace?.reconciliations ?? [],
       progress,
       manualMode: workspace?.navigation?.manualMode ?? false,
@@ -476,6 +478,17 @@ export function CaseWorkbench({
             products={workspace.products}
             coverages={workspace.coverages}
             localBytes={workspace.localBytes}
+            onExtractionReady={() => applyDestination('organizacion', 'revision-documental')}
+          />
+        ) : null}
+        {stage === 'organizacion' && view === 'revision-documental' ? (
+          <DocumentExtractionReviewPanel
+            result={result}
+            documents={workspace.documents}
+            products={workspace.products}
+            sessions={workspace.extractionSessions}
+            candidates={workspace.documentCandidates}
+            onOpenReconciliations={() => applyDestination('conciliacion', 'conciliaciones')}
           />
         ) : null}
         {stage === 'organizacion' && view === 'requisitos' ? (

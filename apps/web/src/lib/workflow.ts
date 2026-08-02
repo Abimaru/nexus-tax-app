@@ -3,6 +3,7 @@ import type {
   CaseNavigationState,
   CaseProgress,
   DocumentFact,
+  DocumentFactCandidate,
   PreliminaryReconciliation,
   ProcessingResult,
   TaxCase,
@@ -70,6 +71,7 @@ export const WORKFLOW_STAGES: readonly WorkflowStageDefinition[] = [
       { id: 'resumen', label: 'Resumen' },
       { id: 'entidades', label: 'Entidades' },
       { id: 'documentos', label: 'Documentos' },
+      { id: 'revision-documental', label: 'Revisión de extracción' },
       { id: 'requisitos', label: 'Requisitos' },
       { id: 'hechos', label: 'Hechos' },
     ],
@@ -123,6 +125,7 @@ export interface WorkflowContext {
   analysis?: CaseAnalysis;
   documents: readonly UploadedDocument[];
   facts: readonly DocumentFact[];
+  documentCandidates?: readonly DocumentFactCandidate[];
   reconciliations: readonly PreliminaryReconciliation[];
   progress: CaseProgress;
   manualMode: boolean;
@@ -332,6 +335,20 @@ export function recommendedWorkflowAction(context: WorkflowContext): Recommended
       view: 'entidades',
       priority: 'high',
       pendingCount: context.result?.entities.length ?? 0,
+    };
+  }
+  const pendingCandidates = (context.documentCandidates ?? []).filter((candidate) =>
+    ['pending', 'requires_review'].includes(candidate.status),
+  ).length;
+  if (pendingCandidates) {
+    return {
+      id: 'review-document-extraction',
+      label: 'Revisar valores extraídos',
+      reason: 'Los candidatos documentales no modifican la matriz hasta que los confirmes.',
+      stage: 'organizacion',
+      view: 'revision-documental',
+      priority: 'high',
+      pendingCount: pendingCandidates,
     };
   }
   if (context.progress.pendingRequirements > 0) {
