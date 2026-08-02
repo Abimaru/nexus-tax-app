@@ -631,15 +631,20 @@ function LabOverlay({
           <span className="inline-block h-2.5 w-2.5 rounded-full bg-tone-amber" /> Candidatos
         </label>
       </div>
-      <div className="relative w-full max-w-2xl overflow-hidden rounded-lg border border-overlay/10">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={imageUrl} alt="Vista previa de la página renderizada" className="block w-full" />
-        <svg
-          viewBox={`0 0 ${imageWidth} ${imageHeight}`}
-          className="pointer-events-none absolute inset-0 h-full w-full"
-          role="img"
-          aria-label="Superposición de capas del laboratorio"
-        >
+      <div className="max-h-[70vh] w-full max-w-2xl overflow-auto rounded-lg border border-overlay/10">
+        <div className="relative">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={imageUrl}
+            alt="Vista previa de la página renderizada"
+            className="block w-full"
+          />
+          <svg
+            viewBox={`0 0 ${imageWidth} ${imageHeight}`}
+            className="pointer-events-none absolute inset-0 h-full w-full"
+            role="img"
+            aria-label="Superposición de capas del laboratorio"
+          >
           {layers.native
             ? nativeBlocks
                 .filter((block) => block.x !== undefined && block.y !== undefined)
@@ -712,10 +717,12 @@ function LabOverlay({
                 })
             : null}
         </svg>
+        </div>
       </div>
       <p className="mt-2 text-xs text-content-subtle">
         Las capas muestran posición aproximada; no dependen únicamente del color (bordes sólidos =
-        nativo, punteados = OCR, círculos = candidatos).
+        nativo, punteados = OCR, círculos = candidatos). Desplázate dentro de la vista previa para
+        ver el resto de la página.
       </p>
     </GlassPanel>
   );

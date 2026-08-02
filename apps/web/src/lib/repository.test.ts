@@ -1011,8 +1011,8 @@ describe('repositorio (IndexedDB local)', () => {
       action: 'confirm',
       observation: 'Confirmado desde el laboratorio tras validar visualmente.',
     });
-    expect(fact.captureMethod).toBe('assisted');
-    expect(fact.value).toBe(750_000);
+    expect(fact?.captureMethod).toBe('assisted');
+    expect(fact?.value).toBe(750_000);
   });
 
   it('exige justificar una corrección y crea un hecho asistido trazable', async () => {
