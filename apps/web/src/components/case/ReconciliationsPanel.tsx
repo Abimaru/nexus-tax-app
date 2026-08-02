@@ -57,10 +57,21 @@ export function ReconciliationsPanel({
       ),
     ),
   );
+  // Además del par exacto (fact,record), ocultamos cualquier sugerencia cuyo
+  // fact o record ya haya sido usado en OTRA conciliación o aceptado como
+  // fuente provisional. Esto evita ver 4 sugerencias cuando 2 documentos y 2
+  // registros ya están cerrados por otras decisiones.
+  const consumedFactIds = new Set(reconciliations.flatMap((item) => item.factIds));
+  const consumedRecordIds = new Set([
+    ...reconciliations.flatMap((item) => item.exogenousRecordIds),
+    ...acceptedSources.map((source) => source.exogenousRecordId),
+  ]);
   const pendingSuggestions = suggestions
     .filter(
       (suggestion) =>
         !existingSuggestionIds.has(`${suggestion.factId}:${suggestion.exogenousRecordId}`) &&
+        !consumedFactIds.has(suggestion.factId) &&
+        !consumedRecordIds.has(suggestion.exogenousRecordId) &&
         !dismissed.includes(suggestion.id),
     )
     .slice(0, 20);
