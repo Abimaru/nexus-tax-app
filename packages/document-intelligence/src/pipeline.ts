@@ -16,6 +16,7 @@ import type {
 } from './contracts';
 import { DEFAULT_PDF_LIMITS } from './contracts';
 import { classifyDocument } from './classifier';
+import { diagnosePdfDocument } from './diagnosis';
 import { extractCandidates } from './adapters';
 import {
   suggestEntity,
@@ -51,6 +52,7 @@ export async function analyzePdfDocument(input: AnalyzePdfInput) {
     onProgress: input.onProgress,
   };
   const representation = await readPdfText(input.bytes, readOptions);
+  const diagnosis = diagnosePdfDocument(representation);
   input.onProgress?.({
     phase: 'classifying',
     completed: 1,
@@ -103,6 +105,7 @@ export async function analyzePdfDocument(input: AnalyzePdfInput) {
   );
   return {
     representation,
+    diagnosis,
     classification,
     adapter: extraction.adapter,
     candidates,

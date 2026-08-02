@@ -1,6 +1,6 @@
 import type { DocumentRepresentation, PdfReadOptions } from './contracts';
 import type * as PdfJsApi from 'pdfjs-dist/legacy/build/pdf.mjs';
-import { DEFAULT_PDF_LIMITS } from './contracts';
+import { DEFAULT_PDF_LIMITS, READ_CONFIDENCE_THRESHOLDS } from './contracts';
 import { normalizeDocumentText } from './normalize';
 import { buildPageStructure } from './structure';
 
@@ -141,8 +141,7 @@ export async function readPdfText(
           width: viewport.width,
           height: viewport.height,
           errors: [],
-          readConfidence:
-            normalizedText.length >= 20 ? 'high' : normalizedText ? 'low' : 'insufficient',
+          readConfidence: readConfidenceFor(normalizedText.length),
         });
         page.cleanup();
       } catch {
@@ -215,6 +214,15 @@ async function loadPdfJs(browserModuleUrl?: string): Promise<PdfJsModule> {
 
 function cancelled() {
   return new PdfReadError('cancelled', 'La lectura fue cancelada.');
+}
+
+function readConfidenceFor(
+  characterCount: number,
+): DocumentRepresentation['pages'][number]['readConfidence'] {
+  if (characterCount >= READ_CONFIDENCE_THRESHOLDS.high) return 'high';
+  if (characterCount >= READ_CONFIDENCE_THRESHOLDS.medium) return 'medium';
+  if (characterCount >= READ_CONFIDENCE_THRESHOLDS.low) return 'low';
+  return 'insufficient';
 }
 
 export function passwordErrorForReason(reason: number): PdfReadError {

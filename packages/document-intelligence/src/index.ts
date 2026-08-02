@@ -1,6 +1,7 @@
 export * from './contracts';
 export * from './normalize';
 export * from './classifier';
+export * from './diagnosis';
 export * from './adapters';
 export * from './matching';
 export * from './reader';

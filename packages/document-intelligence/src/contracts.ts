@@ -53,6 +53,15 @@ export interface DocumentSimpleTable {
   columnX: number[];
 }
 
+// Umbrales compartidos por reader.ts (asigna readConfidence por página) y
+// diagnosis.ts (deriva el tipo de página a partir de readConfidence), para que
+// ambos usen el mismo criterio sin duplicar los números mágicos.
+export const READ_CONFIDENCE_THRESHOLDS = {
+  low: 1,
+  medium: 20,
+  high: 100,
+} as const;
+
 export interface DocumentPageRepresentation {
   pageNumber: number;
   normalizedText: string;

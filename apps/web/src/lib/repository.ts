@@ -20,6 +20,7 @@ import type {
   EmployerInstanceStatus,
   EmploymentIncomeGroup,
   FactRequirementRelation,
+  PdfDocumentDiagnosis,
   PreliminaryReconciliation,
   ProcessingResult,
   RecordResolution,
@@ -940,6 +941,7 @@ export async function completeExtractionSession(input: {
   pageCount: number;
   readablePageCount: number;
   metrics?: DocumentExtractionMetrics;
+  diagnosis?: PdfDocumentDiagnosis | null;
   classification: DocumentClassification;
   adapterId: string;
   adapterVersion: string;
@@ -1027,6 +1029,7 @@ export async function completeExtractionSession(input: {
       pageCount: input.pageCount,
       readablePageCount: input.readablePageCount,
       metrics,
+      diagnosis: input.diagnosis ?? null,
       candidateIds: candidates.map((candidate) => candidate.id),
       classification: input.classification,
       adapterId: input.adapterId,
