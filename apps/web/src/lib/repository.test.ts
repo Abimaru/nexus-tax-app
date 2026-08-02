@@ -165,6 +165,7 @@ function extractionCandidate(input: {
     possibleDuplicateIds: [],
     suggestedRequirementIds: input.requirementId ? [input.requirementId] : [],
     suggestedExogenousMatches: [],
+    selectedExogenousRecordId: null,
     observation: '',
     factId: null,
     decisions: [],

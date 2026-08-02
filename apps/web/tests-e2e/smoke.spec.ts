@@ -110,8 +110,56 @@ function makeSampleFile(): string {
 function makeSupportFile(): string {
   const dir = mkdtempSync(join(tmpdir(), 'nexustax-support-'));
   const file = join(dir, 'certificado-sintetico.pdf');
-  writeFileSync(file, Buffer.from('%PDF-1.4 soporte exclusivamente sintetico'));
+  writeFileSync(
+    file,
+    makeTextPdf([
+      'FORMULARIO 220',
+      'Certificado de ingresos y retenciones',
+      'Ingresos laborales: $ 48000000',
+      'Aportes obligatorios a salud: $ 1900000',
+      'Retenciones en la fuente: $ 1000000',
+    ]),
+  );
   return file;
+}
+
+function makeUnsupportedPdfFile(): string {
+  const dir = mkdtempSync(join(tmpdir(), 'nexustax-unsupported-'));
+  const file = join(dir, 'escaneado-sin-texto-sintetico.pdf');
+  writeFileSync(file, makeTextPdf([]));
+  return file;
+}
+
+function makeTextPdf(lines: readonly string[]): Buffer {
+  const escape = (value: string) => value.replace(/([\\()])/g, '\\$1');
+  const commands = ['BT', '/F1 11 Tf', '72 740 Td'];
+  lines.forEach((line, index) => {
+    if (index) commands.push('0 -18 Td');
+    commands.push(`(${escape(line)}) Tj`);
+  });
+  commands.push('ET');
+  const stream = `${commands.join('\n')}\n`;
+  const objects = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>',
+    `<< /Length ${Buffer.byteLength(stream)} >>\nstream\n${stream}endstream`,
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+  ];
+  let pdf = '%PDF-1.4\n';
+  const offsets = [0];
+  objects.forEach((object, index) => {
+    offsets.push(Buffer.byteLength(pdf));
+    pdf += `${index + 1} 0 obj\n${object}\nendobj\n`;
+  });
+  const xrefOffset = Buffer.byteLength(pdf);
+  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  pdf += offsets
+    .slice(1)
+    .map((offset) => `${String(offset).padStart(10, '0')} 00000 n \n`)
+    .join('');
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+  return Buffer.from(pdf);
 }
 
 async function selectStage(page: import('@playwright/test').Page, name: string) {
@@ -131,6 +179,7 @@ async function selectView(page: import('@playwright/test').Page, name: string) {
 test('flujo guiado completo del expediente', async ({ page }, testInfo) => {
   const samplePath = makeSampleFile();
   const supportPath = makeSupportFile();
+  const unsupportedPath = makeUnsupportedPdfFile();
 
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
@@ -271,9 +320,59 @@ test('flujo guiado completo del expediente', async ({ page }, testInfo) => {
   await expect(page).toHaveURL(/\/organizacion\/documentos$/);
   await expect(page.getByRole('heading', { name: 'Biblioteca documental local' })).toBeVisible();
   await page.setInputFiles('#case-document-file', supportPath);
+  await page.getByLabel('Tipo documental').selectOption('form_220');
+  await expect(page.getByLabel('Tipo documental')).toHaveValue('form_220');
   await page.getByLabel(/Decisi.n de persistencia/).selectOption('store_locally');
   await page.locator('input[type="checkbox"]').first().check();
-  await page.getByRole('button', { name: 'Registrar documento' }).click();
+  await page.getByRole('button', { name: 'Registrar y analizar' }).click();
+
+  // La lectura PDF local propone candidatos, pero solo la revisión humana crea hechos.
+  await expect(page).toHaveURL(/\/organizacion\/revision-documental$/);
+  await expect(page.getByRole('heading', { name: 'Revisión de extracción' })).toBeVisible();
+  await expect(page.getByLabel('Tipo documental propuesto')).toHaveValue('form_220');
+  const incomeCandidate = page.getByRole('article', {
+    name: 'Ingresos laborales',
+    exact: true,
+  });
+  await expect(incomeCandidate.getByText(/48\.000\.000/)).toBeVisible();
+  const suggestedRequirement = incomeCandidate.getByLabel('Requisito sugerido');
+  const firstRequirementValue = await suggestedRequirement
+    .locator('option')
+    .nth(1)
+    .getAttribute('value');
+  if (firstRequirementValue) await suggestedRequirement.selectOption(firstRequirementValue);
+  await incomeCandidate
+    .getByLabel('Observación de la decisión')
+    .fill('Valor y página confirmados en el Formulario 220 sintético.');
+  await incomeCandidate.getByRole('button', { name: 'Confirmar y crear hecho' }).click();
+  await expect(incomeCandidate.getByText('Hecho asistido creado y trazado.')).toBeVisible();
+
+  await page.screenshot({
+    path: testInfo.outputPath('revision-documental-1280.png'),
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+      ),
+    )
+    .toBe(true);
+  await page.screenshot({
+    path: testInfo.outputPath('revision-documental-390.png'),
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 1280, height: 720 });
+
+  await incomeCandidate.getByRole('button', { name: 'Revisar conciliación' }).click();
+  await expect(page).toHaveURL(/\/conciliacion\/conciliaciones$/);
+  await expect(
+    page.getByRole('heading', { name: /Conciliación preliminar contra exógena/ }),
+  ).toBeVisible();
+
+  await selectStage(page, 'Organización');
+  await selectView(page, 'Documentos');
   await expect(page.getByRole('heading', { name: 'certificado-sintetico.pdf' })).toBeVisible();
 
   await selectView(page, 'Hechos');
@@ -318,6 +417,31 @@ test('flujo guiado completo del expediente', async ({ page }, testInfo) => {
   await expect(page.getByRole('heading', { name: 'certificado-sintetico.pdf' })).toBeVisible();
   await selectView(page, 'Hechos');
   await expect(page.getByText('Saldo cuenta bancaria certificado')).toBeVisible();
+  await expect(page.getByText('Ingresos laborales').first()).toBeVisible();
+
+  await selectView(page, 'Documentos');
+  await page.getByRole('button', { name: 'Marcar obsoleto' }).click();
+  await selectView(page, 'Revisión de extracción');
+  await expect(page.getByText('Sin extracciones documentales')).toBeVisible();
+
+  // Salida recuperable para PDF sin texto y control de contraseña por teclado.
+  await selectView(page, 'Documentos');
+  await page.setInputFiles('#case-document-file', unsupportedPath);
+  const passwordToggle = page.getByLabel('El archivo requiere contraseña');
+  await passwordToggle.focus();
+  await passwordToggle.press('Space');
+  await expect(page.getByLabel('Contraseña temporal')).toBeVisible();
+  await page.getByLabel('Contraseña temporal').fill('solo-en-memoria');
+  await passwordToggle.press('Space');
+  await page.getByRole('button', { name: 'Registrar y analizar' }).click();
+  await expect(page.locator('#case-document-file-error')).toContainText(
+    /no contiene texto seleccionable/i,
+  );
+  await selectView(page, 'Revisión de extracción');
+  await expect(page.getByText('No compatible')).toBeVisible();
+  await expect(
+    page.getByText('registra los valores manualmente', { exact: false }).first(),
+  ).toBeVisible();
 
   await selectStage(page, 'Exportación');
   await selectView(page, 'Manifiesto');
@@ -327,6 +451,10 @@ test('flujo guiado completo del expediente', async ({ page }, testInfo) => {
 
 test('stepper responsive sin desbordamiento horizontal', async ({ page }, testInfo) => {
   await page.goto('/');
+  await expect(page.getByRole('region', { name: 'Capacidades actuales' })).toContainText(
+    'Extracción documental asistida',
+  );
+  await expect(page.getByText('Sprint 1')).toHaveCount(0);
   await page.getByRole('link', { name: 'Crear expediente' }).first().click();
   await page.getByLabel('Nombre o alias').fill('Expediente responsive E2E');
   await page.getByRole('button', { name: 'Crear expediente' }).click();

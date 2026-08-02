@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { CaseProgress, ProcessingResult } from '@nexus-tax/domain';
+import type { CaseProgress, DocumentFactCandidate, ProcessingResult } from '@nexus-tax/domain';
 import { processWorkbookFile } from '@nexus-tax/exogenous-parser';
 import * as XLSX from 'xlsx';
 import {
@@ -117,5 +117,23 @@ describe('flujo guiado del expediente', () => {
   it('mantiene Exportación disponible para un expediente incompleto', () => {
     const current = context({ progress: { ...EMPTY_PROGRESS, openFindings: 2 } });
     expect(isWorkflowDestinationValid('exportacion', 'manifiesto', current)).toBe(true);
+  });
+
+  it('prioriza la revisión documental cuando hay candidatos pendientes', () => {
+    const result = processedResult();
+    const candidate = { status: 'pending' } as DocumentFactCandidate;
+    expect(
+      recommendedWorkflowAction(
+        context({
+          result,
+          documents: [{ id: 'document:1' } as WorkflowContext['documents'][number]],
+          documentCandidates: [candidate],
+        }),
+      ),
+    ).toMatchObject({
+      id: 'review-document-extraction',
+      view: 'revision-documental',
+      pendingCount: 1,
+    });
   });
 });
