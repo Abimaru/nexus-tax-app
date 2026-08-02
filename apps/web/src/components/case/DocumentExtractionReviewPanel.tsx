@@ -76,7 +76,7 @@ const REJECTION_REASON_LABEL: Record<CandidateRejectionReason, string> = {
   incorrect_period: 'Periodo incorrecto',
   duplicate: 'Duplicado',
   informational: 'Solo informativo',
-  represented_by_other: 'Ya está representado por otro candidato',
+  represented_by_other: 'Ya está representado por otra propuesta',
   other: 'Otro motivo',
 };
 
@@ -121,7 +121,7 @@ export function DocumentExtractionReviewPanel({
       <EmptyState
         icon={<FileSearch className="h-8 w-8" />}
         title="Sin extracciones documentales"
-        description="Carga un PDF textual desde Documentos y elige analizarlo localmente. Los candidatos aparecerán aquí antes de crear hechos."
+        description="Carga un PDF desde Documentos y analízalo localmente. Los valores encontrados aparecerán aquí antes de incorporarlos al expediente."
       />
     );
   }
@@ -137,7 +137,7 @@ export function DocumentExtractionReviewPanel({
             <div>
               <h2 className="text-lg font-semibold text-content-strong">Revisión de extracción</h2>
               <p className="mt-0.5 text-sm text-content-muted">
-                Confirma, corrige o descarta cada propuesta antes de crear hechos documentales.
+                Confirma, corrige o descarta cada propuesta antes de incorporarla al expediente.
               </p>
             </div>
           </div>
@@ -146,8 +146,8 @@ export function DocumentExtractionReviewPanel({
           </Badge>
         </div>
         <p className="mt-4 rounded-xl border border-accent-cyan/20 bg-accent-cyan/5 p-3 text-xs text-content-muted">
-          El texto completo, la contraseña y los buffers no se guardan. Un candidato por sí solo no
-          alimenta la matriz.
+          El texto completo, la contraseña y los datos temporales de lectura no se guardan. Una
+          propuesta por sí sola no alimenta la matriz.
         </p>
         {historicalCount ? (
           <Button
@@ -257,7 +257,7 @@ function ExtractionSessionCard({
     }
     if (
       !window.confirm(
-        `Se aplicará la acción a ${selectedIds.length} candidato(s). Las decisiones quedarán trazadas. ¿Continuar?`,
+        `Se aplicará la acción a ${selectedIds.length} propuesta(s). Las decisiones quedarán registradas. ¿Continuar?`,
       )
     )
       return;
@@ -320,8 +320,8 @@ function ExtractionSessionCard({
               {document?.fileName ?? 'Documento eliminado'}
             </h3>
             <p className="mt-1 text-xs text-content-muted">
-              Ejecución {session.runNumber} · {session.pageCount} página(s) · {confirmed}/
-              {candidates.length} candidatos convertidos en hechos
+              Ejecución {session.runNumber} · {session.pageCount} página(s) · {confirmed} de{' '}
+              {candidates.length} propuestas incorporadas al expediente
             </p>
           </div>
           <Badge
@@ -434,8 +434,8 @@ function ExtractionSessionCard({
             />
           </dl>
           <p className="mt-2 text-xs text-content-subtle">
-            {session.metrics.pagesWithCandidates} página(s) contienen candidatos ·{' '}
-            {session.metrics.pagesWithoutCandidates} sin candidatos ·{' '}
+            {session.metrics.pagesWithCandidates} página(s) contienen propuestas ·{' '}
+            {session.metrics.pagesWithoutCandidates} sin propuestas ·{' '}
             {session.metrics.sectionsDetected.length} sección(es) detectada(s). No es un porcentaje
             de precisión.
           </p>
@@ -454,7 +454,7 @@ function ExtractionSessionCard({
         </section>
       ) : null}
 
-      <section className="border-b border-overlay/8 p-4 sm:p-5" aria-label="Filtros de candidatos">
+      <section className="border-b border-overlay/8 p-4 sm:p-5" aria-label="Filtros de propuestas">
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
           <Field label="Estado">
             <select
@@ -682,7 +682,7 @@ function ExtractionSessionCard({
               )
             }
             title={
-              candidates.length ? 'No quedan candidatos por revisar' : 'Sin valores candidatos'
+              candidates.length ? 'No quedan propuestas por revisar' : 'No se encontraron valores'
             }
             description={
               candidates.length
@@ -708,7 +708,7 @@ function ExtractionSessionCard({
                     )
                   }
                 />
-                Seleccionar candidato
+                Seleccionar propuesta
               </label>
               {isDiscardedStatus(candidate.status) ? (
                 <DiscardedCandidate candidate={candidate} />
@@ -1086,7 +1086,7 @@ function CandidateReviewCard({
               onClick={() => void decide('confirm')}
               leadingIcon={<CheckCircle2 className="h-4 w-4" aria-hidden />}
             >
-              Confirmar y crear hecho
+              Confirmar e incorporar al expediente
             </Button>
             <Button
               variant="secondary"

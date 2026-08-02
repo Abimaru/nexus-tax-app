@@ -397,7 +397,7 @@ test('flujo guiado completo del expediente', async ({ page }, testInfo) => {
   await page.setInputFiles('#case-document-file', supportPath);
   await page.getByLabel('Tipo documental').selectOption('form_220');
   await expect(page.getByLabel('Tipo documental')).toHaveValue('form_220');
-  await page.getByLabel(/Decisi.n de persistencia/).selectOption('store_locally');
+  await page.getByLabel(/C.mo conservar el documento/).selectOption('store_locally');
   await page.locator('input[type="checkbox"]').first().check();
   await page.getByRole('button', { name: 'Registrar y analizar' }).click();
 
@@ -420,7 +420,9 @@ test('flujo guiado completo del expediente', async ({ page }, testInfo) => {
   await incomeCandidate
     .getByLabel('Observación de la decisión')
     .fill('Valor y página confirmados en el Formulario 220 sintético.');
-  await incomeCandidate.getByRole('button', { name: 'Confirmar y crear hecho' }).click();
+  await incomeCandidate
+    .getByRole('button', { name: 'Confirmar e incorporar al expediente' })
+    .click();
   await expect(incomeCandidate).toHaveCount(0);
   await page.getByLabel('Estado').first().selectOption('confirmed');
   await expect(incomeCandidate.getByText('Hecho asistido creado y trazado.')).toBeVisible();
@@ -462,7 +464,7 @@ test('flujo guiado completo del expediente', async ({ page }, testInfo) => {
   await incomeCandidate.getByRole('button', { name: 'Revisar conciliación' }).click();
   await expect(page).toHaveURL(/\/conciliacion\/conciliaciones$/);
   await expect(
-    page.getByRole('heading', { name: /Conciliación preliminar contra exógena/ }),
+    page.getByRole('heading', { name: /Revisión de coincidencias con la exógena/ }),
   ).toBeVisible();
 
   await selectStage(page, 'Organización');
@@ -491,7 +493,7 @@ test('flujo guiado completo del expediente', async ({ page }, testInfo) => {
   expect(
     await acceptedSourceDialog.evaluate((element) => element.parentElement === document.body),
   ).toBe(true);
-  const recordSelect = page.getByLabel('Registro exógeno');
+  const recordSelect = page.getByLabel('Dato de la información exógena');
   const prizeValue = await recordSelect
     .locator('option')
     .filter({ hasText: 'Premio' })
@@ -514,7 +516,7 @@ test('flujo guiado completo del expediente', async ({ page }, testInfo) => {
   await expect(page.getByText('Ingresos laborales').first()).toBeVisible();
 
   await selectView(page, 'Documentos');
-  await page.getByRole('button', { name: 'Marcar obsoleto' }).click();
+  await page.getByRole('button', { name: 'Archivar para auditoría' }).click();
   await selectView(page, 'Revisión de extracción');
   await page.getByLabel('Estado').first().selectOption('obsolete');
   await expect(
@@ -528,7 +530,7 @@ test('flujo guiado completo del expediente', async ({ page }, testInfo) => {
   await selectView(page, 'Documentos');
   await page.setInputFiles('#case-document-file', balanceSupportPath);
   await page.getByLabel('Tipo documental').selectOption('balance_certificate');
-  await page.getByLabel(/Decisi.n de persistencia/).selectOption('store_locally');
+  await page.getByLabel(/C.mo conservar el documento/).selectOption('store_locally');
   await page.getByRole('button', { name: 'Registrar y analizar' }).click();
   await expect(page).toHaveURL(/\/organizacion\/revision-documental$/);
   await expect(page.getByRole('heading', { name: 'saldos-sinteticos.pdf' })).toBeVisible();
@@ -541,7 +543,7 @@ test('flujo guiado completo del expediente', async ({ page }, testInfo) => {
   await page
     .locator('article')
     .filter({ hasText: 'saldos-sinteticos.pdf' })
-    .getByRole('button', { name: 'Marcar obsoleto' })
+    .getByRole('button', { name: 'Archivar para auditoría' })
     .click();
   await selectView(page, 'Revisión de extracción');
   for (const filter of await page.getByLabel('Estado').all()) await filter.selectOption('obsolete');
@@ -556,7 +558,7 @@ test('flujo guiado completo del expediente', async ({ page }, testInfo) => {
   await selectView(page, 'Documentos');
   await page.setInputFiles('#case-document-file', largeSupportPath);
   await page.getByLabel('Tipo documental').selectOption('balance_certificate');
-  await page.getByLabel(/Decisi.n de persistencia/).selectOption('store_locally');
+  await page.getByLabel(/C.mo conservar el documento/).selectOption('store_locally');
   await page.getByRole('button', { name: 'Registrar y analizar' }).click();
   await expect(page.getByText('Detectados 55')).toBeVisible({ timeout: 20_000 });
   await expect(page.getByText(/Pagina 1 de 3/)).toBeVisible();

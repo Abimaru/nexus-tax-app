@@ -144,7 +144,7 @@ test('un PDF sin texto se lee y se diagnostica como escaneado, no se rechaza', a
   await expect(page).toHaveURL(/\/organizacion\/documentos$/);
   await page.setInputFiles('#case-document-file', scannedPath);
   await page.getByLabel('Tipo documental').selectOption('balance_certificate');
-  await page.getByLabel(/Decisi.n de persistencia/).selectOption('store_locally');
+  await page.getByLabel(/C.mo conservar el documento/).selectOption('store_locally');
   await page.getByRole('button', { name: 'Registrar y analizar' }).click();
 
   await expect(page).toHaveURL(/\/organizacion\/revision-documental$/);
@@ -205,7 +205,7 @@ test('el laboratorio documental diagnostica, ejecuta OCR real y crea un candidat
   await selectView(page, 'Documentos');
   await page.setInputFiles('#case-document-file', textPdfPath);
   await page.getByLabel('Tipo documental').selectOption('balance_certificate');
-  await page.getByLabel(/Decisi.n de persistencia/).selectOption('store_locally');
+  await page.getByLabel(/C.mo conservar el documento/).selectOption('store_locally');
   await page.getByRole('button', { name: 'Registrar y analizar' }).click();
   await expect(page).toHaveURL(/\/organizacion\/revision-documental$/);
 
@@ -232,7 +232,7 @@ test('el laboratorio documental diagnostica, ejecuta OCR real y crea un candidat
   await expect(page.getByText('Probado', { exact: true })).toBeVisible();
 
   await page.getByRole('button', { name: 'Avanzado' }).click();
-  await page.getByRole('button', { name: 'Ejecutar OCR en esta página' }).click();
+  await page.getByRole('button', { name: 'Reconocer texto de esta página' }).click();
 
   await expect(
     page.locator('span.inline-flex').filter({
@@ -241,8 +241,8 @@ test('el laboratorio documental diagnostica, ejecuta OCR real y crea un candidat
     }),
   ).toBeVisible({ timeout: 90_000 });
   await expect(page.getByAltText('Vista previa de la página renderizada')).toBeVisible();
-  await expect(page.getByLabel('Tokens nativos')).toBeVisible();
-  await page.getByRole('button', { name: 'Usar página completa como zona' }).click();
+  await expect(page.getByLabel('Texto del PDF')).toBeVisible();
+  await page.getByRole('button', { name: 'Usar toda la página como área' }).click();
   await expect(
     page.locator('rect').filter({ hasText: 'Zona de valor seleccionada por el analista' }),
   ).toHaveCount(1);
@@ -252,7 +252,7 @@ test('el laboratorio documental diagnostica, ejecuta OCR real y crea un candidat
     fullPage: true,
   });
 
-  // Selección manual de campo: crea un candidato asistido y no navega fuera.
+  // Registro manual: crea una propuesta para revisión y no navega fuera.
   await page.getByLabel('Fuente del texto').selectOption('native');
   await page.getByLabel('Campo').selectOption('balance');
   await page
@@ -261,8 +261,8 @@ test('el laboratorio documental diagnostica, ejecuta OCR real y crea un candidat
   await page.getByRole('textbox', { name: 'Concepto' }).fill('Saldo capturado en el laboratorio');
   await page.getByRole('spinbutton', { name: 'Valor' }).fill('900000');
   await page.getByLabel('¿Cómo quieres recordar esta decisión?').selectOption('similar_documents');
-  await page.getByRole('button', { name: 'Crear candidato manual asistido' }).click();
-  await expect(page.getByText('Candidato creado y listo para revisar.')).toBeVisible();
+  await page.getByRole('button', { name: 'Registrar dato para revisión' }).click();
+  await expect(page.getByText('Dato registrado y listo para revisar.')).toBeVisible();
 
   // Responsive: se verifica sobre la misma vista antes de navegar a otra, para
   // no depender del patrón de navegación móvil (combobox) en este spec.
@@ -279,8 +279,8 @@ test('el laboratorio documental diagnostica, ejecuta OCR real y crea un candidat
   // evidencia visual represente la pantalla que realmente ve el usuario.
   for (const locator of [
     page.getByRole('heading', { name: 'Perfiles documentales' }),
-    page.getByRole('heading', { name: 'OCR local bajo demanda' }),
-    page.getByRole('heading', { name: 'Selección manual de campo' }),
+    page.getByRole('heading', { name: 'Reconocimiento de texto local' }),
+    page.getByRole('heading', { name: 'Registrar un dato de la página' }),
     page.getByRole('heading', { name: 'Detalle técnico de la página' }),
   ]) {
     await locator.scrollIntoViewIfNeeded();

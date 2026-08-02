@@ -202,8 +202,8 @@ export function DocumentsPanel({
         <div className="mt-4 flex items-start gap-2 rounded-xl border border-accent-cyan/25 bg-accent-cyan/5 p-3 text-xs text-content-muted">
           <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-tone-cyan" aria-hidden />
           <span>
-            Tú decides si conservar el binario en IndexedDB. La contraseña nunca se guarda y las
-            exportaciones excluyen archivos por defecto.
+            Tú decides si conservar el archivo en este navegador. La contraseña nunca se guarda y
+            las exportaciones no incluyen los documentos.
           </span>
         </div>
 
@@ -242,9 +242,9 @@ export function DocumentsPanel({
                 ))}
               </select>
             </Field>
-            <Field label="Decisión de persistencia">
+            <Field label="Cómo conservar el documento">
               <select
-                aria-label="Decisión de persistencia"
+                aria-label="Cómo conservar el documento"
                 value={storageMode}
                 onChange={(event) => setStorageMode(event.target.value as typeof storageMode)}
                 className={inputClass}
@@ -487,8 +487,8 @@ export function DocumentsPanel({
                     className={inputClass}
                   />
                   <span className="mt-1 block text-[11px] text-content-subtle">
-                    Solo vive en memoria durante este intento; no entra en IndexedDB ni en la
-                    exportación.
+                    Solo se usa mientras el documento está abierto; no se guarda en el navegador ni
+                    se incluye en la exportación.
                   </span>
                 </Field>
               ) : null}
@@ -570,9 +570,9 @@ export function DocumentsPanel({
                     </Badge>
                   </div>
                   <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
-                    <Info label="Hash" value={`${item.sha256.slice(0, 12)}…`} />
+                    <Info label="Huella del archivo" value={`${item.sha256.slice(0, 12)}…`} />
                     <Info
-                      label="Persistencia"
+                      label="Almacenamiento"
                       value={DOCUMENT_STORAGE_PRESENTATION[item.storageMode].label}
                     />
                     <Info
@@ -603,7 +603,7 @@ export function DocumentsPanel({
                           leadingIcon={<Trash2 className="h-3.5 w-3.5" />}
                           onClick={() => void removeDocumentBinary(item.id)}
                         >
-                          Eliminar archivo
+                          Quitar archivo conservado
                         </Button>
                       </>
                     ) : null}
@@ -613,7 +613,7 @@ export function DocumentsPanel({
                       leadingIcon={<HardDrive className="h-3.5 w-3.5" />}
                       onClick={() => void markDocumentObsolete(item.id)}
                     >
-                      Marcar obsoleto
+                      Archivar para auditoría
                     </Button>
                     <Button
                       variant="danger"
@@ -623,7 +623,7 @@ export function DocumentsPanel({
                       onClick={async () => {
                         if (
                           !window.confirm(
-                            `Vas a eliminar definitivamente "${item.fileName}" y todo lo asociado (blob, candidatos, sesiones, coberturas). Los hechos manuales del analista se conservan pero pierden la referencia al documento. Esta acción es irreversible. ¿Continuar?`,
+                            `Vas a eliminar definitivamente “${item.fileName}”, su archivo local y los análisis automáticos relacionados. Los datos ingresados manualmente se conservarán, pero dejarán de estar vinculados al documento. Esta acción no se puede deshacer. ¿Deseas continuar?`,
                           )
                         )
                           return;

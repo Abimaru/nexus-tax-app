@@ -136,7 +136,7 @@ export function AcceptedSourceAction({
               </div>
 
               <form onSubmit={submit} className="mt-5 space-y-4">
-                <Field label="Registro exógeno">
+                <Field label="Dato de la información exógena">
                   <select
                     value={selected?.id ?? ''}
                     onChange={(event) => setRecordId(event.target.value)}
@@ -166,7 +166,10 @@ export function AcceptedSourceAction({
                       label="Origen"
                       value={`${selected.source.sheet} · fila ${selected.source.row}`}
                     />
-                    <Data label="Categoría" value={CATEGORY_LABEL[selected.category]} />
+                    <Data
+                      label="Categoría tributaria sugerida"
+                      value={CATEGORY_LABEL[selected.category]}
+                    />
                     <Data
                       label="Requisito relacionado"
                       value={requirement?.documentName ?? 'Sin requisito asociado'}
@@ -264,8 +267,8 @@ export function AcceptedSourceAction({
                     className="mt-0.5"
                   />
                   <span>
-                    Incluir provisionalmente en la matriz. El registro ya existente se anota; no se
-                    suma de nuevo.
+                    Usar este valor provisionalmente en la matriz. Se conserva una sola vez y queda
+                    pendiente de soporte.
                   </span>
                 </label>
 
@@ -313,7 +316,7 @@ export function AcceptedSourceAction({
                     variant="ghost"
                     onClick={() => void confirmAcceptedExogenousValue(accepted.id)}
                   >
-                    Confirmar como analista
+                    Confirmar revisión
                   </Button>
                 ) : null}
               </div>

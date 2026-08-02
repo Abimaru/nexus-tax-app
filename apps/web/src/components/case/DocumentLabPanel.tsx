@@ -193,8 +193,8 @@ export function DocumentLabPanel({
     return (
       <EmptyState
         icon={<FlaskConical className="h-8 w-8" />}
-        title="Sin documentos para calibrar"
-        description="Analiza un PDF desde Documentos para poder inspeccionar sus páginas, ejecutar OCR bajo demanda y calibrar candidatos aquí."
+        title="Aún no hay documentos para revisar"
+        description="Analiza un PDF desde Documentos. Después podrás revisar sus páginas, reconocer texto cuando haga falta y validar los datos encontrados."
       />
     );
   }
@@ -217,9 +217,9 @@ export function DocumentLabPanel({
             <div>
               <h2 className="text-lg font-semibold text-content-strong">Laboratorio documental</h2>
               <p className="mt-0.5 text-sm text-content-muted">
-                Inspecciona cada página del PDF, ejecuta OCR local bajo demanda y propone
-                candidatos de hechos que <span className="font-medium">solo alimentan la matriz</span>{' '}
-                si tú los confirmas. Aquí no se toma ninguna decisión automática.
+                Revisa cada página y reconoce texto localmente cuando haga falta. Los datos
+                encontrados <span className="font-medium">solo pasan al expediente</span> cuando tú
+                los confirmas.
               </p>
             </div>
           </div>
@@ -247,11 +247,11 @@ export function DocumentLabPanel({
                 1
               </span>
               <ScanText className="h-4 w-4" aria-hidden />
-              <span className="text-xs font-semibold uppercase tracking-wide">Diagnóstico</span>
+              <span className="text-xs font-semibold uppercase tracking-wide">Revisar páginas</span>
             </div>
             <p className="mt-2 text-xs text-content-muted">
-              Revisa qué páginas son textuales, escaneadas o dañadas. Ejecuta OCR local solo cuando
-              haga falta.
+              Identifica páginas con texto, escaneadas o dañadas. Usa el reconocimiento local solo
+              cuando sea necesario.
             </p>
           </li>
           <li className="rounded-xl border border-overlay/10 bg-overlay/[0.02] p-3">
@@ -260,11 +260,13 @@ export function DocumentLabPanel({
                 2
               </span>
               <Layers className="h-4 w-4" aria-hidden />
-              <span className="text-xs font-semibold uppercase tracking-wide">Revisar tokens</span>
+              <span className="text-xs font-semibold uppercase tracking-wide">
+                Comparar contenido
+              </span>
             </div>
             <p className="mt-2 text-xs text-content-muted">
-              Contrasta el texto nativo con el OCR y con los candidatos. Nunca se fusionan
-              automáticamente: aquí sale a la luz cualquier contradicción.
+              Compara el texto original con el texto reconocido y los datos propuestos. Las
+              diferencias siempre quedan visibles para revisión.
             </p>
           </li>
           <li className="rounded-xl border border-overlay/10 bg-overlay/[0.02] p-3">
@@ -273,13 +275,11 @@ export function DocumentLabPanel({
                 3
               </span>
               <Sparkles className="h-4 w-4" aria-hidden />
-              <span className="text-xs font-semibold uppercase tracking-wide">
-                Confirmar candidatos
-              </span>
+              <span className="text-xs font-semibold uppercase tracking-wide">Confirmar datos</span>
             </div>
             <p className="mt-2 text-xs text-content-muted">
-              Cada valor propuesto pasa por revisión humana. Solo tras confirmar se crea un hecho{' '}
-              <code className="rounded bg-overlay/10 px-1">assisted</code> visible para conciliación.
+              Revisa cada valor propuesto. Al confirmarlo se registra como dato documental y queda
+              disponible para conciliación.
             </p>
           </li>
         </ol>
@@ -510,8 +510,8 @@ function DocumentLabWorkspace({
     return (
       <EmptyState
         icon={<AlertTriangle className="h-8 w-8" />}
-        title="Este documento no conservó su binario local"
-        description="El laboratorio necesita el archivo original para renderizar páginas y ejecutar OCR. Vuelve a registrarlo con la opción de conservar el binario si necesitas calibrarlo."
+        title="El archivo original no está disponible"
+        description="Para mostrar las páginas o reconocer texto, vuelve a registrar el PDF y elige conservarlo en este navegador."
       />
     );
   }
@@ -559,7 +559,7 @@ function DocumentLabWorkspace({
                 className="min-h-10 flex-1 min-w-[220px] rounded-lg border border-overlay/12 bg-overlay/5 px-3 py-2 text-sm text-content-strong"
               />
               <Button type="submit" disabled={!passwordDraft}>
-                Desbloquear
+                Abrir documento
               </Button>
             </form>
           </div>
@@ -596,11 +596,11 @@ function DocumentLabWorkspace({
             </Badge>
             {recommendation?.recommended ? (
               <Badge tone="amber">
-                OCR recomendado en {recommendation.pages.length} página(s) · esfuerzo{' '}
+                Reconocimiento recomendado en {recommendation.pages.length} página(s) · carga{' '}
                 {EFFORT_LABEL[recommendation.effort]}
               </Badge>
             ) : (
-              <Badge tone="emerald">No se detectan páginas que requieran OCR</Badge>
+              <Badge tone="emerald">No hace falta reconocer texto adicional</Badge>
             )}
           </div>
           <div className="flex gap-1 rounded-lg border border-overlay/12 p-1">
@@ -654,10 +654,12 @@ function DocumentLabWorkspace({
       <GlassPanel className="p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h3 className="text-sm font-semibold text-content-strong">OCR local bajo demanda</h3>
+            <h3 className="text-sm font-semibold text-content-strong">
+              Reconocimiento de texto local
+            </h3>
             <p className="mt-1 text-xs text-content-muted">
-              No se ejecuta automáticamente. El reconocimiento corre en tu navegador; no se envía
-              nada por red.
+              Solo se ejecuta cuando lo solicitas. Todo ocurre en tu navegador y nada se envía por
+              red.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -668,7 +670,7 @@ function DocumentLabWorkspace({
                   checked={improveContrast}
                   onChange={(event) => setImproveContrast(event.target.checked)}
                 />
-                Mejorar contraste antes de OCR
+                Mejorar contraste antes de reconocer
               </label>
             ) : null}
             {pageState.status === 'rendering' || pageState.status === 'recognizing' ? (
@@ -685,7 +687,7 @@ function DocumentLabWorkspace({
                 leadingIcon={<ScanText className="h-4 w-4" />}
                 onClick={() => void runOcrOnPage(selectedPage)}
               >
-                Ejecutar OCR en esta página
+                Reconocer texto de esta página
               </Button>
             )}
           </div>
@@ -798,7 +800,17 @@ function readMethodLabel(method: string): string {
     hybrid: 'Híbrido (nativo + OCR)',
     manual_review: 'Revisión manual',
   };
-  return labels[method] ?? method;
+  return labels[method] ?? 'Método no reconocido';
+}
+
+function ocrProgressLabel(status: string): string {
+  const normalized = status.toLocaleLowerCase('es');
+  if (normalized.includes('recogniz')) return 'Reconociendo texto';
+  if (normalized.includes('language') || normalized.includes('traineddata'))
+    return 'Cargando idioma';
+  if (normalized.includes('initializ') || normalized.includes('loading'))
+    return 'Preparando reconocimiento';
+  return 'Procesando localmente';
 }
 
 function OcrStatus({
@@ -827,13 +839,13 @@ function OcrStatus({
       <p className="mt-3 flex items-center gap-2 text-xs text-content-muted">
         <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
         {state.progress
-          ? `${state.progress.status} · ${Math.round(state.progress.progress * 100)}%`
-          : 'Iniciando el motor de OCR…'}
+          ? `${ocrProgressLabel(state.progress.status)} · ${Math.round(state.progress.progress * 100)}%`
+          : 'Preparando el reconocimiento de texto…'}
       </p>
     );
   }
   if (state.status === 'cancelled') {
-    return <p className="mt-3 text-xs text-content-muted">OCR cancelado.</p>;
+    return <p className="mt-3 text-xs text-content-muted">Reconocimiento cancelado.</p>;
   }
   if (state.status === 'error') {
     return (
@@ -848,7 +860,7 @@ function OcrStatus({
             Reintentar
           </Button>
           <Button variant="ghost" onClick={onRetryLight}>
-            Reintentar con menos resolución
+            Reintentar en modo ligero
           </Button>
           {hasNativeText ? (
             <Button variant="ghost" onClick={onContinueNative}>
@@ -874,9 +886,9 @@ function OcrStatus({
             </p>
           </div>
           <div className="rounded-lg border border-overlay/10 bg-overlay/5 p-3">
-            <p className="text-xs font-medium text-content-subtle">Texto OCR</p>
+            <p className="text-xs font-medium text-content-subtle">Texto reconocido</p>
             <p className="mt-1 max-h-24 overflow-y-auto text-xs text-content">
-              {state.comparison.ocrText || 'Sin texto OCR.'}
+              {state.comparison.ocrText || 'No se reconoció texto.'}
             </p>
           </div>
         </div>
@@ -943,11 +955,11 @@ function LabOverlay({
       <div className="mb-3 flex flex-wrap gap-3 text-xs text-content-muted">
         <label className="flex items-center gap-1.5">
           <input type="checkbox" checked={layers.native} onChange={() => onToggleLayer('native')} />
-          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-tone-cyan" /> Tokens nativos
+          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-tone-cyan" /> Texto del PDF
         </label>
         <label className="flex items-center gap-1.5">
           <input type="checkbox" checked={layers.ocr} onChange={() => onToggleLayer('ocr')} />
-          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-tone-violet" /> Tokens OCR
+          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-tone-violet" /> Texto reconocido
         </label>
         <label className="flex items-center gap-1.5">
           <input
@@ -955,20 +967,20 @@ function LabOverlay({
             checked={layers.candidates}
             onChange={() => onToggleLayer('candidates')}
           />
-          <span className="inline-block h-2.5 w-2.5 rounded-full bg-tone-amber" /> Candidatos
+          <span className="inline-block h-2.5 w-2.5 rounded-full bg-tone-amber" /> Datos propuestos
         </label>
       </div>
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <Button variant="ghost" onClick={() => onSelection({ x: 0, y: 0, width: 1, height: 1 })}>
-          Usar página completa como zona
+          Usar toda la página como área
         </Button>
         {selection ? (
           <Button variant="ghost" onClick={onClearSelection}>
-            Quitar zona marcada
+            Quitar área marcada
           </Button>
         ) : null}
         <span className="text-xs text-content-subtle">
-          Arrastra sobre la vista para definir una zona de valor reutilizable en el perfil.
+          Arrastra sobre la página para marcar un área que pueda reutilizarse en este perfil.
         </span>
       </div>
       <div className="max-h-[70vh] w-full max-w-2xl overflow-auto rounded-lg border border-overlay/10">
@@ -1082,9 +1094,9 @@ function LabOverlay({
         </div>
       </div>
       <p className="mt-2 text-xs text-content-subtle">
-        Las capas muestran posición aproximada; no dependen únicamente del color (bordes sólidos =
-        nativo, punteados = OCR, círculos = candidatos). Desplázate dentro de la vista previa para
-        ver el resto de la página.
+        Las marcas muestran posiciones aproximadas y no dependen solo del color: borde sólido para
+        texto del PDF, punteado para texto reconocido y círculos para datos propuestos. Desplázate
+        dentro de la vista previa para ver el resto de la página.
       </p>
     </GlassPanel>
   );
@@ -1350,11 +1362,13 @@ function ManualCandidatePanel({
     <GlassPanel className="p-5">
       <div className="flex items-center gap-2">
         <Sparkles className="h-4 w-4 text-tone-violet" aria-hidden />
-        <h3 className="text-sm font-semibold text-content-strong">Selección manual de campo</h3>
+        <h3 className="text-sm font-semibold text-content-strong">
+          Registrar un dato de la página
+        </h3>
       </div>
       <p className="mt-1 text-xs text-content-muted">
-        Crea un candidato asistido a partir del texto nativo o del OCR de esta página. Pasa por la
-        revisión normal; no alimenta la matriz directamente.
+        Crea una propuesta a partir del texto original o reconocido. Después deberás revisarla antes
+        de incorporarla a la matriz.
       </p>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <label className="text-xs text-content-muted">
@@ -1364,9 +1378,9 @@ function ManualCandidatePanel({
             value={source}
             onChange={(event) => setSource(event.target.value as 'native' | 'ocr')}
           >
-            <option value="native">Texto nativo de la página</option>
+            <option value="native">Texto original del PDF</option>
             <option value="ocr" disabled={!ocrText}>
-              Texto OCR {ocrText ? '' : '(ejecuta OCR primero)'}
+              Texto reconocido {ocrText ? '' : '(reconoce la página primero)'}
             </option>
           </select>
         </label>
@@ -1483,10 +1497,10 @@ function ManualCandidatePanel({
           onClick={() => void handleCreate()}
           disabled={saving || !concept}
         >
-          {saving ? 'Creando…' : 'Crear candidato manual asistido'}
+          {saving ? 'Registrando…' : 'Registrar dato para revisión'}
         </Button>
         {saved ? (
-          <span className="text-xs text-tone-emerald">Candidato creado y listo para revisar.</span>
+          <span className="text-xs text-tone-emerald">Dato registrado y listo para revisar.</span>
         ) : null}
       </div>
     </GlassPanel>

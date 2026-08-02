@@ -290,7 +290,7 @@ export function ExportWorkflowPanel({
           <h2 className="mt-3 text-lg font-semibold text-content-strong">Exportar expediente</h2>
           <p className="mt-1 text-sm text-content-muted">
             El manifiesto conserva el estado de “{taxCase.alias}”, su trazabilidad y decisiones, sin
-            incluir archivos binarios.
+            incluir los archivos originales.
           </p>
         </div>
         <Download className="h-7 w-7 text-tone-cyan" aria-hidden />

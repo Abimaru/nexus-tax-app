@@ -151,11 +151,11 @@ export function ReconciliationsPanel({
     <div className="space-y-5">
       <GlassPanel className="p-5">
         <h2 className="text-lg font-semibold text-content-strong">
-          Conciliación preliminar contra exógena
+          Revisión de coincidencias con la exógena
         </h2>
         <p className="mt-1 text-sm text-content-muted">
-          Las coincidencias son sugerencias deterministas. Igualdad de valor nunca confirma por sí
-          sola una conciliación.
+          Las coincidencias se proponen con reglas locales. Un valor igual no basta para confirmar
+          que dos datos representan lo mismo.
         </p>
         <div className="mt-3">
           <AcceptedSourceAction
@@ -166,7 +166,7 @@ export function ReconciliationsPanel({
           />
         </div>
         <label className="mt-4 block text-xs text-content-muted">
-          Explicación del analista
+          Nota general para esta revisión
           <textarea
             value={explanation}
             onChange={(event) => setExplanation(event.target.value)}
@@ -207,7 +207,7 @@ export function ReconciliationsPanel({
                         </p>
                       </div>
                       <Badge tone={suggestion.score >= 75 ? 'emerald' : 'amber'}>
-                        {suggestion.score}/100
+                        Coincidencia {suggestion.score}/100
                       </Badge>
                     </div>
                     <dl className="mt-3 grid grid-cols-3 gap-3 text-xs">
@@ -220,9 +220,8 @@ export function ReconciliationsPanel({
                     </dl>
                     {!safeToConfirm ? (
                       <p className="mt-3 text-xs text-tone-amber">
-                        La confianza, diferencia o naturaleza no permite recomendar una confirmación
-                        directa. Usa <span className="font-medium">Resolver manualmente</span> para
-                        registrar tu decisión con justificación.
+                        Esta coincidencia necesita tu criterio porque hay diferencias en el valor o
+                        en la clasificación. Revisa la evidencia antes de decidir.
                       </p>
                     ) : null}
                     <div className="mt-3 flex flex-wrap justify-end gap-2">
@@ -241,7 +240,7 @@ export function ReconciliationsPanel({
                         }
                         aria-expanded={manualForm.suggestionId === suggestion.id}
                       >
-                        Resolver manualmente
+                        Revisar y decidir
                         <ChevronDown
                           className={`ml-1 h-3.5 w-3.5 transition-transform motion-reduce:transition-none ${
                             manualForm.suggestionId === suggestion.id ? 'rotate-180' : ''
@@ -259,11 +258,11 @@ export function ReconciliationsPanel({
                     {manualForm.suggestionId === suggestion.id ? (
                       <div className="mt-3 rounded-xl border border-overlay/10 bg-overlay/[0.02] p-3">
                         <p className="text-xs font-medium uppercase tracking-wide text-content-subtle">
-                          Registrar decisión del analista
+                          Registrar resultado de la revisión
                         </p>
                         <div className="mt-2 grid gap-2 md:grid-cols-[220px_1fr]">
                           <label className="block text-xs text-content-muted">
-                            Estado final
+                            Resultado
                             <select
                               value={manualForm.status}
                               onChange={(event) =>
@@ -275,18 +274,14 @@ export function ReconciliationsPanel({
                               className="mt-1 min-h-10 w-full rounded-lg border border-overlay/12 bg-overlay/5 px-2 py-1.5 text-sm text-content-strong"
                             >
                               {MANUAL_STATUSES.map((status) => (
-                                <option
-                                  key={status}
-                                  value={status}
-                                  className="bg-surface-raised"
-                                >
+                                <option key={status} value={status} className="bg-surface-raised">
                                   {PRELIMINARY_RECONCILIATION_PRESENTATION[status].label}
                                 </option>
                               ))}
                             </select>
                           </label>
                           <label className="block text-xs text-content-muted">
-                            Justificación (obligatoria)
+                            Motivo de la decisión
                             <textarea
                               value={manualForm.reason}
                               onChange={(event) =>
@@ -295,7 +290,7 @@ export function ReconciliationsPanel({
                                   reason: event.target.value,
                                 }))
                               }
-                              placeholder="Explica por qué esta asociación queda en el estado seleccionado (p. ej. la diferencia se explica por una retención adicional del banco)."
+                              placeholder="Explica por qué los datos coinciden, difieren o no se pueden comparar."
                               className="mt-1 min-h-16 w-full rounded-lg border border-overlay/12 bg-overlay/5 p-2 text-sm text-content-strong"
                             />
                           </label>
@@ -319,7 +314,7 @@ export function ReconciliationsPanel({
               })}
               {pendingSuggestions.length === 0 ? (
                 <p className="rounded-xl border border-overlay/8 p-4 text-sm text-content-muted">
-                  No hay nuevas sugerencias con evidencia suficiente.
+                  No hay nuevas coincidencias por revisar.
                 </p>
               ) : null}
             </div>
@@ -335,8 +330,8 @@ export function ReconciliationsPanel({
                   <div>
                     <p className="text-sm text-content-strong">{item.explanation}</p>
                     <p className="text-xs text-content-subtle">
-                      {item.suggestionSignals.join(' · ')} · decisión humana:{' '}
-                      {item.confirmedByHuman ? 'sí' : 'no'}
+                      {item.suggestionSignals.join(' · ')} · revisión humana:{' '}
+                      {item.confirmedByHuman ? 'registrada' : 'pendiente'}
                     </p>
                   </div>
                   <div className="text-right">

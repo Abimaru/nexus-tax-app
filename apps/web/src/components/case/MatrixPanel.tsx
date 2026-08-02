@@ -137,7 +137,7 @@ export function MatrixPanel({
           <Badge tone="emerald">Documentado</Badge>
           <Badge tone="amber">Aceptado desde exógena</Badge>
           <Badge tone="violet">Registro manual</Badge>
-          <Badge tone="cyan">Cálculo determinista</Badge>
+          <Badge tone="cyan">Cálculo con reglas locales</Badge>
           <Badge tone="neutral">Pendiente</Badge>
           <Badge tone="rose">Contradicho</Badge>
         </div>

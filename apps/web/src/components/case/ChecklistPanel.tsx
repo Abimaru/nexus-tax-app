@@ -108,7 +108,7 @@ export function ChecklistPanel({ result, caseId }: { result: ProcessingResult; c
                       className="text-content-subtle"
                       title="Recomendación generada por una regla local versionada."
                     >
-                      Origen: regla determinista local
+                      Origen: regla local versionada
                     </span>
                   </div>
                 </div>

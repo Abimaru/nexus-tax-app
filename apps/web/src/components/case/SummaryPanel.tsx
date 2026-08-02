@@ -74,7 +74,8 @@ export function SummaryPanel({
       <GlassPanel className="p-5">
         <h3 className="text-sm font-medium text-content">Agrupaciones tributarias iniciales</h3>
         <p className="mb-4 text-xs text-content-subtle">
-          Clasificación orientativa y determinista; no constituye el cálculo del Formulario 210.
+          Clasificación orientativa basada en reglas locales; no constituye una liquidación del
+          Formulario 210.
         </p>
         <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Metric label="Ingresos detectados" value={homogeneous.detectedIncome} />
