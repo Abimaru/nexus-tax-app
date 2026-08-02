@@ -1,5 +1,12 @@
 import Link from 'next/link';
-import { ArrowRight, FileSpreadsheet, ShieldCheck, Sparkles } from 'lucide-react';
+import {
+  FileSearch,
+  FileSpreadsheet,
+  FolderKanban,
+  Scale,
+  ShieldCheck,
+  Sparkles,
+} from 'lucide-react';
 import { APP_IDENTITY } from '@nexus-tax/config';
 import { Button, GlassPanel, PrivacyNotice } from '@nexus-tax/ui';
 import { RecentCases } from '@/components/home/RecentCases';
@@ -41,21 +48,29 @@ export default function HomePage() {
         <RecentCases />
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-3">
+      <section
+        aria-label="Capacidades actuales"
+        className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
+      >
         <FeatureCard
           icon={<ShieldCheck className="h-5 w-5" aria-hidden />}
-          title="Privado por diseño"
-          description="Tus archivos nunca se suben. Se procesan en este dispositivo y puedes borrar todo cuando quieras."
+          title="Privacidad local"
+          description="Tus archivos y decisiones permanecen en este navegador. NexusTax no requiere subir la información tributaria a un servidor."
         />
         <FeatureCard
-          icon={<FileSpreadsheet className="h-5 w-5" aria-hidden />}
-          title="Lectura de exógena"
-          description="Carga un Excel de información exógena y obtén registros normalizados, métricas y hallazgos."
+          icon={<FolderKanban className="h-5 w-5" aria-hidden />}
+          title="Expediente tributario"
+          description="Organiza exógena, entidades, documentos, requisitos, hechos, conciliaciones y hallazgos dentro de un mismo caso."
         />
         <FeatureCard
-          icon={<Sparkles className="h-5 w-5" aria-hidden />}
-          title={`Preparado para ${APP_IDENTITY.futureEngine}`}
-          description="Las reglas de conciliación evolucionarán hacia un motor extensible con revisión humana."
+          icon={<Scale className="h-5 w-5" aria-hidden />}
+          title="Aegis Engine"
+          description="Reglas deterministas, fuentes trazables y revisión humana para explicar cómo se clasifica y consolida cada valor."
+        />
+        <FeatureCard
+          icon={<FileSearch className="h-5 w-5" aria-hidden />}
+          title="Extracción documental asistida"
+          description="Convierte certificados en datos candidatos verificables, conservando la página y la evidencia original."
         />
       </section>
     </div>
@@ -76,9 +91,7 @@ function FeatureCard({
       <div className="text-tone-cyan">{icon}</div>
       <h3 className="mt-3 text-sm font-medium text-content-strong">{title}</h3>
       <p className="mt-1 text-sm text-content-muted">{description}</p>
-      <span className="mt-3 inline-flex items-center gap-1 text-xs text-content-subtle">
-        <ArrowRight className="h-3 w-3" aria-hidden /> Sprint 1
-      </span>
+      <span className="mt-3 inline-flex text-xs text-tone-emerald">Disponible localmente</span>
     </GlassPanel>
   );
 }
