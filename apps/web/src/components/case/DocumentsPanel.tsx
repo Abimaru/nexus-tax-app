@@ -99,6 +99,8 @@ export function DocumentsPanel({
       (coverage) => coverage.requirementId === requirement.id && coverage.status === 'covered',
     ),
   ).length;
+  const totalRequirementCount = result?.requirements.length ?? 0;
+  const pendingRequirementCount = Math.max(totalRequirementCount - coveredByOtherCount, 0);
 
   function toggleRequirement(id: string, checked: boolean) {
     setCovered((current) => (checked ? [...current, id] : current.filter((item) => item !== id)));
@@ -180,9 +182,18 @@ export function DocumentsPanel({
               </p>
             </div>
           </div>
-          <Badge tone="emerald">
-            <ShieldCheck className="h-3.5 w-3.5" /> Sin envíos de red
-          </Badge>
+          <div className="flex flex-wrap items-center gap-2">
+            {totalRequirementCount > 0 ? (
+              <Badge tone={pendingRequirementCount === 0 ? 'emerald' : 'amber'}>
+                {pendingRequirementCount === 0
+                  ? `Todos los ${totalRequirementCount} requisitos cubiertos`
+                  : `${pendingRequirementCount} de ${totalRequirementCount} requisitos por cubrir`}
+              </Badge>
+            ) : null}
+            <Badge tone="emerald">
+              <ShieldCheck className="h-3.5 w-3.5" /> Sin envíos de red
+            </Badge>
+          </div>
         </div>
 
         <div className="mt-4 flex items-start gap-2 rounded-xl border border-accent-cyan/25 bg-accent-cyan/5 p-3 text-xs text-content-muted">
