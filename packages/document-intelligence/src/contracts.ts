@@ -159,6 +159,54 @@ export interface ExtractionResult {
   pendingCandidateCount: number;
 }
 
+// Representación unificada de texto nativo y OCR (Fase C, Sprint 2.2). El
+// resto del motor documental (matching, adapters, laboratorio futuro) debe
+// poder operar sobre este contrato sin importar nunca Tesseract.js: la
+// orquestación del motor OCR vive en apps/web, aquí solo llega el resultado ya
+// calculado como datos planos.
+export type DocumentTokenMethod = 'native' | 'ocr';
+
+export interface UnifiedTextToken {
+  method: DocumentTokenMethod;
+  page: number;
+  text: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  /** Confianza técnica 0-100 (nunca una medida de precisión tributaria). */
+  confidence: number;
+  blockIndex?: number;
+  lineId?: string;
+  sectionId?: string;
+}
+
+export interface RawOcrToken {
+  text: string;
+  confidence: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export type TextSourceComparisonStatus =
+  | 'agree'
+  | 'ocr_complements'
+  | 'native_more_reliable'
+  | 'ocr_more_complete'
+  | 'contradiction'
+  | 'requires_review';
+
+export interface TextSourceComparison {
+  page: number;
+  status: TextSourceComparisonStatus;
+  primaryMethod: DocumentTokenMethod;
+  nativeText: string;
+  ocrText: string;
+  reasons: string[];
+}
+
 export interface DocumentEnrichmentProvider {
   readonly id: string;
   readonly version: string;
