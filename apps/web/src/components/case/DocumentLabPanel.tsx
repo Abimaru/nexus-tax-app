@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
 import {
   AlertTriangle,
   FlaskConical,
+  Layers,
   Loader2,
   ScanText,
   Sparkles,
@@ -15,6 +17,9 @@ import {
   TaxTreatmentSchema,
   type DocumentExtractionSession,
   type DocumentFactCandidate,
+  type DocumentKind,
+  type DocumentProfile,
+  type ExtractionFeedbackApplicability,
   type PdfDocumentDiagnosis,
   type PdfPageType,
   type UploadedDocument,
@@ -22,7 +27,9 @@ import {
 import {
   adjustContrast,
   compareTextSources,
+  computeDocumentProfileSignals,
   diagnosePdfDocument,
+  matchDocumentProfiles,
   ocrTokensFromRaw,
   parseColombianAmount,
   readPdfText,
@@ -39,14 +46,31 @@ import { CATEGORY_LABEL, NATURE_LABEL, TREATMENT_LABEL } from '@/lib/analysisPre
 import {
   MANUAL_CANDIDATE_FIELDS,
   MANUAL_CANDIDATE_FIELD_LABEL,
+  createDocumentProfile,
   createManualDocumentCandidate,
   getDocumentBinary,
+  listDocumentProfiles,
+  recordExtractionFeedback,
   type ManualCandidateField,
 } from '@/lib/repository';
 import { OcrClient, type OcrProgressEvent } from '@/lib/ocrClient';
 import { renderPdfPage } from '@/lib/pdfPageRenderer';
 import { rawImageToBlob } from '@/lib/canvasImage';
 import { pdfBlockToImageRect } from '@/lib/labGeometry';
+
+const MATCH_CONFIDENCE_LABEL: Record<'high' | 'medium' | 'low', string> = {
+  high: 'Alta',
+  medium: 'Media',
+  low: 'Baja',
+};
+
+const FEEDBACK_APPLICABILITY_LABEL: Record<ExtractionFeedbackApplicability, string> = {
+  this_document_only: 'Solo para este documento',
+  similar_documents: 'Sugerencia para documentos similares',
+  profile_update: 'Actualización de perfil',
+};
+
+const EMPTY_PROFILES: DocumentProfile[] = [];
 
 const PDFJS_URLS = {
   browserModuleUrl: '/vendor/pdfjs/pdf.mjs',
@@ -414,6 +438,13 @@ function DocumentLabWorkspace({
         </div>
       </GlassPanel>
 
+      <ProfileSuggestions
+        representation={representation}
+        documentKind={
+          session.classification?.correctedKind ?? session.classification?.proposedKind ?? 'other'
+        }
+      />
+
       <GlassPanel className="p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -728,6 +759,123 @@ function LabOverlay({
   );
 }
 
+function ProfileSuggestions({
+  representation,
+  documentKind,
+}: {
+  representation: DocumentRepresentation;
+  documentKind: DocumentKind;
+}) {
+  const profiles = useLiveQuery(() => listDocumentProfiles(), []) ?? EMPTY_PROFILES;
+  const signals = useMemo(
+    () => computeDocumentProfileSignals(representation),
+    [representation],
+  );
+  const matches = useMemo(
+    () => matchDocumentProfiles(signals, documentKind, profiles),
+    [signals, documentKind, profiles],
+  );
+  const [profileName, setProfileName] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [created, setCreated] = useState(false);
+
+  async function handleCreateProfile() {
+    const name = profileName.trim();
+    if (!name) return;
+    setCreating(true);
+    try {
+      await createDocumentProfile({
+        name,
+        documentKind,
+        entityId: null,
+        brandName: null,
+        signals,
+        expectedPageCount: signals.pageCount,
+        zones: [],
+        fields: [],
+        adapterId: null,
+        confidence: 'low',
+        origin: 'manual',
+      });
+      setCreated(true);
+      setProfileName('');
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  return (
+    <GlassPanel className="p-5">
+      <div className="flex items-center gap-2">
+        <Layers className="h-4 w-4 text-tone-cyan" aria-hidden />
+        <h3 className="text-sm font-semibold text-content-strong">Perfiles documentales</h3>
+      </div>
+      <p className="mt-1 text-xs text-content-muted">
+        Un perfil ayuda a reconocer el mismo formato en expedientes de otros años. Nunca se asocia
+        solo por el nombre del archivo, y activarlo siempre requiere confirmación.
+      </p>
+      {matches.length ? (
+        <ul className="mt-3 space-y-2">
+          {matches.map((match) => {
+            const profile = profiles.find((item) => item.id === match.profileId);
+            if (!profile) return null;
+            return (
+              <li
+                key={match.profileId}
+                className="rounded-lg border border-overlay/10 bg-overlay/5 p-3 text-xs"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-medium text-content-strong">{profile.name}</span>
+                  <Badge
+                    tone={
+                      match.confidence === 'high'
+                        ? 'emerald'
+                        : match.confidence === 'medium'
+                          ? 'amber'
+                          : 'neutral'
+                    }
+                  >
+                    Confianza {MATCH_CONFIDENCE_LABEL[match.confidence]}
+                  </Badge>
+                </div>
+                <ul className="mt-1.5 list-disc space-y-0.5 pl-4 text-content-subtle">
+                  {match.reasons.map((reason) => (
+                    <li key={reason}>{reason}</li>
+                  ))}
+                </ul>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <p className="mt-3 text-xs text-content-subtle">
+          No hay perfiles compatibles todavía para este tipo de documento.
+        </p>
+      )}
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <input
+          className="min-h-9 flex-1 rounded-lg border border-overlay/12 bg-overlay/5 px-3 py-1.5 text-xs text-content-strong"
+          placeholder="Nombre del perfil (ej. Certificado de saldos — Mi Banco)"
+          value={profileName}
+          onChange={(event) => setProfileName(event.target.value)}
+        />
+        <Button
+          variant="ghost"
+          disabled={creating || !profileName.trim()}
+          onClick={() => void handleCreateProfile()}
+        >
+          {creating ? 'Creando…' : 'Crear perfil desde este documento'}
+        </Button>
+      </div>
+      {created ? (
+        <p className="mt-2 text-xs text-tone-emerald">
+          Perfil creado en borrador. Pruébalo con documentos similares antes de activarlo.
+        </p>
+      ) : null}
+    </GlassPanel>
+  );
+}
+
 function ManualCandidatePanel({
   caseId,
   session,
@@ -749,6 +897,8 @@ function ManualCandidatePanel({
   const [nature, setNature] = useState<(typeof TaxNatureSchema.options)[number]>('unclassified');
   const [treatment, setTreatment] =
     useState<(typeof TaxTreatmentSchema.options)[number]>('requires_review');
+  const [applicability, setApplicability] =
+    useState<ExtractionFeedbackApplicability>('this_document_only');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -764,7 +914,7 @@ function ManualCandidatePanel({
     setSaving(true);
     setSaved(false);
     try {
-      await createManualDocumentCandidate({
+      const candidate = await createManualDocumentCandidate({
         caseId,
         documentId: session.documentId,
         extractionSessionId: session.id,
@@ -779,6 +929,21 @@ function ManualCandidatePanel({
         x: null,
         y: null,
         method: source,
+      });
+      await recordExtractionFeedback({
+        documentId: session.documentId,
+        extractionSessionId: session.id,
+        candidateId: candidate.id,
+        decision: 'field_selected',
+        reason: `Selección manual del campo "${MANUAL_CANDIDATE_FIELD_LABEL[field]}" en el laboratorio.`,
+        method: source,
+        adapterId: null,
+        profileId: null,
+        beforeValue: null,
+        afterValue: excerpt.slice(0, 160) || null,
+        page,
+        zoneId: null,
+        applicability,
       });
       setSaved(true);
       setConcept('');
@@ -901,6 +1066,24 @@ function ManualCandidatePanel({
           </select>
         </label>
       </div>
+      <label className="mt-3 block text-xs text-content-muted">
+        ¿Cómo quieres recordar esta decisión?
+        <select
+          className="mt-1 block min-h-10 w-full max-w-sm rounded-lg border border-overlay/12 bg-overlay/5 px-3 py-2 text-sm text-content-strong"
+          value={applicability}
+          onChange={(event) =>
+            setApplicability(event.target.value as ExtractionFeedbackApplicability)
+          }
+        >
+          {(
+            ['this_document_only', 'similar_documents', 'profile_update'] as const
+          ).map((option) => (
+            <option key={option} value={option}>
+              {FEEDBACK_APPLICABILITY_LABEL[option]}
+            </option>
+          ))}
+        </select>
+      </label>
       <div className="mt-4 flex items-center gap-3">
         <Button
           variant="secondary"
