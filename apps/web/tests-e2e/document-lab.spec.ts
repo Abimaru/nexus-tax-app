@@ -184,6 +184,20 @@ test('el laboratorio documental diagnostica, ejecuta OCR real y crea un candidat
   await expect(page.getByRole('heading', { name: 'Laboratorio documental' })).toBeVisible();
   await expect(page.getByText(/Documento: Textual/)).toBeVisible();
 
+  // Perfiles documentales: sin coincidencias todavía, se puede crear uno en
+  // borrador desde este documento (§14-15).
+  await expect(page.getByRole('heading', { name: 'Perfiles documentales' })).toBeVisible();
+  await expect(
+    page.getByText('No hay perfiles compatibles todavía para este tipo de documento.'),
+  ).toBeVisible();
+  await page
+    .getByPlaceholder('Nombre del perfil (ej. Certificado de saldos — Mi Banco)')
+    .fill('Certificado de saldos E2E');
+  await page.getByRole('button', { name: 'Crear perfil desde este documento' }).click();
+  await expect(
+    page.getByText('Perfil creado en borrador. Pruébalo con documentos similares antes de activarlo.'),
+  ).toBeVisible();
+
   await page.getByRole('button', { name: 'Avanzado' }).click();
   await page.getByRole('button', { name: 'Ejecutar OCR en esta página' }).click();
 
@@ -204,6 +218,9 @@ test('el laboratorio documental diagnostica, ejecuta OCR real y crea un candidat
   await page.getByRole('button', { name: 'Usar el texto de la página como punto de partida' }).click();
   await page.getByRole('textbox', { name: 'Concepto' }).fill('Saldo capturado en el laboratorio');
   await page.getByRole('spinbutton', { name: 'Valor' }).fill('900000');
+  await page
+    .getByLabel('¿Cómo quieres recordar esta decisión?')
+    .selectOption('similar_documents');
   await page.getByRole('button', { name: 'Crear candidato manual asistido' }).click();
   await expect(page.getByText('Candidato creado y listo para revisar.')).toBeVisible();
 
