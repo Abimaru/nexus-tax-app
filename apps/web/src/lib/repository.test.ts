@@ -40,6 +40,7 @@ import {
   saveRequirementSourceDecision,
   completeExtractionSession,
   createExtractionSession,
+  createManualDocumentCandidate,
   restoreDocumentCandidate,
   reviewDocumentCandidate,
   markDocumentObsolete,
@@ -972,6 +973,46 @@ describe('repositorio (IndexedDB local)', () => {
       candidateIds: [candidate.id],
     });
     expect(JSON.stringify(workspace.extractionSessions)).not.toMatch(/password|PDF sintético/);
+  });
+
+  it('crea un candidato manual desde el laboratorio y pasa por la revisión normal', async () => {
+    const created = await createCase({ alias: 'Laboratorio documental', taxYear: 2025 });
+    const document = await addCaseDocument(created.id, localFile('saldo.pdf', 'PDF'), {
+      kind: 'balance_certificate',
+      storageMode: 'store_locally',
+      taxYear: 2025,
+    });
+    const session = await createExtractionSession(created.id, document.id);
+    const candidate = await createManualDocumentCandidate({
+      caseId: created.id,
+      documentId: document.id,
+      extractionSessionId: session.id,
+      page: 2,
+      field: 'balance',
+      originalConcept: 'Saldo capturado manualmente',
+      extractedValue: 750_000,
+      category: 'asset',
+      nature: 'asset',
+      treatment: 'add_to_assets',
+      excerpt: 'Saldo al cierre: $ 750.000',
+      x: 12,
+      y: 34,
+      method: 'ocr',
+    });
+    expect(candidate.status).toBe('pending');
+    expect(candidate.adapterId).toBe('manual.lab');
+    expect(candidate.evidence.detectedLabel).toContain('Saldo');
+    expect(candidate.evidence.location).toContain('OCR');
+
+    const workspace = await getTaxCaseWorkspace(created.id);
+    expect(workspace.documentCandidates.map((item) => item.id)).toContain(candidate.id);
+
+    const fact = await reviewDocumentCandidate(candidate.id, {
+      action: 'confirm',
+      observation: 'Confirmado desde el laboratorio tras validar visualmente.',
+    });
+    expect(fact.captureMethod).toBe('assisted');
+    expect(fact.value).toBe(750_000);
   });
 
   it('exige justificar una corrección y crea un hecho asistido trazable', async () => {
