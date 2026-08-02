@@ -101,6 +101,13 @@ function makeScannedLikePdfFile(): string {
   return file;
 }
 
+function makeLabTextPdfFile(): string {
+  const dir = mkdtempSync(join(tmpdir(), 'nexustax-lab-text-'));
+  const file = join(dir, 'certificado-laboratorio.pdf');
+  writeFileSync(file, makeTextPdf(['CERTIFICADO DE SALDOS', 'Saldo al cierre: $ 900000']));
+  return file;
+}
+
 async function selectStage(page: import('@playwright/test').Page, name: string) {
   await page
     .getByRole('navigation', { name: 'Etapas del expediente' })
@@ -145,4 +152,77 @@ test('un PDF sin texto se lee y se diagnostica como escaneado, no se rechaza', a
     page.getByRole('heading', { name: 'escaneado-sin-texto-sintetico.pdf' }),
   ).toBeVisible();
   await expect(page.getByText('Lectura parcial').first()).toBeVisible();
+});
+
+test('el laboratorio documental diagnostica, ejecuta OCR real y crea un candidato manual', async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(120_000);
+  const samplePath = makeSampleFile();
+  const textPdfPath = makeLabTextPdfFile();
+
+  await page.goto('/');
+  await page.getByRole('link', { name: 'Crear expediente' }).first().click();
+  await page.getByLabel('Nombre o alias').fill('Expediente laboratorio OCR E2E');
+  await page.getByRole('button', { name: 'Crear expediente' }).click();
+
+  await expect(page).toHaveURL(/\/fuente\/cargar$/);
+  await page.setInputFiles('#exogenous-file-input', samplePath);
+  await expect(page).toHaveURL(/\/extraccion\/inspeccion$/);
+  await page.getByRole('button', { name: 'Reporte' }).click();
+  await page.getByRole('button', { name: /Procesar información/ }).click();
+  await expect(page).toHaveURL(/\/organizacion\/resumen$/, { timeout: 20_000 });
+
+  await selectView(page, 'Documentos');
+  await page.setInputFiles('#case-document-file', textPdfPath);
+  await page.getByLabel('Tipo documental').selectOption('balance_certificate');
+  await page.getByLabel(/Decisi.n de persistencia/).selectOption('store_locally');
+  await page.getByRole('button', { name: 'Registrar y analizar' }).click();
+  await expect(page).toHaveURL(/\/organizacion\/revision-documental$/);
+
+  await selectView(page, 'Laboratorio documental');
+  await expect(page.getByRole('heading', { name: 'Laboratorio documental' })).toBeVisible();
+  await expect(page.getByText(/Documento: Textual/)).toBeVisible();
+
+  await page.getByRole('button', { name: 'Avanzado' }).click();
+  await page.getByRole('button', { name: 'Ejecutar OCR en esta página' }).click();
+
+  await expect(page.getByText(/Coinciden|complementa|más confiable|más completo/)).toBeVisible({
+    timeout: 90_000,
+  });
+  await expect(page.getByAltText('Vista previa de la página renderizada')).toBeVisible();
+  await expect(page.getByLabel('Tokens nativos')).toBeVisible();
+
+  await page.screenshot({
+    path: testInfo.outputPath('laboratorio-avanzado-1280.png'),
+    fullPage: true,
+  });
+
+  // Selección manual de campo: crea un candidato asistido y no navega fuera.
+  await page.getByLabel('Fuente del texto').selectOption('native');
+  await page.getByLabel('Campo').selectOption('balance');
+  await page.getByRole('button', { name: 'Usar el texto de la página como punto de partida' }).click();
+  await page.getByRole('textbox', { name: 'Concepto' }).fill('Saldo capturado en el laboratorio');
+  await page.getByRole('spinbutton', { name: 'Valor' }).fill('900000');
+  await page.getByRole('button', { name: 'Crear candidato manual asistido' }).click();
+  await expect(page.getByText('Candidato creado y listo para revisar.')).toBeVisible();
+
+  // Responsive: se verifica sobre la misma vista antes de navegar a otra, para
+  // no depender del patrón de navegación móvil (combobox) en este spec.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect
+    .poll(() =>
+      page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth),
+    )
+    .toBe(true);
+  await page.screenshot({
+    path: testInfo.outputPath('laboratorio-390.png'),
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 1280, height: 720 });
+
+  await selectView(page, 'Revisión de extracción');
+  await expect(
+    page.getByRole('article', { name: 'Saldo capturado en el laboratorio', exact: true }),
+  ).toBeVisible();
 });
