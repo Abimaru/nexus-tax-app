@@ -95,7 +95,7 @@ export function EmptySourceIntro({ onManual }: { onManual: () => void }) {
       <div className="mt-5 flex flex-wrap justify-center gap-2">
         <label
           htmlFor="exogenous-file-input"
-          className="inline-flex min-h-10 cursor-pointer items-center rounded-lg bg-gradient-to-r from-accent-cyan to-accent-blue px-4 py-2 text-sm font-semibold text-slate-950 shadow-lg shadow-accent-blue/20 hover:brightness-110"
+          className="inline-flex min-h-10 cursor-pointer items-center rounded-lg bg-gradient-to-r from-accent-cyan to-accent-blue px-4 py-2 text-sm font-semibold text-content-on-accent shadow-lg shadow-accent-blue/20 hover:brightness-110"
         >
           Cargar información exógena
         </label>

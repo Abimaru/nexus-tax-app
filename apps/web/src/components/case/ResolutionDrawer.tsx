@@ -99,7 +99,7 @@ export function ResolutionDrawer({
 
   const common = { observation, justification };
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-slate-950/70" role="presentation">
+    <div className="fixed inset-0 z-50 flex justify-end bg-surface-base/80" role="presentation">
       <button
         type="button"
         className="absolute inset-0 cursor-default"
@@ -134,7 +134,9 @@ export function ResolutionDrawer({
         ) : null}
 
         <section className="mt-5 rounded-xl border border-overlay/8 p-4">
-          <h3 className="text-sm font-medium text-content-strong">Evidencia original — solo lectura</h3>
+          <h3 className="text-sm font-medium text-content-strong">
+            Evidencia original — solo lectura
+          </h3>
           <dl className="mt-3 grid gap-3 text-xs sm:grid-cols-2">
             <Data label="Entidad reportante" value={record.entityName ?? '—'} />
             <Data label="Identificación" value={maskDocument(record.reportingEntityDocument)} />

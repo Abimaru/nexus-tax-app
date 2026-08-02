@@ -26,6 +26,7 @@
   --content-strong: 248 250 252; /* slate-50 */
   --content-muted: 148 163 184; /* slate-400 */
   --content-subtle: 100 116 139; /* slate-500 */
+  --content-on-accent: 7 11 22;
 
   /* Halos de fondo */
   --halo-cyan: rgba(34, 211, 238, 0.1);
@@ -97,6 +98,15 @@
   :focus-visible {
     outline: 2px solid theme('colors.accent.cyan');
     outline-offset: 2px;
+  }
+
+  /* Windows pinta los <option> nativos con fondo claro si no se especifican.
+   * Estos colores semánticos mantienen legibles todos los desplegables en
+   * ambos temas, incluida la cobertura técnica documental. */
+  select option,
+  select optgroup {
+    background-color: rgb(var(--surface-raised));
+    color: rgb(var(--content-strong));
   }
 }
 

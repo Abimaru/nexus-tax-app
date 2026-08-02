@@ -538,7 +538,7 @@ const DOT_TONE_CLASS: Record<DotTone, string> = {
   rose: 'bg-rose-400',
   amber: 'bg-amber-400',
   cyan: 'bg-accent-cyan',
-  slate: 'bg-slate-500',
+  slate: 'bg-content-subtle',
 };
 
 /** Punto de estado: hace la lectura no dependiente solo del texto. */

@@ -36,6 +36,7 @@ const config: Config = {
           strong: 'rgb(var(--content-strong) / <alpha-value>)',
           muted: 'rgb(var(--content-muted) / <alpha-value>)',
           subtle: 'rgb(var(--content-subtle) / <alpha-value>)',
+          'on-accent': 'rgb(var(--content-on-accent) / <alpha-value>)',
         },
         // Tonos de estado tema-conscientes (texto/íconos/badges).
         tone: {
