@@ -147,6 +147,7 @@ export const DocumentFactCandidateSchema = z.object({
   possibleDuplicateIds: z.array(z.string()),
   suggestedRequirementIds: z.array(z.string()),
   suggestedExogenousMatches: z.array(CandidateExogenousMatchSchema),
+  selectedExogenousRecordId: z.string().nullable(),
   observation: z.string(),
   factId: z.string().nullable(),
   decisions: z.array(CandidateDecisionSchema),

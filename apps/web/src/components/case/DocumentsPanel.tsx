@@ -1,9 +1,10 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   Download,
   FileArchive,
+  FileSearch,
   HardDrive,
   Library,
   ShieldCheck,
@@ -27,6 +28,8 @@ import {
 } from '@/lib/presentationCatalogs';
 import { documentIcon, entityVisual, TONE_BOX_CLASS } from '@/lib/entityVisuals';
 import { FileDropzone } from '@/components/FileDropzone';
+import { processDocumentLocally } from '@/lib/documentProcessor';
+import type { DocumentProgressEvent } from '@nexus-tax/document-intelligence';
 import {
   addCaseDocument,
   getDocumentBinary,
@@ -42,6 +45,7 @@ export function DocumentsPanel({
   products,
   coverages,
   localBytes,
+  onExtractionReady,
 }: {
   caseId: string;
   taxYear: number;
@@ -50,6 +54,7 @@ export function DocumentsPanel({
   products: CaseProduct[];
   coverages: RequirementCoverage[];
   localBytes: number;
+  onExtractionReady?: () => void;
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [kind, setKind] = useState<(typeof DocumentKindSchema.options)[number]>(
@@ -63,6 +68,11 @@ export function DocumentsPanel({
   const [cutoffDate, setCutoffDate] = useState('');
   const [notes, setNotes] = useState('');
   const [requiresPassword, setRequiresPassword] = useState(false);
+  const [password, setPassword] = useState('');
+  const [analyzePdf, setAnalyzePdf] = useState(true);
+  const [progress, setProgress] = useState<DocumentProgressEvent | null>(null);
+  const [pendingDocument, setPendingDocument] = useState<UploadedDocument | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const [replacesDocumentId, setReplacesDocumentId] = useState('');
   const [covered, setCovered] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -89,8 +99,9 @@ export function DocumentsPanel({
     if (!file) return setError('Selecciona un archivo.');
     setSaving(true);
     setError(null);
+    let document = pendingDocument;
     try {
-      await addCaseDocument(caseId, file, {
+      document ??= await addCaseDocument(caseId, file, {
         kind,
         storageMode,
         entityIds: entityId ? [entityId] : [],
@@ -102,12 +113,30 @@ export function DocumentsPanel({
         replacesDocumentId: replacesDocumentId || undefined,
         coveredRequirementIds: covered,
       });
+      if (analyzePdf && document.extension === 'pdf') {
+        abortRef.current = new AbortController();
+        await processDocumentLocally({
+          document,
+          file,
+          password,
+          forcedKind: kind,
+          result,
+          signal: abortRef.current.signal,
+          onProgress: setProgress,
+        });
+        onExtractionReady?.();
+      }
       setFile(null);
       setNotes('');
       setCovered([]);
+      setPassword('');
+      setProgress(null);
+      setPendingDocument(null);
     } catch (caught) {
+      if (document) setPendingDocument(document);
       setError(caught instanceof Error ? caught.message : 'No fue posible registrar el documento.');
     } finally {
+      abortRef.current = null;
       setSaving(false);
     }
   }
@@ -158,8 +187,14 @@ export function DocumentsPanel({
             id="case-document-file"
             variant="document"
             file={file}
-            onSelect={setFile}
-            onRemove={() => setFile(null)}
+            onSelect={(selected) => {
+              setFile(selected);
+              setPendingDocument(null);
+            }}
+            onRemove={() => {
+              setFile(null);
+              setPendingDocument(null);
+            }}
             allowedExtensions={catalog.acceptedExtensions}
             accept={catalog.acceptedExtensions.map((extension) => `.${extension}`).join(',')}
             maxSizeBytes={25 * 1024 * 1024}
@@ -347,8 +382,52 @@ export function DocumentsPanel({
               checked={requiresPassword}
               onChange={(event) => setRequiresPassword(event.target.checked)}
             />{' '}
-            El archivo requiere contraseña (la contraseña no se solicita ni persiste)
+            El archivo requiere contraseña
           </label>
+
+          {file?.name.toLowerCase().endsWith('.pdf') ? (
+            <div className="space-y-3 rounded-xl border border-accent-violet/20 bg-accent-violet/5 p-4">
+              <label className="flex items-start gap-2 text-sm text-content">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 accent-accent-violet"
+                  checked={analyzePdf}
+                  onChange={(event) => setAnalyzePdf(event.target.checked)}
+                />
+                <span>
+                  Analizar PDF después de registrarlo
+                  <span className="mt-0.5 block text-xs text-content-muted">
+                    El PDF se leerá únicamente en este navegador. Revisarás cada valor antes de
+                    crear hechos.
+                  </span>
+                </span>
+              </label>
+              {requiresPassword && analyzePdf ? (
+                <Field label="Contraseña temporal">
+                  <input
+                    type="password"
+                    autoComplete="off"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    className={inputClass}
+                  />
+                  <span className="mt-1 block text-[11px] text-content-subtle">
+                    Solo vive en memoria durante este intento; no entra en IndexedDB ni en la
+                    exportación.
+                  </span>
+                </Field>
+              ) : null}
+              {progress ? (
+                <p
+                  role="status"
+                  className="inline-flex items-center gap-2 text-xs text-content-muted"
+                >
+                  <FileSearch className="h-4 w-4 text-tone-violet" aria-hidden />
+                  {progress.message}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
 
           {error ? (
             <p role="alert" className="text-sm text-tone-rose">
@@ -356,13 +435,24 @@ export function DocumentsPanel({
             </p>
           ) : null}
 
-          <div className="flex justify-end">
+          <div className="flex flex-wrap justify-end gap-2">
+            {saving && abortRef.current ? (
+              <Button type="button" variant="ghost" onClick={() => abortRef.current?.abort()}>
+                Cancelar lectura
+              </Button>
+            ) : null}
             <Button
               type="submit"
               disabled={saving || !file}
               leadingIcon={<Upload className="h-4 w-4" />}
             >
-              {saving ? 'Registrando…' : 'Registrar documento'}
+              {saving
+                ? progress
+                  ? 'Analizando localmente…'
+                  : 'Registrando…'
+                : analyzePdf && file?.name.toLowerCase().endsWith('.pdf')
+                  ? 'Registrar y analizar'
+                  : 'Registrar documento'}
             </Button>
           </div>
         </form>

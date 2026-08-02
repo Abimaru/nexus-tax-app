@@ -973,6 +973,27 @@ export async function listDocumentCandidates(caseId: string): Promise<DocumentFa
   return getDb().documentCandidates.where('caseId').equals(caseId).sortBy('updatedAt');
 }
 
+export async function correctExtractionClassification(
+  sessionId: string,
+  kind: DocumentClassification['proposedKind'],
+): Promise<void> {
+  const db = getDb();
+  const session = await db.extractionSessions.get(sessionId);
+  if (!session?.classification) throw new Error('La clasificación ya no está disponible.');
+  await db.extractionSessions.update(sessionId, {
+    classification: {
+      ...session.classification,
+      correctedKind: kind,
+      requiresReview: true,
+      supportingSignals: [
+        ...session.classification.supportingSignals,
+        'Tipo corregido por el analista.',
+      ],
+    },
+    updatedAt: nowIso(),
+  });
+}
+
 export interface ReviewDocumentCandidateInput {
   action: 'confirm' | 'reject' | 'informational' | 'duplicate';
   correctedValue?: number | null;
@@ -982,6 +1003,7 @@ export interface ReviewDocumentCandidateInput {
   entityId?: string | null;
   productId?: string | null;
   requirementIds?: string[];
+  exogenousRecordId?: string | null;
   observation?: string;
   author?: string;
 }
@@ -1082,6 +1104,10 @@ export async function reviewDocumentCandidate(
     proposedEntityId: input.entityId ?? candidate.proposedEntityId,
     proposedProductId: input.productId ?? candidate.proposedProductId,
     suggestedRequirementIds: input.requirementIds ?? candidate.suggestedRequirementIds,
+    selectedExogenousRecordId:
+      input.exogenousRecordId === undefined
+        ? candidate.selectedExogenousRecordId
+        : input.exogenousRecordId,
     status: nextStatus,
     observation,
     factId: fact?.id ?? null,

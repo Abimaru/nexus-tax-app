@@ -408,6 +408,7 @@ export function extractCandidates(
             possibleDuplicateIds: [],
             suggestedRequirementIds: [...(context.requirementIds ?? [])],
             suggestedExogenousMatches: [],
+            selectedExogenousRecordId: null,
             observation: '',
             factId: null,
             decisions: [],
