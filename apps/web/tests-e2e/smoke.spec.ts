@@ -83,6 +83,15 @@ function makeSampleFile(): string {
       50,
       null,
     ],
+    [
+      '901888999',
+      'Juegos Sintéticos SAS',
+      '1234567890',
+      'Persona Sintetica E2E',
+      'Premio de juego promocional',
+      2_500_000,
+      'Ganancia ocasional',
+    ],
   ]);
   data['!merges'] = [
     XLSX.utils.decode_range('A6:B6'),
@@ -180,7 +189,8 @@ test('flujo guiado completo del expediente', async ({ page }) => {
     page.getByRole('heading', { name: 'Ingresos laborales y empleadores' }),
   ).toBeVisible();
   await expect(page.getByLabel('Nombre del empleador')).toHaveValue('Empresa Empleadora SAS');
-  await expect(page.getByRole('heading', { name: /Formulario 220/ })).toHaveCount(0);
+  // El 220 aparece una sola vez dentro del grupo laboral, no como requisito genérico duplicado.
+  await expect(page.getByRole('heading', { name: /Formulario 220/ })).toHaveCount(1);
   await page.getByRole('button', { name: /Agregar otro empleador/ }).click();
   await expect(page.getByRole('heading', { name: 'Empleador 2' })).toBeVisible();
   await page.reload();
@@ -194,19 +204,22 @@ test('flujo guiado completo del expediente', async ({ page }) => {
   await expect(page.getByText('Beneficio preliminar 1 %')).toBeVisible();
 
   await selectView(page, 'Hallazgos');
-  const unresolved = page.locator('li').filter({ hasText: 'unclassified_tax_record' }).first();
+  const unresolved = page
+    .locator('li')
+    .filter({ has: page.getByRole('button', { name: 'Ver registro afectado' }) })
+    .first();
   await unresolved.getByRole('button', { name: 'Ver registro afectado' }).click();
   await expect(page.getByRole('dialog', { name: /Resolver clasificaci.n/ })).toBeVisible();
   await page
     .getByLabel(/Justificaci.n/)
     .fill('Revision sintetica E2E: se conserva solo como dato informativo.');
   await page.getByRole('button', { name: 'Marcar informativo' }).click();
-  await expect(page.getByText(/Resuelto: analyst modified/).first()).toBeVisible();
+  await expect(page.getByText(/Resuelto: Modificado por el analista/).first()).toBeVisible();
   await page.getByRole('button', { name: /Cerrar panel de resoluci.n/ }).click();
 
   await page.reload();
   await expect(page).toHaveURL(/\/conciliacion\/hallazgos$/);
-  await expect(page.getByText(/Resuelto: analyst modified/).first()).toBeVisible();
+  await expect(page.getByText(/Resuelto: Modificado por el analista/).first()).toBeVisible();
 
   await selectStage(page, 'Declaración');
   await expect(
@@ -235,11 +248,30 @@ test('flujo guiado completo del expediente', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Registrar valores manualmente' })).toBeVisible();
   await page.getByLabel('Concepto original').fill('Saldo cuenta bancaria certificado');
   await page.getByLabel('Valor documental').fill('1250000');
+  await page.getByRole('button', { name: /Clasificación tributaria/ }).click();
   await page.getByLabel(/Categor.a normalizada/).selectOption('asset');
   await page.getByLabel(/^Naturaleza/).selectOption('asset');
   await page.getByLabel(/^Tratamiento/).selectOption('add_to_assets');
   await page.getByRole('button', { name: 'Guardar hecho' }).click();
   await expect(page.getByText('Saldo cuenta bancaria certificado')).toBeVisible();
+
+  await page
+    .getByRole('button', { name: 'Usar valor de la exógena provisionalmente' })
+    .first()
+    .click();
+  const recordSelect = page.getByLabel('Registro exógeno');
+  const prizeValue = await recordSelect
+    .locator('option')
+    .filter({ hasText: 'Premio' })
+    .getAttribute('value');
+  await recordSelect.selectOption(prizeValue!);
+  await page.getByLabel('Motivo').selectOption('validated_by_holder');
+  await page.getByLabel('¿Reconoces esta operación?').selectOption('own_prize');
+  await page
+    .getByLabel('Observación', { exact: true })
+    .fill('El titular reconoce el premio exclusivamente sintético.');
+  await page.getByRole('button', { name: 'Aceptar provisionalmente' }).click();
+  await expect(page.getByText('Aceptado provisionalmente')).toBeVisible();
 
   await page.reload();
   await expect(page).toHaveURL(/\/organizacion\/hechos$/);
@@ -254,7 +286,7 @@ test('flujo guiado completo del expediente', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Exportar manifiesto JSON' })).toBeVisible();
 });
 
-test('stepper responsive sin desbordamiento horizontal', async ({ page }) => {
+test('stepper responsive sin desbordamiento horizontal', async ({ page }, testInfo) => {
   await page.goto('/');
   await page.getByRole('link', { name: 'Crear expediente' }).first().click();
   await page.getByLabel('Nombre o alias').fill('Expediente responsive E2E');
@@ -278,6 +310,20 @@ test('stepper responsive sin desbordamiento horizontal', async ({ page }) => {
           .getByRole('navigation', { name: 'Etapas del expediente' })
           .getByRole('button', { name: /Fuente/ }),
       ).toBeVisible();
+    }
+    if (width === 1440 || width === 390) {
+      await page.screenshot({
+        path: testInfo.outputPath(`expediente-${width}.png`),
+        fullPage: true,
+      });
+    }
+    if (width === 1440) {
+      await page.getByRole('button', { name: 'Cambiar a modo claro' }).click();
+      await page.screenshot({
+        path: testInfo.outputPath('expediente-1440-claro.png'),
+        fullPage: true,
+      });
+      await page.getByRole('button', { name: 'Cambiar a modo oscuro' }).click();
     }
   }
 });

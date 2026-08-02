@@ -35,6 +35,9 @@ import {
   markWorkflowViewCompleted,
   removeExogenousSource,
   saveCaseNavigation,
+  acceptExogenousValue,
+  confirmAcceptedExogenousValue,
+  saveRequirementSourceDecision,
 } from './repository';
 import { buildTaxCaseManifest } from './taxCaseAnalysis';
 
@@ -81,6 +84,21 @@ function employmentResult(employers = 1, conceptsPerEmployer = 1): ProcessingRes
     'laboral.xlsx',
     1,
     { sheetName: 'Datos' },
+  );
+}
+
+function prizeResult(): ProcessingResult {
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet([
+    ['NIT', 'Nombre', 'Concepto', 'Valor'],
+    ['901000111', 'Juegos Sintéticos SAS', 'Premio de juego promocional', 2_500_000],
+  ]);
+  XLSX.utils.book_append_sheet(wb, ws, 'Premios');
+  return processWorkbookFile(
+    XLSX.write(wb, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer,
+    'premio-sintetico.xlsx',
+    1,
+    { sheetName: 'Premios' },
   );
 }
 
@@ -411,7 +429,10 @@ describe('repositorio (IndexedDB local)', () => {
       reconciliations: workspace.reconciliations,
       employmentGroup: workspace.employmentGroup,
       navigation: workspace.navigation,
+      acceptedSources: workspace.acceptedSources,
+      requirementSourceDecisions: workspace.requirementSourceDecisions,
     });
+    expect(manifest.schemaVersion).toBe('2.0.3');
     expect(manifest.includesBinaryData).toBe(false);
     expect(JSON.stringify(manifest)).not.toContain('secreto sintetico');
     expect(JSON.stringify(manifest)).not.toContain('bytes');
@@ -632,5 +653,183 @@ describe('repositorio (IndexedDB local)', () => {
     expect(workspace.documents).toHaveLength(1);
     expect(workspace.facts).toHaveLength(1);
     expect(workspace.navigation).toMatchObject({ lastStage: 'fuente', lastView: 'cargar' });
+  });
+
+  it('acepta provisionalmente un premio propio con trazabilidad y sin duplicarlo', async () => {
+    const created = await createCase({ alias: 'Premio propio sintético', taxYear: 2025 });
+    const result = prizeResult();
+    await saveResult(created.id, result);
+    const matrixBeforeAcceptance = JSON.stringify(
+      (await getTaxCaseWorkspace(created.id)).analysis!.matrix,
+    );
+    const record = result.normalizedRecords[0]!;
+    const accepted = await acceptExogenousValue(created.id, {
+      exogenousRecordId: record.id,
+      requirementId: result.requirements[0]?.id ?? null,
+      entityId: result.entities[0]?.id ?? null,
+      reason: 'validated_by_holder',
+      observation: 'El titular reconoce el premio sintético.',
+      includedInMatrix: true,
+      occasionalGainRecognition: 'own_prize',
+      beneficiaryAlias: null,
+    });
+    expect(accepted).toMatchObject({
+      status: 'provisionally_accepted',
+      primarySource: 'exogenous_information',
+      provisionalValue: 2_500_000,
+      includedInMatrix: true,
+    });
+    expect(accepted.history).toHaveLength(1);
+    const workspace = await getTaxCaseWorkspace(created.id);
+    expect(JSON.stringify(workspace.analysis!.matrix)).toBe(matrixBeforeAcceptance);
+    const manifest = buildTaxCaseManifest({
+      taxCase: workspace.taxCase!,
+      result: workspace.result,
+      analysis: workspace.analysis,
+      documents: workspace.documents,
+      products: workspace.products,
+      coverages: workspace.coverages,
+      facts: workspace.facts,
+      reconciliations: workspace.reconciliations,
+      acceptedSources: workspace.acceptedSources,
+      requirementSourceDecisions: workspace.requirementSourceDecisions,
+    });
+    expect(manifest.acceptedSources[0]).toMatchObject({
+      originalValue: 2_500_000,
+      provisionalValue: 2_500_000,
+      reason: 'validated_by_holder',
+      ruleVersion: 'accepted-exogenous-v1',
+    });
+  });
+
+  it('mantiene pendiente un premio cobrado para un tercero y exige explicación', async () => {
+    const created = await createCase({ alias: 'Premio de tercero', taxYear: 2025 });
+    const result = prizeResult();
+    await saveResult(created.id, result);
+    const recordId = result.normalizedRecords[0]!.id;
+    await expect(
+      acceptExogenousValue(created.id, {
+        exogenousRecordId: recordId,
+        requirementId: null,
+        entityId: null,
+        reason: 'document_unavailable',
+        observation: '',
+        includedInMatrix: true,
+        occasionalGainRecognition: 'collected_for_third_party',
+        beneficiaryAlias: 'familiar A',
+      }),
+    ).rejects.toThrow(/Explica/);
+    const accepted = await acceptExogenousValue(created.id, {
+      exogenousRecordId: recordId,
+      requirementId: null,
+      entityId: null,
+      reason: 'document_unavailable',
+      observation: 'Cobro realizado para un tercero identificado solo por alias.',
+      includedInMatrix: true,
+      occasionalGainRecognition: 'collected_for_third_party',
+      beneficiaryAlias: 'familiar A',
+    });
+    expect(accepted).toMatchObject({ status: 'pending_review', includedInMatrix: false });
+  });
+
+  it('confirma la aceptación y conserva el historial', async () => {
+    const created = await createCase({ alias: 'Confirmación', taxYear: 2025 });
+    const result = sampleResult();
+    await saveResult(created.id, result);
+    const accepted = await acceptExogenousValue(created.id, {
+      exogenousRecordId: result.normalizedRecords[0]!.id,
+      requirementId: null,
+      entityId: null,
+      reason: 'validated_by_holder',
+      observation: 'Validación sintética.',
+      includedInMatrix: true,
+      occasionalGainRecognition: null,
+      beneficiaryAlias: null,
+    });
+    await confirmAcceptedExogenousValue(accepted.id);
+    expect((await getTaxCaseWorkspace(created.id)).acceptedSources[0]).toMatchObject({
+      status: 'analyst_confirmed',
+      history: expect.arrayContaining([expect.objectContaining({ action: 'analyst_confirmed' })]),
+    });
+  });
+
+  it('registra un requisito no emitido sin marcarlo como no aplica', async () => {
+    const created = await createCase({ alias: 'Soporte no emitido', taxYear: 2025 });
+    const result = financialResult();
+    await saveResult(created.id, result);
+    const requirement = result.requirements[0]!;
+    await saveRequirementSourceDecision(created.id, {
+      requirementId: requirement.id,
+      status: 'justified_unavailable',
+      reason: 'La entidad no expide el certificado.',
+      managedAt: '2026-08-01',
+      channel: 'portal',
+      observation: 'Consulta sintética en portal.',
+      evidenceDocumentId: null,
+      acceptedSourceId: null,
+    });
+    const workspace = await getTaxCaseWorkspace(created.id);
+    expect(workspace.requirementSourceDecisions[0]?.status).toBe('justified_unavailable');
+    expect(workspace.coverages.find((item) => item.requirementId === requirement.id)?.status).toBe(
+      'not_evaluated',
+    );
+  });
+
+  it('un documento posterior respalda o contradice sin borrar la aceptación', async () => {
+    const created = await createCase({ alias: 'Soporte posterior', taxYear: 2025 });
+    const result = financialResult();
+    await saveResult(created.id, result);
+    const record = result.normalizedRecords[0]!;
+    const accepted = await acceptExogenousValue(created.id, {
+      exogenousRecordId: record.id,
+      requirementId: null,
+      entityId: result.entities[0]?.id ?? null,
+      reason: 'document_unavailable',
+      observation: 'Pendiente de certificado.',
+      includedInMatrix: true,
+      occasionalGainRecognition: null,
+      beneficiaryAlias: null,
+    });
+    const document = await addCaseDocument(created.id, localFile('saldo.pdf', 'saldo'), {
+      kind: 'balance_certificate',
+      storageMode: 'metadata_only',
+      taxYear: 2025,
+    });
+    const fact = await saveDocumentFact(created.id, {
+      documentId: document.id,
+      entityId: result.entities[0]?.id ?? null,
+      productId: null,
+      originalConcept: 'Saldo certificado',
+      category: record.category,
+      nature: record.nature,
+      treatment: record.treatment,
+      value: record.reportedValue!,
+      currency: 'COP',
+      cutoffDate: null,
+      period: '',
+      pageOrSection: '1',
+      evidence: 'Fixture sintético',
+      captureMethod: 'manual',
+      confidence: 'high',
+      reviewStatus: 'confirmed',
+      requirementIds: [],
+      author: 'Analista local',
+    });
+    await savePreliminaryReconciliation(created.id, {
+      factIds: [fact.id],
+      exogenousRecordIds: [record.id],
+      status: 'reconciled',
+      exogenousValue: record.reportedValue!,
+      documentaryValue: fact.value,
+      productId: null,
+      explanation: 'Valores iguales.',
+      analystDecision: 'Documento sintético confirmado.',
+      suggestionScore: 100,
+      suggestionSignals: ['valor igual'],
+      confirmedByHuman: true,
+    });
+    const supported = (await getTaxCaseWorkspace(created.id)).acceptedSources[0]!;
+    expect(supported).toMatchObject({ id: accepted.id, status: 'supported_by_document' });
+    expect(supported.history).toHaveLength(2);
   });
 });

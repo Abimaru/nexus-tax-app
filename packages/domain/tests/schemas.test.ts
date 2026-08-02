@@ -8,6 +8,8 @@ import {
   ExogenousReportStructureSchema,
   EmploymentIncomeGroupSchema,
   TaxYearSchema,
+  AcceptedExogenousValueSchema,
+  RequirementSourceDecisionSchema,
 } from '../src/index';
 
 describe('esquemas de dominio', () => {
@@ -137,5 +139,59 @@ describe('esquemas de dominio', () => {
         instances: [...group.instances, { ...instance, id: 'employer:4' }],
       }).success,
     ).toBe(false);
+  });
+
+  it('valida una aceptación exógena provisional con historial', () => {
+    const parsed = AcceptedExogenousValueSchema.safeParse({
+      id: 'accepted:1',
+      caseId: 'case:1',
+      exogenousRecordId: 'record:1',
+      requirementId: null,
+      entityId: null,
+      primarySource: 'exogenous_information',
+      secondarySources: ['analyst_resolution'],
+      captureMethod: 'analyst_resolution',
+      confidence: 'medium',
+      status: 'provisionally_accepted',
+      reason: 'validated_by_holder',
+      observation: 'Fixture sintético.',
+      originalConcept: 'Premio sintético',
+      originalValue: 100,
+      provisionalValue: 100,
+      category: 'occasional_gain',
+      taxGroup: 'occasional_gain',
+      source: { sheet: 'Premios', row: 2 },
+      includedInMatrix: true,
+      documentId: null,
+      replacementDecisionId: null,
+      occasionalGainRecognition: 'own_prize',
+      beneficiaryAlias: null,
+      ruleVersion: 'accepted-exogenous-v1',
+      author: 'Analista local',
+      createdAt: '2026-08-01T00:00:00.000Z',
+      updatedAt: '2026-08-01T00:00:00.000Z',
+      history: [],
+    });
+    expect(parsed.success).toBe(true);
+  });
+
+  it('distingue un requisito no emitido de no aplica', () => {
+    expect(
+      RequirementSourceDecisionSchema.safeParse({
+        id: 'decision:1',
+        caseId: 'case:1',
+        requirementId: 'requirement:1',
+        status: 'justified_unavailable',
+        reason: 'La entidad no emite el soporte.',
+        managedAt: '2026-08-01',
+        channel: 'portal',
+        observation: '',
+        evidenceDocumentId: null,
+        acceptedSourceId: null,
+        author: 'Analista local',
+        createdAt: '2026-08-01T00:00:00.000Z',
+        updatedAt: '2026-08-01T00:00:00.000Z',
+      }).success,
+    ).toBe(true);
   });
 });
