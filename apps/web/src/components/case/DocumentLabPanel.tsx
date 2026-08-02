@@ -39,6 +39,7 @@ import {
   matchDocumentProfiles,
   ocrTokensFromRaw,
   parseColombianAmount,
+  PdfReadError,
   readPdfText,
   recommendOcrPages,
   toGrayscale,
@@ -319,6 +320,15 @@ function DocumentLabWorkspace({
   const [improveContrast, setImproveContrast] = useState(false);
   const [selectedZone, setSelectedZone] = useState<DocumentProfileZone | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  /**
+   * Contraseña temporal del PDF: se conserva solo en memoria mientras dura la
+   * sesión del laboratorio. Nunca se persiste (política de privacidad).
+   */
+  const [pdfPassword, setPdfPassword] = useState<string | null>(null);
+  /** true si necesitamos que el usuario introduzca la contraseña para leer/OCR. */
+  const [passwordRequired, setPasswordRequired] = useState(false);
+  const [passwordDraft, setPasswordDraft] = useState('');
+  const [passwordIncorrect, setPasswordIncorrect] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -334,24 +344,42 @@ function DocumentLabWorkspace({
     };
   }, [document?.id, session.documentId]);
 
+  // Si el documento fue registrado con contraseña, exige que la persona la
+  // introduzca antes incluso de intentar la primera lectura. La contraseña
+  // no se persiste; solo se guarda en memoria del componente.
   useEffect(() => {
-    if (!bytes) return;
+    if (document?.requiresPassword && !pdfPassword && !passwordRequired) {
+      setPasswordRequired(true);
+    }
+  }, [document?.requiresPassword, pdfPassword, passwordRequired]);
+
+  useEffect(() => {
+    if (!bytes || passwordRequired) return;
     let cancelled = false;
-    readPdfText(bytes, PDFJS_URLS)
+    readPdfText(bytes, { ...PDFJS_URLS, password: pdfPassword ?? undefined })
       .then((result) => {
-        if (!cancelled) setRepresentation(result);
+        if (cancelled) return;
+        setRepresentation(result);
+        setPasswordIncorrect(false);
       })
       .catch((error: unknown) => {
-        if (!cancelled) {
-          setLoadError(
-            error instanceof Error ? error.message : 'No fue posible leer el PDF localmente.',
-          );
+        if (cancelled) return;
+        // Distinguimos error de contraseña para no ocultarlo tras un texto genérico.
+        const code = error instanceof PdfReadError ? error.code : null;
+        if (code === 'password_required' || code === 'incorrect_password') {
+          setPasswordIncorrect(code === 'incorrect_password');
+          setPasswordRequired(true);
+          setPdfPassword(null);
+          return;
         }
+        setLoadError(
+          error instanceof Error ? error.message : 'No fue posible leer el PDF localmente.',
+        );
       });
     return () => {
       cancelled = true;
     };
-  }, [bytes]);
+  }, [bytes, pdfPassword, passwordRequired]);
 
   useEffect(() => {
     if (targetPage && targetPage <= (session.pageCount || Number.MAX_SAFE_INTEGER)) {
@@ -395,6 +423,7 @@ function DocumentLabWorkspace({
       const rendered = await renderPdfPage(bytes, page, {
         scale: renderScale,
         signal: controller.signal,
+        password: pdfPassword ?? undefined,
       });
       const displayBlob = await rawImageToBlob(rendered);
       const imageUrl = URL.createObjectURL(displayBlob);
@@ -484,6 +513,58 @@ function DocumentLabWorkspace({
         title="Este documento no conservó su binario local"
         description="El laboratorio necesita el archivo original para renderizar páginas y ejecutar OCR. Vuelve a registrarlo con la opción de conservar el binario si necesitas calibrarlo."
       />
+    );
+  }
+  // Gate de contraseña: se muestra antes de intentar cualquier lectura u OCR,
+  // ya sea porque el documento fue registrado con requiresPassword=true o porque
+  // el intento anterior devolvió password_required / incorrect_password.
+  if (passwordRequired) {
+    return (
+      <GlassPanel className="p-6">
+        <div className="flex items-start gap-3">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-amber-400/10 text-tone-amber">
+            <AlertTriangle className="h-5 w-5" aria-hidden />
+          </span>
+          <div className="flex-1">
+            <h3 className="text-sm font-semibold text-content-strong">
+              Este PDF requiere contraseña
+            </h3>
+            <p className="mt-1 text-xs text-content-muted">
+              La contraseña se usa solo para abrir el documento en esta sesión y{' '}
+              <span className="font-medium">nunca se guarda</span>. Sin ella no es posible leer el
+              texto ni ejecutar OCR local.
+            </p>
+            {passwordIncorrect ? (
+              <p role="alert" className="mt-2 text-xs text-tone-rose">
+                La contraseña anterior no era correcta. Intenta de nuevo.
+              </p>
+            ) : null}
+            <form
+              className="mt-3 flex flex-wrap gap-2"
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (!passwordDraft) return;
+                setPdfPassword(passwordDraft);
+                setPasswordDraft('');
+                setPasswordRequired(false);
+              }}
+            >
+              <input
+                type="password"
+                autoComplete="off"
+                value={passwordDraft}
+                onChange={(event) => setPasswordDraft(event.target.value)}
+                placeholder="Contraseña del PDF"
+                aria-label="Contraseña del PDF"
+                className="min-h-10 flex-1 min-w-[220px] rounded-lg border border-overlay/12 bg-overlay/5 px-3 py-2 text-sm text-content-strong"
+              />
+              <Button type="submit" disabled={!passwordDraft}>
+                Desbloquear
+              </Button>
+            </form>
+          </div>
+        </div>
+      </GlassPanel>
     );
   }
   if (loadError) {
