@@ -1,6 +1,6 @@
-# Handoff del proyecto — NexusTax (Sprint 1)
+# Handoff del proyecto — NexusTax (Sprint 2.3)
 
-_Última actualización: 2026-07-31._
+_Última actualización: 2026-08-02._
 
 ## 1. Estado actual
 
@@ -982,3 +982,50 @@ El estado vigente, la validación final y el siguiente paso se consolidan en la 
   separarlo en diagnóstico, OCR, overlay, perfiles y candidato manual sin cambiar comportamiento.
 - Ampliar el corpus con más emisores sintéticos y medir por separado renderizado, carga de worker y
   reconocimiento antes de ofrecer nuevas optimizaciones.
+
+## 21. Entrega Sprint 2.3 — centro de resolución y borrador 210 (2026-08-02)
+
+### Estado entregado
+
+- Nuevo `TaxResolutionDecision` inmutable: decisiones por registro, matriz, conciliación, candidato,
+  requisito y casilla, con motivo, evidencia, versión y reversión por evento compensatorio.
+- Centro de resolución operativo con alternativas compatibles, navegación a evidencia, prioridad
+  bloqueante y estados completamente localizados al español.
+- Política central de conciliación `co.form210.reconciliation.2025.v1`: igualdad, redondeo según
+  unidad $1/$5, diferencia menor y relevante. Las sugerencias débiles no se confirman como acción
+  primaria.
+- Ganancias ocasionales separadas del ingreso ordinario; aportes obligatorios de salud/pensión se
+  proponen como no constitutivos solo bajo contexto laboral explícito.
+- Nuevo paquete puro `@nexus-tax/form-210`: ruleset AG 2025/presentación 2026, casillas 29–42,
+  58–67, 74–84, 99–104, 112–115 y 130–132, fórmulas seguras, procedencia, validaciones y JSON.
+- Dexie v11 agrega `resolutionDecisions` y `form210Drafts`; el derivado se reconstruye al cambiar
+  fuente, hecho, aceptación o decisión. Eliminación de expediente y limpieza total cubren tablas.
+- UI de borrador con aviso “no presentado ante la DIAN”, secciones, trazabilidad desplegable,
+  ajustes motivados, restauración y exportación. Manifiesto actualizado a 2.3.0 sin binarios.
+
+### Decisiones de alcance
+
+- El ruleset solo calcula fórmulas marcadas completas. Casillas sin regla cerrada quedan explícitas
+  como incompletas; no se aproximan límites, deducciones, rentas exentas ni impuesto.
+- El borrador es una hoja de trabajo local. Firma, liquidación definitiva, presentación,
+  autenticación y conexión con la DIAN siguen fuera de alcance.
+- Las fuentes oficiales se verificaron al construir la versión y se incluyen como metadatos; la app
+  no consulta internet durante el uso normal.
+
+### Validación exacta
+
+| Paso             | Resultado                                                                               |
+| ---------------- | --------------------------------------------------------------------------------------- |
+| `pnpm typecheck` | OK; 8 de 9 proyectos, 0 errores                                                         |
+| `pnpm lint`      | OK; 0 warnings / 0 errores                                                              |
+| `pnpm test`      | OK; 239/239 (15 dominio, 26 Aegis, 66 documental, 47 parser, 5 form-210, 80 web)        |
+| `pnpm build`     | OK; compilación Next.js y 7 rutas                                                       |
+| `pnpm test:e2e`  | OK; 4/4 Chromium; centro, ajuste persistente, export JSON, OCR y responsive 390–1440 px |
+
+### Pendientes y siguiente paso
+
+- Completar, con validación normativa independiente, las reglas hoy marcadas parciales del
+  Formulario 210 y ampliar pruebas sintéticas de pensiones/dividendos/deducciones.
+- Consolidar las resoluciones históricas de clasificación y el nuevo evento transversal bajo una
+  única proyección de lectura, sin migración destructiva.
+- Realizar validación tributaria manual de las fórmulas implementadas antes de ampliar el ruleset.

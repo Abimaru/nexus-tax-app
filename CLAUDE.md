@@ -11,7 +11,8 @@ la declaración de renta de persona natural. Hoy ya **clasifica** cada registro,
 construye una **matriz de análisis** con conciliación preliminar contra topes y
 **evalúa de forma orientativa** la obligación de declarar (AG 2025) con reglas
 versionadas. Todo es **orientativo y sujeto a revisión humana**: **no** presenta
-ante la DIAN ni liquida el impuesto (no calcula el Formulario 210). Motor de
+ante la DIAN ni liquida el impuesto. El Formulario 210 implementado es un
+borrador de trabajo preliminar y trazable, no una declaración. Motor de
 reglas: **Aegis Engine** (`packages/aegis-rules`).
 
 ## Principios inviolables
@@ -72,6 +73,10 @@ reglas: **Aegis Engine** (`packages/aegis-rules`).
   confirmación explícita. El feedback de calibración registra el alcance que
   elige el analista (solo el documento / similares / actualización de perfil).
 - **Persistencia local** en IndexedDB y **exportación JSON** versionada.
+- **Centro de resolución**: consolida tareas bloqueantes/no bloqueantes y registra
+  decisiones inmutables, motivadas, evidenciadas y reversibles.
+- **Borrador Formulario 210 AG 2025**: `packages/form-210` compone casillas,
+  procedencia, fórmulas seguras y validaciones sin liquidar impuesto ni presentar.
 
 ## Límites de arquitectura (no cruzar)
 
@@ -88,6 +93,7 @@ reglas: **Aegis Engine** (`packages/aegis-rules`).
 - La **matriz y las resoluciones** se calculan en el paquete puro; la web solo
   **persiste la superposición** del analista y **re-invoca** el cálculo puro.
   React presenta; no contiene reglas tributarias.
+- `packages/form-210` es puro y versionado; no accede a React, Dexie, DOM ni red.
 - `packages/ui` es **solo presentación**.
 - `apps/api` está **reservado**: no agregar lógica backend todavía.
 
@@ -97,8 +103,8 @@ reglas: **Aegis Engine** (`packages/aegis-rules`).
 - Componentes pequeños; funciones puras cuando sea posible.
 - Manejo explícito de errores y de los estados vacío / carga / éxito / fallo.
 - Nombres claros en español para el dominio; sin código muerto.
-- **Sin datos simulados presentados como reales**; **sin liquidación del
-  impuesto** (no calcular el Formulario 210).
+- **Sin datos simulados presentados como reales**; **sin liquidación definitiva
+  del impuesto** ni presentación del Formulario 210.
 - **Tema claro/oscuro**: usa **tokens semánticos** de Tailwind
   (`surface`, `overlay`, `content`, `tone-*`), definidos por variables CSS en
   `globals.css`. **No** uses `text-slate-*`, `bg-white/x` ni `border-white/x`
@@ -151,6 +157,8 @@ pnpm install · pnpm dev · pnpm build · pnpm lint · pnpm typecheck · pnpm te
 `SECURITY_PRIVACY.md`, `ROADMAP.md`, `LOCAL_OCR.md`, `OCR_SECURITY.md`,
 `OCR_PERFORMANCE.md`, `DOCUMENT_LAB.md`, `DOCUMENT_PROFILES.md`,
 `EXTRACTION_FEEDBACK.md`,
+`RESOLUTION_CENTER.md`, `FORM_210_MODEL.md`, `FORM_210_RULESET_2025.md`,
+`FORM_210_TRACEABILITY.md`, `FORM_210_VALIDATION.md`,
 `PROJECT_HANDOFF.md`.
 Convenciones de cambios: `COMMIT_CONVENTIONS.md`. Validacion reproducible:
 `SPRINT_2_VALIDATION.md`.

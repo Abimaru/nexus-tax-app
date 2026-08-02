@@ -24,3 +24,10 @@ Antes de cerrar cualquier funcionalidad visual se verifica:
 
 Las capturas son artefactos locales de Playwright y no deben contener datos
 reales ni agregarse al repositorio.
+
+### Verificación Sprint 2.3
+
+Centro de resolución y borrador 210 reutilizan `GlassPanel`, badges, botones y tokens semánticos;
+presentan estados en español, requieren motivo para decisiones, mantienen foco visible y no usan
+color como única señal. Playwright cubre navegación, persistencia de ajuste, exportación JSON y
+ausencia de desbordamiento horizontal a 390–1440 px.

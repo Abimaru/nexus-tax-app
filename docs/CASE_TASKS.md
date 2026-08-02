@@ -23,3 +23,13 @@ lista se ordena por prioridad y luego por título para mantener determinismo.
 tarea activa de mayor prioridad, muestra cuántas quedan y coloca foco en un contexto resaltado. Las
 tareas OCR seleccionan automáticamente el documento y la página del laboratorio. El
 retorno a la bandeja no usa datos sensibles en la URL.
+
+## Prioridad y resolución en Sprint 2.3
+
+Se agregan tareas de casillas incompletas y decisiones tributarias. El orden operativo es:
+bloqueante alta, bloqueante media, no bloqueante alta, no bloqueante media y baja; luego título e
+identificador para mantener determinismo.
+
+El Centro de resolución consume la misma lista: ofrece alternativas compatibles, exige motivo,
+conserva evidencia e historial y abre el destino exacto. Una decisión activa suprime el pendiente;
+una restauración o reversión permite derivarlo nuevamente.

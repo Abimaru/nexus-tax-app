@@ -20,8 +20,8 @@ local, con evidencia y bajo revisión humana.
 
 - No es una plataforma pública ni multiusuario.
 - No presenta declaraciones ante la DIAN.
-- No **liquida** el impuesto (no calcula el Formulario 210) ni afirma
-  obligaciones legales; la clasificación y la obligación son **orientativas**.
+- No **liquida** el impuesto; el Formulario 210 es un borrador de trabajo.
+- No afirma obligaciones legales; la clasificación y la obligación son **orientativas**.
 - No usa IA ni backend, y no persiste el archivo original ni binarios de PDF.
 
 ## Principios

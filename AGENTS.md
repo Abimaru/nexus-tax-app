@@ -17,12 +17,13 @@ exógena (Excel) → lectura robusta (fullRows) → detección de secciones
 → lectura PDF local + diagnóstico de tipo (textual/escaneado/insuficiente/dañado)
 → candidatos documentales → laboratorio documental (OCR local bajo demanda,
 comparación nativo/OCR, candidatos manuales, perfiles reutilizables) → revisión
-humana → obligación de declarar orientativa (Aegis, AG 2025) → IndexedDB → export JSON
+humana → centro de resolución → obligación de declarar orientativa (Aegis, AG 2025)
+→ borrador trazable del Formulario 210 → IndexedDB → export JSON
 ```
 
 Todo es **orientativo y revisado por un humano**. **No** hay backend ni IA, **no**
-se presenta ante la DIAN y **no** se liquida el impuesto (no se calcula el
-Formulario 210). Motor de reglas: **Aegis Engine** (`packages/aegis-rules`).
+se presenta ante la DIAN y **no** se liquida el impuesto. El Formulario 210 es
+solo una hoja de trabajo preliminar. Motor de reglas: **Aegis Engine** (`packages/aegis-rules`).
 
 ## Reglas que no se negocian
 
@@ -46,6 +47,7 @@ apps/web (Next.js, App Router)      ·  apps/api (RESERVADO)
 packages/domain (tipos + Zod)       ·  packages/exogenous-parser (motor puro)
 packages/aegis-rules (reglas puras) ·  packages/ui (presentación)
 packages/document-intelligence (PDF y candidatos, puro)
+packages/form-210 (ruleset y builder puro del borrador AG 2025)
 packages/config (constantes/tsconfig)
 ```
 
@@ -58,7 +60,7 @@ el cálculo puro (matriz/resoluciones); React solo presenta.
 1. **Explora antes de editar.** No borres configuración existente.
 2. **Cambios mínimos y localizados.** Componentes pequeños, funciones puras.
 3. **Pruebas.** Si tocas `exogenous-parser`, `aegis-rules`,
-   `document-intelligence` o `domain`,
+   `document-intelligence`, `form-210` o `domain`,
    añade/ajusta tests en Vitest con fixtures sintéticos (builders en memoria o
    `samples/generate-sample.mjs`), nunca datos reales.
 4. **Tema claro/oscuro.** Usa tokens semánticos de Tailwind (`surface`,

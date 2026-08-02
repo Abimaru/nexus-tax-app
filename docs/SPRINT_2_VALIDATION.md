@@ -100,6 +100,22 @@ Usa `pnpm dev` y registra el resultado observado sin reemplazar el esperado.
 | Zona de perfil      | Marcar página completa o arrastrar un rectángulo                   | Coordenadas 0-1; alternativa operable por teclado                 | E2E + unitarias     | OK        | overlay              |
 | Privacidad 2.2      | Revisar el manifiesto y buscar texto OCR, tokens e imágenes        | Solo métricas; las tres banderas de exclusión son `false`         | Unitarias           | OK        | manifiesto 2.2.0     |
 
+## Cierre automatizado Sprint 2.3 (2026-08-02)
+
+| Caso                     | Resultado esperado                                                 | Evidencia          | Estado |
+| ------------------------ | ------------------------------------------------------------------ | ------------------ | ------ |
+| Prioridad bloqueante     | Una tarea media bloqueante precede una alta no bloqueante          | Vitest web         | OK     |
+| Redondeo $1/$5           | La política central distingue exacta, redondeo y relevante         | Vitest parser      | OK     |
+| Ganancia ocasional       | No entra al ingreso ordinario y llega a casilla 112                | Vitest form-210    | OK     |
+| Aportes laborales        | Salud/pensión con contexto laboral llegan a casilla 33             | Vitest form-210    | OK     |
+| Ajuste y reversión       | El valor confirmado se restaura sin borrar historial               | Vitest repositorio | OK     |
+| Navegación centro        | Centro de resolución visible y evidencia navegable                 | Playwright         | OK     |
+| Borrador 210 persistente | Ajuste sobrevive recarga y exporta esquema de hoja de trabajo      | Playwright         | OK     |
+| Responsive               | Sin desbordamiento horizontal entre 390 y 1440 px                  | Playwright         | OK     |
+| Privacidad 2.3           | Decisiones/borrador sin binarios; OCR y contraseñas no se exportan | Unitarias/build    | OK     |
+
+Gates: typecheck, lint, 239 pruebas unitarias, build y 4 pruebas E2E en verde.
+
 ## Cierre
 
 Una validacion manual se marca `OK` solo después de ejecutar los pasos. Si falla,

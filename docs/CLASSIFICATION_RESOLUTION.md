@@ -36,3 +36,11 @@ IndexedDB conserva la clasificacion automatica/final, observacion,
 justificacion, fecha, version, registros/relaciones afectados e historial. Al
 reprocesar, una decision se marca obsoleta si desaparece el registro o cambia la
 regla/clasificacion automatica; nunca se elimina silenciosamente.
+
+## Centro de resolución 2.3
+
+La resolución transversal se registra en `TaxResolutionDecision`; cada evento conserva motivo y
+evidencia y una reversión crea otro evento. El Centro limita alternativas según registro, matriz,
+conciliación, candidato, requisito o casilla. Las resoluciones antiguas del drawer siguen vigentes y
+alimentan la matriz; el nuevo historial las complementa sin mutar evidencia original. Detalle en
+[RESOLUTION_CENTER.md](./RESOLUTION_CENTER.md).

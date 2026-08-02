@@ -53,7 +53,7 @@ muestra enmascarado por defecto.
 
 Conserva el texto original, topes, referencias `R<number>`, descripciones,
 condiciones y grupos inferidos. La clasificación es determinista, versionada y
-orientativa; no calcula el Formulario 210.
+orientativa; alimenta una hoja de trabajo del Formulario 210, pero no liquida el impuesto.
 
 ### ExogenousReport — vista semántica del reporte
 
@@ -254,3 +254,17 @@ aplicabilidad que el analista elige explícitamente (`this_document_only|similar
 profile_update`). Tampoco lleva `caseId`.
 
 Dexie v10 agrega `documentProfiles` y `extractionFeedback`, ambas sin índice por expediente.
+
+## Cambios 2.3.0
+
+- `TaxResolutionDecision`: evento inmutable con objeto, alternativa, estado anterior/final,
+  valores/categorías, casilla, motivo, evidencia, autor, versión y decisión reemplazada.
+- `CaseTask` agrega `formBoxNumber` y `resolutionDecisionId`; sus nuevas tareas resuelven una casilla
+  o revisan una decisión.
+- `Form210Draft`: derivado AG 2025 con casillas, fuentes, fórmulas, estados, hallazgos y readiness.
+- `TaxCategory` distingue aportes laborales no constitutivos, pensiones y dividendos.
+- `ReconciliationStatus` distingue diferencia menor y contradicción.
+
+Dexie v11 agrega `resolutionDecisions` y `form210Drafts`. Ambas participan en borrado de expediente
+y limpieza total. El manifiesto 2.3.0 exporta las decisiones y el borrador, nunca el PDF/Excel ni
+binarios documentales.

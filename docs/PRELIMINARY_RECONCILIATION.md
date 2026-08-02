@@ -40,3 +40,8 @@ se conserva el historial y se evita sumar por segunda vez el mismo valor.
 Una conciliación no confirmada o con diferencia relevante genera una `CaseTask` con destino directo.
 Los grupos incompletos de matriz muestran la tarea relacionada y su acción. Resolver la evidencia
 provoca un nuevo cálculo; la tarea previa queda resuelta de forma trazable, no eliminada.
+
+Sprint 2.3 comparte la política de tolerancias con la matriz. Una sugerencia solo ofrece confirmación
+directa cuando puntaje, cercanía, naturaleza y categoría son compatibles; las sugerencias débiles
+se presentan para rechazar, abrir evidencia o registrar manualmente. Rechazar crea una decisión
+trazable y retira la sugerencia de la cola activa.

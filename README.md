@@ -7,7 +7,8 @@ extensible. Motor de reglas y análisis: **Aegis Engine**.
 > exógena, normalizar y **clasificar** registros, conciliar contra topes, detectar
 > inconsistencias y preparar la declaración de renta. Todo es **orientativo y
 > revisado por un humano**: **no** presenta declaraciones ante la DIAN ni **liquida
-> el impuesto** (no calcula el Formulario 210). Todo ocurre **en tu navegador**.
+> el impuesto**. El Formulario 210 es una hoja de trabajo preliminar trazable, no una
+> declaración lista para presentar. Todo ocurre **en tu navegador**.
 
 ## Alcance actual
 
@@ -25,13 +26,18 @@ IndexedDB → aceptar provisionalmente valores exógenos con trazabilidad →
 gestionar soportes no emitidos → exportar un manifiesto sin binarios. Interfaz
 con **tema claro y oscuro**.
 
+Sprint 2.3 incorpora un **Centro de resolución** con decisiones ejecutables,
+motivo, evidencia e historial reversible; además genera un **borrador de trabajo
+del Formulario 210 AG 2025** con casillas, fórmulas seguras, procedencia y
+validaciones. No calcula el impuesto ni presenta información ante la DIAN.
+
 Un PDF escaneado o con texto insuficiente ya no se rechaza: se diagnostica y el
 analista decide si ejecuta OCR local (Tesseract.js vendorizado, sin red durante el reconocimiento) sobre
 una página, varias o ninguna. El OCR nunca se ejecuta automáticamente ni
 alimenta la matriz directamente.
 
 Fuera de alcance (por ahora): backend, IA externa/en la nube, autenticación,
-liquidación del impuesto (Formulario 210) e integración en línea con la DIAN.
+liquidación definitiva del impuesto e integración en línea con la DIAN.
 Un soporte puede conservarse opcionalmente en IndexedDB, siempre local y por
 decisión explícita.
 
@@ -46,6 +52,7 @@ packages/
   exogenous-parser/  Motor de Excel: parseo, normalización, hallazgos, checklist
   aegis-rules/        Reglas tributarias locales, explicables y versionadas
   document-intelligence/ Lectura PDF, clasificación y candidatos (puro)
+  form-210/          Modelo, ruleset y builder puro del borrador AG 2025
   ui/                Primitivas visuales reutilizables
   config/            Constantes y tsconfig compartidos
 docs/                Documentación del proyecto
@@ -109,6 +116,11 @@ Detalles en `docs/SECURITY_PRIVACY.md`.
 - [Fuentes aceptadas](docs/ACCEPTED_SOURCES.md)
 - [Aceptación de valores exógenos](docs/EXOGENOUS_VALUE_ACCEPTANCE.md)
 - [Conciliación documental](docs/PRELIMINARY_RECONCILIATION.md)
+- [Centro de resolución](docs/RESOLUTION_CENTER.md)
+- [Modelo del Formulario 210](docs/FORM_210_MODEL.md)
+- [Ruleset Formulario 210 AG 2025](docs/FORM_210_RULESET_2025.md)
+- [Trazabilidad del Formulario 210](docs/FORM_210_TRACEABILITY.md)
+- [Validación del Formulario 210](docs/FORM_210_VALIDATION.md)
 - [Quality gate visual](docs/UX_QUALITY_GATE.md)
 - [Guía de microcopy](docs/MICROCOPY_GUIDE.md)
 - [Validación funcional del Sprint 2](docs/SPRINT_2_VALIDATION.md)
@@ -140,3 +152,10 @@ entre expedientes (por señales estructurales, nunca por nombre de archivo) y re
 calibración con el alcance que elige el analista. Las Fases F–G agregan tareas con destino exacto
 documento+página, recuperación de fallos, editor de zonas, ciclo de perfiles, métricas agregadas en
 el manifiesto 2.2.0, validación UX/UI y documentación final de seguridad y rendimiento.
+
+## Sprint 2.3 — resolución y borrador del Formulario 210
+
+Decisiones tributarias inmutables y reversibles, priorización bloqueante, política central de
+conciliación con redondeos de $1/$5, separación de ganancias ocasionales, tratamiento contextual de
+aportes laborales y hoja de trabajo local del Formulario 210 AG 2025. El manifiesto 2.3.0 conserva
+decisiones y borrador sin incluir archivos binarios.

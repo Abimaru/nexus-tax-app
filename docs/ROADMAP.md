@@ -114,3 +114,14 @@ de alcance.
 
 Siguiente evolución segura: ampliar el corpus visual con emisores sintéticos adicionales y conectar
 zonas de perfiles activos como **sugerencias** de candidatos, siempre con revisión humana.
+
+## Sprint 2.3 — centro de resolución y borrador Formulario 210
+
+Implementado: cola de decisiones ejecutables con historial reversible; prioridades bloqueantes;
+política central de conciliación; separación de ganancias ocasionales; aportes laborales
+contextuales; paquete puro `form-210`; casillas/fórmulas parciales AG 2025; trazabilidad,
+validaciones, ajustes y export JSON; Dexie v11 y manifiesto 2.3.0.
+
+Siguiente evolución segura: ampliar el ruleset solo desde fuentes oficiales versionadas, añadir
+límites completos de rentas exentas/deducciones y validar más cédulas con corpus sintético. Siguen
+fuera de alcance la liquidación definitiva, firma, presentación, autenticación DIAN y backend.

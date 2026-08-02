@@ -192,3 +192,14 @@ recuperación explícita y generan tareas navegables.
 El editor de zonas convierte coordenadas de puntero a rectángulos relativos mediante una función
 pura y testeada. El manifiesto 2.2.0 calcula métricas agregadas desde la sesión más reciente de cada
 documento y no exporta el catálogo global de perfiles/feedback.
+
+## Sprint 2.3: resolución y hoja de trabajo 210
+
+`packages/form-210` agrega una frontera pura para catálogo de casillas, reglas, fórmulas,
+trazabilidad y validación AG 2025. Recibe datos de dominio y devuelve un derivado; no conoce React,
+Dexie ni la red. `apps/web` orquesta persistencia y presentación.
+
+El dominio incorpora eventos `TaxResolutionDecision`. Dexie v11 persiste esos eventos y el último
+`Form210Draft`; el repositorio reconstruye matriz/borrador al cambiar una fuente o decisión. El
+manifiesto 2.3.0 exporta ambos sin binarios. La política de diferencias vive en
+`exogenous-parser/reconciliationPolicy.ts` y es compartida por matriz y conciliación UI.

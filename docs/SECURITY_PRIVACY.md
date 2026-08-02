@@ -74,6 +74,14 @@ Permanecen exclusivamente en IndexedDB local. Ver [`DATA_MODEL.md`](DATA_MODEL.m
   endpoints ni almacenamiento remoto que proteger.
 - Los datos viven en IndexedDB del navegador del usuario, bajo su control.
 
+## Decisiones y borrador 210 (Sprint 2.3)
+
+Las decisiones y el borrador se calculan/persisten localmente en Dexie v11. La exportación 2.3.0
+incluye valores, evidencia y procedencia, por lo que debe tratarse como información tributaria
+sensible, pero declara `includesBinaryData: false`. No incluye archivo fuente, PDF, imágenes, texto
+OCR completo, contraseña temporal ni llamadas a la DIAN. El ruleset se distribuye versionado con la
+aplicación y no consulta fuentes oficiales durante el uso normal.
+
 ## Buenas prácticas para contribuir
 
 - No agregar dependencias que realicen telemetría o llamadas de red implícitas.

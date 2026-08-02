@@ -18,3 +18,10 @@ IVA permanece como pregunta explícita; `sin confirmar` crea una tarea pendiente
 
 Las reglas y fuentes continúan locales y versionadas. La aplicación no consulta DIAN durante la
 evaluación normal.
+
+## Hoja de trabajo 210
+
+La preparación incluye ahora un estado separado del borrador Formulario 210: casillas confirmadas,
+calculadas, pendientes y bloqueos. Este estado no cambia la obligación legal orientativa y nunca
+equivale a presentación lista. Una casilla incompleta deriva tarea y se resuelve mediante una
+decisión trazable. Ver [FORM_210_VALIDATION.md](./FORM_210_VALIDATION.md).
