@@ -103,7 +103,7 @@ export function WorkflowStepper({
                   {stage.name}
                 </span>
                 <span className="mt-1 block text-[11px] text-content-subtle">
-                  {STATUS_LABEL[stage.status]} · {stage.progress}%
+                  {STATUS_LABEL[stage.status]} · {stage.progressLabel ?? `${stage.progress}%`}
                 </span>
                 <span className="mt-2 block h-1 overflow-hidden rounded-full bg-overlay/8">
                   <span

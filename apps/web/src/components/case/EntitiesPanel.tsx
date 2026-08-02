@@ -104,11 +104,23 @@ export function EntitiesPanel({
             <GlassPanel key={entity.id} className="p-5">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h3 className="font-semibold text-content-strong">{entity.name}</h3>
+                  <h3 className="font-semibold text-content-strong">
+                    {entity.brandName ?? entity.name}
+                  </h3>
                   <p className="text-xs text-content-subtle">
                     {entity.taxIdMasked ?? 'Identificación no disponible'} ·{' '}
                     {ENTITY_CATEGORY_PRESENTATION[entity.category].label}
                   </p>
+                  {entity.legalName && entity.legalName !== (entity.brandName ?? entity.name) ? (
+                    <p className="mt-1 text-xs text-content-muted">
+                      Razon social: {entity.legalName}
+                    </p>
+                  ) : null}
+                  {entity.groupName ? (
+                    <p className="mt-1 text-xs text-tone-violet">
+                      Grupo empresarial: {entity.groupName}
+                    </p>
+                  ) : null}
                 </div>
                 <Badge tone={entity.status === 'al_dia' ? 'emerald' : 'amber'}>
                   {entity.status === 'al_dia' ? 'Al día' : 'Requiere revisión'}

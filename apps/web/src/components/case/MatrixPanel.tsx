@@ -1,7 +1,12 @@
 'use client';
 
 import { RotateCcw } from 'lucide-react';
-import type { AcceptedExogenousValue, CaseAnalysis, ProcessingResult } from '@nexus-tax/domain';
+import type {
+  AcceptedExogenousValue,
+  CaseAnalysis,
+  CaseTask,
+  ProcessingResult,
+} from '@nexus-tax/domain';
 import { Badge, Button, GlassPanel, formatCurrencyCOP, formatNumber } from '@nexus-tax/ui';
 import { restoreAutomaticAnalysis } from '@/lib/repository';
 import {
@@ -26,11 +31,15 @@ export function MatrixPanel({
   result,
   analysis,
   acceptedSources,
+  tasks,
+  onOpenTasks,
 }: {
   caseId: string;
   result: ProcessingResult;
   analysis: CaseAnalysis;
   acceptedSources: AcceptedExogenousValue[];
+  tasks: readonly CaseTask[];
+  onOpenTasks: () => void;
 }) {
   const invoice = analysis.matrix.electronicInvoicing;
   return (
@@ -144,136 +153,151 @@ export function MatrixPanel({
       </GlassPanel>
 
       <div className="space-y-3">
-        {analysis.matrix.groups.map((group) => (
-          <details
-            key={group.id}
-            className="group rounded-xl border border-overlay/8 bg-overlay/[0.02]"
-          >
-            <summary className="cursor-pointer list-none p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cyan/50">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h3 className="text-sm font-medium text-content-strong">{group.label}</h3>
-                  <p className="mt-1 text-xs text-content-subtle">
-                    {group.includedCount} incluidos · {group.excludedCount} excluidos ·{' '}
-                    {group.pendingCount} pendientes
+        {analysis.matrix.groups.map((group) => {
+          const task = tasks.find(
+            (item) => item.matrixGroupId === group.id && item.status === 'pending',
+          );
+          return (
+            <details
+              key={group.id}
+              className="group rounded-xl border border-overlay/8 bg-overlay/[0.02]"
+            >
+              <summary className="cursor-pointer list-none p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cyan/50">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-medium text-content-strong">{group.label}</h3>
+                    <p className="mt-1 text-xs text-content-subtle">
+                      {group.includedCount} incluidos · {group.excludedCount} excluidos ·{' '}
+                      {group.pendingCount} pendientes
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-semibold text-content-strong">
+                      {formatCurrencyCOP(group.consolidatedValue)}
+                    </span>
+                    <Badge tone={statusTone(group.reconciliationStatus)}>
+                      {RECONCILIATION_LABEL[group.reconciliationStatus]}
+                    </Badge>
+                  </div>
+                </div>
+              </summary>
+              <div className="border-t border-overlay/8 p-4">
+                <dl className="grid gap-3 text-xs sm:grid-cols-2 lg:grid-cols-4">
+                  <Data
+                    label="Tope DIAN"
+                    value={
+                      group.thresholdValue === null
+                        ? 'No disponible'
+                        : formatCurrencyCOP(group.thresholdValue)
+                    }
+                  />
+                  <Data
+                    label="Diferencia absoluta"
+                    value={
+                      group.differenceAbsolute === null
+                        ? '—'
+                        : formatCurrencyCOP(group.differenceAbsolute)
+                    }
+                  />
+                  <Data
+                    label="Diferencia porcentual"
+                    value={
+                      group.differencePercentage === null
+                        ? '—'
+                        : `${group.differencePercentage.toFixed(2)} %`
+                    }
+                  />
+                  <Data label="Confianza" value={group.confidence} />
+                </dl>
+                {group.warnings.map((warning) => (
+                  <p key={warning} className="mt-3 text-xs text-tone-amber">
+                    {warning}
                   </p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-semibold text-content-strong">
-                    {formatCurrencyCOP(group.consolidatedValue)}
-                  </span>
-                  <Badge tone={statusTone(group.reconciliationStatus)}>
-                    {RECONCILIATION_LABEL[group.reconciliationStatus]}
-                  </Badge>
+                ))}
+                <p className="mt-2 text-xs text-tone-cyan">Acción: {group.recommendedAction}</p>
+                {task ? (
+                  <Button className="mt-3" variant="secondary" onClick={onOpenTasks}>
+                    Ver tarea relacionada
+                  </Button>
+                ) : null}
+                <div className="mt-4 overflow-x-auto">
+                  <table className="min-w-full text-left text-xs">
+                    <thead className="text-content-subtle">
+                      <tr>
+                        <th className="px-2 py-2">Fila / detalle</th>
+                        <th className="px-2 py-2">Clasificación</th>
+                        <th className="px-2 py-2">Disposición</th>
+                        <th className="px-2 py-2">Relaciones</th>
+                        <th className="px-2 py-2 text-right">Valor</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {group.entries.map((entry) => {
+                        const record = result.normalizedRecords.find(
+                          (item) => item.id === entry.recordId,
+                        );
+                        const relations = analysis.relationships.filter((item) =>
+                          entry.relationIds.includes(item.id),
+                        );
+                        const accepted = acceptedSources.find(
+                          (item) => item.exogenousRecordId === entry.recordId,
+                        );
+                        return (
+                          <tr
+                            key={entry.recordId}
+                            className="border-t border-overlay/5 text-content"
+                          >
+                            <td className="px-2 py-2">
+                              {record?.source.sheet} · {record?.source.row}
+                              <span className="block text-content-subtle">
+                                {record?.conceptLabel ?? 'Sin detalle'}
+                              </span>
+                            </td>
+                            <td className="px-2 py-2">
+                              {CATEGORY_LABEL[entry.effectiveClassification.category]}
+                              <span className="block text-content-subtle">
+                                {RESOLUTION_LABEL[entry.resolutionStatus]}
+                              </span>
+                            </td>
+                            <td className="px-2 py-2">
+                              {DISPOSITION_LABEL[entry.disposition]}
+                              {accepted ? (
+                                <Badge
+                                  tone={
+                                    accepted.status === 'contradicted_by_document'
+                                      ? 'rose'
+                                      : accepted.documentId
+                                        ? 'emerald'
+                                        : 'amber'
+                                  }
+                                >
+                                  {ACCEPTED_SOURCE_STATUS_PRESENTATION[accepted.status].label}
+                                </Badge>
+                              ) : null}
+                              <span className="block max-w-72 text-content-subtle">
+                                {entry.reason}
+                              </span>
+                            </td>
+                            <td className="px-2 py-2">
+                              {relations.length
+                                ? relations
+                                    .map((relation) => RELATION_LABEL[relation.type])
+                                    .join(', ')
+                                : '—'}
+                            </td>
+                            <td className="px-2 py-2 text-right">
+                              {formatCurrencyCOP(entry.value)}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               </div>
-            </summary>
-            <div className="border-t border-overlay/8 p-4">
-              <dl className="grid gap-3 text-xs sm:grid-cols-2 lg:grid-cols-4">
-                <Data
-                  label="Tope DIAN"
-                  value={
-                    group.thresholdValue === null
-                      ? 'No disponible'
-                      : formatCurrencyCOP(group.thresholdValue)
-                  }
-                />
-                <Data
-                  label="Diferencia absoluta"
-                  value={
-                    group.differenceAbsolute === null
-                      ? '—'
-                      : formatCurrencyCOP(group.differenceAbsolute)
-                  }
-                />
-                <Data
-                  label="Diferencia porcentual"
-                  value={
-                    group.differencePercentage === null
-                      ? '—'
-                      : `${group.differencePercentage.toFixed(2)} %`
-                  }
-                />
-                <Data label="Confianza" value={group.confidence} />
-              </dl>
-              {group.warnings.map((warning) => (
-                <p key={warning} className="mt-3 text-xs text-tone-amber">
-                  {warning}
-                </p>
-              ))}
-              <p className="mt-2 text-xs text-tone-cyan">Acción: {group.recommendedAction}</p>
-              <div className="mt-4 overflow-x-auto">
-                <table className="min-w-full text-left text-xs">
-                  <thead className="text-content-subtle">
-                    <tr>
-                      <th className="px-2 py-2">Fila / detalle</th>
-                      <th className="px-2 py-2">Clasificación</th>
-                      <th className="px-2 py-2">Disposición</th>
-                      <th className="px-2 py-2">Relaciones</th>
-                      <th className="px-2 py-2 text-right">Valor</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {group.entries.map((entry) => {
-                      const record = result.normalizedRecords.find(
-                        (item) => item.id === entry.recordId,
-                      );
-                      const relations = analysis.relationships.filter((item) =>
-                        entry.relationIds.includes(item.id),
-                      );
-                      const accepted = acceptedSources.find(
-                        (item) => item.exogenousRecordId === entry.recordId,
-                      );
-                      return (
-                        <tr key={entry.recordId} className="border-t border-overlay/5 text-content">
-                          <td className="px-2 py-2">
-                            {record?.source.sheet} · {record?.source.row}
-                            <span className="block text-content-subtle">
-                              {record?.conceptLabel ?? 'Sin detalle'}
-                            </span>
-                          </td>
-                          <td className="px-2 py-2">
-                            {CATEGORY_LABEL[entry.effectiveClassification.category]}
-                            <span className="block text-content-subtle">
-                              {RESOLUTION_LABEL[entry.resolutionStatus]}
-                            </span>
-                          </td>
-                          <td className="px-2 py-2">
-                            {DISPOSITION_LABEL[entry.disposition]}
-                            {accepted ? (
-                              <Badge
-                                tone={
-                                  accepted.status === 'contradicted_by_document'
-                                    ? 'rose'
-                                    : accepted.documentId
-                                      ? 'emerald'
-                                      : 'amber'
-                                }
-                              >
-                                {ACCEPTED_SOURCE_STATUS_PRESENTATION[accepted.status].label}
-                              </Badge>
-                            ) : null}
-                            <span className="block max-w-72 text-content-subtle">
-                              {entry.reason}
-                            </span>
-                          </td>
-                          <td className="px-2 py-2">
-                            {relations.length
-                              ? relations
-                                  .map((relation) => RELATION_LABEL[relation.type])
-                                  .join(', ')
-                              : '—'}
-                          </td>
-                          <td className="px-2 py-2 text-right">{formatCurrencyCOP(entry.value)}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </details>
-        ))}
+            </details>
+          );
+        })}
       </div>
       <p className="text-xs text-content-subtle">
         Matriz {analysis.matrix.ruleVersion} · {formatNumber(analysis.relationships.length)}{' '}

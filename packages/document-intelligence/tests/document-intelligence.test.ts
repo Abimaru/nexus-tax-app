@@ -2,10 +2,12 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   DEFAULT_PDF_LIMITS,
   PdfReadError,
+  buildPageStructure,
   classifyDocument,
   extractCandidates,
   passwordErrorForReason,
   readPdfText,
+  suggestEntity,
   suggestExogenousMatches,
   suggestProduct,
 } from '../src';
@@ -265,6 +267,102 @@ describe('clasificación y adaptadores', () => {
         },
       ]),
     ).toMatchObject({ productId: 'product:savings', ambiguous: false });
+  });
+
+  it('conserva mas de 500 candidatos y reporta el umbral sin truncarlos', () => {
+    const lines = Array.from(
+      { length: 550 },
+      (_, index) => `Saldo al cierre producto ${index + 1}: $ ${100_000 + index}`,
+    );
+    const result = extractCandidates(
+      representation(lines.join('\n')),
+      'balance_certificate',
+      context,
+      DEFAULT_PDF_LIMITS,
+    );
+    expect(result.candidates).toHaveLength(550);
+    expect(result.generatedCandidateCount).toBe(550);
+    expect(result.pendingCandidateCount).toBe(0);
+    expect(result.warnings.join(' ')).toContain('550');
+  });
+
+  it('reconstruye lineas, columnas, secciones y una tabla simple por geometria', () => {
+    const structure = buildPageStructure([
+      { index: 0, text: 'Productos de ahorro', x: 20, y: 700, width: 150 },
+      { index: 1, text: 'Producto', x: 20, y: 660, width: 100 },
+      { index: 2, text: 'Saldo', x: 250, y: 660, width: 80 },
+      { index: 3, text: 'Cuenta 1234', x: 20, y: 620, width: 100 },
+      { index: 4, text: '$ 450.000', x: 250, y: 620, width: 80 },
+    ]);
+    expect(structure.lines).toHaveLength(3);
+    expect(structure.lines![1]?.columnCount).toBe(2);
+    expect(structure.sections![0]).toMatchObject({ kind: 'products', startLine: 1 });
+    expect(structure.tables![0]?.columnX).toEqual([20, 250]);
+  });
+
+  it('no cruza productos de otra entidad ni elige entre opciones ambiguas', () => {
+    const candidate = extractCandidates(
+      representation('Saldo al 31 de diciembre: $ 4.051.577'),
+      'balance_certificate',
+      context,
+      DEFAULT_PDF_LIMITS,
+    ).candidates[0]!;
+    candidate.productLabel = 'Cuenta de ahorros';
+    candidate.proposedEntityId = 'entity:bancolombia';
+    const base = {
+      caseId: context.caseId,
+      type: 'savings_account' as const,
+      status: 'active' as const,
+      notes: '',
+      createdAt: context.timestamp,
+      updatedAt: context.timestamp,
+    };
+    expect(
+      suggestProduct(candidate, [
+        { ...base, id: 'product:nequi', entityId: 'entity:nequi', label: 'Cuenta de ahorros' },
+        {
+          ...base,
+          id: 'product:bancolombia',
+          entityId: 'entity:bancolombia',
+          label: 'Cuenta de ahorros',
+        },
+      ]),
+    ).toMatchObject({ productId: 'product:bancolombia', ambiguous: false });
+    expect(
+      suggestProduct({ ...candidate, proposedEntityId: null }, [
+        { ...base, id: 'product:1', entityId: null, label: 'Cuenta de ahorros 1' },
+        { ...base, id: 'product:2', entityId: null, label: 'Cuenta de ahorros 2' },
+      ]),
+    ).toMatchObject({ productId: null, ambiguous: true });
+  });
+
+  it('reconoce entidad por marca y razon social versionadas', () => {
+    const candidate = extractCandidates(
+      representation('Saldo al cierre: $ 1.000.000'),
+      'balance_certificate',
+      context,
+      DEFAULT_PDF_LIMITS,
+    ).candidates[0]!;
+    candidate.entityName = 'Fiduciaria Bancolombia';
+    expect(
+      suggestEntity({
+        candidate,
+        entities: [
+          {
+            id: 'entity:fidu',
+            name: 'Fiduciaria Bancolombia',
+            legalName: 'Fiduciaria Bancolombia S.A.',
+            brandName: 'Fiduciaria Bancolombia',
+            groupName: 'Grupo Bancolombia',
+            identityRuleVersion: 'test',
+            taxId: '800000000',
+            category: 'bank',
+            recordCount: 1,
+            totalReported: 1,
+          },
+        ],
+      }),
+    ).toMatchObject({ entityId: 'entity:fidu', ambiguous: false });
   });
 
   it('expone errores recuperables sin detalles técnicos', () => {

@@ -14,8 +14,10 @@ import {
 } from 'lucide-react';
 import {
   DocumentKindSchema,
+  CandidateRejectionReasonSchema,
   TaxCategorySchema,
   type CaseProduct,
+  type CandidateRejectionReason,
   type DocumentExtractionSession,
   type DocumentFactCandidate,
   type ProcessingResult,
@@ -27,9 +29,12 @@ import { DOCUMENT_KIND_LABEL, PRODUCT_LABEL } from '@/lib/dossierPresentation';
 import { processDocumentLocally } from '@/lib/documentProcessor';
 import {
   correctExtractionClassification,
+  associateDocumentCandidatesBulk,
   getDocumentBinary,
   restoreDocumentCandidate,
+  restoreDocumentCandidatesBulk,
   reviewDocumentCandidate,
+  reviewDocumentCandidatesBulk,
 } from '@/lib/repository';
 
 const STATUS_LABEL: Record<DocumentExtractionSession['status'], string> = {
@@ -62,6 +67,19 @@ const DISCARDED_LABEL: Record<(typeof DISCARDED_STATUS)[number], string> = {
   obsolete: 'Obsoleto',
 };
 
+const REJECTION_REASON_LABEL: Record<CandidateRejectionReason, string> = {
+  not_tax_value: 'No es un valor tributario',
+  header_as_value: 'Encabezado interpretado como dato',
+  incorrect_value: 'Valor incorrecto',
+  incorrect_concept: 'Concepto incorrecto',
+  other_product: 'Pertenece a otro producto',
+  incorrect_period: 'Periodo incorrecto',
+  duplicate: 'Duplicado',
+  informational: 'Solo informativo',
+  represented_by_other: 'Ya estÃ¡ representado por otro candidato',
+  other: 'Otro motivo',
+};
+
 function isDiscardedStatus(
   status: DocumentFactCandidate['status'],
 ): status is (typeof DISCARDED_STATUS)[number] {
@@ -83,6 +101,7 @@ export function DocumentExtractionReviewPanel({
   candidates: DocumentFactCandidate[];
   onOpenReconciliations: () => void;
 }) {
+  const [showHistory, setShowHistory] = useState(false);
   const latestSessions = useMemo(() => {
     const byDocument = new Map<string, DocumentExtractionSession>();
     for (const session of sessions) {
@@ -92,6 +111,10 @@ export function DocumentExtractionReviewPanel({
     }
     return [...byDocument.values()].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   }, [sessions]);
+  const displayedSessions = showHistory
+    ? [...sessions].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+    : latestSessions;
+  const historicalCount = Math.max(0, sessions.length - latestSessions.length);
 
   if (!latestSessions.length) {
     return (
@@ -126,9 +149,20 @@ export function DocumentExtractionReviewPanel({
           El texto completo, la contraseña y los buffers no se guardan. Un candidato por sí solo no
           alimenta la matriz.
         </p>
+        {historicalCount ? (
+          <Button
+            className="mt-3"
+            variant="ghost"
+            onClick={() => setShowHistory((current) => !current)}
+          >
+            {showHistory
+              ? 'Ocultar ejecuciones anteriores'
+              : `Ver ejecuciones anteriores (${historicalCount})`}
+          </Button>
+        ) : null}
       </GlassPanel>
 
-      {latestSessions.map((session) => {
+      {displayedSessions.map((session) => {
         const document = documents.find((item) => item.id === session.documentId);
         const currentCandidates = candidates.filter(
           (candidate) => candidate.extractionSessionId === session.id,
@@ -170,15 +204,92 @@ function ExtractionSessionCard({
   const [password, setPassword] = useState('');
   const [reprocessing, setReprocessing] = useState(false);
   const [showDiscarded, setShowDiscarded] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('pending');
+  const [pageFilter, setPageFilter] = useState('all');
+  const [productFilter, setProductFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [pageSize, setPageSize] = useState(20);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkAction, setBulkAction] = useState('reject');
+  const [bulkReason, setBulkReason] = useState<CandidateRejectionReason>('not_tax_value');
+  const [bulkObservation, setBulkObservation] = useState('');
+  const [bulkEntityId, setBulkEntityId] = useState('');
+  const [bulkProductId, setBulkProductId] = useState('');
+  const [bulkSaving, setBulkSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const confirmed = candidates.filter((candidate) => candidate.factId).length;
-  const discarded = candidates.filter((candidate) => isDiscardedStatus(candidate.status));
-  const visibleCandidates = candidates.filter((candidate) => !isDiscardedStatus(candidate.status));
+  const discardedCandidates = candidates.filter((candidate) => isDiscardedStatus(candidate.status));
+  const discarded = discardedCandidates.length;
+  const filteredCandidates = candidates.filter((candidate) => {
+    const statusMatches =
+      statusFilter === 'all' ||
+      (statusFilter === 'pending'
+        ? ['pending', 'requires_review'].includes(candidate.status)
+        : statusFilter === 'low_confidence'
+          ? ['low', 'insufficient'].includes(candidate.confidence.level)
+          : candidate.status === statusFilter);
+    return (
+      statusMatches &&
+      (pageFilter === 'all' || candidate.page === Number(pageFilter)) &&
+      (productFilter === 'all' || (candidate.productLabel ?? 'unidentified') === productFilter) &&
+      (categoryFilter === 'all' || candidate.proposedCategory === categoryFilter)
+    );
+  });
+  const pageCount = Math.max(1, Math.ceil(filteredCandidates.length / pageSize));
+  const safePage = Math.min(currentPage, pageCount);
+  const pageCandidates = filteredCandidates.slice((safePage - 1) * pageSize, safePage * pageSize);
   const detectedProducts = Array.from(
     new Set(candidates.map((candidate) => candidate.productLabel).filter(Boolean)),
   ) as string[];
 
   useEffect(() => setKind(proposedKind), [proposedKind]);
+  useEffect(() => {
+    setCurrentPage(1);
+    setSelectedIds([]);
+  }, [statusFilter, pageFilter, productFilter, categoryFilter, pageSize]);
+
+  async function applyBulkAction() {
+    if (!selectedIds.length) return;
+    if (bulkAction === 'reject' && bulkReason === 'other' && !bulkObservation.trim()) {
+      setError('Explica el motivo cuando seleccionas Otro motivo.');
+      return;
+    }
+    if (
+      !window.confirm(
+        `Se aplicarÃ¡ la acciÃ³n a ${selectedIds.length} candidato(s). Las decisiones quedarÃ¡n trazadas. Â¿Continuar?`,
+      )
+    )
+      return;
+    setBulkSaving(true);
+    setError(null);
+    try {
+      if (bulkAction === 'restore') await restoreDocumentCandidatesBulk(selectedIds);
+      else if (bulkAction === 'associate_entity')
+        await associateDocumentCandidatesBulk(selectedIds, { entityId: bulkEntityId || null });
+      else if (bulkAction === 'associate_product')
+        await associateDocumentCandidatesBulk(selectedIds, { productId: bulkProductId || null });
+      else
+        await reviewDocumentCandidatesBulk(selectedIds, {
+          action:
+            bulkAction === 'informational'
+              ? 'informational'
+              : bulkAction === 'duplicate'
+                ? 'duplicate'
+                : 'reject',
+          rejectionReason: bulkAction === 'reject' ? bulkReason : null,
+          observation: bulkObservation,
+        });
+      setSelectedIds([]);
+      setBulkObservation('');
+    } catch (caught) {
+      setError(
+        caught instanceof Error ? caught.message : 'No fue posible aplicar la acciÃ³n mÃºltiple.',
+      );
+    } finally {
+      setBulkSaving(false);
+    }
+  }
 
   async function saveKind() {
     await correctExtractionClassification(session.id, kind);
@@ -298,6 +409,136 @@ function ExtractionSessionCard({
         ) : null}
       </header>
 
+      {session.metrics ? (
+        <section
+          className="border-b border-overlay/8 p-4 sm:p-5"
+          aria-labelledby={`${session.id}-coverage`}
+        >
+          <h4 id={`${session.id}-coverage`} className="text-sm font-medium text-content-strong">
+            Cobertura tÃ©cnica del documento
+          </h4>
+          <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-5">
+            <Data
+              label="PÃ¡ginas leÃ­das"
+              value={`${session.metrics.pagesProcessed}/${session.metrics.pagesTotal}`}
+            />
+            <Data label="PÃ¡ginas con texto" value={String(session.metrics.pagesWithText)} />
+            <Data label="Bloques detectados" value={String(session.metrics.blocksDetected)} />
+            <Data
+              label="Candidatos generados"
+              value={String(session.metrics.candidatesGenerated)}
+            />
+            <Data
+              label="Candidatos persistidos"
+              value={String(session.metrics.candidatesPersisted)}
+            />
+          </dl>
+          <p className="mt-2 text-xs text-content-subtle">
+            {session.metrics.pagesWithCandidates} pÃ¡gina(s) contienen candidatos Â·{' '}
+            {session.metrics.pagesWithoutCandidates} sin candidatos Â·{' '}
+            {session.metrics.sectionsDetected.length} secciÃ³n(es) detectada(s). No es un porcentaje
+            de precisiÃ³n.
+          </p>
+        </section>
+      ) : null}
+
+      <section className="border-b border-overlay/8 p-4 sm:p-5" aria-label="Filtros de candidatos">
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+          <Field label="Estado">
+            <select
+              className={inputClass}
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value)}
+            >
+              <option value="all">Todos</option>
+              <option value="pending">Pendientes</option>
+              <option value="confirmed">Confirmados</option>
+              <option value="corrected">Corregidos</option>
+              <option value="rejected">Rechazados</option>
+              <option value="duplicate">Duplicados</option>
+              <option value="informational">Informativos</option>
+              <option value="obsolete">Obsoletos</option>
+              <option value="low_confidence">Baja confianza</option>
+            </select>
+          </Field>
+          <Field label="PÃ¡gina PDF">
+            <select
+              className={inputClass}
+              value={pageFilter}
+              onChange={(event) => setPageFilter(event.target.value)}
+            >
+              <option value="all">Todas</option>
+              {Array.from(new Set(candidates.map((candidate) => candidate.page)))
+                .sort((a, b) => a - b)
+                .map((page) => (
+                  <option key={page} value={page}>
+                    PÃ¡gina {page}
+                  </option>
+                ))}
+            </select>
+          </Field>
+          <Field label="Producto">
+            <select
+              className={inputClass}
+              value={productFilter}
+              onChange={(event) => setProductFilter(event.target.value)}
+            >
+              <option value="all">Todos</option>
+              <option value="unidentified">Por identificar</option>
+              {detectedProducts.map((product) => (
+                <option key={product} value={product}>
+                  {product}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="CategorÃ­a">
+            <select
+              className={inputClass}
+              value={categoryFilter}
+              onChange={(event) => setCategoryFilter(event.target.value)}
+            >
+              <option value="all">Todas</option>
+              {TaxCategorySchema.options.map((category) => (
+                <option key={category} value={category}>
+                  {CATEGORY_LABEL[category]}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Por pÃ¡gina">
+            <select
+              className={inputClass}
+              value={pageSize}
+              onChange={(event) => setPageSize(Number(event.target.value))}
+            >
+              {[10, 20, 50, 100].map((size) => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2 text-xs">
+          <Badge tone="neutral">Detectados {candidates.length}</Badge>
+          <Badge tone="cyan">
+            Pendientes{' '}
+            {
+              candidates.filter((candidate) =>
+                ['pending', 'requires_review'].includes(candidate.status),
+              ).length
+            }
+          </Badge>
+          <Badge tone="emerald">Confirmados {confirmed}</Badge>
+          <Badge tone="amber">Descartados {discarded}</Badge>
+          <Badge tone="violet">
+            Informativos{' '}
+            {candidates.filter((candidate) => candidate.status === 'informational').length}
+          </Badge>
+        </div>
+      </section>
+
       {session.findings.length ? (
         <ul className="space-y-2 border-b border-overlay/8 p-4 sm:p-5">
           {session.findings.map((finding, index) => (
@@ -312,7 +553,113 @@ function ExtractionSessionCard({
         </ul>
       ) : null}
 
-      {!visibleCandidates.length ? (
+      {filteredCandidates.length ? (
+        <section className="border-b border-overlay/8 p-4 sm:p-5" aria-label="Acciones masivas">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <label className="inline-flex items-center gap-2 text-xs text-content-muted">
+              <input
+                type="checkbox"
+                className="accent-accent-cyan"
+                checked={
+                  pageCandidates.length > 0 &&
+                  pageCandidates.every((candidate) => selectedIds.includes(candidate.id))
+                }
+                onChange={(event) =>
+                  setSelectedIds((current) => {
+                    const pageIds = pageCandidates.map((candidate) => candidate.id);
+                    return event.target.checked
+                      ? Array.from(new Set([...current, ...pageIds]))
+                      : current.filter((id) => !pageIds.includes(id));
+                  })
+                }
+              />
+              Seleccionar pagina visible ({pageCandidates.length})
+            </label>
+            <span className="text-xs text-content-subtle">{selectedIds.length} seleccionados</span>
+          </div>
+          {selectedIds.length ? (
+            <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+              <Field label="Accion">
+                <select
+                  className={inputClass}
+                  value={bulkAction}
+                  onChange={(event) => setBulkAction(event.target.value)}
+                >
+                  <option value="reject">Rechazar</option>
+                  <option value="informational">Solo informativo</option>
+                  <option value="duplicate">Marcar duplicados</option>
+                  <option value="associate_entity">Asociar entidad</option>
+                  <option value="associate_product">Asociar producto</option>
+                  <option value="restore">Restaurar</option>
+                </select>
+              </Field>
+              {bulkAction === 'reject' ? (
+                <Field label="Motivo">
+                  <select
+                    className={inputClass}
+                    value={bulkReason}
+                    onChange={(event) =>
+                      setBulkReason(event.target.value as CandidateRejectionReason)
+                    }
+                  >
+                    {CandidateRejectionReasonSchema.options.map((reason) => (
+                      <option key={reason} value={reason}>
+                        {REJECTION_REASON_LABEL[reason]}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              ) : null}
+              {bulkAction === 'associate_entity' ? (
+                <Field label="Entidad">
+                  <select
+                    className={inputClass}
+                    value={bulkEntityId}
+                    onChange={(event) => setBulkEntityId(event.target.value)}
+                  >
+                    <option value="">Sin asociar</option>
+                    {result?.entities.map((entity) => (
+                      <option key={entity.id} value={entity.id}>
+                        {entity.name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              ) : null}
+              {bulkAction === 'associate_product' ? (
+                <Field label="Producto">
+                  <select
+                    className={inputClass}
+                    value={bulkProductId}
+                    onChange={(event) => setBulkProductId(event.target.value)}
+                  >
+                    <option value="">Por identificar</option>
+                    {products.map((product) => (
+                      <option key={product.id} value={product.id}>
+                        {product.label}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              ) : null}
+              <Field label="Observacion">
+                <input
+                  className={inputClass}
+                  value={bulkObservation}
+                  onChange={(event) => setBulkObservation(event.target.value)}
+                />
+              </Field>
+              <div className="flex items-end">
+                <Button disabled={bulkSaving} onClick={() => void applyBulkAction()}>
+                  {bulkSaving ? 'Aplicando...' : 'Aplicar a seleccionados'}
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
+      {!filteredCandidates.length ? (
         <div className="p-5">
           <EmptyState
             icon={
@@ -334,28 +681,73 @@ function ExtractionSessionCard({
         </div>
       ) : (
         <ul className="divide-y divide-overlay/8">
-          {visibleCandidates.map((candidate) => (
+          {pageCandidates.map((candidate) => (
             <li key={candidate.id} className="p-4 sm:p-5">
-              <CandidateReviewCard
-                candidate={candidate}
-                document={document}
-                result={result}
-                products={products}
-                onOpenReconciliations={onOpenReconciliations}
-              />
+              <label className="mb-3 inline-flex items-center gap-2 text-xs text-content-muted">
+                <input
+                  type="checkbox"
+                  className="accent-accent-cyan"
+                  checked={selectedIds.includes(candidate.id)}
+                  onChange={(event) =>
+                    setSelectedIds((current) =>
+                      event.target.checked
+                        ? [...current, candidate.id]
+                        : current.filter((id) => id !== candidate.id),
+                    )
+                  }
+                />
+                Seleccionar candidato
+              </label>
+              {isDiscardedStatus(candidate.status) ? (
+                <DiscardedCandidate candidate={candidate} />
+              ) : (
+                <CandidateReviewCard
+                  candidate={candidate}
+                  document={document}
+                  result={result}
+                  products={products}
+                  onOpenReconciliations={onOpenReconciliations}
+                />
+              )}
             </li>
           ))}
         </ul>
       )}
 
-      {discarded.length ? (
+      {filteredCandidates.length ? (
+        <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-overlay/8 p-4 sm:p-5">
+          <span className="text-xs text-content-muted">
+            Pagina {safePage} de {pageCount} · {filteredCandidates.length} resultado(s)
+          </span>
+          <div className="flex gap-2">
+            <Button
+              variant="secondary"
+              disabled={safePage <= 1}
+              onClick={() => setCurrentPage(safePage - 1)}
+            >
+              Anterior
+            </Button>
+            <Button
+              variant="secondary"
+              disabled={safePage >= pageCount}
+              onClick={() => setCurrentPage(safePage + 1)}
+            >
+              Siguiente
+            </Button>
+          </div>
+        </footer>
+      ) : null}
+
+      {discardedCandidates.length ? (
         <div className="border-t border-overlay/8 p-4 sm:p-5">
           <Button variant="ghost" onClick={() => setShowDiscarded((current) => !current)}>
-            {showDiscarded ? 'Ocultar descartados' : `Ver descartados (${discarded.length})`}
+            {showDiscarded
+              ? 'Ocultar descartados'
+              : `Ver descartados (${discardedCandidates.length})`}
           </Button>
           {showDiscarded ? (
             <ul className="mt-3 space-y-2" aria-label="Candidatos descartados">
-              {discarded.map((candidate) => (
+              {discardedCandidates.map((candidate) => (
                 <li
                   key={candidate.id}
                   className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-overlay/8 bg-overlay/[0.02] p-3"
@@ -388,6 +780,40 @@ function ExtractionSessionCard({
   );
 }
 
+function DiscardedCandidate({ candidate }: { candidate: DocumentFactCandidate }) {
+  return (
+    <article className="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h4 className="font-medium text-content-strong">{candidate.originalConcept}</h4>
+        <p className="mt-1 text-xs text-content-subtle">
+          {isDiscardedStatus(candidate.status)
+            ? DISCARDED_LABEL[candidate.status]
+            : candidate.status}
+          {' · '}
+          {formatCurrencyCOP(candidate.extractedValue)}
+          {' · pagina '}
+          {candidate.page}
+        </p>
+        {candidate.rejectionReason ? (
+          <p className="mt-1 text-xs text-content-muted">
+            Motivo: {REJECTION_REASON_LABEL[candidate.rejectionReason]}
+            {candidate.observation ? ` · ${candidate.observation}` : ''}
+          </p>
+        ) : null}
+      </div>
+      {candidate.status !== 'obsolete' ? (
+        <Button
+          variant="ghost"
+          onClick={() => void restoreDocumentCandidate(candidate.id)}
+          leadingIcon={<RotateCcw className="h-4 w-4" aria-hidden />}
+        >
+          Restaurar
+        </Button>
+      ) : null}
+    </article>
+  );
+}
+
 function CandidateReviewCard({
   candidate,
   document,
@@ -412,6 +838,7 @@ function CandidateReviewCard({
     candidate.selectedExogenousRecordId ?? candidate.suggestedExogenousMatches[0]?.recordId ?? '',
   );
   const [observation, setObservation] = useState(candidate.observation);
+  const [rejectionReason, setRejectionReason] = useState<CandidateRejectionReason>('not_tax_value');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -430,6 +857,7 @@ function CandidateReviewCard({
         requirementIds: requirementId ? [requirementId] : [],
         exogenousRecordId: exogenousRecordId || null,
         observation,
+        rejectionReason: action === 'reject' ? rejectionReason : null,
       });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'No fue posible guardar la decisión.');
@@ -623,6 +1051,23 @@ function CandidateReviewCard({
               {error}
             </p>
           ) : null}
+          <div className="max-w-md">
+            <Field label="Motivo si rechazas">
+              <select
+                value={rejectionReason}
+                onChange={(event) =>
+                  setRejectionReason(event.target.value as CandidateRejectionReason)
+                }
+                className={inputClass}
+              >
+                {CandidateRejectionReasonSchema.options.map((reason) => (
+                  <option className="bg-surface-raised" key={reason} value={reason}>
+                    {REJECTION_REASON_LABEL[reason]}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
           <div className="flex flex-wrap items-center gap-2">
             <Button
               disabled={saving}

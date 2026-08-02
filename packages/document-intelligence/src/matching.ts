@@ -24,11 +24,14 @@ export function suggestEntity(input: {
   }
   const candidateName = comparableText(input.candidate.entityName ?? '');
   const nameMatches = candidateName
-    ? input.entities.filter(
-        (entity) =>
-          comparableText(entity.name).includes(candidateName) ||
-          candidateName.includes(comparableText(entity.name)),
-      )
+    ? input.entities.filter((entity) => {
+        const aliases = [entity.name, entity.legalName, entity.brandName]
+          .filter((value): value is string => Boolean(value))
+          .map(comparableText);
+        return aliases.some(
+          (alias) => alias.includes(candidateName) || candidateName.includes(alias),
+        );
+      })
     : [];
   return {
     entityId: nameMatches.length === 1 ? nameMatches[0]!.id : null,
@@ -64,8 +67,11 @@ export function suggestProduct(
   const label = comparableText(candidate.productLabel ?? '');
   const ranked = products
     .filter((product) => product.status !== 'obsolete')
+    .filter(
+      (product) => !candidate.proposedEntityId || product.entityId === candidate.proposedEntityId,
+    )
     .map((product) => {
-      let score = product.type === candidate.productType ? 50 : 0;
+      let score = product.type === candidate.productType ? 30 : 0;
       const productLabel = comparableText(product.label);
       if (label && (label.includes(productLabel) || productLabel.includes(label))) score += 50;
       else if (
@@ -80,7 +86,8 @@ export function suggestProduct(
     .filter((item) => item.score >= 50)
     .sort((a, b) => b.score - a.score || a.product.id.localeCompare(b.product.id));
   return {
-    productId: ranked[0]?.product.id ?? null,
+    productId:
+      ranked[0] && (!ranked[1] || ranked[0].score > ranked[1].score) ? ranked[0].product.id : null,
     ambiguous: Boolean(ranked[1] && ranked[0]?.score === ranked[1].score),
   };
 }

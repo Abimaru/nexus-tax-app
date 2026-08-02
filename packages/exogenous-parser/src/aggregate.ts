@@ -7,6 +7,7 @@ import type {
   QualityDimensions,
 } from '@nexus-tax/domain';
 import { inferEntityCategory } from './category';
+import { resolveEntityIdentity } from './entityIdentity';
 import { prefixedId } from './ids';
 
 /** Agrupa registros normalizados en entidades reportantes. */
@@ -19,17 +20,26 @@ export function buildEntities(records: NormalizedExogenousRecord[]): ReportingEn
       concepts: (string | null)[];
       total: number;
       count: number;
+      legalName: string;
+      brandName: string | null;
+      groupName: string | null;
+      identityRuleVersion: string;
     }
   >();
 
   for (const rec of records) {
-    const key = rec.reportingEntityDocument ?? rec.entityName ?? '__sin_entidad__';
+    const identity = resolveEntityIdentity(rec.entityName);
+    const key = rec.reportingEntityDocument ?? identity.canonicalKey;
     const group = groups.get(key) ?? {
       name: null,
       taxId: null,
       concepts: [],
       total: 0,
       count: 0,
+      legalName: identity.legalName,
+      brandName: identity.brandName,
+      groupName: identity.groupName,
+      identityRuleVersion: identity.ruleVersion,
     };
     group.name = group.name ?? rec.entityName;
     group.taxId = group.taxId ?? rec.reportingEntityDocument;
@@ -43,9 +53,13 @@ export function buildEntities(records: NormalizedExogenousRecord[]): ReportingEn
   for (const [key, group] of groups) {
     entities.push({
       id: prefixedId('entity', [key]),
-      name: group.name ?? 'Sin nombre',
+      name: group.brandName ?? group.name ?? 'Sin nombre',
       taxId: group.taxId,
       category: inferEntityCategory(group.name, group.concepts),
+      legalName: group.legalName,
+      brandName: group.brandName,
+      groupName: group.groupName,
+      identityRuleVersion: group.identityRuleVersion,
       recordCount: group.count,
       totalReported: group.total,
     });

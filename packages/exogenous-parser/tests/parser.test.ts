@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   validateFile,
+  buildEntities,
   buildWorkbookPreviews,
   inspectWorkbookSheets,
   classifyTaxRecord,
@@ -118,6 +119,44 @@ describe('normalización y agregación (flujo completo)', () => {
     expect(byName['Empresa Empleadora SAS']).toBe('employer');
     expect(byName['Porvenir Ficticio Pensiones']).toBe('pension');
     expect(byName['Fondo Nacional del Ahorro Ficticio']).toBe('housing');
+  });
+});
+
+describe('identidad versionada de entidades financieras', () => {
+  const source = processSheet(readWorkbookFile(sampleExogenousBuffer(), 'muestra.xlsx', 2048), {
+    sheetName: 'Terceros',
+    now: FIXED_NOW,
+  }).normalizedRecords;
+
+  it('separa razon social, marca y grupo sin fusionar NIT distintos', () => {
+    const entities = buildEntities([
+      {
+        ...source[0]!,
+        id: 'record:bancolombia',
+        reportingEntityDocument: '900000001',
+        entityName: 'BANCOLOMBIA S.A.',
+      },
+      {
+        ...source[1]!,
+        id: 'record:fidu',
+        reportingEntityDocument: '900000002',
+        entityName: 'FIDUCIARIA BANCOLOMBIA S.A.',
+      },
+      {
+        ...source[2]!,
+        id: 'record:nequi',
+        reportingEntityDocument: '900000003',
+        entityName: 'NEQUI S.A. COMPANIA DE FINANCIAMIENTO',
+      },
+    ]);
+    expect(entities).toHaveLength(3);
+    expect(new Set(entities.map((entity) => entity.groupName))).toEqual(
+      new Set(['Grupo Bancolombia']),
+    );
+    expect(entities.map((entity) => entity.brandName)).toEqual(
+      expect.arrayContaining(['Bancolombia', 'Fiduciaria Bancolombia', 'Nequi']),
+    );
+    expect(entities.every((entity) => entity.identityRuleVersion)).toBe(true);
   });
 });
 

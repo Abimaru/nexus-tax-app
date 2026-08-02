@@ -43,6 +43,7 @@ import {
   restoreDocumentCandidate,
   reviewDocumentCandidate,
   markDocumentObsolete,
+  synchronizeCaseTasks,
 } from './repository';
 import { buildTaxCaseManifest } from './taxCaseAnalysis';
 
@@ -494,7 +495,7 @@ describe('repositorio (IndexedDB local)', () => {
       acceptedSources: workspace.acceptedSources,
       requirementSourceDecisions: workspace.requirementSourceDecisions,
     });
-    expect(manifest.schemaVersion).toBe('2.1.0');
+    expect(manifest.schemaVersion).toBe('2.1.1');
     expect(manifest.includesBinaryData).toBe(false);
     expect(JSON.stringify(manifest)).not.toContain('secreto sintetico');
     expect(JSON.stringify(manifest)).not.toContain('bytes');
@@ -895,6 +896,44 @@ describe('repositorio (IndexedDB local)', () => {
     expect(supported.history).toHaveLength(2);
   });
 
+  it('persiste tareas derivadas y resuelve las que dejan de estar activas', async () => {
+    const created = await createCase({ alias: 'Pendientes', taxYear: 2025 });
+    const timestamp = '2026-08-02T00:00:00.000Z';
+    await synchronizeCaseTasks(created.id, [
+      {
+        id: 'task:vat',
+        caseId: created.id,
+        type: 'confirm_vat',
+        title: 'Confirmar IVA',
+        explanation: 'La respuesta no se infiere del Excel.',
+        source: 'filing',
+        stage: 'declaracion',
+        view: 'obligacion',
+        entityId: null,
+        documentId: null,
+        requirementId: null,
+        candidateId: null,
+        reconciliationId: null,
+        matrixGroupId: null,
+        priority: 'high',
+        blocking: true,
+        status: 'pending',
+        recommendedAction: 'Responder la pregunta de IVA',
+        ruleId: 'test.v1',
+        evidence: [],
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      },
+    ]);
+    expect((await getTaxCaseWorkspace(created.id)).caseTasks).toMatchObject([
+      { id: 'task:vat', status: 'pending' },
+    ]);
+    await synchronizeCaseTasks(created.id, []);
+    expect((await getTaxCaseWorkspace(created.id)).caseTasks).toMatchObject([
+      { id: 'task:vat', status: 'resolved' },
+    ]);
+  });
+
   it('persiste una extracción sin texto completo ni contraseña', async () => {
     const created = await createCase({ alias: 'Extracción local', taxYear: 2025 });
     const document = await addCaseDocument(created.id, localFile('saldo.pdf', 'PDF sintético'), {
@@ -994,7 +1033,7 @@ describe('repositorio (IndexedDB local)', () => {
     expect(workspace.coverages.some((item) => item.factId === fact?.id)).toBe(true);
   });
 
-  it('conserva decisiones al restaurar y limpia temporales al eliminar el documento', async () => {
+  it('conserva rechazo al reprocesar, permite restaurar y mantiene el historial al obsoletar', async () => {
     const created = await createCase({ alias: 'Limpieza documental', taxYear: 2025 });
     const document = await addCaseDocument(created.id, localFile('saldo.pdf', 'PDF'), {
       kind: 'balance_certificate',
@@ -1027,16 +1066,54 @@ describe('repositorio (IndexedDB local)', () => {
     });
     await reviewDocumentCandidate(candidate.id, {
       action: 'reject',
+      rejectionReason: 'incorrect_period',
       observation: 'No corresponde al periodo sintético.',
     });
-    await restoreDocumentCandidate(candidate.id);
-    expect((await getTaxCaseWorkspace(created.id)).documentCandidates[0]?.decisions).toHaveLength(
-      2,
-    );
+    const secondSession = await createExtractionSession(created.id, document.id);
+    const repeatedCandidate = {
+      ...candidate,
+      id: `${candidate.id}:run-2`,
+      extractionSessionId: secondSession.id,
+      decisions: [],
+      status: 'pending' as const,
+    };
+    await completeExtractionSession({
+      sessionId: secondSession.id,
+      pageCount: 1,
+      readablePageCount: 1,
+      classification: {
+        proposedKind: 'balance_certificate',
+        confidence: 'high',
+        alternatives: [],
+        supportingSignals: [],
+        opposingSignals: [],
+        requiresReview: false,
+        correctedKind: null,
+      },
+      adapterId: repeatedCandidate.adapterId,
+      adapterVersion: repeatedCandidate.adapterVersion,
+      findings: [],
+      candidates: [repeatedCandidate],
+    });
+    let workspace = await getTaxCaseWorkspace(created.id);
+    const preserved = workspace.documentCandidates.find(
+      (item) => item.extractionSessionId === secondSession.id,
+    )!;
+    expect(preserved).toMatchObject({
+      status: 'rejected',
+      rejectionReason: 'incorrect_period',
+    });
+    await restoreDocumentCandidate(preserved.id);
+    expect(
+      (await getTaxCaseWorkspace(created.id)).documentCandidates.find(
+        (item) => item.id === preserved.id,
+      )?.decisions,
+    ).toHaveLength(2);
     await markDocumentObsolete(document.id);
-    const workspace = await getTaxCaseWorkspace(created.id);
-    expect(workspace.extractionSessions).toHaveLength(0);
-    expect(workspace.documentCandidates).toHaveLength(0);
+    workspace = await getTaxCaseWorkspace(created.id);
+    expect(workspace.extractionSessions).toHaveLength(2);
+    expect(workspace.documentCandidates).toHaveLength(2);
+    expect(workspace.documentCandidates.every((item) => item.status === 'obsolete')).toBe(true);
     expect(await getDocumentBinary(document.id)).toBeUndefined();
   });
 });

@@ -23,6 +23,10 @@ export const ReportingEntitySchema = z.object({
   name: z.string(),
   taxId: z.string().nullable(),
   category: EntityCategorySchema,
+  legalName: z.string().optional(),
+  brandName: z.string().nullable().optional(),
+  groupName: z.string().nullable().optional(),
+  identityRuleVersion: z.string().optional(),
   recordCount: z.number().int().nonnegative(),
   totalReported: z.number(),
 });

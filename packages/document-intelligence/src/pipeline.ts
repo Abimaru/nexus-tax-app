@@ -3,6 +3,7 @@ import type {
   DocumentExtractionFinding,
   DocumentClassification,
   DocumentFactCandidate,
+  DocumentExtractionMetrics,
   DocumentaryRequirement,
   NormalizedExogenousRecord,
   ReportingEntity,
@@ -94,7 +95,60 @@ export async function analyzePdfDocument(input: AnalyzePdfInput) {
     candidates,
     extraction.warnings,
   );
-  return { representation, classification, adapter: extraction.adapter, candidates, findings };
+  const metrics = buildExtractionMetrics(
+    representation,
+    candidates,
+    extraction.generatedCandidateCount,
+    extraction.pendingCandidateCount,
+  );
+  return {
+    representation,
+    classification,
+    adapter: extraction.adapter,
+    candidates,
+    findings,
+    metrics,
+  };
+}
+
+function buildExtractionMetrics(
+  representation: Awaited<ReturnType<typeof readPdfText>>,
+  candidates: readonly DocumentFactCandidate[],
+  generated: number,
+  pendingGeneration: number,
+): DocumentExtractionMetrics {
+  const candidatePages = new Set(candidates.map((candidate) => candidate.page));
+  const sections = new Set(
+    representation.pages.flatMap((page) => page.sections?.map((section) => section.label) ?? []),
+  );
+  return {
+    pagesTotal: representation.pageCount,
+    pagesProcessed: representation.pages.length,
+    pagesWithText: representation.pages.filter((page) => page.normalizedText.length > 0).length,
+    pagesWithCandidates: candidatePages.size,
+    pagesWithoutCandidates: representation.pages.filter(
+      (page) => !candidatePages.has(page.pageNumber),
+    ).length,
+    pagesWithWarnings: representation.pages.filter((page) => page.errors.length > 0).length,
+    blocksDetected: representation.pages.reduce((sum, page) => sum + page.blocks.length, 0),
+    sectionsDetected: [...sections],
+    candidatesGenerated: generated,
+    candidatesPersisted: 0,
+    candidatesPendingGeneration: pendingGeneration,
+    pending: candidates.filter((candidate) =>
+      ['pending', 'requires_review'].includes(candidate.status),
+    ).length,
+    confirmed: 0,
+    corrected: 0,
+    rejected: 0,
+    duplicates: 0,
+    informational: 0,
+    obsolete: 0,
+    candidatesByPage: representation.pages.map((page) => ({
+      page: page.pageNumber,
+      count: candidates.filter((candidate) => candidate.page === page.pageNumber).length,
+    })),
+  };
 }
 
 function enrichCandidate(
@@ -141,12 +195,17 @@ function buildFindings(
     });
   }
   if (pageWarnings.length || extractionWarnings.length) {
+    const limitWarning = extractionWarnings.some((warning) =>
+      warning.includes('umbral preventivo'),
+    );
     findings.push({
-      code: 'partial_extraction',
+      code: limitWarning ? 'limit_exceeded' : 'partial_extraction',
       category: 'technical_limitation',
       message: [...pageWarnings, ...extractionWarnings][0] ?? 'La extracción fue parcial.',
       page: null,
-      suggestedAction: 'Revisa cada candidato y registra manualmente los valores ausentes.',
+      suggestedAction: limitWarning
+        ? 'Usa filtros y paginación; todos los candidatos detectados permanecen disponibles.'
+        : 'Revisa cada candidato y registra manualmente los valores ausentes.',
     });
   }
   if (!candidates.length) {

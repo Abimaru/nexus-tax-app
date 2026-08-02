@@ -4,6 +4,7 @@ import { processWorkbookFile } from '@nexus-tax/exogenous-parser';
 import * as XLSX from 'xlsx';
 import {
   buildEmploymentIncomeGroup,
+  buildCaseTasks,
   calculateCaseProgress,
   calculateEmploymentGroupCoverage,
   suggestReconciliations,
@@ -159,5 +160,48 @@ describe('expediente tributario derivado', () => {
         { ...group.instances[1]!, status: 'not_applicable', coverage: 'not_applicable' },
       ]),
     ).toBe('covered');
+  });
+
+  it('deriva pendientes accionables y elimina los resueltos al recalcular', () => {
+    const processed = result();
+    const requirement = processed.requirements[0]!;
+    const pending = buildCaseTasks({
+      caseId: 'case:1',
+      result: processed,
+      documents: [],
+      coverages: [],
+      candidates: [],
+      reconciliations: [],
+      vatResponsibility: null,
+      now: '2026-08-02T00:00:00.000Z',
+    });
+    expect(pending.some((task) => task.requirementId === requirement.id)).toBe(true);
+    expect(pending.some((task) => task.type === 'confirm_vat')).toBe(true);
+
+    const resolved = buildCaseTasks({
+      caseId: 'case:1',
+      result: processed,
+      documents: [],
+      coverages: [
+        {
+          id: 'coverage:1',
+          caseId: 'case:1',
+          requirementId: requirement.id,
+          documentId: null,
+          factId: null,
+          entityId: null,
+          status: 'covered',
+          relation: 'covers',
+          notes: 'Soporte confirmado',
+          updatedAt: '2026-08-02T00:00:00.000Z',
+        },
+      ],
+      candidates: [],
+      reconciliations: [],
+      vatResponsibility: false,
+      now: '2026-08-02T00:00:00.000Z',
+    });
+    expect(resolved.some((task) => task.requirementId === requirement.id)).toBe(false);
+    expect(resolved.some((task) => task.type === 'confirm_vat')).toBe(false);
   });
 });

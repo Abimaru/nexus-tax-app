@@ -2,6 +2,7 @@ import type {
   CaseAnalysis,
   CaseNavigationState,
   CaseProgress,
+  CaseTask,
   DocumentFact,
   DocumentFactCandidate,
   PreliminaryReconciliation,
@@ -72,6 +73,7 @@ export const WORKFLOW_STAGES: readonly WorkflowStageDefinition[] = [
       { id: 'entidades', label: 'Entidades' },
       { id: 'documentos', label: 'Documentos' },
       { id: 'revision-documental', label: 'Revisión de extracción' },
+      { id: 'pendientes', label: 'Pendientes' },
       { id: 'requisitos', label: 'Requisitos' },
       { id: 'hechos', label: 'Hechos' },
     ],
@@ -132,12 +134,14 @@ export interface WorkflowContext {
   extractionPending: boolean;
   vatResponsibility: boolean | null;
   completedViews?: readonly string[];
+  tasks?: readonly CaseTask[];
 }
 
 export interface WorkflowStageState extends WorkflowStageDefinition {
   status: WorkflowStageStatus;
   progress: number;
   blockedReason: string | null;
+  progressLabel?: string;
 }
 
 export interface RecommendedAction {
@@ -148,6 +152,7 @@ export interface RecommendedAction {
   view: WorkflowViewId;
   priority: 'high' | 'medium' | 'low';
   pendingCount: number;
+  targetTaskId?: string;
 }
 
 function extractionHasBlockingErrors(result?: ProcessingResult): boolean {
@@ -228,7 +233,13 @@ export function deriveWorkflowStages(
         blockedReason = status === 'locked' ? 'Procesa una fuente para construir la matriz.' : null;
         break;
       case 'declaracion':
-        progress = hasResult ? (context.vatResponsibility === null ? 50 : 75) : 0;
+        progress = hasResult
+          ? Math.round(
+              ((context.vatResponsibility === null ? 0 : 1) +
+                ((context.result?.report.thresholds.length ?? 0) >= 5 ? 1 : 0)) *
+                50,
+            )
+          : 0;
         status = hasResult ? 'incomplete' : 'locked';
         blockedReason =
           status === 'locked' ? 'La evaluación automática requiere una fuente procesada.' : null;
@@ -243,6 +254,7 @@ export function deriveWorkflowStages(
       status: activeStage === definition.id && status !== 'locked' ? 'active' : status,
       progress,
       blockedReason,
+      progressLabel: definition.id === 'declaracion' ? `PreparaciÃ³n: ${progress}%` : undefined,
     };
   });
 }
@@ -293,6 +305,24 @@ export function defaultWorkflowDestination(context: WorkflowContext): {
 }
 
 export function recommendedWorkflowAction(context: WorkflowContext): RecommendedAction {
+  const priorityRank = { high: 0, medium: 1, low: 2 } as const;
+  const topTask = [...(context.tasks ?? [])]
+    .filter((task) => ['pending', 'in_progress', 'blocked'].includes(task.status))
+    .sort(
+      (a, b) => priorityRank[a.priority] - priorityRank[b.priority] || a.id.localeCompare(b.id),
+    )[0];
+  if (topTask) {
+    return {
+      id: topTask.id,
+      label: topTask.title,
+      reason: topTask.explanation,
+      stage: topTask.stage,
+      view: topTask.view,
+      priority: topTask.priority,
+      pendingCount: (context.tasks ?? []).filter((task) => task.status === 'pending').length,
+      targetTaskId: topTask.id,
+    };
+  }
   if (!context.result && !context.manualMode && !context.extractionPending) {
     return {
       id: 'load-source',

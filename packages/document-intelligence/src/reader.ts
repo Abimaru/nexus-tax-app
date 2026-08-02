@@ -2,6 +2,7 @@ import type { DocumentRepresentation, PdfReadOptions } from './contracts';
 import type * as PdfJsApi from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { DEFAULT_PDF_LIMITS } from './contracts';
 import { normalizeDocumentText } from './normalize';
+import { buildPageStructure } from './structure';
 
 export type PdfReadErrorCode =
   | 'password_required'
@@ -91,23 +92,27 @@ export async function readPdfText(
         const page = await pdf.getPage(pageNumber);
         const viewport = page.getViewport({ scale: 1 });
         const content = await page.getTextContent();
-        const blocks = content.items.flatMap((item) => {
+        const blocks = content.items.flatMap((item, index) => {
           if (!('str' in item) || !item.str.trim()) return [];
           return [
             {
+              index,
               text: normalizeDocumentText(item.str),
               x: item.transform[4],
               y: item.transform[5],
               width: item.width,
               height: item.height,
+              fontName: item.fontName,
             },
           ];
         });
         const normalizedText = normalizeDocumentText(blocks.map((block) => block.text).join('\n'));
+        const structure = buildPageStructure(blocks, limits.verticalLineTolerance);
         pages.push({
           pageNumber,
           normalizedText,
           blocks,
+          ...structure,
           width: viewport.width,
           height: viewport.height,
           errors: [],
@@ -120,6 +125,9 @@ export async function readPdfText(
           pageNumber,
           normalizedText: '',
           blocks: [],
+          lines: [],
+          sections: [],
+          tables: [],
           errors: ['No fue posible leer esta página.'],
           readConfidence: 'insufficient',
         });

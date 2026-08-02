@@ -180,6 +180,9 @@ export type CaseProgress = z.infer<typeof CaseProgressSchema>;
 export const CaseEntitySummarySchema = z.object({
   id: z.string(),
   name: z.string(),
+  legalName: z.string().optional(),
+  brandName: z.string().nullable().optional(),
+  groupName: z.string().nullable().optional(),
   taxIdMasked: z.string().nullable(),
   category: EntityCategorySchema,
   exogenousRecordCount: z.number(),
@@ -195,4 +198,4 @@ export const CaseEntitySummarySchema = z.object({
 });
 export type CaseEntitySummary = z.infer<typeof CaseEntitySummarySchema>;
 
-export const TAX_CASE_EXPORT_SCHEMA_VERSION = '2.1.0';
+export const TAX_CASE_EXPORT_SCHEMA_VERSION = '2.1.1';

@@ -8,17 +8,58 @@ import type {
 } from '@nexus-tax/domain';
 
 export interface DocumentTextBlock {
+  index?: number;
   text: string;
   x?: number;
   y?: number;
   width?: number;
   height?: number;
+  fontName?: string;
+}
+
+export interface DocumentTextLine {
+  id: string;
+  text: string;
+  y: number;
+  blockIndexes: number[];
+  columnCount: number;
+}
+
+export interface DocumentSection {
+  id: string;
+  label: string;
+  kind:
+    | 'balances'
+    | 'debts'
+    | 'investments'
+    | 'income'
+    | 'withholdings'
+    | 'accounts'
+    | 'cards'
+    | 'credits'
+    | 'products'
+    | 'totals'
+    | 'observations'
+    | 'other';
+  startLine: number;
+  endLine: number;
+}
+
+export interface DocumentSimpleTable {
+  id: string;
+  sectionId: string | null;
+  headerLineId: string | null;
+  rowLineIds: string[];
+  columnX: number[];
 }
 
 export interface DocumentPageRepresentation {
   pageNumber: number;
   normalizedText: string;
   blocks: DocumentTextBlock[];
+  lines?: DocumentTextLine[];
+  sections?: DocumentSection[];
+  tables?: DocumentSimpleTable[];
   width?: number;
   height?: number;
   errors: string[];
@@ -39,6 +80,7 @@ export interface PdfReadLimits {
   timeoutMs: number;
   maxCandidates: number;
   maxEvidenceLength: number;
+  verticalLineTolerance: number;
 }
 
 export const DEFAULT_PDF_LIMITS: PdfReadLimits = {
@@ -47,6 +89,7 @@ export const DEFAULT_PDF_LIMITS: PdfReadLimits = {
   timeoutMs: 45_000,
   maxCandidates: 500,
   maxEvidenceLength: 220,
+  verticalLineTolerance: 4,
 };
 
 export type DocumentProgressPhase = 'reading' | 'classifying' | 'extracting';
@@ -103,6 +146,8 @@ export interface ExtractionResult {
   adapter: DocumentAdapter;
   candidates: DocumentFactCandidate[];
   warnings: string[];
+  generatedCandidateCount: number;
+  pendingCandidateCount: number;
 }
 
 export interface DocumentEnrichmentProvider {

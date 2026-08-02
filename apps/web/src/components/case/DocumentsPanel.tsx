@@ -75,6 +75,7 @@ export function DocumentsPanel({
   const abortRef = useRef<AbortController | null>(null);
   const [replacesDocumentId, setReplacesDocumentId] = useState('');
   const [covered, setCovered] = useState<string[]>([]);
+  const [showCoveredRequirements, setShowCoveredRequirements] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const catalog = DOCUMENT_CATALOG.find((entry) => entry.kind === kind)!;
@@ -83,12 +84,21 @@ export function DocumentsPanel({
   const requirementGroups = useMemo(() => {
     const map = new Map<string, DocumentaryRequirement[]>();
     for (const requirement of result?.requirements ?? []) {
+      const coveredByOther = coverages.some(
+        (coverage) => coverage.requirementId === requirement.id && coverage.status === 'covered',
+      );
+      if (coveredByOther && !showCoveredRequirements && !covered.includes(requirement.id)) continue;
       const list = map.get(requirement.entityName) ?? [];
       list.push(requirement);
       map.set(requirement.entityName, list);
     }
     return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0], 'es'));
-  }, [result?.requirements]);
+  }, [result?.requirements, coverages, covered, showCoveredRequirements]);
+  const coveredByOtherCount = (result?.requirements ?? []).filter((requirement) =>
+    coverages.some(
+      (coverage) => coverage.requirementId === requirement.id && coverage.status === 'covered',
+    ),
+  ).length;
 
   function toggleRequirement(id: string, checked: boolean) {
     setCovered((current) => (checked ? [...current, id] : current.filter((item) => item !== id)));
@@ -311,8 +321,30 @@ export function DocumentsPanel({
           {/* Requisitos que cubre — agrupados por entidad */}
           <div>
             <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-content">Requisitos que cubre</p>
-              {covered.length ? <Badge tone="cyan">{covered.length} seleccionado(s)</Badge> : null}
+              <div>
+                <p className="text-sm font-medium text-content">Requisitos que cubre</p>
+                <p className="mt-0.5 text-xs text-content-subtle">
+                  Pendientes y parciales permanecen visibles. Los cubiertos por otros documentos se
+                  ocultan por defecto.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {covered.length ? (
+                  <Badge tone="cyan">{covered.length} seleccionado(s)</Badge>
+                ) : null}
+                {coveredByOtherCount ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="px-2 py-1 text-xs"
+                    onClick={() => setShowCoveredRequirements((current) => !current)}
+                  >
+                    {showCoveredRequirements
+                      ? 'Ocultar cubiertos'
+                      : `Mostrar cubiertos (${coveredByOtherCount})`}
+                  </Button>
+                ) : null}
+              </div>
             </div>
             {requirementGroups.length ? (
               <div className="mt-2 space-y-2">
@@ -343,24 +375,52 @@ export function DocumentsPanel({
                       <div className="mt-2 grid gap-1.5 md:grid-cols-2">
                         {entityRequirements.map((requirement) => {
                           const active = covered.includes(requirement.id);
+                          const statuses = coverages
+                            .filter((coverage) => coverage.requirementId === requirement.id)
+                            .map((coverage) => coverage.status);
+                          const coveredElsewhere = statuses.includes('covered') && !active;
+                          const partial = statuses.includes('partial');
                           return (
                             <label
                               key={requirement.id}
-                              className={`flex cursor-pointer items-center gap-2 rounded-lg border px-2.5 py-2 text-xs transition-colors motion-reduce:transition-none ${
+                              className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-xs transition-colors motion-reduce:transition-none ${
                                 active
                                   ? 'border-accent-cyan/40 bg-accent-cyan/8 text-content-strong'
-                                  : 'border-overlay/8 text-content-muted hover:bg-overlay/5'
+                                  : coveredElsewhere
+                                    ? 'cursor-not-allowed border-overlay/6 text-content-subtle opacity-70'
+                                    : 'border-overlay/8 text-content-muted hover:bg-overlay/5'
                               }`}
                             >
                               <input
                                 type="checkbox"
                                 className="accent-accent-cyan"
                                 checked={active}
+                                disabled={coveredElsewhere}
                                 onChange={(event) =>
                                   toggleRequirement(requirement.id, event.target.checked)
                                 }
                               />
                               <span>{requirement.documentName}</span>
+                              <Badge
+                                className="ml-auto"
+                                tone={
+                                  active
+                                    ? 'cyan'
+                                    : coveredElsewhere
+                                      ? 'emerald'
+                                      : partial
+                                        ? 'amber'
+                                        : 'neutral'
+                                }
+                              >
+                                {active
+                                  ? 'Cubierto por este documento'
+                                  : coveredElsewhere
+                                    ? 'Cubierto por otro documento'
+                                    : partial
+                                      ? 'Parcial'
+                                      : 'Pendiente'}
+                              </Badge>
                             </label>
                           );
                         })}

@@ -34,6 +34,20 @@ export const DocumentCandidateStatusSchema = z.enum([
 ]);
 export type DocumentCandidateStatus = z.infer<typeof DocumentCandidateStatusSchema>;
 
+export const CandidateRejectionReasonSchema = z.enum([
+  'not_tax_value',
+  'header_as_value',
+  'incorrect_value',
+  'incorrect_concept',
+  'other_product',
+  'incorrect_period',
+  'duplicate',
+  'informational',
+  'represented_by_other',
+  'other',
+]);
+export type CandidateRejectionReason = z.infer<typeof CandidateRejectionReasonSchema>;
+
 export const DocumentFindingCategorySchema = z.enum([
   'technical_limitation',
   'pending_data',
@@ -92,12 +106,24 @@ export const CandidateExogenousMatchSchema = z.object({
 
 export const CandidateDecisionSchema = z.object({
   id: z.string(),
-  action: z.enum(['confirmed', 'corrected', 'rejected', 'duplicate', 'informational', 'restored']),
+  action: z.enum([
+    'confirmed',
+    'corrected',
+    'rejected',
+    'duplicate',
+    'informational',
+    'restored',
+    'associated',
+  ]),
   previousStatus: DocumentCandidateStatusSchema,
   nextStatus: DocumentCandidateStatusSchema,
   previousValue: z.number().nullable(),
   nextValue: z.number().nullable(),
   observation: z.string(),
+  reason: CandidateRejectionReasonSchema.nullable().optional(),
+  relatedCandidateId: z.string().nullable().optional(),
+  adapterVersion: z.string().optional(),
+  ruleVersion: z.string().optional(),
   decidedAt: IsoTimestampSchema,
   author: z.string(),
 });
@@ -107,12 +133,16 @@ export const DocumentFactCandidateSchema = z.object({
   caseId: z.string().min(1),
   documentId: z.string().min(1),
   extractionSessionId: z.string().min(1),
+  signature: z.string().optional(),
   page: z.number().int().positive(),
   proposedEntityId: z.string().nullable(),
   entityName: z.string().nullable(),
   proposedProductId: z.string().nullable(),
   productType: ProductTypeSchema,
   productLabel: z.string().nullable(),
+  section: z.string().nullable().optional(),
+  lineText: z.string().optional(),
+  relatedBlockIndexes: z.array(z.number().int().nonnegative()).optional(),
   originalConcept: z.string().min(1),
   normalizedConcept: z.string(),
   proposedCategory: TaxCategorySchema,
@@ -133,6 +163,8 @@ export const DocumentFactCandidateSchema = z.object({
     detectedLabel: z.string().max(160),
     detectedValue: z.string().max(80),
     location: z.string(),
+    x: z.number().nullable().optional(),
+    y: z.number().nullable().optional(),
   }),
   adapterId: z.string(),
   adapterVersion: z.string(),
@@ -149,12 +181,39 @@ export const DocumentFactCandidateSchema = z.object({
   suggestedExogenousMatches: z.array(CandidateExogenousMatchSchema),
   selectedExogenousRecordId: z.string().nullable(),
   observation: z.string(),
+  rejectionReason: CandidateRejectionReasonSchema.nullable().optional(),
+  relatedCandidateId: z.string().nullable().optional(),
   factId: z.string().nullable(),
   decisions: z.array(CandidateDecisionSchema),
   createdAt: IsoTimestampSchema,
   updatedAt: IsoTimestampSchema,
 });
 export type DocumentFactCandidate = z.infer<typeof DocumentFactCandidateSchema>;
+
+export const DocumentExtractionMetricsSchema = z.object({
+  pagesTotal: z.number().int().nonnegative(),
+  pagesProcessed: z.number().int().nonnegative(),
+  pagesWithText: z.number().int().nonnegative(),
+  pagesWithCandidates: z.number().int().nonnegative(),
+  pagesWithoutCandidates: z.number().int().nonnegative(),
+  pagesWithWarnings: z.number().int().nonnegative(),
+  blocksDetected: z.number().int().nonnegative(),
+  sectionsDetected: z.array(z.string()),
+  candidatesGenerated: z.number().int().nonnegative(),
+  candidatesPersisted: z.number().int().nonnegative(),
+  candidatesPendingGeneration: z.number().int().nonnegative(),
+  pending: z.number().int().nonnegative(),
+  confirmed: z.number().int().nonnegative(),
+  corrected: z.number().int().nonnegative(),
+  rejected: z.number().int().nonnegative(),
+  duplicates: z.number().int().nonnegative(),
+  informational: z.number().int().nonnegative(),
+  obsolete: z.number().int().nonnegative(),
+  candidatesByPage: z.array(
+    z.object({ page: z.number().int().positive(), count: z.number().int().nonnegative() }),
+  ),
+});
+export type DocumentExtractionMetrics = z.infer<typeof DocumentExtractionMetricsSchema>;
 
 export const DocumentExtractionSessionSchema = z.object({
   id: z.string().min(1),
@@ -166,6 +225,7 @@ export const DocumentExtractionSessionSchema = z.object({
   completedPhases: z.array(z.string()),
   pageCount: z.number().int().nonnegative(),
   readablePageCount: z.number().int().nonnegative(),
+  metrics: DocumentExtractionMetricsSchema.optional(),
   candidateIds: z.array(z.string()),
   classification: DocumentClassificationSchema.nullable(),
   adapterId: z.string().nullable(),
@@ -182,4 +242,4 @@ export const DocumentExtractionSessionSchema = z.object({
 });
 export type DocumentExtractionSession = z.infer<typeof DocumentExtractionSessionSchema>;
 
-export const DOCUMENT_EXTRACTION_SCHEMA_VERSION = '2.1.0';
+export const DOCUMENT_EXTRACTION_SCHEMA_VERSION = '2.1.1';

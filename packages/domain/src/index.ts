@@ -29,6 +29,7 @@ export * from './employment';
 export * from './navigation';
 export * from './acceptedSources';
 export * from './documentExtraction';
+export * from './caseTasks';
 
 /** Versión del contrato de dominio. Se incrementa ante cambios incompatibles. */
-export const DOMAIN_VERSION = '0.6.0';
+export const DOMAIN_VERSION = '0.7.0';

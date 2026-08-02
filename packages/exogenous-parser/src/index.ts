@@ -47,6 +47,7 @@ export {
 
 // Agregación y calidad
 export { buildEntities, buildConcepts, computeMetrics } from './aggregate';
+export { resolveEntityIdentity, ENTITY_ALIAS_CATALOG_VERSION } from './entityIdentity';
 export {
   ANALYSIS_RULE_VERSION,
   automaticClassificationSnapshot,

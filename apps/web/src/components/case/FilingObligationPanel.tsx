@@ -91,6 +91,13 @@ export function FilingObligationPanel({
   }
 
   const statusCopy = STATUS_COPY[assessment.status];
+  const thresholdReasons = assessment.reasons.filter(
+    (reason) => reason.criterionId !== 'vat_responsible_at_year_end',
+  );
+  const metThresholdCount = thresholdReasons.filter((reason) => reason.result === 'met').length;
+  const evaluableThresholdCount = thresholdReasons.filter(
+    (reason) => reason.result !== 'not_evaluable',
+  ).length;
   return (
     <div className="flex flex-col gap-5">
       <GlassPanel className="p-6">
@@ -113,8 +120,15 @@ export function FilingObligationPanel({
         ) : null}
 
         <div className="mt-5 rounded-xl border border-overlay/10 bg-overlay/[0.025] p-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-content-subtle">
+            Resultado legal orientativo
+          </p>
           <p className="font-medium text-content-strong">{statusCopy.title}</p>
           <p className="mt-1 text-sm text-content-muted">{statusCopy.description}</p>
+          <p className="mt-2 text-sm text-content">
+            Cumple {metThresholdCount} de 5 topes; se evaluaron {evaluableThresholdCount} de 5.
+            Basta activar un solo criterio, incluido IVA, para que el resultado sea requerido.
+          </p>
         </div>
 
         <label className="mt-5 block rounded-xl border border-accent-cyan/20 bg-accent-cyan/5 p-4">
@@ -138,6 +152,29 @@ export function FilingObligationPanel({
             <option value="false">No</option>
           </select>
         </label>
+      </GlassPanel>
+
+      <GlassPanel className="p-6">
+        <h3 className="text-sm font-medium text-content-strong">Preparacion de la declaracion</h3>
+        <p className="mt-2 text-sm text-content-muted">
+          Este avance operativo es independiente del resultado legal. Completar datos y soportes no
+          cambia por si mismo la obligacion de declarar.
+        </p>
+        <ul className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
+          <li className="rounded-lg border border-overlay/8 p-3">
+            Topes disponibles: {evaluableThresholdCount}/5
+          </li>
+          <li className="rounded-lg border border-overlay/8 p-3">
+            Responsabilidad de IVA: {vatValue === null ? 'pendiente' : 'confirmada'}
+          </li>
+          <li className="rounded-lg border border-overlay/8 p-3">
+            Documento para calendario:{' '}
+            {assessment.deadline.lastTwoDigits ? 'disponible' : 'pendiente'}
+          </li>
+          <li className="rounded-lg border border-overlay/8 p-3">
+            Evidencia de topes: {thresholdReasons.filter((reason) => reason.evidence).length}/5
+          </li>
+        </ul>
       </GlassPanel>
 
       <GlassPanel className="p-6">

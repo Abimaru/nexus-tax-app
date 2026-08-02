@@ -386,6 +386,7 @@ interface CandidateSeed {
   detectedLabel?: string;
   productLabel?: string | null;
   score?: number;
+  section?: string | null;
 }
 
 export function extractCandidates(
@@ -418,17 +419,30 @@ export function extractCandidates(
       seen.add(fingerprint);
       const excerpt = seed.line.trim().slice(0, limits.maxEvidenceLength);
       const score = seed.score ?? (selected === GENERIC_DOCUMENT_ADAPTER ? 42 : 72);
+      const signature = `candidate-signature:${stableDocumentId(context.documentId, fingerprint)}`;
+      const relatedBlocks = page.blocks.filter(
+        (block) => seed.line.includes(block.text) || block.text.includes(seed.amount.raw.trim()),
+      );
+      const amountBlock = relatedBlocks.find((block) =>
+        block.text.includes(seed.amount.raw.trim()),
+      );
       candidates.push({
-        id: `candidate:${stableDocumentId(context.documentId, fingerprint)}`,
+        id: `candidate:${stableDocumentId(context.sessionId, fingerprint)}`,
         caseId: context.caseId,
         documentId: context.documentId,
         extractionSessionId: context.sessionId,
+        signature,
         page: page.pageNumber,
         proposedEntityId: context.entityId ?? null,
         entityName: context.entityName ?? null,
         proposedProductId: null,
         productType: seed.rule.productType,
         productLabel: seed.productLabel ?? null,
+        section: seed.section ?? inferSection(seed.line),
+        lineText: seed.line,
+        relatedBlockIndexes: relatedBlocks.flatMap((block) =>
+          typeof block.index === 'number' ? [block.index] : [],
+        ),
         originalConcept:
           seed.originalConcept ??
           (seed.line
@@ -455,6 +469,8 @@ export function extractCandidates(
           detectedLabel: seed.detectedLabel ?? seed.rule.id,
           detectedValue: seed.amount.raw.slice(0, 80),
           location: `Página ${page.pageNumber}`,
+          x: amountBlock?.x ?? null,
+          y: amountBlock?.y ?? null,
         },
         adapterId: selected.id,
         adapterVersion: selected.version,
@@ -477,6 +493,8 @@ export function extractCandidates(
         suggestedExogenousMatches: [],
         selectedExogenousRecordId: null,
         observation: '',
+        rejectionReason: null,
+        relatedCandidateId: null,
         factId: null,
         decisions: [],
         createdAt: context.timestamp,
@@ -504,17 +522,35 @@ export function extractCandidates(
     }
 
     for (const seed of extractPositionedTableSeeds(page, selected.rules)) addCandidate(seed);
-
-    if (candidates.length >= limits.maxCandidates) {
-      return {
-        adapter: selected,
-        candidates: candidates.slice(0, limits.maxCandidates),
-        warnings: ['Se alcanzó el límite de candidatos configurado.'],
-      };
-    }
   }
   markDuplicates(candidates);
-  return { adapter: selected, candidates, warnings: [] };
+  const thresholdReached = candidates.length > limits.maxCandidates;
+  return {
+    adapter: selected,
+    candidates,
+    warnings: thresholdReached
+      ? [
+          `Se superó el umbral preventivo de ${limits.maxCandidates} candidatos; los ${candidates.length} valores permanecen disponibles y paginados para revisión.`,
+        ]
+      : [],
+    generatedCandidateCount: candidates.length,
+    pendingCandidateCount: 0,
+  };
+}
+
+function inferSection(line: string): string | null {
+  const normalized = comparableText(line);
+  const sections: readonly [string, RegExp][] = [
+    ['Saldos', /\b(?:saldo|patrimonio|aporte)\b/],
+    ['Deudas', /\b(?:deuda|pasivo|obligacion)\b/],
+    ['Inversiones', /\b(?:inversion|cdt|fondo)\b/],
+    ['Rendimientos', /\b(?:rendimiento|interes|ingreso)\b/],
+    ['Retenciones', /\bretencion\b/],
+    ['Tarjetas', /\btarjeta\b/],
+    ['Créditos', /\b(?:credito|prestamo)\b/],
+    ['Totales', /^total\b/],
+  ];
+  return sections.find(([, pattern]) => pattern.test(normalized))?.[0] ?? null;
 }
 
 function buildExtractionLines(page: DocumentRepresentation['pages'][number]): string[] {

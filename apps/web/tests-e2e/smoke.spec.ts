@@ -144,11 +144,31 @@ function makeBalanceSupportFile(): string {
   return file;
 }
 
-function makeTextPdf(lines: readonly string[]): Buffer {
+function makeLargeSupportFile(): string {
+  const dir = mkdtempSync(join(tmpdir(), 'nexustax-large-'));
+  const file = join(dir, 'saldos-55-sinteticos.pdf');
+  writeFileSync(
+    file,
+    makeTextPdf(
+      [
+        'Certificado de saldos',
+        ...Array.from(
+          { length: 55 },
+          (_, index) => `Saldo al cierre producto ${index + 1}: $ ${100000 + index}`,
+        ),
+      ],
+      10,
+      7,
+    ),
+  );
+  return file;
+}
+
+function makeTextPdf(lines: readonly string[], lineSpacing = 18, fontSize = 11): Buffer {
   const escape = (value: string) => value.replace(/([\\()])/g, '\\$1');
-  const commands = ['BT', '/F1 11 Tf', '72 740 Td'];
+  const commands = ['BT', `/F1 ${fontSize} Tf`, '72 740 Td'];
   lines.forEach((line, index) => {
-    if (index) commands.push('0 -18 Td');
+    if (index) commands.push(`0 -${lineSpacing} Td`);
     commands.push(`(${escape(line)}) Tj`);
   });
   commands.push('ET');
@@ -195,6 +215,7 @@ test('flujo guiado completo del expediente', async ({ page }, testInfo) => {
   const supportPath = makeSupportFile();
   const unsupportedPath = makeUnsupportedPdfFile();
   const balanceSupportPath = makeBalanceSupportFile();
+  const largeSupportPath = makeLargeSupportFile();
   let offOriginRequests = 0;
   page.on('request', (request) => {
     const url = new URL(request.url());
@@ -372,7 +393,10 @@ test('flujo guiado completo del expediente', async ({ page }, testInfo) => {
     .getByLabel('Observación de la decisión')
     .fill('Valor y página confirmados en el Formulario 220 sintético.');
   await incomeCandidate.getByRole('button', { name: 'Confirmar y crear hecho' }).click();
+  await expect(incomeCandidate).toHaveCount(0);
+  await page.getByLabel('Estado').first().selectOption('confirmed');
   await expect(incomeCandidate.getByText('Hecho asistido creado y trazado.')).toBeVisible();
+  await page.getByLabel('Estado').first().selectOption('pending');
 
   // Rechazar retira la propuesta de la revisión activa sin perder la auditoría.
   const withholdingCandidate = page.getByRole('article', {
@@ -406,6 +430,7 @@ test('flujo guiado completo del expediente', async ({ page }, testInfo) => {
   });
   await page.setViewportSize({ width: 1280, height: 720 });
 
+  await page.getByLabel('Estado').first().selectOption('confirmed');
   await incomeCandidate.getByRole('button', { name: 'Revisar conciliación' }).click();
   await expect(page).toHaveURL(/\/conciliacion\/conciliaciones$/);
   await expect(
@@ -463,7 +488,13 @@ test('flujo guiado completo del expediente', async ({ page }, testInfo) => {
   await selectView(page, 'Documentos');
   await page.getByRole('button', { name: 'Marcar obsoleto' }).click();
   await selectView(page, 'Revisión de extracción');
-  await expect(page.getByText('Sin extracciones documentales')).toBeVisible();
+  await page.getByLabel('Estado').first().selectOption('obsolete');
+  await expect(
+    page
+      .getByRole('article')
+      .getByText(/^Obsoleto/)
+      .first(),
+  ).toBeVisible();
 
   // Un documento posterior muestra su propia sesión y sus candidatos.
   await selectView(page, 'Documentos');
@@ -485,7 +516,34 @@ test('flujo guiado completo del expediente', async ({ page }, testInfo) => {
     .getByRole('button', { name: 'Marcar obsoleto' })
     .click();
   await selectView(page, 'Revisión de extracción');
-  await expect(page.getByText('Sin extracciones documentales')).toBeVisible();
+  for (const filter of await page.getByLabel('Estado').all()) await filter.selectOption('obsolete');
+  await expect(
+    page
+      .getByRole('article')
+      .getByText(/^Obsoleto/)
+      .first(),
+  ).toBeVisible();
+
+  // Un documento voluminoso conserva todos los candidatos, pagina la vista y permite lotes.
+  await selectView(page, 'Documentos');
+  await page.setInputFiles('#case-document-file', largeSupportPath);
+  await page.getByLabel('Tipo documental').selectOption('balance_certificate');
+  await page.getByLabel(/Decisi.n de persistencia/).selectOption('store_locally');
+  await page.getByRole('button', { name: 'Registrar y analizar' }).click();
+  await expect(page.getByText('Detectados 55')).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText(/Pagina 1 de 3/)).toBeVisible();
+  await page.getByRole('button', { name: 'Siguiente', exact: true }).click();
+  await expect(page.getByText(/Pagina 2 de 3/)).toBeVisible();
+  await page.getByLabel(/Seleccionar pagina visible/).check();
+  await page
+    .getByRole('region', { name: 'Acciones masivas' })
+    .filter({ hasText: '20 seleccionados' })
+    .locator('select')
+    .first()
+    .selectOption('informational');
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.getByRole('button', { name: 'Aplicar a seleccionados' }).click();
+  await expect(page.getByText('Informativos 20')).toBeVisible();
 
   // Salida recuperable para PDF sin texto y control de contraseña por teclado.
   await selectView(page, 'Documentos');

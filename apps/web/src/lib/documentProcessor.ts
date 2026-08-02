@@ -65,6 +65,7 @@ export async function processDocumentLocally(input: {
       sessionId: session.id,
       pageCount: analysis.representation.pageCount,
       readablePageCount: analysis.representation.pages.filter((page) => page.normalizedText).length,
+      metrics: analysis.metrics,
       classification: analysis.classification,
       adapterId: analysis.adapter.id,
       adapterVersion: analysis.adapter.version,

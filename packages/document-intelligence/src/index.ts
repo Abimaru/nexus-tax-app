@@ -4,4 +4,5 @@ export * from './classifier';
 export * from './adapters';
 export * from './matching';
 export * from './reader';
+export * from './structure';
 export * from './pipeline';

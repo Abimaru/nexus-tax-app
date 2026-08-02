@@ -23,9 +23,11 @@ import {
   saveCaseNavigation,
   saveResult,
   updateCaseStatus,
+  synchronizeCaseTasks,
 } from '@/lib/repository';
 import {
   buildEntitySummaries,
+  buildCaseTasks,
   buildTaxCaseManifest,
   calculateCaseProgress,
   suggestReconciliations,
@@ -58,6 +60,7 @@ import { FactsPanel } from './FactsPanel';
 import { ReconciliationsPanel } from './ReconciliationsPanel';
 import { RequirementsPanel } from './RequirementsPanel';
 import { DocumentExtractionReviewPanel } from './DocumentExtractionReviewPanel';
+import { CaseTasksPanel } from './CaseTasksPanel';
 import { ContextualNavigation, WorkflowStepper } from './WorkflowNavigation';
 import {
   BasicCaseDataPanel,
@@ -89,6 +92,8 @@ export function CaseWorkbench({
   const [view, setView] = useState<WorkflowViewId>(initialView ?? 'cargar');
   const [focusRecordId, setFocusRecordId] = useState<string | null>(null);
   const [reviewRecordId, setReviewRecordId] = useState<string | null>(null);
+  const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
+  const [taskTimestamp] = useState(() => new Date().toISOString());
   const initialized = useRef(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const phase = useWorkbenchStore((state) => state.phase);
@@ -131,6 +136,26 @@ export function CaseWorkbench({
       }),
     [workspace?.facts, workspace?.products, result],
   );
+  const tasks = useMemo(
+    () =>
+      buildCaseTasks({
+        caseId,
+        result,
+        analysis,
+        documents: workspace?.documents ?? [],
+        coverages: workspace?.coverages ?? [],
+        candidates: workspace?.documentCandidates ?? [],
+        reconciliations: workspace?.reconciliations ?? [],
+        requirementSourceDecisions: workspace?.requirementSourceDecisions ?? [],
+        vatResponsibility: workspace?.filingInputs?.isVatResponsibleAtYearEnd ?? null,
+        now: taskTimestamp,
+      }),
+    [caseId, result, analysis, workspace, taskTimestamp],
+  );
+  useEffect(() => {
+    if (!workspace) return;
+    void synchronizeCaseTasks(caseId, tasks);
+  }, [caseId, tasks, workspace]);
   const workflowContext = useMemo<WorkflowContext>(
     () => ({
       taxCase,
@@ -145,8 +170,9 @@ export function CaseWorkbench({
       extractionPending: ['inspecting', 'inspected', 'processing'].includes(phase),
       vatResponsibility: workspace?.filingInputs?.isVatResponsibleAtYearEnd ?? null,
       completedViews: workspace?.navigation?.completedViews ?? [],
+      tasks,
     }),
-    [taxCase, result, analysis, workspace, progress, phase],
+    [taxCase, result, analysis, workspace, progress, phase, tasks],
   );
   const stages = useMemo(
     () => deriveWorkflowStages(workflowContext, stage),
@@ -271,6 +297,12 @@ export function CaseWorkbench({
     applyDestination('extraccion', 'registros');
   }
 
+  function navigateToTask(nextStage: WorkflowStageId, nextView: WorkflowViewId, taskId: string) {
+    setActiveTaskId(taskId);
+    applyDestination(nextStage, nextView);
+    window.setTimeout(() => document.getElementById('active-task-context')?.focus(), 0);
+  }
+
   function exportManifest() {
     if (!taxCase || !workspace) return;
     const manifest = buildTaxCaseManifest({
@@ -288,6 +320,7 @@ export function CaseWorkbench({
       requirementSourceDecisions: workspace.requirementSourceDecisions,
       extractionSessions: workspace.extractionSessions,
       documentCandidates: workspace.documentCandidates,
+      tasks: workspace.caseTasks,
     });
     downloadTextFile(
       `${safeBaseName(taxCase.alias)}-manifiesto.json`,
@@ -392,10 +425,36 @@ export function CaseWorkbench({
         activeStage={stage}
         stages={stages}
         progress={progress}
-        onNavigate={applyDestination}
+        onNavigate={(nextStage, nextView) =>
+          recommendation.targetTaskId
+            ? navigateToTask(nextStage, nextView, recommendation.targetTaskId)
+            : applyDestination(nextStage, nextView)
+        }
       />
 
       <div ref={contentRef} tabIndex={-1} className="mt-6 focus:outline-none">
+        {activeTaskId && view !== 'pendientes' ? (
+          <div
+            id="active-task-context"
+            tabIndex={-1}
+            className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-accent-cyan/40 bg-accent-cyan/10 p-3 text-sm text-content-muted outline-none ring-2 ring-accent-cyan/15"
+          >
+            <span>
+              Tarea activa:{' '}
+              {tasks.find((task) => task.id === activeTaskId)?.title ?? 'Pendiente del expediente'}
+            </span>
+            <button
+              type="button"
+              className="text-tone-cyan underline-offset-2 hover:underline"
+              onClick={() => {
+                setActiveTaskId(null);
+                applyDestination('organizacion', 'pendientes');
+              }}
+            >
+              Volver a pendientes
+            </button>
+          </div>
+        ) : null}
         {stage === 'fuente' && view === 'cargar' ? (
           <div className="space-y-4">
             <EmptySourceIntro onManual={() => void continueManually()} />
@@ -491,6 +550,9 @@ export function CaseWorkbench({
             onOpenReconciliations={() => applyDestination('conciliacion', 'conciliaciones')}
           />
         ) : null}
+        {stage === 'organizacion' && view === 'pendientes' ? (
+          <CaseTasksPanel tasks={tasks} onNavigate={navigateToTask} />
+        ) : null}
         {stage === 'organizacion' && view === 'requisitos' ? (
           <RequirementsPanel
             caseId={caseId}
@@ -531,6 +593,8 @@ export function CaseWorkbench({
                 result={currentResult}
                 analysis={currentAnalysis}
                 acceptedSources={workspace.acceptedSources}
+                tasks={tasks}
+                onOpenTasks={() => applyDestination('organizacion', 'pendientes')}
               />
             )}
           </AnalysisGate>

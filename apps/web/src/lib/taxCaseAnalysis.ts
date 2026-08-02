@@ -3,6 +3,7 @@ import type {
   CaseAnalysis,
   CaseEntitySummary,
   CaseProgress,
+  CaseTask,
   DocumentFact,
   PreliminaryReconciliation,
   ProcessingResult,
@@ -224,6 +225,193 @@ export function calculateCaseProgress(input: {
   };
 }
 
+export function buildCaseTasks(input: {
+  caseId: string;
+  result?: ProcessingResult;
+  analysis?: CaseAnalysis;
+  documents: readonly UploadedDocument[];
+  coverages: readonly RequirementCoverage[];
+  candidates: readonly DocumentFactCandidate[];
+  reconciliations: readonly PreliminaryReconciliation[];
+  requirementSourceDecisions?: readonly RequirementSourceDecision[];
+  vatResponsibility: boolean | null;
+  now?: string;
+}): CaseTask[] {
+  const timestamp = input.now ?? new Date().toISOString();
+  const tasks: CaseTask[] = [];
+  const activeDocumentIds = new Set(
+    input.documents
+      .filter((document) => document.status === 'active')
+      .map((document) => document.id),
+  );
+  for (const candidate of input.candidates) {
+    if (!activeDocumentIds.has(candidate.documentId)) continue;
+    if (!['pending', 'requires_review'].includes(candidate.status)) continue;
+    tasks.push({
+      id: `task:candidate:${candidate.id}`,
+      caseId: input.caseId,
+      type: candidate.proposedEntityId
+        ? candidate.proposedProductId
+          ? 'confirm_candidate'
+          : 'identify_product'
+        : 'associate_entity',
+      title: candidate.proposedProductId
+        ? `Confirmar ${candidate.originalConcept}`
+        : candidate.proposedEntityId
+          ? `Identificar producto de ${candidate.originalConcept}`
+          : `Asociar entidad a ${candidate.originalConcept}`,
+      explanation: `El valor documental de la pÃ¡gina ${candidate.page} todavÃ­a no afecta la matriz.`,
+      source: 'candidate',
+      stage: 'organizacion',
+      view: 'revision-documental',
+      entityId: candidate.proposedEntityId,
+      documentId: candidate.documentId,
+      requirementId: candidate.suggestedRequirementIds[0] ?? null,
+      candidateId: candidate.id,
+      reconciliationId: null,
+      matrixGroupId: null,
+      priority: candidate.confidence.level === 'low' ? 'high' : 'medium',
+      blocking: true,
+      status: 'pending',
+      recommendedAction: 'Revisar candidato documental',
+      ruleId: 'case-task.pending-document-candidate.v1',
+      evidence: [candidate.evidence.excerpt],
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+  }
+  for (const requirement of input.result?.requirements ?? []) {
+    if (
+      input.requirementSourceDecisions?.some(
+        (decision) => decision.requirementId === requirement.id,
+      )
+    )
+      continue;
+    const statuses = input.coverages
+      .filter((coverage) => coverage.requirementId === requirement.id)
+      .map((coverage) => coverage.status);
+    if (statuses.includes('covered') || statuses.includes('not_applicable')) continue;
+    const partial = statuses.includes('partial');
+    const entity = input.result?.entities.find((item) => item.name === requirement.entityName);
+    tasks.push({
+      id: `task:requirement:${requirement.id}`,
+      caseId: input.caseId,
+      type: 'cover_requirement',
+      title: `${partial ? 'Completar' : 'Cubrir'} ${requirement.documentName}`,
+      explanation:
+        `${requirement.reason} ${partial ? 'La cobertura actual es parcial.' : ''}`.trim(),
+      source: 'requirement',
+      stage: 'organizacion',
+      view: 'requisitos',
+      entityId: entity?.id ?? null,
+      documentId: null,
+      requirementId: requirement.id,
+      candidateId: null,
+      reconciliationId: null,
+      matrixGroupId: null,
+      priority: requirement.confidence === 'high' ? 'high' : 'medium',
+      blocking: true,
+      status: 'pending',
+      recommendedAction: partial ? 'Completar cobertura documental' : 'Cargar o asociar soporte',
+      ruleId: 'case-task.requirement-coverage.v1',
+      evidence: [requirement.reason],
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+  }
+  for (const reconciliation of input.reconciliations) {
+    if (
+      reconciliation.confirmedByHuman &&
+      ['reconciled', 'minor_difference'].includes(reconciliation.status)
+    )
+      continue;
+    tasks.push({
+      id: `task:reconciliation:${reconciliation.id}`,
+      caseId: input.caseId,
+      type: 'reconcile_value',
+      title: 'Resolver conciliaciÃ³n documental',
+      explanation: reconciliation.explanation,
+      source: 'matrix',
+      stage: 'conciliacion',
+      view: 'conciliaciones',
+      entityId: null,
+      documentId: null,
+      requirementId: null,
+      candidateId: null,
+      reconciliationId: reconciliation.id,
+      matrixGroupId: null,
+      priority: reconciliation.status === 'relevant_difference' ? 'high' : 'medium',
+      blocking: true,
+      status: 'pending',
+      recommendedAction: 'Revisar evidencia y confirmar conciliaciÃ³n',
+      ruleId: 'case-task.reconciliation.v1',
+      evidence: [reconciliation.explanation],
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+  }
+  for (const group of input.analysis?.matrix.groups ?? []) {
+    if (
+      ['reconciled', 'rounding_difference', 'not_comparable'].includes(group.reconciliationStatus)
+    )
+      continue;
+    tasks.push({
+      id: `task:matrix:${group.id}`,
+      caseId: input.caseId,
+      type: 'resolve_matrix_group',
+      title: `Resolver ${group.label}`,
+      explanation: group.recommendedAction,
+      source: 'matrix',
+      stage: 'conciliacion',
+      view: 'matriz',
+      entityId: null,
+      documentId: null,
+      requirementId: null,
+      candidateId: null,
+      reconciliationId: null,
+      matrixGroupId: group.id,
+      priority: group.reconciliationStatus === 'relevant_difference' ? 'high' : 'medium',
+      blocking: group.pendingCount > 0,
+      status: 'pending',
+      recommendedAction: group.recommendedAction,
+      ruleId: 'case-task.matrix-group.v1',
+      evidence: group.warnings,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+  }
+  if (input.result && input.vatResponsibility === null) {
+    tasks.push({
+      id: `task:filing:vat:${input.caseId}`,
+      caseId: input.caseId,
+      type: 'confirm_vat',
+      title: 'Confirmar responsabilidad de IVA',
+      explanation: 'La condiciÃ³n al 31 de diciembre no puede inferirse del archivo exÃ³geno.',
+      source: 'filing',
+      stage: 'declaracion',
+      view: 'obligacion',
+      entityId: null,
+      documentId: null,
+      requirementId: null,
+      candidateId: null,
+      reconciliationId: null,
+      matrixGroupId: null,
+      priority: 'high',
+      blocking: true,
+      status: 'pending',
+      recommendedAction: 'Responder la pregunta de IVA',
+      ruleId: 'case-task.vat-confirmation.v1',
+      evidence: [],
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+  }
+  const priority = { high: 0, medium: 1, low: 2 } as const;
+  return tasks.sort(
+    (a, b) => priority[a.priority] - priority[b.priority] || a.title.localeCompare(b.title, 'es'),
+  );
+}
+
 function normalize(value: string): string {
   return value
     .normalize('NFD')
@@ -369,6 +557,9 @@ export function buildEntitySummaries(input: {
     return {
       id: entity.id,
       name: entity.name,
+      legalName: entity.legalName ?? entity.name,
+      brandName: entity.brandName ?? null,
+      groupName: entity.groupName ?? null,
       taxIdMasked: mask(entity.taxId),
       category: entity.category,
       exogenousRecordCount: entity.recordCount,
@@ -402,6 +593,7 @@ export function buildTaxCaseManifest(input: {
   requirementSourceDecisions?: readonly RequirementSourceDecision[];
   extractionSessions?: readonly DocumentExtractionSession[];
   documentCandidates?: readonly DocumentFactCandidate[];
+  tasks?: readonly CaseTask[];
 }) {
   return {
     schema: 'nexustax.tax-case.manifest',
@@ -426,5 +618,6 @@ export function buildTaxCaseManifest(input: {
       includesFullText: false as const,
       includesPasswords: false as const,
     },
+    tasks: input.tasks ?? [],
   };
 }
