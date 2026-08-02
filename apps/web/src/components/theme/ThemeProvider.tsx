@@ -21,8 +21,12 @@ const ThemeContext = createContext<ThemeContextValue>({
 
 export const THEME_STORAGE_KEY = 'nexustax-theme';
 
-/** Script inline que fija el tema ANTES de pintar, evitando el parpadeo (FOUC). */
-export const themeNoFlashScript = `(function(){try{var t=localStorage.getItem('${THEME_STORAGE_KEY}');if(t!=='light'&&t!=='dark'){t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';}document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme='dark';}})();`;
+/**
+ * Script inline que fija el tema ANTES de pintar, evitando el parpadeo (FOUC).
+ * Por defecto la app SIEMPRE abre en oscuro; solo respeta el modo claro si el
+ * usuario lo eligió explícitamente antes (preferencia guardada).
+ */
+export const themeNoFlashScript = `(function(){try{var t=localStorage.getItem('${THEME_STORAGE_KEY}');if(t!=='light'&&t!=='dark'){t='dark';}document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme='dark';}})();`;
 
 function readCurrentTheme(): Theme {
   if (typeof document !== 'undefined') {
