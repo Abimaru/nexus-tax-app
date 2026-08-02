@@ -139,3 +139,23 @@ columnas, secciones y tablas simples. El dominio define métricas, decisiones es
 `CaseTask`; Dexie v9 persiste sesiones, candidatos y tareas. React consume estas salidas sin
 incorporar reglas de extracción ni de identidad. El catálogo versionado de entidades vive en
 `exogenous-parser` y Aegis mantiene separada la evaluación legal.
+
+## Sprint 2.2: diagnóstico de PDF y OCR local (en curso)
+
+`diagnosePdfDocument` (puro, en `document-intelligence`) clasifica documento y páginas como
+textual/escaneado/híbrido/texto insuficiente/dañado a partir de `readConfidence` y los errores de
+lectura ya existentes; el dominio expone el resultado como campo opcional de
+`DocumentExtractionSession` (sin migración de Dexie: no es un índice). La detección de imágenes
+grandes queda fuera de este cambio hasta que el renderizado de página exista para OCR (ver
+`docs/PROJECT_HANDOFF.md`).
+
+**Nueva dependencia aprobada: `tesseract.js` 7.0.0 (Apache-2.0).** Motor OCR que corre íntegramente
+en el navegador vía Web Worker y WebAssembly, sin llamadas de red durante el reconocimiento. Se
+vendoriza igual que PDF.js: `apps/web/scripts/prepare-tesseract.mjs` copia el worker y las tres
+variantes del núcleo LSTM (`tesseract-core-{,simd-,relaxedsimd-}lstm.wasm.js`, ya autocontenidas con
+el binario WASM embebido) desde `tesseract.js`/`tesseract.js-core` instalados, y descarga una única
+vez `spa.traineddata` (modelo "fast", ~2.2 MB) a `public/vendor/tesseract/`, directorio ignorado por
+Git y regenerado en `predev`/`prebuild`. La descarga del modelo de idioma requiere red solo en tiempo
+de desarrollo/build, nunca durante el procesamiento de un documento del usuario. El motor de OCR se
+orquesta desde `apps/web` (nunca desde el paquete puro, que solo definirá el contrato unificado de
+tokens nativo/OCR y la comparación entre ambas fuentes).

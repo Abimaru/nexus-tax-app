@@ -21,6 +21,7 @@ playwright-report/
 test-results/
 .playwright/
 /apps/web/public/vendor/pdfjs/
+/apps/web/public/vendor/tesseract/
 /apps/web/.next-build-*/
 /apps/web/.next-build/
 

@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "prepare:pdfjs": "node scripts/prepare-pdfjs.mjs",
-    "predev": "pnpm prepare:pdfjs",
+    "prepare:tesseract": "node scripts/prepare-tesseract.mjs",
+    "predev": "pnpm prepare:pdfjs && pnpm prepare:tesseract",
     "dev": "next dev",
-    "prebuild": "pnpm prepare:pdfjs",
+    "prebuild": "pnpm prepare:pdfjs && pnpm prepare:tesseract",
     "build": "next build",
     "start": "next start",
     "lint": "next lint --max-warnings 0",
@@ -32,6 +33,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "recharts": "^2.13.3",
+    "tesseract.js": "^7.0.0",
     "zod": "^3.23.8",
     "zustand": "^5.0.1"
   },
@@ -51,6 +53,7 @@
     "jsdom": "^25.0.1",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.14",
+    "tesseract.js-core": "^7.0.0",
     "typescript": "^5.6.3",
     "vitest": "^2.1.4",
     "xlsx": "^0.18.5"
