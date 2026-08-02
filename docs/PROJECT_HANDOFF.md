@@ -394,3 +394,54 @@ conclusiones que requieren exógena. Formulario 210 e Historial no tienen lógic
 Siguiente paso exacto: ejecutar la matriz manual actualizada en cinco anchos,
 validar reemplazo/eliminación con datos sintéticos y registrar evidencia antes
 de ampliar reglas, múltiples fuentes o capacidades futuras.
+
+## Experiencia: tema oscuro, navegación fluida y rediseño de documentos (2026-08-01)
+
+### Estado inicial
+
+La app seguía la preferencia del sistema (a veces abría en claro). Al cambiar de
+paso, `applyDestination` hacía `router.push` además de actualizar el estado
+local: eso disparaba una navegación RSC completa en cada cambio (parpadeo, "se ve
+la anterior", salto de scroll y 400 intermitente en navegaciones rápidas). Las
+vistas de documentos y valores eran planas: muros de campos y casillas
+`Entidad · Documento` repetidas.
+
+### Cambios implementados
+
+- **Modo oscuro por defecto**: el script anti-parpadeo ya no consulta
+  `prefers-color-scheme`; abre en oscuro salvo preferencia explícita guardada.
+- **Navegación sin recarga**: la URL de etapa/vista se actualiza con la History
+  API (`pushState`/`replaceState`, soportada por Next 14.2), no con el router.
+  Se eliminó el parpadeo, el salto de scroll (`focus({ preventScroll })`) y el
+  400 intermitente. Se añadió sincronización con atrás/adelante (`popstate`).
+- **Rediseño de vistas de documentos y valores** (helper `entityVisuals`):
+  - `RequirementsPanel`: agrupado por entidad, iconos por categoría, progreso y
+    asociación de documentos expandible (menos saturación).
+  - `DocumentsPanel`: zona de carga drag & drop, "Requisitos que cubre" agrupado
+    por entidad (sin repetir el prefijo) e iconos por tipo de documento.
+  - `FactsPanel`: formulario por secciones (Qué registras / Origen / Vínculo /
+    Clasificación avanzada colapsable) con formato de moneda en vivo y `optgroup`
+    por entidad.
+  - `EmploymentIncomeGroupPanel`: tarjetas de empleador con cabecera de estado,
+    subsecciones (Datos / Formulario 220 / Complementarios / Observaciones) y
+    acciones con icono.
+
+### Nota operativa
+
+No ejecutar `pnpm build` mientras `pnpm dev` está activo: ambos comparten `.next`
+y el build desincroniza el CSS del dev server (página sin estilos). Recuperación:
+refresco fuerte del navegador o reiniciar `pnpm dev`. Verificación durante dev
+solo con `typecheck` y `lint`.
+
+### Validaciones
+
+| Paso      | Comando              | Resultado                      |
+| --------- | -------------------- | ------------------------------ |
+| Typecheck | `pnpm typecheck`     | OK; 6 proyectos                |
+| Lint      | `pnpm lint`          | OK; 0 warnings / 0 errors      |
+| Tema      | verificación en vivo | OK; abre en oscuro por defecto |
+
+### Pendiente
+
+Rediseño del `UploadPanel` (cargues) con estados animados, alineado con la
+biblioteca documental.
