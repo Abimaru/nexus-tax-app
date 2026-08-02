@@ -1380,7 +1380,7 @@ export async function associateDocumentCandidatesBulk(
           nextStatus: candidate.status,
           previousValue: candidate.finalValue,
           nextValue: candidate.finalValue,
-          observation: 'AsociaciÃ³n mÃºltiple revisada por el analista.',
+          observation: 'Asociación múltiple revisada por el analista.',
           reason: null,
           relatedCandidateId: null,
           adapterVersion: candidate.adapterVersion,

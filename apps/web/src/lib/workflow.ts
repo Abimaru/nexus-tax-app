@@ -254,7 +254,7 @@ export function deriveWorkflowStages(
       status: activeStage === definition.id && status !== 'locked' ? 'active' : status,
       progress,
       blockedReason,
-      progressLabel: definition.id === 'declaracion' ? `PreparaciÃ³n: ${progress}%` : undefined,
+      progressLabel: definition.id === 'declaracion' ? `Preparación: ${progress}%` : undefined,
     };
   });
 }

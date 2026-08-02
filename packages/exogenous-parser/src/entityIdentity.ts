@@ -30,7 +30,7 @@ const ENTITY_ALIAS_RULES: readonly EntityAliasRule[] = [
   {
     id: 'nequi',
     patterns: [/\bnequi\b/],
-    legalName: 'Entidad jurÃ­dica reportada para Nequi',
+    legalName: 'Entidad jurídica reportada para Nequi',
     brandName: 'Nequi',
     groupName: 'Grupo Bancolombia',
   },

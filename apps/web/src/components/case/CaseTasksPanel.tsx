@@ -72,7 +72,7 @@ export function CaseTasksPanel({
                   ) : null}
                   <div className="mt-auto pt-4">
                     <p className="mb-2 text-xs text-content-muted">
-                      CÃ³mo resolverlo: {task.recommendedAction}
+                      Cómo resolverlo: {task.recommendedAction}
                     </p>
                     <Button
                       variant="secondary"

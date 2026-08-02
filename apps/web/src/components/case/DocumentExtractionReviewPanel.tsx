@@ -76,7 +76,7 @@ const REJECTION_REASON_LABEL: Record<CandidateRejectionReason, string> = {
   incorrect_period: 'Periodo incorrecto',
   duplicate: 'Duplicado',
   informational: 'Solo informativo',
-  represented_by_other: 'Ya estÃ¡ representado por otro candidato',
+  represented_by_other: 'Ya está representado por otro candidato',
   other: 'Otro motivo',
 };
 
@@ -257,7 +257,7 @@ function ExtractionSessionCard({
     }
     if (
       !window.confirm(
-        `Se aplicarÃ¡ la acciÃ³n a ${selectedIds.length} candidato(s). Las decisiones quedarÃ¡n trazadas. Â¿Continuar?`,
+        `Se aplicará la acción a ${selectedIds.length} candidato(s). Las decisiones quedarán trazadas. ¿Continuar?`,
       )
     )
       return;
@@ -284,7 +284,7 @@ function ExtractionSessionCard({
       setBulkObservation('');
     } catch (caught) {
       setError(
-        caught instanceof Error ? caught.message : 'No fue posible aplicar la acciÃ³n mÃºltiple.',
+        caught instanceof Error ? caught.message : 'No fue posible aplicar la acción múltiple.',
       );
     } finally {
       setBulkSaving(false);
@@ -415,14 +415,14 @@ function ExtractionSessionCard({
           aria-labelledby={`${session.id}-coverage`}
         >
           <h4 id={`${session.id}-coverage`} className="text-sm font-medium text-content-strong">
-            Cobertura tÃ©cnica del documento
+            Cobertura técnica del documento
           </h4>
           <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-5">
             <Data
-              label="PÃ¡ginas leÃ­das"
+              label="Páginas leídas"
               value={`${session.metrics.pagesProcessed}/${session.metrics.pagesTotal}`}
             />
-            <Data label="PÃ¡ginas con texto" value={String(session.metrics.pagesWithText)} />
+            <Data label="Páginas con texto" value={String(session.metrics.pagesWithText)} />
             <Data label="Bloques detectados" value={String(session.metrics.blocksDetected)} />
             <Data
               label="Candidatos generados"
@@ -434,10 +434,10 @@ function ExtractionSessionCard({
             />
           </dl>
           <p className="mt-2 text-xs text-content-subtle">
-            {session.metrics.pagesWithCandidates} pÃ¡gina(s) contienen candidatos Â·{' '}
-            {session.metrics.pagesWithoutCandidates} sin candidatos Â·{' '}
-            {session.metrics.sectionsDetected.length} secciÃ³n(es) detectada(s). No es un porcentaje
-            de precisiÃ³n.
+            {session.metrics.pagesWithCandidates} página(s) contienen candidatos ·{' '}
+            {session.metrics.pagesWithoutCandidates} sin candidatos ·{' '}
+            {session.metrics.sectionsDetected.length} sección(es) detectada(s). No es un porcentaje
+            de precisión.
           </p>
         </section>
       ) : null}
@@ -461,7 +461,7 @@ function ExtractionSessionCard({
               <option value="low_confidence">Baja confianza</option>
             </select>
           </Field>
-          <Field label="PÃ¡gina PDF">
+          <Field label="Página PDF">
             <select
               className={inputClass}
               value={pageFilter}
@@ -472,7 +472,7 @@ function ExtractionSessionCard({
                 .sort((a, b) => a - b)
                 .map((page) => (
                   <option key={page} value={page}>
-                    PÃ¡gina {page}
+                    Página {page}
                   </option>
                 ))}
             </select>
@@ -492,7 +492,7 @@ function ExtractionSessionCard({
               ))}
             </select>
           </Field>
-          <Field label="CategorÃ­a">
+          <Field label="Categoría">
             <select
               className={inputClass}
               value={categoryFilter}
@@ -506,7 +506,7 @@ function ExtractionSessionCard({
               ))}
             </select>
           </Field>
-          <Field label="Por pÃ¡gina">
+          <Field label="Por página">
             <select
               className={inputClass}
               value={pageSize}
