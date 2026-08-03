@@ -113,6 +113,49 @@ export interface Form210Draft {
   presentationStatus: 'out_of_scope';
 }
 
+/**
+ * Estado de validación normativa de una casilla del Formulario 210:
+ *   - `verified`: la fórmula es literal del instructivo oficial y hay una
+ *     fuente que la respalda; el cálculo se puede reportar como resultado.
+ *   - `implemented_unverified`: la casilla se calcula, pero no está verificada
+ *     por una regla oficial explícita (p. ej. agrupación por categoría). El
+ *     valor es orientativo y NO se debe presentar como definitivo.
+ *   - `requires_review`: hay implementación pero depende de una interpretación
+ *     no confirmada; se crea una tarea y no se cierra la casilla.
+ *   - `not_implemented`: la casilla existe en el modelo pero aún no se calcula.
+ */
+export type Form210RuleValidationStatus =
+  | 'not_implemented'
+  | 'implemented_unverified'
+  | 'requires_review'
+  | 'verified';
+
+/** Ejemplo manual de cálculo, usado como caso de verificación de una regla. */
+export interface Form210ValidationExample {
+  description: string;
+  inputs: Readonly<Record<string, number>>;
+  expected: number;
+}
+
+/**
+ * Fila de la matriz de validación normativa. Se emite por cada casilla del
+ * ruleset y describe qué respalda la fórmula (fuente oficial), qué examples
+ * verifican el cálculo y cuál es el estado actual de implementación.
+ */
+export interface Form210RuleValidation {
+  boxNumber: number;
+  ruleId: string;
+  taxYear: number;
+  filingYear: number;
+  formulaDescription: string;
+  /** Ids de fuentes oficiales (ver `OFFICIAL_SOURCES_2025` en aegis-rules). */
+  legalBasisSourceIds: readonly string[];
+  examples: readonly Form210ValidationExample[];
+  implementationStatus: Form210RuleValidationStatus;
+  verifiedAt?: string;
+  notes?: string;
+}
+
 export interface Form210BuildInput {
   caseId: string;
   taxYear: number;
