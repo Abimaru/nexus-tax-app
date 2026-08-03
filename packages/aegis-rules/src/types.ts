@@ -76,6 +76,98 @@ export interface TaxUnitDefinition {
   verifiedAt: string;
 }
 
+/**
+ * Rango de la tabla progresiva de renta. Cada rango declara su tarifa marginal
+ * y el impuesto acumulado hasta el piso del rango, en UVT. El cálculo aplica:
+ *
+ *   impuesto_uvt = (base_gravable_uvt - fromUvt) * marginalRate + baseTaxUvt
+ *
+ * Cuando `toUvt` está definido, el rango termina en ese valor (inclusive
+ * conceptualmente por el diseño oficial). Cuando es `undefined` el rango es el
+ * último y aplica sin cota superior.
+ */
+export interface ProgressiveTaxBracket {
+  /** Piso del rango, en UVT (inclusive). */
+  fromUvt: number;
+  /** Techo del rango, en UVT (inclusive). Undefined = rango final abierto. */
+  toUvt?: number;
+  /** Tarifa marginal aplicada al exceso sobre `fromUvt` (0..1). */
+  marginalRate: number;
+  /** Impuesto acumulado en UVT al comenzar el rango. */
+  baseTaxUvt: number;
+}
+
+/** Tabla completa aplicable a un año gravable, con su fuente oficial. */
+export interface ProgressiveTaxTable {
+  taxYear: number;
+  officialSourceId: string;
+  verifiedAt: string;
+  brackets: readonly ProgressiveTaxBracket[];
+}
+
+/**
+ * Regla de límite tributario declarativa. Cubre por ahora el patrón
+ * "porcentaje de una base + tope en UVT" que aplica el art. 336 del Estatuto
+ * Tributario a rentas exentas y deducciones de la cédula general.
+ *
+ * `componentBoxNumbers` son las casillas cuya suma se pretende deducir; el
+ * resultado limitado nunca supera esa suma (no "infla" el beneficio).
+ */
+export interface TaxLimitRule {
+  id: string;
+  description: string;
+  type: 'percentage_and_uvt_cap';
+  /** Casilla cuya renta líquida sirve de base para el porcentaje. */
+  baseBoxNumber: number;
+  /** Casillas cuya suma es el componente candidato a limitar. */
+  componentBoxNumbers: readonly number[];
+  /** Porcentaje sobre la base (0..1). */
+  percentageOfBase: number;
+  /** Tope absoluto en UVT que no se puede superar. */
+  uvtCap: number;
+  /** Casilla del formulario que recibe el resultado limitado. */
+  targetBoxNumber: number;
+  /** Ids de fuentes oficiales que amparan la regla. */
+  legalSourceIds: readonly string[];
+}
+
+/**
+ * Detalle explicable del resultado de aplicar una `TaxLimitRule`. La UI puede
+ * mostrar cuál de los tres candidatos (porcentaje, tope en UVT, componente
+ * detectado) fue el limitante efectivo.
+ */
+export interface TaxLimitComputation {
+  ruleId: string;
+  taxYear: number;
+  baseBoxNumber: number;
+  targetBoxNumber: number;
+  baseValueCop: number;
+  componentValueCop: number;
+  percentageCandidateCop: number;
+  uvtCapValueCop: number;
+  appliedValueCop: number;
+  bindingCandidate: 'percentage' | 'uvt_cap' | 'component';
+  formula: string;
+  legalSourceIds: readonly string[];
+}
+
+/**
+ * Detalle de un cálculo progresivo, para explicar el resultado paso a paso en
+ * la UI (rango aplicado, tarifa, aritmética, redondeos).
+ */
+export interface ProgressiveTaxComputation {
+  taxYear: number;
+  taxableIncomeCop: number;
+  taxableIncomeUvt: number;
+  bracket: ProgressiveTaxBracket;
+  excessUvt: number;
+  marginalTaxUvt: number;
+  totalTaxUvt: number;
+  totalTaxCopRounded: number;
+  ruleSourceId: string;
+  formula: string;
+}
+
 export interface FilingCriterion {
   id: FilingCriterionId;
   label: string;

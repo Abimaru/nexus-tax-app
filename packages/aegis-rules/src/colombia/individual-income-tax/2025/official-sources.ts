@@ -67,6 +67,28 @@ export const OFFICIAL_SOURCES_2025: readonly OfficialSourceReference[] = [
     taxYear: 2025,
     scope: 'Compilación de formularios y procedimientos',
   },
+  // Estatuto Tributario — reglas transversales, no dependen del año.
+  {
+    id: 'et-art-241',
+    authority: 'Estatuto Tributario',
+    title: 'Estatuto Tributario, artículo 241 — Tarifa para personas naturales residentes',
+    url: 'https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=6533#241',
+    verifiedAt: VERIFIED_AT,
+    taxYear: null,
+    scope: 'Tarifa progresiva de renta',
+    relatedBoxNumbers: [],
+  },
+  {
+    id: 'et-art-336',
+    authority: 'Estatuto Tributario',
+    title:
+      'Estatuto Tributario, artículo 336 — Renta líquida gravable de la cédula general',
+    url: 'https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=6533#336',
+    verifiedAt: VERIFIED_AT,
+    taxYear: null,
+    scope: 'Límite conjunto de rentas exentas y deducciones (40 % + 1.340 UVT)',
+    relatedBoxNumbers: [41, 65, 82],
+  },
 ] as const;
 
 /**

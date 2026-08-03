@@ -28,3 +28,5 @@ export * from './filing-obligation';
 export * from './sources';
 export * from './official-sources';
 export * from './tax-unit';
+export * from './progressive-tax';
+export * from './tax-limits';
