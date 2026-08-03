@@ -1045,3 +1045,55 @@ Validación de P6: `check:encoding` revisó 272 archivos; typecheck y lint compl
 240/240 pruebas unitarias y 4/4 E2E Chromium sobre el preview activo. El build se ejecutó con
 `NEXUSTAX_NEXT_DIST_DIR=.next-build` para no interferir con el servidor de desarrollo del usuario:
 compilación correcta y 5 páginas generadas.
+
+## Sprint 2.3.1 — cimientos de validación normativa (2026-08-02)
+
+### Estado inicial
+
+`packages/form-210` calculaba ~10 casillas por sumas/restas literales del
+instructivo y ~9 por agrupación heurística de `TaxCategory → box`. No existía
+un catálogo consolidado de fuentes oficiales (aegis-rules y form-210 tenían
+listas paralelas), la UVT vivía como constante en `filing-obligation.ts` y no
+había una matriz de validación normativa que dejara explícito qué reglas están
+verificadas y cuáles no.
+
+### Cambios implementados (Fases A, B, C)
+
+- **Fuentes oficiales.** Nuevo tipo `OfficialSourceReference` en
+  `@nexus-tax/aegis-rules` como superconjunto retro-compatible de
+  `FilingRuleSource`. Catálogo consolidado `OFFICIAL_SOURCES_2025` (6 fuentes:
+  guía general, UVT, calendario, formulario, resoluciones 000044 y 000227) con
+  helpers `getOfficialSource(id)` y `officialSourcesForBox(number)`.
+- **UVT como fuente única.** Nuevo tipo `TaxUnitDefinition` y `TAX_UNIT_2025`
+  en aegis-rules, más helpers `getTaxUnit`, `uvtToCop`, `copToUvt`. `UVT_2025`
+  permanece como alias interno para no romper consumidores existentes.
+- **Matriz de validación normativa.** Nuevo tipo `Form210RuleValidation`, más
+  `FORM_210_VALIDATION_MATRIX_2025` en `@nexus-tax/form-210` (43 filas, 1 por
+  casilla del ruleset). Un bloqueo de coherencia lanza al cargar si la matriz
+  y el ruleset dejan de coincidir. Helpers `getBoxValidation(boxNumber)` y
+  `summarizeValidationStatus()`.
+- **Test dedicado.** `tests/validation-matrix.test.ts` valida cobertura,
+  ejemplos deterministas y consistencia aritmética de las casillas `verified`.
+- **Documento vivo.** `docs/TAX_RULE_VALIDATION_MATRIX.md` publica los criterios
+  y la línea base de cobertura.
+
+### Validaciones exactas
+
+| Paso               | Comando                                          | Resultado                        |
+| ------------------ | ------------------------------------------------ | -------------------------------- |
+| Typecheck aegis    | `pnpm --filter @nexus-tax/aegis-rules typecheck` | OK                               |
+| Tests aegis        | `pnpm --filter @nexus-tax/aegis-rules test`      | OK; 26/26                        |
+| Typecheck form-210 | `pnpm --filter @nexus-tax/form-210 typecheck`    | OK                               |
+| Tests form-210     | `pnpm --filter @nexus-tax/form-210 test`         | OK; 10/10 (5 builder + 5 matriz) |
+
+### Riesgos y siguiente paso
+
+El sprint 2.3.1 completo (fases D-X) requiere semanas de trabajo experto en
+tributación colombiana con verificación normativa por regla. Cerrar todo en un
+solo pase implicaría fórmulas sin respaldo oficial confirmado, lo que rompe la
+política de "no afirmar obligaciones legales que sean solo interpretaciones".
+
+Siguiente paso exacto: retomar por la Fase D (cédula general) con la matriz
+como brújula — cada casilla que pase a `verified` debe adjuntar el número de
+regla del instructivo DIAN y su ejemplo determinista. Ver
+`docs/PLAN_SPRINT_2.3.1.md` para el orden previsto.
