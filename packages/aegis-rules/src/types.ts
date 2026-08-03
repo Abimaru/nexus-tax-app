@@ -20,6 +20,62 @@ export interface FilingRuleSource {
   verifiedAt: string;
 }
 
+/**
+ * Referencia canónica a una fuente oficial que respalda una regla tributaria.
+ * Superconjunto retro-compatible de `FilingRuleSource`: cualquier referencia
+ * antigua puede tratarse como `OfficialSourceReference` con `taxYear` opcional.
+ * Fuentes aceptadas: DIAN, Estatuto Tributario, decretos, resoluciones,
+ * formularios oficiales e instructivos.
+ */
+export type OfficialSourceAuthority =
+  | 'DIAN'
+  | 'Estatuto Tributario'
+  | 'Congreso'
+  | 'MinHacienda'
+  | 'Presidencia';
+
+export interface OfficialSourceReference {
+  /** Identificador estable, usado desde las reglas por `sourceId`. */
+  id: string;
+  authority: OfficialSourceAuthority;
+  title: string;
+  url: string;
+  /** Fecha del documento oficial (ISO). Opcional cuando no aplica. */
+  documentDate?: string;
+  /** Fecha en que un humano verificó la fuente durante desarrollo (ISO). */
+  verifiedAt: string;
+  /** Año gravable al que aplica; puede ser transversal (`null`). */
+  taxYear: number | null;
+  /** Alcance en lenguaje breve: p. ej. "Obligación de declarar", "UVT". */
+  scope: string;
+  /**
+   * Números de casilla del Formulario 210 relacionadas, cuando la fuente
+   * ampare específicamente reglas de casilla.
+   */
+  relatedBoxNumbers?: readonly number[];
+  /**
+   * Huella opcional (p. ej. SHA-256 del PDF descargado en desarrollo) para
+   * detectar cambios silenciosos en la publicación oficial. No se descarga en
+   * tiempo de ejecución del usuario.
+   */
+  checksum?: string;
+}
+
+/**
+ * Definición central del valor de la Unidad de Valor Tributario (UVT) para un
+ * año gravable. Todas las reglas y cálculos deben consumir el UVT desde aquí,
+ * nunca literalizarlo, para evitar duplicaciones cuando cambia anualmente.
+ */
+export interface TaxUnitDefinition {
+  taxYear: number;
+  /** Valor en pesos colombianos (COP) del UVT vigente para el año. */
+  valueCop: number;
+  /** Id de la fuente oficial (ver `OfficialSourceReference`). */
+  officialSourceId: string;
+  /** Fecha en que un humano verificó el valor durante desarrollo (ISO). */
+  verifiedAt: string;
+}
+
 export interface FilingCriterion {
   id: FilingCriterionId;
   label: string;
