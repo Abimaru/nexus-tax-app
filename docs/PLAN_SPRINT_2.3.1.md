@@ -173,6 +173,36 @@ independiente. Orden sugerido:
 ## 6. Estado
 
 - **2026-08-02 16:40** — Plan creado. Working tree limpio en la rama.
+- **2026-08-03 15:00** — Fases J y D entregadas. Motor puro con verificación
+  normativa y ejemplos manuales.
+  - **J ✅** `ProgressiveTaxBracket` + `ProgressiveTaxTable` +
+    `ProgressiveTaxComputation` en `@nexus-tax/aegis-rules`. Tabla
+    `PROGRESSIVE_TAX_BRACKETS_2025` con los 7 rangos del art. 241 ET, más
+    `computeProgressiveIncomeTax(cop, taxYear)` que devuelve base, rango,
+    excess, tarifa marginal, impuesto en UVT, impuesto redondeado a pesos,
+    fórmula y `ruleSourceId`. `findBracket` para localización.
+    9/9 tests con casos manuales verificados (rangos 19 %, 28 %, 35 %, 39 %,
+    exento, bordes exactos y año no modelado).
+    Doc: `docs/PROGRESSIVE_TAX_RATE_2025.md`.
+  - **D ✅** `TaxLimitRule` + `TaxLimitComputation` en aegis-rules. Tabla
+    `TAX_LIMIT_RULES_2025` con 3 reglas del art. 336 ET (una por sub-cédula:
+    trabajo → casilla 41, capital → 65, no laboral → 82), todas con el
+    patrón `min(40 % × base, 1.340 UVT, componente_detectado)`.
+    `applyLimitRule` devuelve el candidato limitante explícito
+    (`percentage | uvt_cap | component`) y la fórmula legible.
+    8/8 tests que ejercitan cada candidato limitante, casos degenerados y
+    consistencia con las otras dos sub-cédulas.
+    Doc: `docs/TAX_LIMITS_2025.md`.
+  - Fuente adicional al catálogo: `et-art-241` y `et-art-336` con
+    `relatedBoxNumbers`.
+  - Validación: `pnpm --filter @nexus-tax/aegis-rules typecheck && test`
+    (43/43); sweep completo `pnpm -r test` con 240+ tests OK.
+  - **Nota importante:** el motor puro está listo, pero **el builder del F-210
+    aún no consume estas reglas**. Las casillas 41/65/82 permanecen en
+    `not_implemented` en la matriz de validación hasta que la conexión al
+    builder ocurra en una fase futura (probablemente K, junto con la
+    liquidación privada).
+
 - **2026-08-02 17:05** — Fases A, B, C entregadas. Typecheck y tests verdes.
   - **B ✅** `OfficialSourceReference` en `@nexus-tax/aegis-rules` +
     `OFFICIAL_SOURCES_2025` (6 fuentes consolidadas, con `getOfficialSource` y

@@ -1097,3 +1097,59 @@ Siguiente paso exacto: retomar por la Fase D (cédula general) con la matriz
 como brújula — cada casilla que pase a `verified` debe adjuntar el número de
 regla del instructivo DIAN y su ejemplo determinista. Ver
 `docs/PLAN_SPRINT_2.3.1.md` para el orden previsto.
+
+## Sprint 2.3.1 — tarifa progresiva y límites cedulares (2026-08-03)
+
+### Estado inicial
+
+Tras cerrar Fases A, B y C (auditoría, catálogo de fuentes y UVT centralizada),
+el motor puro no incluía todavía la tarifa progresiva del art. 241 ET ni el
+límite conjunto del art. 336 ET. Ambos se necesitan para hablar de liquidación
+preliminar de renta con respaldo normativo verificable.
+
+### Cambios implementados (Fases J y D)
+
+- **Tarifa progresiva de renta.** Nuevos tipos `ProgressiveTaxBracket`,
+  `ProgressiveTaxTable`, `ProgressiveTaxComputation`. Tabla
+  `PROGRESSIVE_TAX_BRACKETS_2025` con los 7 rangos del art. 241 ET; función
+  `computeProgressiveIncomeTax` devuelve el detalle explicable (rango, tarifa
+  marginal, excess UVT, impuesto UVT, impuesto redondeado a pesos, fórmula,
+  `ruleSourceId`). Cada caso manual del art. 241 se ejercita en
+  `tests/progressive-tax.test.ts` (9/9).
+- **Límite conjunto del art. 336 ET.** Nuevos tipos `TaxLimitRule` y
+  `TaxLimitComputation`. Tabla `TAX_LIMIT_RULES_2025` con 3 reglas (trabajo,
+  capital, no laboral) usando el patrón `min(40 % × base, 1.340 UVT,
+componente_detectado)`. La función `applyLimitRule` reporta explícitamente
+  cuál candidato limitó el resultado. `tests/tax-limits.test.ts` cubre cada
+  candidato limitante y casos degenerados (8/8).
+- **Fuentes.** Se añadieron `et-art-241` y `et-art-336` al catálogo
+  `OFFICIAL_SOURCES_2025`, con `relatedBoxNumbers` para las tres casillas
+  limitadas (41, 65, 82).
+- **Docs.** `docs/PROGRESSIVE_TAX_RATE_2025.md` y `docs/TAX_LIMITS_2025.md`
+  documentan la fuente, la tabla, los ejemplos verificados y las reglas de
+  actualización futura.
+
+### Validaciones exactas
+
+| Paso            | Comando                                          | Resultado      |
+| --------------- | ------------------------------------------------ | -------------- |
+| Typecheck aegis | `pnpm --filter @nexus-tax/aegis-rules typecheck` | OK             |
+| Tests aegis     | `pnpm --filter @nexus-tax/aegis-rules test`      | OK; 43/43      |
+| Sweep completo  | `pnpm -r test`                                   | OK; 240+ tests |
+
+### Nota importante
+
+El motor puro está listo y con fuente verificada, pero el `builder` del F-210
+**aún no consume** estas reglas. Las casillas 41 / 65 / 82 permanecen en
+`not_implemented` en la matriz de validación hasta que se cablen dentro del
+builder (previsto en la fase K junto con la liquidación privada). Ese cambio
+de estado debe ir acompañado de un ejemplo determinista adicional en la
+matriz.
+
+### Siguiente paso exacto
+
+Continuar por la Fase K (impuesto neto, saldo a pagar / saldo a favor)
+cableando `computeProgressiveIncomeTax` sobre la renta gravable resultante y
+usando `applyLimitRule` en las casillas 41/65/82 del builder. Cada casilla que
+pase a `verified` en la matriz debe añadir su ejemplo determinista y una
+prueba dedicada en `packages/form-210/tests`.
