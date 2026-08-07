@@ -459,6 +459,45 @@ describe('liquidación privada preliminar (Fase K)', () => {
     expect(box39.sources).toHaveLength(2);
   });
 
+  it('aplica límites individuales declarativos (AFC, vivienda, medicina) y advierte excesos', () => {
+    // AFC 20M declarados sobre ingreso 50M → recorta al 30 % = 15M.
+    // Vivienda 30M declarados < tope 1.200 UVT ≈ 59.7M → aplica 30M.
+    // Medicina 15M declarados > tope 192 UVT ≈ 9.56M → recorta.
+    const draft = buildForm210Draft({
+      caseId: 'case-individual-limits',
+      taxYear: 2025,
+      records: [employmentRecord('rec-1', 50_000_000)],
+      facts: [],
+      individualDeductions: {
+        afcFvpAvcCop: 20_000_000,
+        housingInterestCop: 30_000_000,
+        prepaidMedicineCop: 15_000_000,
+      },
+    });
+    const liq = draft.preliminaryLiquidation!;
+    expect(liq.individualDeductionLimits).toHaveLength(3);
+    const afc = liq.individualDeductionLimits.find((c) => c.ruleId === 'afc-fvp-avc-2025')!;
+    expect(afc.appliedCop).toBe(15_000_000);
+    expect(afc.bindingCandidate).toBe('percentage');
+    const housing = liq.individualDeductionLimits.find(
+      (c) => c.ruleId === 'housing-interest-2025',
+    )!;
+    expect(housing.appliedCop).toBe(30_000_000);
+    expect(housing.bindingCandidate).toBe('declared');
+    const medicine = liq.individualDeductionLimits.find(
+      (c) => c.ruleId === 'prepaid-medicine-2025',
+    )!;
+    expect(medicine.bindingCandidate).toBe('uvt_cap');
+    // La casilla 35 recibe el aplicado de AFC.
+    const box35 = draft.boxes.find((box) => box.number === 35)!;
+    expect(box35.suggestedValue).toBe(15_000_000);
+    // Warnings de exceso emitidos para AFC y medicina (declarado ≠ aplicado).
+    const codes = draft.findings.map((f) => f.code);
+    expect(codes.filter((c) => c === 'unsupported_deduction').length).toBeGreaterThanOrEqual(
+      2,
+    );
+  });
+
   it('sin ingresos de trabajo la deducción es cero y se advierte', () => {
     const draft = buildForm210Draft({
       caseId: 'case-dependents-no-income',
