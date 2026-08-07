@@ -111,6 +111,17 @@ export const OFFICIAL_SOURCES_2025: readonly OfficialSourceReference[] = [
     scope: 'Tarifa de ganancias ocasionales por loterías (20 %)',
     relatedBoxNumbers: [115],
   },
+  {
+    id: 'et-art-807',
+    authority: 'Estatuto Tributario',
+    title:
+      'Estatuto Tributario, artículo 807 — Anticipo del impuesto sobre la renta',
+    url: 'https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=6533#807',
+    verifiedAt: VERIFIED_AT,
+    taxYear: null,
+    scope: 'Anticipo del impuesto de renta (25 % / 50 % / 75 %)',
+    relatedBoxNumbers: [],
+  },
 ] as const;
 
 /**
