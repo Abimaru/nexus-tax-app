@@ -158,6 +158,42 @@ export const OFFICIAL_SOURCES_2025: readonly OfficialSourceReference[] = [
       'Deducción imputable a la cédula general: 1 % de compras soportadas con factura electrónica, tope anual 240 UVT (Ley 2277 de 2022)',
     relatedBoxNumbers: [39],
   },
+  {
+    id: 'et-art-126-1',
+    authority: 'Estatuto Tributario',
+    title:
+      'Estatuto Tributario, artículo 126-1 — Aportes voluntarios a fondos de pensiones y AVC',
+    url: 'https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=6533#126-1',
+    verifiedAt: VERIFIED_AT,
+    taxYear: null,
+    scope:
+      'Renta exenta por aportes voluntarios a fondos de pensiones voluntarias y cuentas AVC; tope conjunto 30 % del ingreso laboral/tributario y 3.800 UVT anuales',
+    relatedBoxNumbers: [35],
+  },
+  {
+    id: 'et-art-126-4',
+    authority: 'Estatuto Tributario',
+    title:
+      'Estatuto Tributario, artículo 126-4 — Incentivo al ahorro AFC/AVC',
+    url: 'https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=6533#126-4',
+    verifiedAt: VERIFIED_AT,
+    taxYear: null,
+    scope:
+      'Renta exenta por depósitos en cuentas AFC; comparte tope conjunto con art. 126-1 (30 % del ingreso y 3.800 UVT anuales)',
+    relatedBoxNumbers: [35],
+  },
+  {
+    id: 'et-art-119',
+    authority: 'Estatuto Tributario',
+    title:
+      'Estatuto Tributario, artículo 119 — Deducción de intereses sobre préstamos para adquisición de vivienda',
+    url: 'https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=6533#119',
+    verifiedAt: VERIFIED_AT,
+    taxYear: null,
+    scope:
+      'Deducción de intereses de crédito para vivienda; tope 100 UVT mensuales / 1.200 UVT anuales',
+    relatedBoxNumbers: [38],
+  },
 ] as const;
 
 /**
