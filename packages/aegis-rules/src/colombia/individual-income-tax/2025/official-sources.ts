@@ -89,6 +89,28 @@ export const OFFICIAL_SOURCES_2025: readonly OfficialSourceReference[] = [
     scope: 'Límite conjunto de rentas exentas y deducciones (40 % + 1.340 UVT)',
     relatedBoxNumbers: [41, 65, 82],
   },
+  {
+    id: 'et-art-314',
+    authority: 'Estatuto Tributario',
+    title:
+      'Estatuto Tributario, artículo 314 — Tarifa para personas naturales residentes por ganancias ocasionales',
+    url: 'https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=6533#314',
+    verifiedAt: VERIFIED_AT,
+    taxYear: null,
+    scope: 'Tarifa general de ganancias ocasionales (15 %, Ley 2277 de 2022)',
+    relatedBoxNumbers: [115],
+  },
+  {
+    id: 'et-art-317',
+    authority: 'Estatuto Tributario',
+    title:
+      'Estatuto Tributario, artículo 317 — Loterías, rifas, apuestas y similares',
+    url: 'https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=6533#317',
+    verifiedAt: VERIFIED_AT,
+    taxYear: null,
+    scope: 'Tarifa de ganancias ocasionales por loterías (20 %)',
+    relatedBoxNumbers: [115],
+  },
 ] as const;
 
 /**
