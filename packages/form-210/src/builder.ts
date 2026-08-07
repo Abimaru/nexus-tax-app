@@ -11,6 +11,7 @@ import {
   applyLimitRule,
   computeAdvancePayment,
   computeDependentsDeduction,
+  computeElectronicInvoicingDeduction,
   computeOccasionalGainsTax,
   computeProgressiveIncomeTax,
   copToUvt,
@@ -361,6 +362,7 @@ export function computePreliminaryLiquidation(
     priorNetIncomeTaxCop: number | null;
   },
   dependentsDeduction: Form210PreliminaryLiquidation['dependentsDeduction'] = null,
+  electronicInvoicingDeduction: Form210PreliminaryLiquidation['electronicInvoicingDeduction'] = null,
 ): Form210PreliminaryLiquidation {
   const get = (number: number): number | null => {
     const box = boxes.find((entry) => entry.number === number);
@@ -519,6 +521,7 @@ export function computePreliminaryLiquidation(
     withholdingsCop,
     nextYearAdvance,
     dependentsDeduction,
+    electronicInvoicingDeduction,
     netBalanceCop,
     status,
     warnings,
@@ -606,6 +609,32 @@ export function buildForm210Draft(input: Form210BuildInput): Form210Draft {
       evidence: dependentsDeduction.formula,
     };
     sourcesByBox.set(39, [...(sourcesByBox.get(39) ?? []), dependentsTrace]);
+  }
+
+  // Deducción por facturas electrónicas (art. 336-1 ET). El motor recibe la
+  // base de compras calificadas que aporta el analista y aplica 1 % con
+  // tope de 240 UVT. Se cablea a la casilla 39 como una fuente adicional.
+  const electronicInvoicingInput = input.electronicInvoicing;
+  const electronicInvoicingDeduction =
+    electronicInvoicingInput && electronicInvoicingInput.purchasesWithElectronicInvoiceCop > 0
+      ? computeElectronicInvoicingDeduction({
+          taxYear: 2025,
+          purchasesWithElectronicInvoiceCop:
+            electronicInvoicingInput.purchasesWithElectronicInvoiceCop,
+        })
+      : null;
+  if (electronicInvoicingDeduction && electronicInvoicingDeduction.appliedDeductionCop > 0) {
+    const electronicInvoicingTrace: Form210SourceTrace = {
+      type: 'calculation',
+      sourceId: 'calc:electronic-invoicing-336-1',
+      recordId: null,
+      documentId: null,
+      factId: null,
+      label: 'Deducción por facturas electrónicas (art. 336-1 ET)',
+      value: electronicInvoicingDeduction.appliedDeductionCop,
+      evidence: electronicInvoicingDeduction.formula,
+    };
+    sourcesByBox.set(39, [...(sourcesByBox.get(39) ?? []), electronicInvoicingTrace]);
   }
 
   const replacedIds = new Set(
@@ -698,6 +727,7 @@ export function buildForm210Draft(input: Form210BuildInput): Form210Draft {
     input.occasionalGainsBreakdown,
     input.advancePaymentContext,
     dependentsDeduction,
+    electronicInvoicingDeduction,
   );
   return {
     id: `form210:${input.caseId}:2025`,

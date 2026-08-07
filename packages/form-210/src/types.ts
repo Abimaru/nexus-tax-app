@@ -8,6 +8,7 @@ import type {
   AdvancePaymentComputation,
   DependentDeclaration,
   DependentsDeductionComputation,
+  ElectronicInvoicingDeductionComputation,
   OccasionalGainsTaxComputation,
   ProgressiveTaxComputation,
   TaxLimitComputation,
@@ -209,6 +210,14 @@ export interface Form210PreliminaryLiquidation {
   dependentsDeduction: DependentsDeductionComputation | null;
 
   /**
+   * Deducción por facturas electrónicas (art. 336-1 ET, Ley 2277 de 2022).
+   * `null` cuando el analista no aporta la base de compras con factura
+   * electrónica. El importe se cablea a la casilla 39 y se conserva aquí
+   * con los dos candidatos limitantes (1 % / 240 UVT) para trazabilidad.
+   */
+  electronicInvoicingDeduction: ElectronicInvoicingDeductionComputation | null;
+
+  /**
    * Saldo neto: positivo = a pagar; negativo = a favor. Fórmula:
    *   totalTaxDueCop + nextYearAdvance.netAdvanceCop
    *   − priorYearAdvanceCop − priorYearBalanceCop − withholdingsCop.
@@ -317,4 +326,12 @@ export interface Form210BuildInput {
    * casilla 39 del borrador y la expone en `preliminaryLiquidation`.
    */
   dependents?: readonly DependentDeclaration[];
+  /**
+   * Base de compras soportadas con factura electrónica y medio de pago
+   * electrónico calificado (art. 336-1 ET). El motor aplica 1 % con tope de
+   * 240 UVT anuales y cablea la deducción a la casilla 39.
+   */
+  electronicInvoicing?: {
+    purchasesWithElectronicInvoiceCop: number;
+  };
 }
