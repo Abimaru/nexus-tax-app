@@ -124,6 +124,8 @@ Cada componente del resultado expone la fuente que lo respalda:
 - `nextYearAdvance.ruleSourceId` → `'et-art-807'`.
 - `dependentsDeduction.ruleSourceId` → `'et-art-387'`.
 - `electronicInvoicingDeduction.ruleSourceId` → `'et-art-336-1'`.
+- `individualDeductionLimits[].ruleSourceIds` → subconjunto de
+  `['et-art-126-1', 'et-art-126-4', 'et-art-119', 'et-art-387']`.
 - `ruleVersion` → `FORM_210_RULE_VERSION_2025 = 'co.dian.form210.2025.v1'`.
 - `notice` → texto fijo que la UI **debe** mostrar donde se presente la
   liquidación.

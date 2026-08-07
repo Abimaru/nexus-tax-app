@@ -2,6 +2,25 @@
 
 _Última actualización: 2026-08-07._
 
+## Sprint 2.3.1 — Fase E (2026-08-07)
+
+Se agregan **límites individuales declarativos** por concepto: AFC/AVC/FVP
+(30 % del ingreso, 3.800 UVT anuales — arts. 126-1/126-4), intereses de
+vivienda (1.200 UVT anuales — art. 119) y medicina prepagada (192 UVT
+anuales — art. 387 par. 2).
+
+`Form210BuildInput.individualDeductions` es opcional. Cuando se aporta, el
+builder ejecuta `applyIndividualDeductionLimit` para cada concepto,
+cablea el aplicado a la casilla objetivo (35, 38, 39) como fuente
+`calculation` y expone la lista completa de computaciones en
+`preliminaryLiquidation.individualDeductionLimits`. Los recortes generan
+findings `unsupported_deduction` con severidad `warning`.
+
+Documentación: [docs/INDIVIDUAL_DEDUCTIONS_2025.md](INDIVIDUAL_DEDUCTIONS_2025.md);
+[docs/FORM_210_LIQUIDATION.md](FORM_210_LIQUIDATION.md) actualizado.
+Verificación: `pnpm -r typecheck` verde; `pnpm -r test` = 342 tests OK
+(aegis 102, form-210 32, resto sin regresiones).
+
 ## Sprint 2.3.1 — Fase G (2026-08-07)
 
 Se agrega la **deducción por facturas electrónicas** (art. 336-1 ET, Ley

@@ -172,6 +172,43 @@ independiente. Orden sugerido:
 
 ## 6. Estado
 
+- **2026-08-07 16:05** — Fase E entregada. Limitaciones declarativas por
+  concepto (AFC/AVC/FVP, intereses de vivienda, medicina prepagada).
+  - **E ✅** Nuevos tipos `IndividualDeductionLimitRule` e
+    `IndividualDeductionLimitComputation` en aegis-rules; módulo puro
+    `individual-deductions.ts` con las tres reglas (`afc-fvp-avc-2025`,
+    `housing-interest-2025`, `prepaid-medicine-2025`), el catálogo
+    `INDIVIDUAL_DEDUCTION_LIMIT_RULES_2025`, `getIndividualDeductionLimitRule`
+    y `applyIndividualDeductionLimit` con candidatos `declared`,
+    `percentage`, `uvt_cap`.
+  - Fuentes añadidas al catálogo: `et-art-126-1`, `et-art-126-4` y
+    `et-art-119`. La medicina prepagada reutiliza `et-art-387`.
+  - `Form210BuildInput.individualDeductions` opcional
+    (`afcFvpAvcCop`, `housingInterestCop`, `prepaidMedicineCop`). El
+    builder aplica cada regla, cablea el aplicado a la casilla objetivo
+    (35, 38, 39) como fuente `calculation` y expone las computaciones en
+    `preliminaryLiquidation.individualDeductionLimits`. Cuando
+    `bindingCandidate !== 'declared'`, emite un finding
+    `unsupported_deduction` con severidad `warning`.
+  - Tests: 11 en
+    `packages/aegis-rules/tests/individual-deductions.test.ts` (reglas,
+    ramas de recorte de AFC, tope de vivienda, tope de medicina,
+    normalización de negativos, año no modelado) + 1 nuevo en
+    `preliminary-liquidation.test.ts` (integración con 3 deducciones
+    declaradas simultáneas y warnings de exceso).
+  - Doc nueva: `docs/INDIVIDUAL_DEDUCTIONS_2025.md`;
+    `FORM_210_LIQUIDATION.md` actualizado con
+    `individualDeductionLimits[].ruleSourceIds` en la sección de
+    trazabilidad.
+  - Validación: `pnpm -r typecheck` verde; sweep `pnpm -r test` con
+    342 tests OK (aegis 102/102 con 11 nuevos, form-210 32/32 con 1
+    nuevo, resto sin regresiones).
+  - **Fuera de alcance de E (documentado):** verificación de soportes,
+    distribución entre cédulas (asume trabajo por defecto), interacción
+    con art. 336 (ya modelada por Fase D), otras rentas
+    exentas/deducciones (cesantías, aportes obligatorios) que se sumarán
+    cuando su topografía en el F-210 se verifique con el instructivo.
+
 - **2026-08-07 15:55** — Fase G entregada. Deducción por facturas
   electrónicas (art. 336-1 ET, Ley 2277 de 2022).
   - **G ✅** `ElectronicInvoicingDeductionComputation` en
