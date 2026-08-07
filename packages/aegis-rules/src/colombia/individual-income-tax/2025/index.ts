@@ -30,3 +30,4 @@ export * from './official-sources';
 export * from './tax-unit';
 export * from './progressive-tax';
 export * from './tax-limits';
+export * from './occasional-gains';

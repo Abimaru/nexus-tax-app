@@ -168,6 +168,53 @@ export interface ProgressiveTaxComputation {
   formula: string;
 }
 
+/**
+ * Tipo de ganancia ocasional según su tarifa aplicable en Colombia.
+ * - `general`: tarifa general del 15 % (art. 314 ET, reformado por la Ley
+ *   2277 de 2022). Aplica a la mayoría de ganancias ocasionales de personas
+ *   naturales residentes: venta de activos fijos poseídos por más de 2 años,
+ *   herencias por encima de la parte exenta, indemnizaciones por seguros de
+ *   vida, etc.
+ * - `lottery`: 20 % (art. 317 ET). Aplica a loterías, rifas, apuestas y
+ *   similares. En la realidad la retención en la fuente es equivalente y el
+ *   impuesto se puede considerar como una retención definitiva.
+ */
+export type OccasionalGainKind = 'general' | 'lottery';
+
+/** Definición de una tarifa aplicable a ganancias ocasionales. */
+export interface OccasionalGainRate {
+  kind: OccasionalGainKind;
+  /** Tarifa entre 0 y 1. */
+  rate: number;
+  /** Id en el catálogo de fuentes oficiales. */
+  officialSourceId: string;
+  description: string;
+}
+
+/** Detalle de un componente de ganancia ocasional dentro del cálculo total. */
+export interface OccasionalGainComponent {
+  kind: OccasionalGainKind;
+  baseCop: number;
+  rate: number;
+  taxCop: number;
+  officialSourceId: string;
+}
+
+/**
+ * Resultado explicable del impuesto de ganancias ocasionales para un año
+ * gravable. Cada componente conserva la fuente que lo respalda para que la UI
+ * pueda mostrarlo separado. `formula` es un texto legible; `totalTaxCop` está
+ * redondeado a pesos.
+ */
+export interface OccasionalGainsTaxComputation {
+  taxYear: number;
+  components: readonly OccasionalGainComponent[];
+  totalBaseCop: number;
+  totalTaxCop: number;
+  formula: string;
+  ruleSourceIds: readonly string[];
+}
+
 export interface FilingCriterion {
   id: FilingCriterionId;
   label: string;
