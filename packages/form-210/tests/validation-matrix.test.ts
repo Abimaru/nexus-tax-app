@@ -28,18 +28,21 @@ describe('matriz de validación normativa del Formulario 210 (AG 2025)', () => {
 
   it('los ejemplos de casillas `verified` aritméticas son consistentes con sus fórmulas', () => {
     // Reproduce las operaciones declaradas por número de casilla, para atrapar
-    // desviaciones si alguien edita un ejemplo sin actualizar el resultado.
+    // desviaciones si alguien edita un ejemplo sin actualizar el resultado. El
+    // helper trata las claves ausentes como 0 para respetar
+    // `noUncheckedIndexedAccess` sin duplicar guardas en cada expresión.
+    const get = (inputs: Record<string, number>, key: string): number => inputs[key] ?? 0;
     const arithmeticExamples: Record<number, (inputs: Record<string, number>) => number> = {
-      31: (i) => i.box29 - i.box30,
-      34: (i) => i.box32 - i.box33,
-      37: (i) => i.box35 + i.box36,
-      40: (i) => i.box38 + i.box39,
-      42: (i) => i.box34 - i.box41,
-      61: (i) => i.box58 - i.box59 - i.box60,
-      78: (i) => i.box74 - i.box75 - i.box76 - i.box77,
-      101: (i) => i.box99 - i.box100,
-      103: (i) => i.box101 - i.box102,
-      115: (i) => i.box112 - i.box113 - i.box114,
+      31: (i) => get(i, 'box29') - get(i, 'box30'),
+      34: (i) => get(i, 'box32') - get(i, 'box33'),
+      37: (i) => get(i, 'box35') + get(i, 'box36'),
+      40: (i) => get(i, 'box38') + get(i, 'box39'),
+      42: (i) => get(i, 'box34') - get(i, 'box41'),
+      61: (i) => get(i, 'box58') - get(i, 'box59') - get(i, 'box60'),
+      78: (i) => get(i, 'box74') - get(i, 'box75') - get(i, 'box76') - get(i, 'box77'),
+      101: (i) => get(i, 'box99') - get(i, 'box100'),
+      103: (i) => get(i, 'box101') - get(i, 'box102'),
+      115: (i) => get(i, 'box112') - get(i, 'box113') - get(i, 'box114'),
     };
     for (const [boxNumber, compute] of Object.entries(arithmeticExamples)) {
       const entry = getBoxValidation(Number(boxNumber));
