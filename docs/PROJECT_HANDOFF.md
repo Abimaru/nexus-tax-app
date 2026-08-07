@@ -2,6 +2,24 @@
 
 _Última actualización: 2026-08-07._
 
+## Sprint 2.3.1 — Fase L (2026-08-07)
+
+Se agrega el **anticipo del impuesto de renta del año siguiente** (art. 807
+ET) al motor puro y a la liquidación privada preliminar del F-210. Tres
+tramos: 25 % / 50 % / 75 % según `filingCountIncludingCurrent`.
+`computeAdvancePayment` elige la base más conservadora entre `current_only`
+y `average_of_two`, descuenta las retenciones del año declarado y jamás
+produce anticipo negativo.
+
+`Form210BuildInput.advancePaymentContext` es opcional. Si el analista lo
+provee y hay impuesto de renta positivo, `nextYearAdvance` se calcula y
+`netBalanceCop` lo suma; si falta, se emite un warning explícito.
+
+Documentación: [docs/ADVANCE_PAYMENT_2025.md](ADVANCE_PAYMENT_2025.md);
+[docs/FORM_210_LIQUIDATION.md](FORM_210_LIQUIDATION.md) actualizado.
+Verificación: `pnpm -r typecheck` verde; `pnpm -r test` = 288 tests OK
+(aegis 61, form-210 21, resto sin regresiones).
+
 ## Sprint 2.3.1 — Fase H (2026-08-07)
 
 Se agrega el **impuesto orientativo de ganancias ocasionales** al motor puro

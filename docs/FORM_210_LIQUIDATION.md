@@ -90,8 +90,15 @@ impuesto a partir del vacío.
 7. **Créditos.** `priorYearAdvanceCop`, `priorYearBalanceCop` y `withholdingsCop`
    se leen de las casillas 130, 131 y 132.
 
-8. **Saldo.** `netBalanceCop = totalTaxDueCop − (advance + balance + withholdings)`
-   determina `status` (`to_pay` > 0, `refund` < 0, `zero` = 0).
+8. **Anticipo del año siguiente (Fase L).** Si el analista aporta
+   `advancePaymentContext` y hay impuesto de renta, `nextYearAdvance` se
+   calcula con `computeAdvancePayment` (art. 807 ET, 25 % / 50 % / 75 %).
+   Ver [ADVANCE_PAYMENT_2025.md](ADVANCE_PAYMENT_2025.md).
+
+9. **Saldo.**
+   `netBalanceCop = totalTaxDueCop + nextYearAdvance.netAdvanceCop
+   − (advance + balance + withholdings)` determina `status`
+   (`to_pay` > 0, `refund` < 0, `zero` = 0).
 
 ## 4. Fuera de alcance en Fase K
 
@@ -103,7 +110,6 @@ matriz de validación, en fases posteriores.
 
 Tampoco se implementa aquí:
 
-- Anticipo del año siguiente (Fase L).
 - Sanciones (permanecen manuales; no las calcula el motor).
 - Descuentos tributarios (art. 249 y ss.). Se dejarán como warnings hasta que
   se modelen.
@@ -115,6 +121,7 @@ Cada componente del resultado expone la fuente que lo respalda:
 - `employmentLimit / capitalLimit / nonLaborLimit` → `ruleSourceId = 'et-art-336'`.
 - `incomeTax.ruleSourceId` → `'et-art-241'`.
 - `occasionalGainsTax.ruleSourceIds` → subconjunto de `['et-art-314', 'et-art-317']`.
+- `nextYearAdvance.ruleSourceId` → `'et-art-807'`.
 - `ruleVersion` → `FORM_210_RULE_VERSION_2025 = 'co.dian.form210.2025.v1'`.
 - `notice` → texto fijo que la UI **debe** mostrar donde se presente la
   liquidación.

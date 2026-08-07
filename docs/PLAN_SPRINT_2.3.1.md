@@ -172,6 +172,40 @@ independiente. Orden sugerido:
 
 ## 6. Estado
 
+- **2026-08-07 10:20** — Fase L entregada. Anticipo del año siguiente
+  (art. 807 ET).
+  - **L ✅** `AdvancePaymentBaseMethod`, `AdvancePaymentBracket` y
+    `AdvancePaymentComputation` en `packages/aegis-rules/src/types.ts`;
+    módulo puro `advance-payment.ts` con `ADVANCE_PAYMENT_BRACKETS_2025`
+    (25 % / 50 % / 75 %) y `computeAdvancePayment`.
+  - El motor elige el método más conservador de la base: `average_of_two`
+    cuando hay historial y su promedio es mayor o igual al impuesto del
+    año actual; `current_only` en el resto de casos. Retenciones del año
+    se restan del bruto sin volverlo negativo.
+  - Fuente `et-art-807` añadida al catálogo `OFFICIAL_SOURCES_2025`.
+  - `Form210BuildInput` acepta `advancePaymentContext` opcional
+    (`filingCountIncludingCurrent`, `priorNetIncomeTaxCop`).
+    `Form210PreliminaryLiquidation.nextYearAdvance` recibe la
+    `AdvancePaymentComputation` (o `null` sin datos suficientes) y
+    `netBalanceCop` ahora suma el anticipo neto. Warning explícito cuando
+    hay impuesto pero falta el contexto.
+  - Tests: 10 en `packages/aegis-rules/tests/advance-payment.test.ts`
+    (tarifas declaradas, primera declaración, actual > promedio, promedio
+    gana, tercera con historial, impuesto cero, sin historial en 2da,
+    retenciones que exceden el bruto, negativos, año no modelado) +
+    3 nuevos en `preliminary-liquidation.test.ts` (anticipo cablea al
+    saldo, warning por falta de contexto, sin impuesto ⇒ sin anticipo).
+  - Doc nueva: `docs/ADVANCE_PAYMENT_2025.md`; `FORM_210_LIQUIDATION.md`
+    actualizado con el nuevo paso y con `nextYearAdvance.ruleSourceId`
+    en la sección de trazabilidad.
+  - Validación: `pnpm -r typecheck` verde; sweep `pnpm -r test` con
+    288 tests OK (aegis 61/61 con 10 nuevos, form-210 21/21 con 3 nuevos,
+    resto sin regresiones).
+  - **Fuera de alcance de L (documentado):** historial multi-año en la app
+    (lo aporta el analista), descuentos tributarios (art. 249 y ss.),
+    disminución del anticipo por reducción significativa (parágrafo del
+    art. 807), numeración oficial de la casilla del anticipo.
+
 - **2026-08-07 10:10** — Fase H entregada. Impuesto de ganancias ocasionales.
   - **H ✅** `OccasionalGainKind`, `OccasionalGainRate`, `OccasionalGainComponent`
     y `OccasionalGainsTaxComputation` en `packages/aegis-rules/src/types.ts`.
