@@ -215,6 +215,54 @@ export interface OccasionalGainsTaxComputation {
   ruleSourceIds: readonly string[];
 }
 
+/**
+ * Método elegido para calcular la base del anticipo del art. 807 ET.
+ * - `current_only`: usa el impuesto neto del año que se declara (aplicable
+ *   siempre; obligatorio cuando es la primera vez que declara).
+ * - `average_of_two`: usa el promedio del impuesto neto del año actual y del
+ *   inmediatamente anterior (permitido a partir de la segunda declaración,
+ *   siempre que se conozca el impuesto neto del año anterior).
+ */
+export type AdvancePaymentBaseMethod = 'current_only' | 'average_of_two';
+
+/** Reglamentación del art. 807 ET según el conteo de declaraciones. */
+export interface AdvancePaymentBracket {
+  /**
+   * Número de veces que ha declarado el contribuyente, contando la que se
+   * está preparando. 1 = primera declaración; 2 = segunda; 3 = tercera o
+   * más.
+   */
+  filingCountIncludingCurrent: 1 | 2 | 3;
+  /** Porcentaje aplicado sobre la base elegida. */
+  rate: number;
+  description: string;
+}
+
+/**
+ * Detalle explicable del anticipo del impuesto sobre la renta (art. 807 ET)
+ * calculado para el año siguiente al que se está declarando.
+ *
+ * El resultado conserva la tarifa aplicada, la base elegida y por qué se
+ * eligió (`baseMethod`, `rationale`) para que la UI pueda mostrarlo paso a
+ * paso. Las retenciones del año declarado se descuentan del anticipo bruto:
+ * el anticipo neto nunca es negativo (el impuesto no se convierte en crédito
+ * a favor por esta vía).
+ */
+export interface AdvancePaymentComputation {
+  taxYear: number;
+  bracket: AdvancePaymentBracket;
+  currentNetIncomeTaxCop: number;
+  priorNetIncomeTaxCop: number | null;
+  baseMethod: AdvancePaymentBaseMethod;
+  baseCop: number;
+  grossAdvanceCop: number;
+  withholdingsAppliedCop: number;
+  netAdvanceCop: number;
+  formula: string;
+  rationale: string;
+  ruleSourceId: string;
+}
+
 export interface FilingCriterion {
   id: FilingCriterionId;
   label: string;
