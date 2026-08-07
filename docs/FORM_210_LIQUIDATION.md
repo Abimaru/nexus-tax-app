@@ -76,13 +76,16 @@ impuesto a partir del vacío.
    `computeProgressiveIncomeTax(baseCop, 2025)` con la tabla del art. 241 ET.
    El resultado incluye rango, marginal, impuesto en UVT y en pesos redondeados.
 
-5. **Ganancias ocasionales.** La casilla 115 se toma tal cual del borrador,
-   pero **no** se aplica tarifa. El motor no fija un porcentaje aquí porque el
-   tratamiento varía por concepto (10 % general, 20 % loterías, etc.); el
-   modelado explícito queda para la Fase H.
+5. **Ganancias ocasionales.** La casilla 115 se toma tal cual del borrador y
+   se transforma en impuesto vía `computeOccasionalGainsTax` (Fase H): 15 % por
+   defecto (art. 314 ET). Si el analista provee `occasionalGainsBreakdown`,
+   se separa entre general (15 %) y loterías (20 %, art. 317 ET). Ver
+   [OCCASIONAL_GAINS_2025.md](OCCASIONAL_GAINS_2025.md) para el contrato
+   completo.
 
-6. **Total impuesto a cargo.** Hoy `totalTaxDueCop = incomeTax.totalTaxCopRounded`
-   (el impuesto de GO es `null` hasta la Fase H).
+6. **Total impuesto a cargo.**
+   `totalTaxDueCop = incomeTax.totalTaxCopRounded + occasionalGainsTax.totalTaxCop`.
+   Cada componente conserva su `ruleSourceId` propio para trazabilidad.
 
 7. **Créditos.** `priorYearAdvanceCop`, `priorYearBalanceCop` y `withholdingsCop`
    se leen de las casillas 130, 131 y 132.
@@ -100,7 +103,6 @@ matriz de validación, en fases posteriores.
 
 Tampoco se implementa aquí:
 
-- Tarifa específica de ganancias ocasionales (Fase H).
 - Anticipo del año siguiente (Fase L).
 - Sanciones (permanecen manuales; no las calcula el motor).
 - Descuentos tributarios (art. 249 y ss.). Se dejarán como warnings hasta que
@@ -112,6 +114,7 @@ Cada componente del resultado expone la fuente que lo respalda:
 
 - `employmentLimit / capitalLimit / nonLaborLimit` → `ruleSourceId = 'et-art-336'`.
 - `incomeTax.ruleSourceId` → `'et-art-241'`.
+- `occasionalGainsTax.ruleSourceIds` → subconjunto de `['et-art-314', 'et-art-317']`.
 - `ruleVersion` → `FORM_210_RULE_VERSION_2025 = 'co.dian.form210.2025.v1'`.
 - `notice` → texto fijo que la UI **debe** mostrar donde se presente la
   liquidación.

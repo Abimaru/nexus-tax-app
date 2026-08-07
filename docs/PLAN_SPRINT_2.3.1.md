@@ -172,6 +172,35 @@ independiente. Orden sugerido:
 
 ## 6. Estado
 
+- **2026-08-07 10:10** — Fase H entregada. Impuesto de ganancias ocasionales.
+  - **H ✅** `OccasionalGainKind`, `OccasionalGainRate`, `OccasionalGainComponent`
+    y `OccasionalGainsTaxComputation` en `packages/aegis-rules/src/types.ts`.
+  - Tabla `OCCASIONAL_GAIN_RATES_2025` con dos tarifas: `general` 15 %
+    (art. 314 ET, Ley 2277 de 2022, `et-art-314`) y `lottery` 20 %
+    (art. 317 ET, `et-art-317`). Ambas fuentes se añaden al catálogo oficial
+    con `relatedBoxNumbers: [115]`.
+  - `computeOccasionalGainsTax({ taxYear, generalBaseCop, lotteryBaseCop })`
+    devuelve componentes con su tarifa y `officialSourceId`, formula legible
+    y total redondeado por componente. Bases negativas se tratan como 0.
+  - El builder del F-210 consume el motor: `occasionalGainsTax` pasa de `null`
+    a `OccasionalGainsTaxComputation | null`. `Form210BuildInput` acepta un
+    `occasionalGainsBreakdown` opcional; sin él, toda la casilla 115 tributa
+    al 15 % y se agrega un warning. Si el desglose no cuadra con 115, se
+    agrega un warning adicional.
+  - `totalTaxDueCop` ahora suma renta + GO.
+  - Tests: 8 en `packages/aegis-rules` (declaración de tarifas, base cero,
+    15 %, 20 %, mixto, negativos, redondeo, año no modelado) + 4 nuevos en
+    `preliminary-liquidation.test.ts` (15 % con warning, desglose respetado,
+    warning por discrepancia, suma renta+GO).
+  - Doc nueva: `docs/OCCASIONAL_GAINS_2025.md`; `FORM_210_LIQUIDATION.md`
+    actualizado.
+  - Validación: `pnpm -r typecheck` verde; sweep `pnpm -r test` con 278 tests
+    OK (aegis 51/51, form-210 18/18, resto sin regresiones).
+  - **Fuera de alcance de H (documentado):** categoría de lotería en el dominio
+    (hoy el desglose lo aporta el analista), exenciones específicas (van en
+    casilla 114 antes de 115), retenciones específicas de loterías (casilla
+    132), numeración oficial de la casilla que declara el impuesto de GO.
+
 - **2026-08-07 10:05** — Fase K entregada. Motor de liquidación privada
   preliminar cableado al builder del F-210 con trazabilidad completa.
   - **K ✅** `Form210PreliminaryLiquidation` en `packages/form-210/src/types.ts`

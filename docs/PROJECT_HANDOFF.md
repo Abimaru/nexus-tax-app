@@ -2,6 +2,25 @@
 
 _Última actualización: 2026-08-07._
 
+## Sprint 2.3.1 — Fase H (2026-08-07)
+
+Se agrega el **impuesto orientativo de ganancias ocasionales** al motor puro
+(`packages/aegis-rules`) y se cablea a la liquidación privada preliminar del
+Formulario 210. Dos tarifas versionadas:
+
+- `general` 15 % — art. 314 ET (Ley 2277 de 2022), `et-art-314`.
+- `lottery` 20 % — art. 317 ET, `et-art-317`.
+
+`Form210BuildInput` acepta un `occasionalGainsBreakdown` opcional. Si no se
+provee, toda la casilla 115 tributa al 15 % con warning que invita a
+desglosar. `Form210PreliminaryLiquidation.occasionalGainsTax` pasa de `null` a
+`OccasionalGainsTaxComputation | null`, y `totalTaxDueCop` suma renta + GO.
+
+Documentación: [docs/OCCASIONAL_GAINS_2025.md](OCCASIONAL_GAINS_2025.md);
+[docs/FORM_210_LIQUIDATION.md](FORM_210_LIQUIDATION.md) actualizado.
+Verificación: `pnpm -r typecheck` verde; `pnpm -r test` = 278 tests OK
+(aegis 51, form-210 18, resto sin regresiones).
+
 ## Sprint 2.3.1 — Fase K (2026-08-07)
 
 Se entrega la **liquidación privada preliminar** del Formulario 210 AG 2025.
