@@ -5,10 +5,12 @@ import type {
   TaxResolutionDecision,
 } from '@nexus-tax/domain';
 import {
+  DEPENDENTS_MAX_ELIGIBLE,
   TAX_LIMIT_RULES_2025,
   TAX_UNIT_2025,
   applyLimitRule,
   computeAdvancePayment,
+  computeDependentsDeduction,
   computeOccasionalGainsTax,
   computeProgressiveIncomeTax,
   copToUvt,
@@ -279,6 +281,7 @@ export function computePreliminaryLiquidation(
     filingCountIncludingCurrent: 1 | 2 | 3;
     priorNetIncomeTaxCop: number | null;
   },
+  dependentsDeduction: Form210PreliminaryLiquidation['dependentsDeduction'] = null,
 ): Form210PreliminaryLiquidation {
   const get = (number: number): number | null => {
     const box = boxes.find((entry) => entry.number === number);
@@ -395,6 +398,23 @@ export function computePreliminaryLiquidation(
       'El anticipo del año siguiente (art. 807 ET) no se calculó porque falta indicar cuántas veces has declarado.',
     );
   }
+  if (
+    dependentsDeduction &&
+    dependentsDeduction.dependentsProvidedCount > dependentsDeduction.dependentsEligibleCount
+  ) {
+    warnings.push(
+      `Se declararon ${dependentsDeduction.dependentsProvidedCount} dependientes; solo los primeros ${DEPENDENTS_MAX_ELIGIBLE} entran en la deducción del art. 387 ET.`,
+    );
+  }
+  if (
+    dependentsDeduction &&
+    dependentsDeduction.dependentsEligibleCount > 0 &&
+    dependentsDeduction.appliedDeductionCop === 0
+  ) {
+    warnings.push(
+      'Los dependientes declarados no producen deducción: la casilla 32 no tiene ingresos brutos de rentas de trabajo aún.',
+    );
+  }
 
   let status: Form210PreliminaryLiquidation['status'];
   if (!anyCedularSignal && occasionalGainsTaxableCop === 0 && totalTaxDueCop === 0) {
@@ -419,6 +439,7 @@ export function computePreliminaryLiquidation(
     priorYearBalanceCop,
     withholdingsCop,
     nextYearAdvance,
+    dependentsDeduction,
     netBalanceCop,
     status,
     warnings,
@@ -471,6 +492,41 @@ export function buildForm210Draft(input: Form210BuildInput): Form210Draft {
       excludedByBox.set(boxNumber, [...(excludedByBox.get(boxNumber) ?? []), trace.sourceId]);
       duplicateSourceIds.push(trace.sourceId);
     } else sourcesByBox.set(boxNumber, [...(sourcesByBox.get(boxNumber) ?? []), trace]);
+  }
+
+  // Deducción por dependientes (art. 387 ET): se calcula con el motor puro
+  // usando los ingresos brutos de rentas de trabajo (casilla 32 = suma de
+  // sources reunidas hasta aquí) y se cablea a la casilla 39 como una fuente
+  // de tipo `calculation`. La misma computación se expondrá luego en
+  // `preliminaryLiquidation.dependentsDeduction`.
+  const dependentsInput = input.dependents ?? [];
+  const grossEmploymentIncomeCop = (sourcesByBox.get(32) ?? []).reduce(
+    (sum, source) => sum + source.value,
+    0,
+  );
+  const dependentsDeduction = dependentsInput.length
+    ? computeDependentsDeduction({
+        taxYear: 2025,
+        dependents: dependentsInput,
+        grossEmploymentIncomeCop,
+      })
+    : null;
+  if (dependentsDeduction && dependentsDeduction.appliedDeductionCop > 0) {
+    const label =
+      dependentsDeduction.dependentsEligibleCount === 1
+        ? 'Deducción por dependientes (art. 387 ET)'
+        : `Deducción por ${dependentsDeduction.dependentsEligibleCount} dependientes (art. 387 ET)`;
+    const dependentsTrace: Form210SourceTrace = {
+      type: 'calculation',
+      sourceId: 'calc:dependents-387',
+      recordId: null,
+      documentId: null,
+      factId: null,
+      label,
+      value: dependentsDeduction.appliedDeductionCop,
+      evidence: dependentsDeduction.formula,
+    };
+    sourcesByBox.set(39, [...(sourcesByBox.get(39) ?? []), dependentsTrace]);
   }
 
   const replacedIds = new Set(
@@ -562,6 +618,7 @@ export function buildForm210Draft(input: Form210BuildInput): Form210Draft {
     generatedAt,
     input.occasionalGainsBreakdown,
     input.advancePaymentContext,
+    dependentsDeduction,
   );
   return {
     id: `form210:${input.caseId}:2025`,

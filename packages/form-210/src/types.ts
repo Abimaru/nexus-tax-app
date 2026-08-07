@@ -6,6 +6,8 @@ import type {
 } from '@nexus-tax/domain';
 import type {
   AdvancePaymentComputation,
+  DependentDeclaration,
+  DependentsDeductionComputation,
   OccasionalGainsTaxComputation,
   ProgressiveTaxComputation,
   TaxLimitComputation,
@@ -196,6 +198,14 @@ export interface Form210PreliminaryLiquidation {
   nextYearAdvance: AdvancePaymentComputation | null;
 
   /**
+   * Deducción por dependientes (art. 387 ET). `null` cuando el analista no
+   * declara dependientes. El importe se cablea al mismo tiempo a la casilla
+   * 39 del borrador y se conserva aquí con todos los candidatos limitantes
+   * para trazabilidad.
+   */
+  dependentsDeduction: DependentsDeductionComputation | null;
+
+  /**
    * Saldo neto: positivo = a pagar; negativo = a favor. Fórmula:
    *   totalTaxDueCop + nextYearAdvance.netAdvanceCop
    *   − priorYearAdvanceCop − priorYearBalanceCop − withholdingsCop.
@@ -298,4 +308,10 @@ export interface Form210BuildInput {
   generatedAt?: string;
   occasionalGainsBreakdown?: Form210OccasionalGainsBreakdown;
   advancePaymentContext?: Form210AdvancePaymentContext;
+  /**
+   * Dependientes calificados que el analista quiere considerar para la
+   * deducción del art. 387 ET. El motor calcula la deducción, la cablea a la
+   * casilla 39 del borrador y la expone en `preliminaryLiquidation`.
+   */
+  dependents?: readonly DependentDeclaration[];
 }
