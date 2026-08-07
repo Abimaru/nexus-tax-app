@@ -2,6 +2,23 @@
 
 _Última actualización: 2026-08-07._
 
+## Sprint 2.3.1 — Fase I (2026-08-07)
+
+Se agrega un motor puro de **validaciones patrimoniales** (art. 261 ET) con
+tres reglas: deuda sin activo respaldo, movimientos significativos sin
+patrimonio bruto declarado y posibles duplicados en la casilla 29. Las
+funciones son puras y parametrizables por UVT (`thresholdUvt`) y tolerancia
+(`toleranceRelative`).
+
+`Form210ValidationFinding['code']` se extiende con `liability_without_asset`,
+`movement_without_balance` y `duplicate_patrimony_entry`. `validate()` del
+builder invoca las tres funciones al final del ciclo y emite un finding por
+disparo, con casillas y sourceIds vinculados.
+
+Documentación: [docs/PATRIMONY_CHECKS_2025.md](PATRIMONY_CHECKS_2025.md).
+Verificación: `pnpm -r typecheck` verde; `pnpm -r test` = 321 tests OK
+(aegis 84, form-210 28, resto sin regresiones).
+
 ## Sprint 2.3.1 — Fase F (2026-08-07)
 
 Se agrega la **deducción por dependientes** (art. 387 ET) al motor puro y al

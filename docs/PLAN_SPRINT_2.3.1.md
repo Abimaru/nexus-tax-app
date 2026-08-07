@@ -172,6 +172,41 @@ independiente. Orden sugerido:
 
 ## 6. Estado
 
+- **2026-08-07 15:45** — Fase I entregada. Validaciones patrimoniales
+  (art. 261 ET).
+  - **I ✅** Nuevos tipos `PatrimonySourceCandidate`,
+    `LiabilityWithoutAssetCheckResult`,
+    `MovementWithoutBalanceCheckResult`,
+    `DuplicatePatrimonyPair` y `DuplicatePatrimonyCheckResult` en
+    `packages/aegis-rules/src/types.ts`. Módulo puro
+    `patrimony-checks.ts` con constantes
+    (`PATRIMONY_MOVEMENT_SIGNIFICANCE_UVT = 100`,
+    `PATRIMONY_DUPLICATE_RELATIVE_TOLERANCE = 0.01`) y funciones
+    `detectLiabilityWithoutAsset`, `detectMovementWithoutBalance`,
+    `detectDuplicatePatrimonyEntries`.
+  - Fuente `et-art-261` añadida al catálogo con
+    `relatedBoxNumbers: [29, 30, 31]`.
+  - `Form210ValidationFinding['code']` extendido con tres códigos
+    nuevos: `liability_without_asset`, `movement_without_balance`,
+    `duplicate_patrimony_entry`. El `validate()` del builder invoca las
+    tres funciones puras y emite un finding por regla disparada, con
+    boxNumbers y sourceIds correctamente vinculados.
+  - Tests: 14 en `packages/aegis-rules/tests/patrimony-checks.test.ts`
+    (constantes, cada rama de cada regla, tolerancias configurables,
+    normalización de acentos/mayúsculas, umbral en UVT) + 4 nuevos en
+    `packages/form-210/tests/builder.test.ts` (deuda sin activo,
+    movimientos sin patrimonio, duplicado por label similar y caso
+    consistente sin hallazgos).
+  - Doc nueva: `docs/PATRIMONY_CHECKS_2025.md`.
+  - Validación: `pnpm -r typecheck` verde; sweep `pnpm -r test` con
+    321 tests OK (aegis 84/84 con 14 nuevos, form-210 28/28 con 4
+    nuevos, resto sin regresiones).
+  - **Fuera de alcance de I (documentado):** exclusiones del art. 261,
+    valor patrimonial neto por tipo de activo (acciones, inmuebles,
+    moneda extranjera), aumento patrimonial no justificado
+    (art. 236 ET) — requiere historial multi-año, cruce por
+    `productId` (no está hoy en `PatrimonySourceCandidate`).
+
 - **2026-08-07 15:35** — Fase F entregada. Deducción por dependientes
   (art. 387 ET).
   - **F ✅** `DependentKind`, `DependentDeclaration`,
