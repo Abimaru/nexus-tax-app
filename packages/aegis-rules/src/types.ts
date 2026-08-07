@@ -388,6 +388,42 @@ export interface ElectronicInvoicingDeductionComputation {
   ruleSourceId: string;
 }
 
+/**
+ * Regla declarativa de límite individual (por concepto) aplicable a
+ * deducciones y rentas exentas específicas del F-210. Sigue el patrón
+ * "porcentaje sobre base + tope en UVT + valor declarado", donde:
+ *
+ *   - `percentageOfBase` puede ser `null` para conceptos sin porcentaje
+ *     (por ejemplo, intereses de vivienda del art. 119: solo tope UVT).
+ *   - `uvtCap` siempre está definido; es el tope absoluto anual.
+ *   - `baseIncomeRequired` indica si la regla necesita el ingreso laboral
+ *     o tributario del año para aplicar el porcentaje.
+ */
+export interface IndividualDeductionLimitRule {
+  id: string;
+  description: string;
+  percentageOfBase: number | null;
+  uvtCap: number;
+  baseIncomeRequired: boolean;
+  targetBoxNumber: number;
+  legalSourceIds: readonly string[];
+}
+
+/** Detalle explicable del resultado de aplicar un `IndividualDeductionLimitRule`. */
+export interface IndividualDeductionLimitComputation {
+  ruleId: string;
+  taxYear: number;
+  targetBoxNumber: number;
+  declaredCop: number;
+  baseIncomeCop: number | null;
+  percentageCandidateCop: number | null;
+  uvtCapCandidateCop: number;
+  appliedCop: number;
+  bindingCandidate: 'declared' | 'percentage' | 'uvt_cap';
+  formula: string;
+  ruleSourceIds: readonly string[];
+}
+
 export interface FilingCriterion {
   id: FilingCriterionId;
   label: string;
