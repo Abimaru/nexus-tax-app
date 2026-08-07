@@ -2,6 +2,25 @@
 
 _Última actualización: 2026-08-07._
 
+## Sprint 2.3.1 — Fase F (2026-08-07)
+
+Se agrega la **deducción por dependientes** (art. 387 ET) al motor puro y al
+borrador del F-210. Regla: `min(10 % × ingresos_trabajo, Σ 32 UVT × meses,
+dependientes_elegibles × 384 UVT)` con máximo 4 dependientes.
+
+`Form210BuildInput.dependents` es opcional. Cuando se aporta, el builder
+calcula los ingresos brutos desde la casilla 32, ejecuta
+`computeDependentsDeduction` y cablea el resultado como fuente
+`calc:dependents-387` en la casilla 39. La computación queda en
+`preliminaryLiquidation.dependentsDeduction` con todos los candidatos
+limitantes. Warnings automáticos por exceso de dependientes o ausencia de
+ingresos.
+
+Documentación: [docs/DEPENDENTS_DEDUCTION_2025.md](DEPENDENTS_DEDUCTION_2025.md);
+[docs/FORM_210_LIQUIDATION.md](FORM_210_LIQUIDATION.md) actualizado.
+Verificación: `pnpm -r typecheck` verde; `pnpm -r test` = 303 tests OK
+(aegis 70, form-210 24, resto sin regresiones).
+
 ## Sprint 2.3.1 — Fase L (2026-08-07)
 
 Se agrega el **anticipo del impuesto de renta del año siguiente** (art. 807

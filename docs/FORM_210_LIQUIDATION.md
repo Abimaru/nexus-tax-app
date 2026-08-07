@@ -122,6 +122,7 @@ Cada componente del resultado expone la fuente que lo respalda:
 - `incomeTax.ruleSourceId` → `'et-art-241'`.
 - `occasionalGainsTax.ruleSourceIds` → subconjunto de `['et-art-314', 'et-art-317']`.
 - `nextYearAdvance.ruleSourceId` → `'et-art-807'`.
+- `dependentsDeduction.ruleSourceId` → `'et-art-387'`.
 - `ruleVersion` → `FORM_210_RULE_VERSION_2025 = 'co.dian.form210.2025.v1'`.
 - `notice` → texto fijo que la UI **debe** mostrar donde se presente la
   liquidación.

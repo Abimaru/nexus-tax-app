@@ -172,6 +172,45 @@ independiente. Orden sugerido:
 
 ## 6. Estado
 
+- **2026-08-07 15:35** — Fase F entregada. Deducción por dependientes
+  (art. 387 ET).
+  - **F ✅** `DependentKind`, `DependentDeclaration`,
+    `DependentDeductionDetail` y `DependentsDeductionComputation` en
+    `packages/aegis-rules/src/types.ts`. Módulo puro `dependents.ts` con
+    constantes (`DEPENDENTS_INCOME_PERCENTAGE = 0.1`,
+    `DEPENDENTS_MAX_ELIGIBLE = 4`, `MONTHLY_CAP_UVT_PER_DEPENDENT = 32`,
+    `ANNUAL_CAP_UVT_PER_DEPENDENT = 384`) y
+    `computeDependentsDeduction`. Fuente `et-art-387` añadida al catálogo
+    con `relatedBoxNumbers: [39]`.
+  - Regla: `min(10 % × ingresos_trabajo, Σ 32 UVT × meses,
+    dependientes_elegibles × 384 UVT)` con máximo 4 dependientes por
+    contribuyente. El motor no valida elegibilidad (edad, ingresos,
+    certificaciones); la clasificación la aporta el analista.
+  - `Form210BuildInput` acepta `dependents` opcional. El builder calcula
+    los ingresos brutos de rentas de trabajo desde la casilla 32,
+    ejecuta el motor y cablea el resultado a la casilla 39 como fuente
+    de tipo `calculation` con `sourceId = 'calc:dependents-387'`. La
+    computación queda en `preliminaryLiquidation.dependentsDeduction`.
+  - Warnings automáticos cuando se declaran más de 4 dependientes o
+    cuando no hay ingresos de trabajo para aplicar el 10 %.
+  - Tests: 9 en `packages/aegis-rules/tests/dependents.test.ts` (constantes
+    normativas, sin dependientes, límite por porcentaje, límite por tope
+    mensual con 12 meses, dependiente parcial (6 meses), tope de 4
+    dependientes, clampeo de meses, negativos, año no modelado) + 3 nuevos
+    en `preliminary-liquidation.test.ts` (cablea a casilla 39 y a la
+    liquidación, warning por 6 dependientes, warning cuando no hay
+    ingresos).
+  - Doc nueva: `docs/DEPENDENTS_DEDUCTION_2025.md`;
+    `FORM_210_LIQUIDATION.md` actualizado con `dependentsDeduction` en la
+    sección de trazabilidad.
+  - Validación: `pnpm -r typecheck` verde; sweep `pnpm -r test` con
+    303 tests OK (aegis 70/70 con 9 nuevos, form-210 24/24 con 3 nuevos,
+    resto sin regresiones).
+  - **Fuera de alcance de F (documentado):** verificación de elegibilidad,
+    certificados soporte, ingresos brutos ≠ casilla 32 (recomputar al
+    cargar nuevas fuentes), interacción explícita con el art. 336 (ya
+    modelada por la Fase D vía casilla 41).
+
 - **2026-08-07 10:20** — Fase L entregada. Anticipo del año siguiente
   (art. 807 ET).
   - **L ✅** `AdvancePaymentBaseMethod`, `AdvancePaymentBracket` y
