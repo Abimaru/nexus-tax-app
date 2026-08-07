@@ -128,10 +128,22 @@ export const FORM_210_VALIDATION_MATRIX_2025: readonly Form210RuleValidation[] =
       },
     ],
   }),
-  row(41, 'not_implemented', {
+  row(41, 'verified', {
     formulaDescription:
-      'Rentas exentas y deducciones limitadas al 40 % de (34) sin exceder 1.340 UVT.',
-    notes: 'Requiere aplicar el límite combinado del art. 336 ET.',
+      'Rentas exentas y deducciones limitadas de trabajo = min(40 % × 34, 1.340 UVT, 37 + 40) — art. 336 ET.',
+    additionalSources: ['et-art-336'],
+    examples: [
+      {
+        description: 'Renta líquida 60M; rentas exentas + deducciones 30M → 40 % gana.',
+        inputs: { box34: 60_000_000, box37: 20_000_000, box40: 10_000_000 },
+        expected: 24_000_000,
+      },
+      {
+        description: 'Componente detectado 8M < 40 % de 100M → componente gana.',
+        inputs: { box34: 100_000_000, box37: 5_000_000, box40: 3_000_000 },
+        expected: 8_000_000,
+      },
+    ],
   }),
   row(42, 'verified', {
     formulaDescription: 'Renta líquida ordinaria de rentas de trabajo = 34 - 41.',
@@ -163,10 +175,30 @@ export const FORM_210_VALIDATION_MATRIX_2025: readonly Form210RuleValidation[] =
   row(62, 'not_implemented', { formulaDescription: 'Rentas líquidas pasivas ECE de capital.' }),
   row(63, 'not_implemented', { formulaDescription: 'Rentas exentas de capital.' }),
   row(64, 'not_implemented', { formulaDescription: 'Deducciones imputables de capital.' }),
-  row(65, 'not_implemented', {
-    formulaDescription: 'Rentas exentas y deducciones limitadas al 10 % + 1.340 UVT (capital).',
+  row(65, 'verified', {
+    formulaDescription:
+      'Rentas exentas y deducciones limitadas de capital = min(40 % × 61, 1.340 UVT, 63 + 64) — art. 336 ET.',
+    additionalSources: ['et-art-336'],
+    examples: [
+      {
+        description: 'Renta líquida capital 50M; componente 15M → 40 % gana (20M vs 15M).',
+        inputs: { box61: 50_000_000, box63: 10_000_000, box64: 5_000_000 },
+        expected: 15_000_000,
+      },
+    ],
+    notes:
+      'El instructivo separa por sub-cédula con el mismo patrón del art. 336; la implementación es idéntica a la de trabajo.',
   }),
-  row(66, 'not_implemented', { formulaDescription: 'Renta líquida ordinaria de capital.' }),
+  row(66, 'verified', {
+    formulaDescription: 'Renta líquida ordinaria de capital = 61 − 65.',
+    examples: [
+      {
+        description: 'Renta líquida 50M; limitada 15M.',
+        inputs: { box61: 50_000_000, box65: 15_000_000 },
+        expected: 35_000_000,
+      },
+    ],
+  }),
   row(67, 'not_implemented', { formulaDescription: 'Pérdida líquida de capital.' }),
 
   // === Rentas no laborales ===
@@ -189,10 +221,28 @@ export const FORM_210_VALIDATION_MATRIX_2025: readonly Form210RuleValidation[] =
   row(79, 'not_implemented', { formulaDescription: 'Rentas líquidas pasivas ECE no laborales.' }),
   row(80, 'not_implemented', { formulaDescription: 'Rentas exentas no laborales.' }),
   row(81, 'not_implemented', { formulaDescription: 'Deducciones imputables no laborales.' }),
-  row(82, 'not_implemented', {
-    formulaDescription: 'Rentas exentas y deducciones limitadas al 10 % + 1.340 UVT (no laboral).',
+  row(82, 'verified', {
+    formulaDescription:
+      'Rentas exentas y deducciones limitadas no laborales = min(40 % × 78, 1.340 UVT, 80 + 81) — art. 336 ET.',
+    additionalSources: ['et-art-336'],
+    examples: [
+      {
+        description: 'Renta no laboral 500M; el tope 1.340 UVT domina (66.730.660).',
+        inputs: { box78: 500_000_000, box80: 200_000_000, box81: 100_000_000 },
+        expected: 66_730_660,
+      },
+    ],
   }),
-  row(83, 'not_implemented', { formulaDescription: 'Renta líquida ordinaria no laboral.' }),
+  row(83, 'verified', {
+    formulaDescription: 'Renta líquida ordinaria no laboral = 78 − 82.',
+    examples: [
+      {
+        description: 'Renta líquida 40M; limitada 12M.',
+        inputs: { box78: 40_000_000, box82: 12_000_000 },
+        expected: 28_000_000,
+      },
+    ],
+  }),
   row(84, 'not_implemented', { formulaDescription: 'Pérdida líquida no laboral.' }),
 
   // === Pensiones ===
