@@ -206,4 +206,57 @@ describe('borrador Formulario 210', () => {
     expect(json).toContain('nexustax.form210.working-draft');
     expect(json).toContain('no presentado ante la DIAN');
   });
+
+  it('advierte deuda sin activo (art. 261 ET)', () => {
+    const draft = buildForm210Draft({
+      caseId: 'case-liability',
+      taxYear: 2025,
+      records: [record('1', 'liability', 5_000_000)],
+      facts: [],
+    });
+    expect(draft.findings.map((finding) => finding.code)).toContain('liability_without_asset');
+  });
+
+  it('advierte movimientos significativos sin patrimonio bruto', () => {
+    // Movimientos > 100 UVT ≈ 5M; sin patrimonio ⇒ warning.
+    const draft = buildForm210Draft({
+      caseId: 'case-movement',
+      taxYear: 2025,
+      records: [
+        record('1', 'bank_movement', 6_000_000),
+        record('2', 'card_consumption', 3_000_000),
+      ],
+      facts: [],
+    });
+    expect(draft.findings.map((finding) => finding.code)).toContain('movement_without_balance');
+  });
+
+  it('advierte posibles duplicados de patrimonio con label y valor similar', () => {
+    const draft = buildForm210Draft({
+      caseId: 'case-duplicate',
+      taxYear: 2025,
+      records: [
+        { ...record('1', 'asset', 10_000_000), conceptLabel: 'Cuenta ahorros Bancolombia' },
+        { ...record('2', 'asset', 10_050_000), conceptLabel: 'cuenta ahorros bancolombia' },
+      ],
+      facts: [],
+    });
+    expect(draft.findings.map((finding) => finding.code)).toContain('duplicate_patrimony_entry');
+  });
+
+  it('no emite hallazgos patrimoniales cuando el caso es consistente', () => {
+    const draft = buildForm210Draft({
+      caseId: 'case-consistent',
+      taxYear: 2025,
+      records: [
+        record('1', 'asset', 20_000_000),
+        record('2', 'liability', 5_000_000),
+      ],
+      facts: [],
+    });
+    const codes = draft.findings.map((finding) => finding.code);
+    expect(codes).not.toContain('liability_without_asset');
+    expect(codes).not.toContain('movement_without_balance');
+    expect(codes).not.toContain('duplicate_patrimony_entry');
+  });
 });
