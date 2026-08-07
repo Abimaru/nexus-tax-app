@@ -34,3 +34,4 @@ export * from './occasional-gains';
 export * from './advance-payment';
 export * from './dependents';
 export * from './patrimony-checks';
+export * from './electronic-invoicing';

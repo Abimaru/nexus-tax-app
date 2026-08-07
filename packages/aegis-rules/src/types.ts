@@ -370,6 +370,24 @@ export interface DuplicatePatrimonyCheckResult {
   pairs: readonly DuplicatePatrimonyPair[];
 }
 
+/**
+ * Resultado explicable de la deducción por facturas electrónicas (art. 336-1
+ * ET, incorporado por la Ley 2277 de 2022). Sigue el patrón "porcentaje +
+ * tope en UVT": la UI muestra qué candidato limitó el beneficio.
+ */
+export interface ElectronicInvoicingDeductionComputation {
+  taxYear: number;
+  purchasesBaseCop: number;
+  percentageRate: number;
+  percentageCandidateCop: number;
+  uvtCapUvt: number;
+  uvtCapCandidateCop: number;
+  appliedDeductionCop: number;
+  bindingCandidate: 'percentage' | 'uvt_cap';
+  formula: string;
+  ruleSourceId: string;
+}
+
 export interface FilingCriterion {
   id: FilingCriterionId;
   label: string;
