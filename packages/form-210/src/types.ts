@@ -5,6 +5,7 @@ import type {
   TaxResolutionDecision,
 } from '@nexus-tax/domain';
 import type {
+  AdvancePaymentComputation,
   OccasionalGainsTaxComputation,
   ProgressiveTaxComputation,
   TaxLimitComputation,
@@ -186,7 +187,19 @@ export interface Form210PreliminaryLiquidation {
   priorYearBalanceCop: number; // Casilla 131
   withholdingsCop: number; // Casilla 132
 
-  /** Saldo neto: positivo = a pagar; negativo = a favor. */
+  /**
+   * Anticipo del impuesto de renta del año siguiente (art. 807 ET). Se
+   * calcula con `computeAdvancePayment` si el input incluye el conteo de
+   * declaraciones. `null` cuando no hay datos suficientes o cuando el
+   * impuesto de renta es cero. Se **suma** al saldo (aumenta lo a pagar).
+   */
+  nextYearAdvance: AdvancePaymentComputation | null;
+
+  /**
+   * Saldo neto: positivo = a pagar; negativo = a favor. Fórmula:
+   *   totalTaxDueCop + nextYearAdvance.netAdvanceCop
+   *   − priorYearAdvanceCop − priorYearBalanceCop − withholdingsCop.
+   */
   netBalanceCop: number;
 
   status: Form210PreliminaryLiquidationStatus;
@@ -251,6 +264,25 @@ export interface Form210OccasionalGainsBreakdown {
   lotteryBaseCop: number;
 }
 
+/**
+ * Contexto para calcular el anticipo del año siguiente (art. 807 ET). Todos
+ * los campos son responsabilidad del analista: NexusTax no mantiene el
+ * historial de declaraciones previas del contribuyente.
+ */
+export interface Form210AdvancePaymentContext {
+  /**
+   * Conteo de declaraciones incluida la que se está preparando. `1` primera
+   * vez, `2` segunda, `3` tercera o siguientes.
+   */
+  filingCountIncludingCurrent: 1 | 2 | 3;
+  /**
+   * Impuesto neto de renta del año inmediatamente anterior, en pesos. `null`
+   * si no está confirmado; el motor usará solo el impuesto neto del año
+   * actual.
+   */
+  priorNetIncomeTaxCop: number | null;
+}
+
 export interface Form210BuildInput {
   caseId: string;
   taxYear: number;
@@ -265,4 +297,5 @@ export interface Form210BuildInput {
   provisionalRecordIds?: readonly string[];
   generatedAt?: string;
   occasionalGainsBreakdown?: Form210OccasionalGainsBreakdown;
+  advancePaymentContext?: Form210AdvancePaymentContext;
 }

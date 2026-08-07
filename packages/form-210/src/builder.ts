@@ -8,6 +8,7 @@ import {
   TAX_LIMIT_RULES_2025,
   TAX_UNIT_2025,
   applyLimitRule,
+  computeAdvancePayment,
   computeOccasionalGainsTax,
   computeProgressiveIncomeTax,
   copToUvt,
@@ -274,6 +275,10 @@ export function computePreliminaryLiquidation(
     generalBaseCop: number;
     lotteryBaseCop: number;
   },
+  advancePaymentContext?: {
+    filingCountIncludingCurrent: 1 | 2 | 3;
+    priorNetIncomeTaxCop: number | null;
+  },
 ): Form210PreliminaryLiquidation {
   const get = (number: number): number | null => {
     const box = boxes.find((entry) => entry.number === number);
@@ -335,8 +340,30 @@ export function computePreliminaryLiquidation(
 
   const totalTaxDueCop =
     (incomeTax?.totalTaxCopRounded ?? 0) + (occasionalGainsTax?.totalTaxCop ?? 0);
+
+  // Anticipo del año siguiente (art. 807 ET). Se calcula solo si el analista
+  // aporta el contexto (número de veces que declara e histórico) y si el
+  // impuesto neto de renta es positivo. El impuesto neto usado como base es
+  // `incomeTax.totalTaxCopRounded`: el motor puro NO conoce descuentos
+  // tributarios porque aún no se modelan.
+  const currentNetIncomeTaxCop = incomeTax?.totalTaxCopRounded ?? 0;
+  const nextYearAdvance =
+    advancePaymentContext && currentNetIncomeTaxCop > 0
+      ? computeAdvancePayment({
+          taxYear: 2025,
+          filingCountIncludingCurrent: advancePaymentContext.filingCountIncludingCurrent,
+          currentNetIncomeTaxCop,
+          priorNetIncomeTaxCop: advancePaymentContext.priorNetIncomeTaxCop,
+          withholdingsCop,
+        })
+      : null;
+
   const netBalanceCop =
-    totalTaxDueCop - priorYearAdvanceCop - priorYearBalanceCop - withholdingsCop;
+    totalTaxDueCop +
+    (nextYearAdvance?.netAdvanceCop ?? 0) -
+    priorYearAdvanceCop -
+    priorYearBalanceCop -
+    withholdingsCop;
 
   const warnings: string[] = [];
   if (!incomeTax) {
@@ -363,6 +390,11 @@ export function computePreliminaryLiquidation(
       'No hay retenciones ni anticipo ni saldo anterior confirmados; el saldo puede subir al incorporarlos.',
     );
   }
+  if (incomeTax && !advancePaymentContext) {
+    warnings.push(
+      'El anticipo del año siguiente (art. 807 ET) no se calculó porque falta indicar cuántas veces has declarado.',
+    );
+  }
 
   let status: Form210PreliminaryLiquidation['status'];
   if (!anyCedularSignal && occasionalGainsTaxableCop === 0 && totalTaxDueCop === 0) {
@@ -386,6 +418,7 @@ export function computePreliminaryLiquidation(
     priorYearAdvanceCop,
     priorYearBalanceCop,
     withholdingsCop,
+    nextYearAdvance,
     netBalanceCop,
     status,
     warnings,
@@ -528,6 +561,7 @@ export function buildForm210Draft(input: Form210BuildInput): Form210Draft {
     FORM_210_RULESET_2025.ruleVersion,
     generatedAt,
     input.occasionalGainsBreakdown,
+    input.advancePaymentContext,
   );
   return {
     id: `form210:${input.caseId}:2025`,
