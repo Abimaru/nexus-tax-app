@@ -146,6 +146,18 @@ export const OFFICIAL_SOURCES_2025: readonly OfficialSourceReference[] = [
       'Composición del patrimonio bruto: activos poseídos al último día del año gravable',
     relatedBoxNumbers: [29, 30, 31],
   },
+  {
+    id: 'et-art-336-1',
+    authority: 'Estatuto Tributario',
+    title:
+      'Estatuto Tributario, artículo 336-1 — Deducción por facturas electrónicas soportadas con medios de pago electrónicos',
+    url: 'https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=6533#336-1',
+    verifiedAt: VERIFIED_AT,
+    taxYear: null,
+    scope:
+      'Deducción imputable a la cédula general: 1 % de compras soportadas con factura electrónica, tope anual 240 UVT (Ley 2277 de 2022)',
+    relatedBoxNumbers: [39],
+  },
 ] as const;
 
 /**
