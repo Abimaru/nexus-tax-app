@@ -4,6 +4,10 @@ import type {
   TaxCategory,
   TaxResolutionDecision,
 } from '@nexus-tax/domain';
+import type {
+  ProgressiveTaxComputation,
+  TaxLimitComputation,
+} from '@nexus-tax/aegis-rules';
 
 export type Form210Section =
   | 'patrimony'
@@ -111,6 +115,86 @@ export interface Form210Draft {
   resolutionIds: string[];
   includesBinaryData: false;
   presentationStatus: 'out_of_scope';
+  /**
+   * Liquidación preliminar orientativa. Se genera cuando el borrador tiene
+   * datos suficientes para calcular renta líquida gravable, impuesto de renta
+   * y saldo. Nunca reemplaza la revisión humana ni se presenta ante la DIAN.
+   */
+  preliminaryLiquidation: Form210PreliminaryLiquidation | null;
+}
+
+/**
+ * Estado de la liquidación preliminar. Se conserva separado del estado del
+ * borrador porque los datos suficientes para calcular impuesto no equivalen
+ * a un borrador listo para presentar (nunca lo estarán en este proyecto).
+ */
+export type Form210PreliminaryLiquidationStatus =
+  | 'insufficient_data'
+  | 'zero'
+  | 'refund'
+  | 'to_pay';
+
+/**
+ * Resultado explicable de la liquidación privada preliminar.
+ *
+ * El objeto acompaña al borrador para que la UI pueda mostrar cada valor con
+ * su fórmula, la fuente normativa que la respalda y las advertencias que
+ * afectan la confianza. La numeración de casillas oficiales se conserva solo
+ * para las que están fijadas por el instructivo (41, 65, 82 vía art. 336 ET);
+ * los importes derivados (impuesto de renta, ganancias ocasionales, total a
+ * cargo, saldo) NO se atribuyen a una casilla oficial concreta hasta que su
+ * numeración se verifique con el formulario DIAN.
+ */
+export interface Form210PreliminaryLiquidation {
+  ruleVersion: string;
+  generatedAt: string;
+
+  /** Suma de las rentas líquidas ordinarias de las tres sub-cédulas (42+66+83). */
+  generalCedularTaxableIncomeCop: number;
+  /** Base gravable de la cédula general en UVT (informativo). */
+  generalCedularTaxableIncomeUvt: number;
+
+  /** Detalle del límite art. 336 aplicado a la casilla 41 (trabajo). */
+  employmentLimit: TaxLimitComputation | null;
+  /** Detalle del límite art. 336 aplicado a la casilla 65 (capital). */
+  capitalLimit: TaxLimitComputation | null;
+  /** Detalle del límite art. 336 aplicado a la casilla 82 (no laboral). */
+  nonLaborLimit: TaxLimitComputation | null;
+
+  /** Cálculo progresivo (art. 241 ET) sobre `generalCedularTaxableIncomeCop`. */
+  incomeTax: ProgressiveTaxComputation | null;
+
+  /**
+   * Base de ganancias ocasionales gravables (casilla 115). Se conserva
+   * separada porque la tarifa aplicable no es la progresiva del art. 241.
+   */
+  occasionalGainsTaxableCop: number;
+  /**
+   * Impuesto orientativo de ganancias ocasionales. El motor NO fija una tarifa
+   * aquí porque el tratamiento varía por concepto (10 % general, 20 % loterías,
+   * etc.); se deja `null` hasta que la regla se modele con fuente en fases
+   * futuras.
+   */
+  occasionalGainsTax: {
+    valueCop: number;
+    ruleSourceIds: readonly string[];
+    formula: string;
+  } | null;
+
+  /** Total impuesto a cargo = impuesto renta + impuesto GO. */
+  totalTaxDueCop: number;
+
+  /** Créditos que reducen el saldo. Se toman de las casillas del F-210. */
+  priorYearAdvanceCop: number; // Casilla 130
+  priorYearBalanceCop: number; // Casilla 131
+  withholdingsCop: number; // Casilla 132
+
+  /** Saldo neto: positivo = a pagar; negativo = a favor. */
+  netBalanceCop: number;
+
+  status: Form210PreliminaryLiquidationStatus;
+  warnings: readonly string[];
+  notice: 'Liquidación preliminar orientativa — no presentada ante la DIAN';
 }
 
 /**

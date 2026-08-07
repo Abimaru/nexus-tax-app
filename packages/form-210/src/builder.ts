@@ -4,11 +4,19 @@ import type {
   TaxCategory,
   TaxResolutionDecision,
 } from '@nexus-tax/domain';
+import {
+  TAX_LIMIT_RULES_2025,
+  TAX_UNIT_2025,
+  applyLimitRule,
+  computeProgressiveIncomeTax,
+  copToUvt,
+} from '@nexus-tax/aegis-rules';
 import { FORM_210_RULESET_2025 } from './ruleset-2025';
 import type {
   Form210BoxValue,
   Form210BuildInput,
   Form210Draft,
+  Form210PreliminaryLiquidation,
   Form210SourceTrace,
   Form210ValidationFinding,
 } from './types';
@@ -65,6 +73,29 @@ function safeSubtract(values: number[]): number {
   );
 }
 
+/**
+ * Aplica el límite conjunto de rentas exentas y deducciones (art. 336 ET) a la
+ * casilla objetivo. La regla se toma de `TAX_LIMIT_RULES_2025`; si la casilla
+ * no tiene una regla asociada, se devuelve `null` para dejar que la fórmula
+ * genérica intente resolver la casilla.
+ */
+function applyCedularLimit(
+  targetBoxNumber: number,
+  get: (box: number) => number | null,
+): number | null {
+  const rule = TAX_LIMIT_RULES_2025.find((entry) => entry.targetBoxNumber === targetBoxNumber);
+  if (!rule) return null;
+  const inputs: Record<number, number> = {};
+  inputs[rule.baseBoxNumber] = get(rule.baseBoxNumber) ?? 0;
+  for (const boxNumber of rule.componentBoxNumbers) inputs[boxNumber] = get(boxNumber) ?? 0;
+  const hasSomeSignal =
+    get(rule.baseBoxNumber) !== null ||
+    rule.componentBoxNumbers.some((boxNumber) => get(boxNumber) !== null);
+  if (!hasSomeSignal) return null;
+  const result = applyLimitRule(rule, inputs, 2025);
+  return result.appliedValueCop;
+}
+
 function computeFormula(number: number, get: (box: number) => number | null): number | null {
   const formula: Partial<Record<number, () => number | null>> = {
     31: () =>
@@ -72,13 +103,20 @@ function computeFormula(number: number, get: (box: number) => number | null): nu
     34: () => (get(32) !== null ? safeSubtract([get(32) ?? 0, get(33) ?? 0]) : null),
     37: () => (get(35) !== null || get(36) !== null ? (get(35) ?? 0) + (get(36) ?? 0) : null),
     40: () => (get(38) !== null || get(39) !== null ? (get(38) ?? 0) + (get(39) ?? 0) : null),
+    41: () => applyCedularLimit(41, get),
     42: () =>
       get(34) !== null && get(41) !== null ? safeSubtract([get(34) ?? 0, get(41) ?? 0]) : null,
     61: () => (get(58) !== null ? safeSubtract([get(58) ?? 0, get(59) ?? 0, get(60) ?? 0]) : null),
+    65: () => applyCedularLimit(65, get),
+    66: () =>
+      get(61) !== null && get(65) !== null ? safeSubtract([get(61) ?? 0, get(65) ?? 0]) : null,
     78: () =>
       get(74) !== null
         ? safeSubtract([get(74) ?? 0, get(75) ?? 0, get(76) ?? 0, get(77) ?? 0])
         : null,
+    82: () => applyCedularLimit(82, get),
+    83: () =>
+      get(78) !== null && get(82) !== null ? safeSubtract([get(78) ?? 0, get(82) ?? 0]) : null,
     101: () => (get(99) !== null ? safeSubtract([get(99) ?? 0, get(100) ?? 0]) : null),
     103: () =>
       get(101) !== null && get(102) !== null ? safeSubtract([get(101) ?? 0, get(102) ?? 0]) : null,
@@ -220,6 +258,117 @@ function validate(
   return findings;
 }
 
+/**
+ * Deriva la liquidación privada preliminar del borrador. La numeración de las
+ * casillas de impuesto y saldo (119, 123, 133, 139…) NO se afirma aquí porque
+ * varía entre versiones del formulario y aún no ha sido verificada contra el
+ * instructivo DIAN 2025. Los importes viven en el objeto de liquidación con
+ * fórmula y fuente propias hasta que la numeración se confirme.
+ */
+export function computePreliminaryLiquidation(
+  boxes: readonly Form210BoxValue[],
+  ruleVersion: string,
+  generatedAt: string,
+): Form210PreliminaryLiquidation {
+  const get = (number: number): number | null => {
+    const box = boxes.find((entry) => entry.number === number);
+    return box?.confirmedValue ?? box?.suggestedValue ?? null;
+  };
+  const findLimit = (targetBox: number) => {
+    const rule = TAX_LIMIT_RULES_2025.find((entry) => entry.targetBoxNumber === targetBox);
+    if (!rule) return null;
+    const inputs: Record<number, number> = {};
+    inputs[rule.baseBoxNumber] = get(rule.baseBoxNumber) ?? 0;
+    for (const boxNumber of rule.componentBoxNumbers) inputs[boxNumber] = get(boxNumber) ?? 0;
+    const hasSignal =
+      get(rule.baseBoxNumber) !== null ||
+      rule.componentBoxNumbers.some((boxNumber) => get(boxNumber) !== null);
+    return hasSignal ? applyLimitRule(rule, inputs, 2025) : null;
+  };
+
+  const employmentLimit = findLimit(41);
+  const capitalLimit = findLimit(65);
+  const nonLaborLimit = findLimit(82);
+
+  // Renta líquida gravable de la cédula general = suma de rentas líquidas
+  // ordinarias de trabajo (42), capital (66) y no laboral (83).
+  const cedularParts: readonly (number | null)[] = [get(42), get(66), get(83)];
+  const anyCedularSignal = cedularParts.some((part) => part !== null);
+  let generalCedularTaxableIncomeCop = 0;
+  for (const part of cedularParts) generalCedularTaxableIncomeCop += Math.max(0, part ?? 0);
+  const generalCedularTaxableIncomeUvt = copToUvt(generalCedularTaxableIncomeCop, 2025);
+
+  const incomeTax = anyCedularSignal
+    ? computeProgressiveIncomeTax(generalCedularTaxableIncomeCop, 2025)
+    : null;
+
+  // Ganancias ocasionales gravables: base disponible desde la casilla 115.
+  const occasionalGainsTaxableCop = Math.max(0, get(115) ?? 0);
+
+  // El impuesto de GO depende del concepto (10 % general, 20 % loterías…).
+  // El motor se limita a exponer la base y deja el importe en null hasta que
+  // se modele la regla con fuente en una fase posterior.
+  const occasionalGainsTax = null;
+
+  const priorYearAdvanceCop = Math.max(0, get(130) ?? 0);
+  const priorYearBalanceCop = Math.max(0, get(131) ?? 0);
+  const withholdingsCop = Math.max(0, get(132) ?? 0);
+
+  const totalTaxDueCop = incomeTax?.totalTaxCopRounded ?? 0;
+  const netBalanceCop =
+    totalTaxDueCop - priorYearAdvanceCop - priorYearBalanceCop - withholdingsCop;
+
+  const warnings: string[] = [];
+  if (!incomeTax) {
+    warnings.push(
+      'No hay renta líquida cedular suficiente para calcular el impuesto progresivo.',
+    );
+  }
+  if (occasionalGainsTaxableCop > 0) {
+    warnings.push(
+      'Hay ganancias ocasionales gravables pero la tarifa aplicable aún no se modela: revisa manualmente.',
+    );
+  }
+  if (get(130) === null && get(131) === null && get(132) === null && incomeTax) {
+    warnings.push(
+      'No hay retenciones ni anticipo ni saldo anterior confirmados; el saldo puede subir al incorporarlos.',
+    );
+  }
+
+  let status: Form210PreliminaryLiquidation['status'];
+  if (!anyCedularSignal && occasionalGainsTaxableCop === 0 && totalTaxDueCop === 0) {
+    status = 'insufficient_data';
+  } else if (netBalanceCop > 0) status = 'to_pay';
+  else if (netBalanceCop < 0) status = 'refund';
+  else status = 'zero';
+
+  return {
+    ruleVersion,
+    generatedAt,
+    generalCedularTaxableIncomeCop,
+    generalCedularTaxableIncomeUvt,
+    employmentLimit,
+    capitalLimit,
+    nonLaborLimit,
+    incomeTax,
+    occasionalGainsTaxableCop,
+    occasionalGainsTax,
+    totalTaxDueCop,
+    priorYearAdvanceCop,
+    priorYearBalanceCop,
+    withholdingsCop,
+    netBalanceCop,
+    status,
+    warnings,
+    notice: 'Liquidación preliminar orientativa — no presentada ante la DIAN',
+  };
+}
+
+// Sanity check: la UVT usada por copToUvt corresponde al año modelado.
+if (TAX_UNIT_2025.taxYear !== 2025) {
+  throw new Error('TAX_UNIT_2025.taxYear debe ser 2025.');
+}
+
 export function buildForm210Draft(input: Form210BuildInput): Form210Draft {
   if (input.taxYear !== 2025)
     throw new Error('El ruleset disponible solo corresponde al año gravable 2025.');
@@ -345,6 +494,11 @@ export function buildForm210Draft(input: Form210BuildInput): Form210Draft {
   const populated = boxes.filter(
     (box) => box.suggestedValue !== null || box.confirmedValue !== null,
   ).length;
+  const preliminaryLiquidation = computePreliminaryLiquidation(
+    boxes,
+    FORM_210_RULESET_2025.ruleVersion,
+    generatedAt,
+  );
   return {
     id: `form210:${input.caseId}:2025`,
     caseId: input.caseId,
@@ -356,6 +510,7 @@ export function buildForm210Draft(input: Form210BuildInput): Form210Draft {
     notice: 'Borrador de trabajo — no presentado ante la DIAN',
     boxes,
     findings,
+    preliminaryLiquidation,
     status: {
       status:
         populated === 0

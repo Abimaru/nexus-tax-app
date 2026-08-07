@@ -15,6 +15,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@nexus-tax/aegis-rules": "workspace:*",
     "@nexus-tax/domain": "workspace:*"
   },
   "devDependencies": {
