@@ -122,6 +122,18 @@ export const OFFICIAL_SOURCES_2025: readonly OfficialSourceReference[] = [
     scope: 'Anticipo del impuesto de renta (25 % / 50 % / 75 %)',
     relatedBoxNumbers: [],
   },
+  {
+    id: 'et-art-387',
+    authority: 'Estatuto Tributario',
+    title:
+      'Estatuto Tributario, artículo 387 — Deducciones que se restarán de la base de retención (dependientes)',
+    url: 'https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=6533#387',
+    verifiedAt: VERIFIED_AT,
+    taxYear: null,
+    scope:
+      'Deducción por dependientes económicos (10 % ingresos brutos, hasta 32 UVT mensuales y 384 UVT anuales por dependiente, máx. 4 dependientes)',
+    relatedBoxNumbers: [39],
+  },
 ] as const;
 
 /**
