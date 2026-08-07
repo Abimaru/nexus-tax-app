@@ -292,6 +292,75 @@ describe('liquidación privada preliminar (Fase K)', () => {
     expect(liq.warnings.some((warning) => warning.includes('no coincide'))).toBe(true);
   });
 
+  it('agrega el anticipo del año siguiente al saldo cuando hay contexto', () => {
+    // Renta 3.000 UVT → impuesto ≈ 480 UVT.
+    // Primera declaración, sin retenciones → anticipo = 25 % del impuesto neto.
+    const uvt = UVT_2025;
+    const draft = buildForm210Draft({
+      caseId: 'case-advance-first',
+      taxYear: 2025,
+      records: [],
+      facts: [],
+      resolutions: [
+        makeAdjustBoxDecision({
+          id: 'dec-42',
+          caseId: 'case-advance-first',
+          boxNumber: 42,
+          finalValue: 3_000 * uvt,
+        }),
+      ],
+      advancePaymentContext: {
+        filingCountIncludingCurrent: 1,
+        priorNetIncomeTaxCop: null,
+      },
+    });
+    const liq = draft.preliminaryLiquidation!;
+    const impuestoRenta = liq.incomeTax!.totalTaxCopRounded;
+    expect(liq.nextYearAdvance).not.toBeNull();
+    expect(liq.nextYearAdvance!.bracket.rate).toBe(0.25);
+    expect(liq.nextYearAdvance!.grossAdvanceCop).toBe(Math.round(impuestoRenta * 0.25));
+    expect(liq.nextYearAdvance!.netAdvanceCop).toBe(Math.round(impuestoRenta * 0.25));
+    expect(liq.netBalanceCop).toBe(impuestoRenta + Math.round(impuestoRenta * 0.25));
+    expect(liq.status).toBe('to_pay');
+  });
+
+  it('advierte cuando falta el contexto del anticipo pero hay impuesto', () => {
+    const uvt = UVT_2025;
+    const draft = buildForm210Draft({
+      caseId: 'case-advance-warning',
+      taxYear: 2025,
+      records: [],
+      facts: [],
+      resolutions: [
+        makeAdjustBoxDecision({
+          id: 'dec-42',
+          caseId: 'case-advance-warning',
+          boxNumber: 42,
+          finalValue: 3_000 * uvt,
+        }),
+      ],
+    });
+    const liq = draft.preliminaryLiquidation!;
+    expect(liq.nextYearAdvance).toBeNull();
+    expect(liq.warnings.some((warning) => warning.includes('anticipo'))).toBe(true);
+  });
+
+  it('no calcula anticipo cuando el impuesto neto es cero', () => {
+    // Sin renta cedular → sin impuesto → sin anticipo (aunque haya contexto).
+    const draft = buildForm210Draft({
+      caseId: 'case-advance-no-tax',
+      taxYear: 2025,
+      records: [],
+      facts: [],
+      advancePaymentContext: {
+        filingCountIncludingCurrent: 3,
+        priorNetIncomeTaxCop: 5_000_000,
+      },
+    });
+    const liq = draft.preliminaryLiquidation!;
+    expect(liq.nextYearAdvance).toBeNull();
+  });
+
   it('suma impuesto de renta y de GO en totalTaxDueCop', () => {
     // Renta 3.000 UVT → 480 UVT ≈ 23.9M. GO 100M → 15M. Total ≈ 38.9M.
     const uvt = UVT_2025;
