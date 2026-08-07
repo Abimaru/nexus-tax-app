@@ -1,6 +1,30 @@
 # Handoff del proyecto — NexusTax (Sprint 2.3)
 
-_Última actualización: 2026-08-02._
+_Última actualización: 2026-08-07._
+
+## Sprint 2.3.1 — Fase K (2026-08-07)
+
+Se entrega la **liquidación privada preliminar** del Formulario 210 AG 2025.
+El `Form210Draft` ahora incluye `preliminaryLiquidation`
+(`Form210PreliminaryLiquidation`) con:
+
+- Casillas 41 / 65 / 82 calculadas con el art. 336 ET (min(40 %, 1.340 UVT,
+  componente_detectado)) vía `applyLimitRule` de aegis-rules.
+- Casillas 66 y 83 derivadas por sustracción y marcadas `ruleComplete`.
+- Impuesto de renta con la tarifa progresiva del art. 241 ET (`computeProgressiveIncomeTax`).
+- Descuento de anticipos, saldo a favor previo y retenciones (130/131/132).
+- Estado `insufficient_data | zero | refund | to_pay`, warnings y aviso fijo
+  "Liquidación preliminar orientativa — no presentada ante la DIAN".
+
+Se decide **no** inventar numeración oficial para las casillas de impuesto,
+GO, total a cargo y saldo hasta verificarlas contra el formulario. La tarifa de
+ganancias ocasionales, el anticipo y las sanciones permanecen fuera de alcance
+hasta las Fases H / L / manuales.
+
+Documentación: [docs/FORM_210_LIQUIDATION.md](FORM_210_LIQUIDATION.md).
+Plan actualizado en [docs/PLAN_SPRINT_2.3.1.md](PLAN_SPRINT_2.3.1.md).
+Verificación: `pnpm -r typecheck` verde; `pnpm --filter @nexus-tax/form-210
+test` 14/14; sweep `pnpm -r test` sin regresiones.
 
 ## 1. Estado actual
 

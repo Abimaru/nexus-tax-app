@@ -172,6 +172,33 @@ independiente. Orden sugerido:
 
 ## 6. Estado
 
+- **2026-08-07 10:05** — Fase K entregada. Motor de liquidación privada
+  preliminar cableado al builder del F-210 con trazabilidad completa.
+  - **K ✅** `Form210PreliminaryLiquidation` en `packages/form-210/src/types.ts`
+    y `computePreliminaryLiquidation` en `builder.ts`. Se enchufan las reglas
+    puras de las Fases D y J:
+    - Casillas 41 / 65 / 82 ahora calculan `min(40 % × base, 1.340 UVT,
+      componente_detectado)` vía `applyLimitRule` (`ruleSourceId = et-art-336`).
+    - Casillas 66 y 83 se derivan (`61 − 65` y `78 − 82`) con `ruleComplete`.
+    - `incomeTax` = `computeProgressiveIncomeTax(baseCedular, 2025)`
+      (`ruleSourceId = et-art-241`); `totalTaxDueCop` toma su valor redondeado.
+    - `status` ∈ `insufficient_data | zero | refund | to_pay`; se descuentan
+      casillas 130 / 131 / 132 para producir `netBalanceCop`.
+    - `occasionalGainsTax = null` y `sanciones` fuera de alcance hasta las
+      Fases H / manuales.
+  - Matriz de validación: 41, 65, 66, 82, 83 pasan de `not_implemented` a
+    `verified` con ejemplos manuales verificables por el analista.
+  - Tests: `packages/form-210/tests/preliminary-liquidation.test.ts` con
+    4 casos (`insufficient_data`, límite art. 336 aplicado a 41, tarifa
+    progresiva sobre 3.000 UVT → 480 UVT, retenciones que producen `refund`).
+  - Doc nueva: `docs/FORM_210_LIQUIDATION.md`.
+  - Validación: `pnpm -r typecheck` verde; `pnpm --filter @nexus-tax/form-210
+    test` 14/14; sweep local `pnpm -r test` sin regresiones.
+  - **Fuera de alcance de K (documentado):** numeración oficial de impuesto de
+    renta / GO / total a cargo / saldo (se anexan cuando se verifiquen contra
+    el formulario), tarifa de ganancias ocasionales (Fase H), anticipo (Fase L),
+    sanciones (siempre manuales).
+
 - **2026-08-02 16:40** — Plan creado. Working tree limpio en la rama.
 - **2026-08-03 15:00** — Fases J y D entregadas. Motor puro con verificación
   normativa y ejemplos manuales.
