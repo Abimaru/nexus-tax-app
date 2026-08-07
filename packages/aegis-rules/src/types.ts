@@ -263,6 +263,77 @@ export interface AdvancePaymentComputation {
   ruleSourceId: string;
 }
 
+/**
+ * Tipo de dependiente calificado según el art. 387 del Estatuto Tributario.
+ * El motor NO verifica la elegibilidad (edad, ingresos, certificaciones); esa
+ * clasificación la aporta el analista y se conserva por trazabilidad. Los
+ * valores son:
+ * - `child_minor`: hijos hasta 18 años.
+ * - `child_studying_18_23`: hijos entre 18 y 23 años estudiando.
+ * - `child_disabled`: hijos mayores de 18 en situación de dependencia física
+ *   o psicológica debidamente certificada.
+ * - `spouse_no_income`: cónyuge o compañero(a) permanente sin ingresos o con
+ *   ingresos anuales inferiores a 260 UVT.
+ * - `parent_or_sibling_low_income`: padres y hermanos económicamente
+ *   dependientes cuyos ingresos anuales sean inferiores a 260 UVT.
+ */
+export type DependentKind =
+  | 'child_minor'
+  | 'child_studying_18_23'
+  | 'child_disabled'
+  | 'spouse_no_income'
+  | 'parent_or_sibling_low_income';
+
+/** Dependiente calificado para la deducción del art. 387 ET. */
+export interface DependentDeclaration {
+  id: string;
+  kind: DependentKind;
+  /** Meses del año calificado (1..12). Se clampa al rango [0, 12]. */
+  monthsClaimed: number;
+  /** Nota libre del analista (opcional). */
+  notes?: string;
+}
+
+/**
+ * Detalle por dependiente dentro del cálculo, con el aporte al tope mensual.
+ */
+export interface DependentDeductionDetail {
+  id: string;
+  kind: DependentKind;
+  monthsClaimed: number;
+  /** Tope mensual del dependiente: `monthsClaimed × 32 UVT` en pesos. */
+  monthlyCapContributionCop: number;
+}
+
+/**
+ * Resultado explicable de la deducción por dependientes (art. 387 ET). Sigue
+ * el patrón "porcentaje + tope UVT + candidato observado": la UI muestra qué
+ * candidato limita el beneficio (`percentage`, `monthly_cap`, `annual_cap`).
+ *
+ * Convenciones:
+ * - El motor cuenta hasta cuatro dependientes (`dependentsEligibleCount`); si
+ *   se declaran más, los primeros cuatro se toman y el resto genera warning
+ *   informativo.
+ * - `annualCap` y `monthlyCap` respetan los 32 UVT mensuales y 384 UVT
+ *   anuales POR DEPENDIENTE que fija la doctrina DIAN.
+ * - `appliedDeductionCop` nunca es negativo ni excede la suma de los
+ *   candidatos.
+ */
+export interface DependentsDeductionComputation {
+  taxYear: number;
+  grossEmploymentIncomeCop: number;
+  dependentsProvidedCount: number;
+  dependentsEligibleCount: number;
+  percentageCandidateCop: number;
+  monthlyCapCandidateCop: number;
+  annualCapCandidateCop: number;
+  appliedDeductionCop: number;
+  bindingCandidate: 'percentage' | 'monthly_cap' | 'annual_cap';
+  formula: string;
+  ruleSourceId: string;
+  dependents: readonly DependentDeductionDetail[];
+}
+
 export interface FilingCriterion {
   id: FilingCriterionId;
   label: string;
