@@ -5,9 +5,13 @@ import type {
   TaxResolutionDecision,
 } from '@nexus-tax/domain';
 import {
+  AFC_FVP_AVC_LIMIT_RULE_2025,
   DEPENDENTS_MAX_ELIGIBLE,
+  HOUSING_INTEREST_LIMIT_RULE_2025,
+  PREPAID_MEDICINE_LIMIT_RULE_2025,
   TAX_LIMIT_RULES_2025,
   TAX_UNIT_2025,
+  applyIndividualDeductionLimit,
   applyLimitRule,
   computeAdvancePayment,
   computeDependentsDeduction,
@@ -19,6 +23,7 @@ import {
   detectLiabilityWithoutAsset,
   detectMovementWithoutBalance,
 } from '@nexus-tax/aegis-rules';
+import type { IndividualDeductionLimitComputation } from '@nexus-tax/aegis-rules';
 import { FORM_210_RULESET_2025 } from './ruleset-2025';
 import type {
   Form210BoxValue,
@@ -363,6 +368,7 @@ export function computePreliminaryLiquidation(
   },
   dependentsDeduction: Form210PreliminaryLiquidation['dependentsDeduction'] = null,
   electronicInvoicingDeduction: Form210PreliminaryLiquidation['electronicInvoicingDeduction'] = null,
+  individualDeductionLimits: Form210PreliminaryLiquidation['individualDeductionLimits'] = [],
 ): Form210PreliminaryLiquidation {
   const get = (number: number): number | null => {
     const box = boxes.find((entry) => entry.number === number);
@@ -522,6 +528,7 @@ export function computePreliminaryLiquidation(
     nextYearAdvance,
     dependentsDeduction,
     electronicInvoicingDeduction,
+    individualDeductionLimits,
     netBalanceCop,
     status,
     warnings,
@@ -637,6 +644,66 @@ export function buildForm210Draft(input: Form210BuildInput): Form210Draft {
     sourcesByBox.set(39, [...(sourcesByBox.get(39) ?? []), electronicInvoicingTrace]);
   }
 
+  // Límites individuales declarativos (Fase E): AFC/AVC/FVP (art. 126-1/126-4),
+  // intereses de vivienda (art. 119) y medicina prepagada (art. 387 par. 2).
+  // El motor puro recibe el declarado y — cuando aplica — el ingreso base
+  // de trabajo. Cada resultado se acumula en `individualDeductionLimits`
+  // y se cablea a su casilla objetivo como fuente `calculation`.
+  const individualDeductionLimits: IndividualDeductionLimitComputation[] = [];
+  const declaredDeductions = input.individualDeductions;
+  if (declaredDeductions) {
+    const specs: readonly {
+      rule: typeof AFC_FVP_AVC_LIMIT_RULE_2025;
+      declaredCop: number | undefined;
+      sourceId: string;
+      label: string;
+    }[] = [
+      {
+        rule: AFC_FVP_AVC_LIMIT_RULE_2025,
+        declaredCop: declaredDeductions.afcFvpAvcCop,
+        sourceId: 'calc:afc-fvp-avc-126',
+        label: 'Aportes AFC/AVC/FVP limitados (arts. 126-1 y 126-4 ET)',
+      },
+      {
+        rule: HOUSING_INTEREST_LIMIT_RULE_2025,
+        declaredCop: declaredDeductions.housingInterestCop,
+        sourceId: 'calc:housing-interest-119',
+        label: 'Intereses de vivienda limitados (art. 119 ET)',
+      },
+      {
+        rule: PREPAID_MEDICINE_LIMIT_RULE_2025,
+        declaredCop: declaredDeductions.prepaidMedicineCop,
+        sourceId: 'calc:prepaid-medicine-387',
+        label: 'Medicina prepagada limitada (art. 387 ET, par. 2)',
+      },
+    ];
+    for (const spec of specs) {
+      if (spec.declaredCop === undefined || spec.declaredCop <= 0) continue;
+      const computation = applyIndividualDeductionLimit(spec.rule, {
+        taxYear: 2025,
+        declaredCop: spec.declaredCop,
+        baseIncomeCop: spec.rule.baseIncomeRequired ? grossEmploymentIncomeCop : null,
+      });
+      individualDeductionLimits.push(computation);
+      if (computation.appliedCop > 0) {
+        const trace: Form210SourceTrace = {
+          type: 'calculation',
+          sourceId: spec.sourceId,
+          recordId: null,
+          documentId: null,
+          factId: null,
+          label: spec.label,
+          value: computation.appliedCop,
+          evidence: computation.formula,
+        };
+        sourcesByBox.set(spec.rule.targetBoxNumber, [
+          ...(sourcesByBox.get(spec.rule.targetBoxNumber) ?? []),
+          trace,
+        ]);
+      }
+    }
+  }
+
   const replacedIds = new Set(
     (input.resolutions ?? [])
       .map((item) => item.replacesDecisionId)
@@ -713,6 +780,17 @@ export function buildForm210Draft(input: Form210BuildInput): Form210Draft {
   }
 
   const findings = validate(boxes, input, duplicateSourceIds, pendingBoxNumbers);
+  for (const computation of individualDeductionLimits) {
+    if (computation.bindingCandidate === 'declared') continue;
+    findings.push({
+      id: `individual-limit-${computation.ruleId}`,
+      severity: 'warning',
+      code: 'unsupported_deduction',
+      message: `La deducción declarada excede el límite del ruleset (${computation.formula}). Aplicado: ${computation.appliedCop.toLocaleString('es-CO')} pesos.`,
+      boxNumbers: [computation.targetBoxNumber],
+      sourceIds: [],
+    });
+  }
   const pendingBoxes = boxes.filter((box) =>
     ['incomplete', 'requires_decision', 'contradicted'].includes(box.status),
   ).length;
@@ -728,6 +806,7 @@ export function buildForm210Draft(input: Form210BuildInput): Form210Draft {
     input.advancePaymentContext,
     dependentsDeduction,
     electronicInvoicingDeduction,
+    individualDeductionLimits,
   );
   return {
     id: `form210:${input.caseId}:2025`,

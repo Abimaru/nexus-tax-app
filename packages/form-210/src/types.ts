@@ -9,6 +9,7 @@ import type {
   DependentDeclaration,
   DependentsDeductionComputation,
   ElectronicInvoicingDeductionComputation,
+  IndividualDeductionLimitComputation,
   OccasionalGainsTaxComputation,
   ProgressiveTaxComputation,
   TaxLimitComputation,
@@ -218,6 +219,14 @@ export interface Form210PreliminaryLiquidation {
   electronicInvoicingDeduction: ElectronicInvoicingDeductionComputation | null;
 
   /**
+   * Límites individuales declarativos (AFC/AVC/FVP, intereses de vivienda,
+   * medicina prepagada) aplicados sobre los valores declarados por el
+   * analista. Cada entrada conserva su regla, candidatos y limitante
+   * efectivo. Vacío cuando el analista no declara ninguno.
+   */
+  individualDeductionLimits: readonly IndividualDeductionLimitComputation[];
+
+  /**
    * Saldo neto: positivo = a pagar; negativo = a favor. Fórmula:
    *   totalTaxDueCop + nextYearAdvance.netAdvanceCop
    *   − priorYearAdvanceCop − priorYearBalanceCop − withholdingsCop.
@@ -333,5 +342,16 @@ export interface Form210BuildInput {
    */
   electronicInvoicing?: {
     purchasesWithElectronicInvoiceCop: number;
+  };
+  /**
+   * Montos declarados por el analista para las deducciones/rentas exentas
+   * con límite individual (art. 126-1/126-4, 119, 387 par 2). El motor
+   * aplica el límite y emite warnings de tipo `unsupported_deduction` cuando
+   * el declarado excede el tope.
+   */
+  individualDeductions?: {
+    afcFvpAvcCop?: number;
+    housingInterestCop?: number;
+    prepaidMedicineCop?: number;
   };
 }
