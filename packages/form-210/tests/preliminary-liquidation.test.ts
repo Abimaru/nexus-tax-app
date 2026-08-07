@@ -4,7 +4,11 @@ import type {
   NormalizedExogenousRecord,
   TaxResolutionDecision,
 } from '@nexus-tax/domain';
-import { UVT_2025, computeProgressiveIncomeTax } from '@nexus-tax/aegis-rules';
+import {
+  DEPENDENTS_MAX_ELIGIBLE,
+  UVT_2025,
+  computeProgressiveIncomeTax,
+} from '@nexus-tax/aegis-rules';
 import { buildForm210Draft } from '../src';
 
 function makeAdjustBoxDecision(overrides: {
@@ -359,6 +363,60 @@ describe('liquidación privada preliminar (Fase K)', () => {
     });
     const liq = draft.preliminaryLiquidation!;
     expect(liq.nextYearAdvance).toBeNull();
+  });
+
+  it('cablea la deducción por dependientes a la casilla 39 y a la liquidación', () => {
+    // Ingreso 60M. 10 % = 6M ; tope mensual 12 × 32 UVT × UVT_2025 ≈ 19.1M.
+    // Aplicado = 6M (limitante = percentage).
+    const draft = buildForm210Draft({
+      caseId: 'case-dependents',
+      taxYear: 2025,
+      records: [employmentRecord('rec-1', 60_000_000)],
+      facts: [],
+      dependents: [{ id: 'dep-1', kind: 'child_minor', monthsClaimed: 12 }],
+    });
+    const box39 = draft.boxes.find((box) => box.number === 39)!;
+    expect(box39.suggestedValue).toBe(6_000_000);
+    expect(box39.sources.some((source) => source.sourceId === 'calc:dependents-387')).toBe(
+      true,
+    );
+    const liq = draft.preliminaryLiquidation!;
+    expect(liq.dependentsDeduction).not.toBeNull();
+    expect(liq.dependentsDeduction!.appliedDeductionCop).toBe(6_000_000);
+    expect(liq.dependentsDeduction!.bindingCandidate).toBe('percentage');
+    expect(liq.dependentsDeduction!.ruleSourceId).toBe('et-art-387');
+  });
+
+  it('advierte cuando se declaran más de cuatro dependientes', () => {
+    const dependents = Array.from({ length: 6 }, (_, index) => ({
+      id: `dep-${index + 1}`,
+      kind: 'child_minor' as const,
+      monthsClaimed: 12,
+    }));
+    const draft = buildForm210Draft({
+      caseId: 'case-dependents-cap',
+      taxYear: 2025,
+      records: [employmentRecord('rec-1', 500_000_000)],
+      facts: [],
+      dependents,
+    });
+    const liq = draft.preliminaryLiquidation!;
+    expect(liq.dependentsDeduction!.dependentsProvidedCount).toBe(6);
+    expect(liq.dependentsDeduction!.dependentsEligibleCount).toBe(DEPENDENTS_MAX_ELIGIBLE);
+    expect(liq.warnings.some((warning) => warning.includes('primeros'))).toBe(true);
+  });
+
+  it('sin ingresos de trabajo la deducción es cero y se advierte', () => {
+    const draft = buildForm210Draft({
+      caseId: 'case-dependents-no-income',
+      taxYear: 2025,
+      records: [],
+      facts: [],
+      dependents: [{ id: 'dep-1', kind: 'child_minor', monthsClaimed: 12 }],
+    });
+    const liq = draft.preliminaryLiquidation!;
+    expect(liq.dependentsDeduction!.appliedDeductionCop).toBe(0);
+    expect(liq.warnings.some((warning) => warning.includes('casilla 32'))).toBe(true);
   });
 
   it('suma impuesto de renta y de GO en totalTaxDueCop', () => {
