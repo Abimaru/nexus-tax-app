@@ -134,6 +134,18 @@ export const OFFICIAL_SOURCES_2025: readonly OfficialSourceReference[] = [
       'Deducción por dependientes económicos (10 % ingresos brutos, hasta 32 UVT mensuales y 384 UVT anuales por dependiente, máx. 4 dependientes)',
     relatedBoxNumbers: [39],
   },
+  {
+    id: 'et-art-261',
+    authority: 'Estatuto Tributario',
+    title:
+      'Estatuto Tributario, artículo 261 — Patrimonio bruto (valor patrimonial neto)',
+    url: 'https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=6533#261',
+    verifiedAt: VERIFIED_AT,
+    taxYear: null,
+    scope:
+      'Composición del patrimonio bruto: activos poseídos al último día del año gravable',
+    relatedBoxNumbers: [29, 30, 31],
+  },
 ] as const;
 
 /**
