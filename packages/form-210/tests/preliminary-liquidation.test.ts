@@ -6,6 +6,7 @@ import type {
 } from '@nexus-tax/domain';
 import {
   DEPENDENTS_MAX_ELIGIBLE,
+  ELECTRONIC_INVOICING_ANNUAL_CAP_UVT,
   UVT_2025,
   computeProgressiveIncomeTax,
 } from '@nexus-tax/aegis-rules';
@@ -404,6 +405,58 @@ describe('liquidación privada preliminar (Fase K)', () => {
     expect(liq.dependentsDeduction!.dependentsProvidedCount).toBe(6);
     expect(liq.dependentsDeduction!.dependentsEligibleCount).toBe(DEPENDENTS_MAX_ELIGIBLE);
     expect(liq.warnings.some((warning) => warning.includes('primeros'))).toBe(true);
+  });
+
+  it('cablea la deducción por facturas electrónicas a la casilla 39 y a la liquidación', () => {
+    // Compras 50M → 1 % = 500.000, muy por debajo del tope 240 UVT ≈ 11.95M.
+    const draft = buildForm210Draft({
+      caseId: 'case-fe',
+      taxYear: 2025,
+      records: [employmentRecord('rec-1', 60_000_000)],
+      facts: [],
+      electronicInvoicing: { purchasesWithElectronicInvoiceCop: 50_000_000 },
+    });
+    const box39 = draft.boxes.find((box) => box.number === 39)!;
+    expect(box39.suggestedValue).toBe(500_000);
+    expect(
+      box39.sources.some((source) => source.sourceId === 'calc:electronic-invoicing-336-1'),
+    ).toBe(true);
+    const liq = draft.preliminaryLiquidation!;
+    expect(liq.electronicInvoicingDeduction).not.toBeNull();
+    expect(liq.electronicInvoicingDeduction!.appliedDeductionCop).toBe(500_000);
+    expect(liq.electronicInvoicingDeduction!.bindingCandidate).toBe('percentage');
+    expect(liq.electronicInvoicingDeduction!.ruleSourceId).toBe('et-art-336-1');
+  });
+
+  it('respeta el tope de 240 UVT cuando el 1 % lo excede', () => {
+    // Compras 2.000M → 1 % = 20M, tope 240 UVT ≈ 11.95M.
+    const draft = buildForm210Draft({
+      caseId: 'case-fe-cap',
+      taxYear: 2025,
+      records: [employmentRecord('rec-1', 100_000_000)],
+      facts: [],
+      electronicInvoicing: { purchasesWithElectronicInvoiceCop: 2_000_000_000 },
+    });
+    const liq = draft.preliminaryLiquidation!;
+    const expectedCap = Math.round(ELECTRONIC_INVOICING_ANNUAL_CAP_UVT * UVT_2025);
+    expect(liq.electronicInvoicingDeduction!.appliedDeductionCop).toBe(expectedCap);
+    expect(liq.electronicInvoicingDeduction!.bindingCandidate).toBe('uvt_cap');
+  });
+
+  it('acumula dependientes y facturas electrónicas en la casilla 39', () => {
+    // Dependiente 10 % × 60M = 6M ; compras 50M × 1 % = 500.000.
+    // Casilla 39 debería sumar ambas: 6.500.000.
+    const draft = buildForm210Draft({
+      caseId: 'case-combo',
+      taxYear: 2025,
+      records: [employmentRecord('rec-1', 60_000_000)],
+      facts: [],
+      dependents: [{ id: 'dep-1', kind: 'child_minor', monthsClaimed: 12 }],
+      electronicInvoicing: { purchasesWithElectronicInvoiceCop: 50_000_000 },
+    });
+    const box39 = draft.boxes.find((box) => box.number === 39)!;
+    expect(box39.suggestedValue).toBe(6_500_000);
+    expect(box39.sources).toHaveLength(2);
   });
 
   it('sin ingresos de trabajo la deducción es cero y se advierte', () => {
