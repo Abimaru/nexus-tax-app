@@ -334,6 +334,42 @@ export interface DependentsDeductionComputation {
   dependents: readonly DependentDeductionDetail[];
 }
 
+/**
+ * Fuente candidata para las validaciones de patrimonio. El motor puro no
+ * conoce el modelo interno del F-210: recibe pares (sourceId, label, valor)
+ * ya normalizados en pesos.
+ */
+export interface PatrimonySourceCandidate {
+  sourceId: string;
+  label: string;
+  valueCop: number;
+}
+
+export interface LiabilityWithoutAssetCheckResult {
+  triggered: boolean;
+  grossPatrimonyCop: number;
+  liabilitiesCop: number;
+}
+
+export interface MovementWithoutBalanceCheckResult {
+  triggered: boolean;
+  grossPatrimonyCop: number;
+  movementTotalCop: number;
+  thresholdCop: number;
+  significantSourceIds: readonly string[];
+}
+
+export interface DuplicatePatrimonyPair {
+  a: PatrimonySourceCandidate;
+  b: PatrimonySourceCandidate;
+  relativeDifference: number;
+}
+
+export interface DuplicatePatrimonyCheckResult {
+  triggered: boolean;
+  pairs: readonly DuplicatePatrimonyPair[];
+}
+
 export interface FilingCriterion {
   id: FilingCriterionId;
   label: string;

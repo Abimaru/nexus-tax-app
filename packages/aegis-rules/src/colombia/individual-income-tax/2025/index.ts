@@ -33,3 +33,4 @@ export * from './tax-limits';
 export * from './occasional-gains';
 export * from './advance-payment';
 export * from './dependents';
+export * from './patrimony-checks';
