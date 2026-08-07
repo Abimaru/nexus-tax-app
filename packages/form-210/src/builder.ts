@@ -14,6 +14,9 @@ import {
   computeOccasionalGainsTax,
   computeProgressiveIncomeTax,
   copToUvt,
+  detectDuplicatePatrimonyEntries,
+  detectLiabilityWithoutAsset,
+  detectMovementWithoutBalance,
 } from '@nexus-tax/aegis-rules';
 import { FORM_210_RULESET_2025 } from './ruleset-2025';
 import type {
@@ -259,6 +262,82 @@ function validate(
       sourceIds: box.excludedSourceIds,
     });
   }
+
+  // Validaciones patrimoniales (art. 261 ET). Se apoyan en el motor puro
+  // `patrimony-checks` y solo dependen del estado ya construido del borrador.
+  const grossPatrimonyBox = boxes.find((box) => box.number === 29);
+  const liabilitiesBox = boxes.find((box) => box.number === 30);
+  const grossPatrimonyCop =
+    grossPatrimonyBox?.confirmedValue ?? grossPatrimonyBox?.suggestedValue ?? 0;
+  const liabilitiesCop = liabilitiesBox?.confirmedValue ?? liabilitiesBox?.suggestedValue ?? 0;
+
+  const liabilityCheck = detectLiabilityWithoutAsset({
+    grossPatrimonyCop,
+    liabilitiesCop,
+  });
+  if (liabilityCheck.triggered) {
+    findings.push({
+      id: 'patrimony-liability-without-asset',
+      severity: 'warning',
+      code: 'liability_without_asset',
+      message:
+        'Hay deudas declaradas en la casilla 30 pero el patrimonio bruto (casilla 29) es cero: probablemente falta declarar el activo que respalda la deuda.',
+      boxNumbers: [29, 30],
+      sourceIds: liabilitiesBox?.includedSourceIds ?? [],
+    });
+  }
+
+  const movementCategories = new Set<TaxCategory>([
+    'bank_movement',
+    'card_consumption',
+    'investment_movement',
+    'purchase',
+  ]);
+  const movementSources = input.records
+    .filter(
+      (record) =>
+        movementCategories.has(record.category) &&
+        record.reportedValue !== null &&
+        record.reportedValue > 0,
+    )
+    .map((record) => ({
+      sourceId: `record:${record.id}`,
+      label: record.conceptLabel ?? record.conceptCode ?? 'Movimiento',
+      valueCop: record.reportedValue ?? 0,
+    }));
+  const movementCheck = detectMovementWithoutBalance({
+    taxYear: 2025,
+    grossPatrimonyCop,
+    movementSources,
+  });
+  if (movementCheck.triggered) {
+    findings.push({
+      id: 'patrimony-movement-without-balance',
+      severity: 'warning',
+      code: 'movement_without_balance',
+      message: `Se declararon movimientos (bancarios, tarjetas o inversiones) por más de ${movementCheck.thresholdCop.toLocaleString('es-CO')} pesos sin patrimonio bruto declarado. Revisa si falta el saldo asociado (art. 261 ET).`,
+      boxNumbers: [29],
+      sourceIds: [...movementCheck.significantSourceIds],
+    });
+  }
+
+  const patrimonySources = (grossPatrimonyBox?.sources ?? []).map((source) => ({
+    sourceId: source.sourceId,
+    label: source.label,
+    valueCop: source.value,
+  }));
+  const duplicatesCheck = detectDuplicatePatrimonyEntries({ sources: patrimonySources });
+  for (const pair of duplicatesCheck.pairs) {
+    findings.push({
+      id: `patrimony-duplicate-${pair.a.sourceId}-${pair.b.sourceId}`,
+      severity: 'warning',
+      code: 'duplicate_patrimony_entry',
+      message: `Dos entradas de patrimonio parecen duplicadas ("${pair.a.label}" y "${pair.b.label}"): verifica si se están contando dos veces.`,
+      boxNumbers: [29],
+      sourceIds: [pair.a.sourceId, pair.b.sourceId],
+    });
+  }
+
   return findings;
 }
 

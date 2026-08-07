@@ -90,7 +90,10 @@ export interface Form210ValidationFinding {
     | 'incompatible_year'
     | 'wrong_cutoff_date'
     | 'confirmed_with_pending_records'
-    | 'implausible_value';
+    | 'implausible_value'
+    | 'liability_without_asset'
+    | 'movement_without_balance'
+    | 'duplicate_patrimony_entry';
   message: string;
   boxNumbers: number[];
   sourceIds: string[];
