@@ -2,6 +2,23 @@
 
 _Última actualización: 2026-08-07._
 
+## Sprint 2.3.1 — Fase G (2026-08-07)
+
+Se agrega la **deducción por facturas electrónicas** (art. 336-1 ET, Ley
+2277 de 2022) al motor puro y al borrador del F-210. Regla:
+`min(1 % × compras_con_FE, 240 UVT)` con `bindingCandidate` explícito.
+
+`Form210BuildInput.electronicInvoicing` es opcional. Cuando se aporta, el
+builder ejecuta `computeElectronicInvoicingDeduction`, cablea la deducción
+como fuente `calc:electronic-invoicing-336-1` en la casilla 39 (se acumula
+con la de dependientes) y expone la computación en
+`preliminaryLiquidation.electronicInvoicingDeduction`.
+
+Documentación: [docs/ELECTRONIC_INVOICING_2025.md](ELECTRONIC_INVOICING_2025.md);
+[docs/FORM_210_LIQUIDATION.md](FORM_210_LIQUIDATION.md) actualizado.
+Verificación: `pnpm -r typecheck` verde; `pnpm -r test` = 331 tests OK
+(aegis 91, form-210 31, resto sin regresiones).
+
 ## Sprint 2.3.1 — Fase I (2026-08-07)
 
 Se agrega un motor puro de **validaciones patrimoniales** (art. 261 ET) con

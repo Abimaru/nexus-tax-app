@@ -172,6 +172,44 @@ independiente. Orden sugerido:
 
 ## 6. Estado
 
+- **2026-08-07 15:55** — Fase G entregada. Deducción por facturas
+  electrónicas (art. 336-1 ET, Ley 2277 de 2022).
+  - **G ✅** `ElectronicInvoicingDeductionComputation` en
+    `packages/aegis-rules/src/types.ts`; módulo puro
+    `electronic-invoicing.ts` con constantes
+    (`ELECTRONIC_INVOICING_PERCENTAGE = 0.01`,
+    `ELECTRONIC_INVOICING_ANNUAL_CAP_UVT = 240`) y
+    `computeElectronicInvoicingDeduction`.
+  - Regla: `min(1 % × compras_con_FE, 240 UVT)` con
+    `bindingCandidate` explícito (`percentage` | `uvt_cap`) y redondeo al
+    peso más cercano por candidato.
+  - Fuente `et-art-336-1` añadida al catálogo `OFFICIAL_SOURCES_2025`
+    con `relatedBoxNumbers: [39]`.
+  - `Form210BuildInput` acepta `electronicInvoicing` opcional
+    (`{ purchasesWithElectronicInvoiceCop }`). El builder ejecuta el motor
+    y cablea la deducción como fuente `calc:electronic-invoicing-336-1`
+    en la casilla 39; la deducción se acumula con la de dependientes.
+    La computación queda en
+    `preliminaryLiquidation.electronicInvoicingDeduction`.
+  - Tests: 7 en `packages/aegis-rules/tests/electronic-invoicing.test.ts`
+    (constantes, sin compras, 1 % bajo tope, 1 % excede tope,
+    negativos → 0, redondeo, año no modelado) + 3 nuevos en
+    `preliminary-liquidation.test.ts` (cablea a la casilla 39 y a la
+    liquidación, respeta el tope de 240 UVT, coexiste con dependientes).
+  - Doc nueva: `docs/ELECTRONIC_INVOICING_2025.md`;
+    `FORM_210_LIQUIDATION.md` actualizado con
+    `electronicInvoicingDeduction.ruleSourceId` en la sección de
+    trazabilidad.
+  - Validación: `pnpm -r typecheck` verde; sweep `pnpm -r test` con
+    331 tests OK (aegis 91/91 con 7 nuevos, form-210 31/31 con 3 nuevos,
+    resto sin regresiones).
+  - **Fuera de alcance de G (documentado):** verificación de requisitos
+    legales (factura vigente, medio de pago electrónico, NIT), cruce
+    automático con exógena para inferir la base
+    (`electronic_invoicing_total`), distribución entre cédulas (asume
+    aplicación en la 39), interacción explícita con art. 336 (ya modelada
+    por la Fase D vía casilla 41).
+
 - **2026-08-07 15:45** — Fase I entregada. Validaciones patrimoniales
   (art. 261 ET).
   - **I ✅** Nuevos tipos `PatrimonySourceCandidate`,
