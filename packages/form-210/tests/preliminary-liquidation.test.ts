@@ -212,4 +212,114 @@ describe('liquidación privada preliminar (Fase K)', () => {
     expect(liq.netBalanceCop).toBe(liq.totalTaxDueCop - retenciones);
     expect(liq.status).toBe('refund');
   });
+
+  it('aplica 15 % (art. 314) a la casilla 115 cuando no hay desglose', () => {
+    // Base 115 = 100M sin desglose → tributa toda al 15 % = 15M.
+    const draft = buildForm210Draft({
+      caseId: 'case-go-general',
+      taxYear: 2025,
+      records: [],
+      facts: [],
+      resolutions: [
+        makeAdjustBoxDecision({
+          id: 'dec-115',
+          caseId: 'case-go-general',
+          boxNumber: 115,
+          finalValue: 100_000_000,
+        }),
+      ],
+    });
+    const liq = draft.preliminaryLiquidation!;
+    expect(liq.occasionalGainsTaxableCop).toBe(100_000_000);
+    expect(liq.occasionalGainsTax?.totalTaxCop).toBe(15_000_000);
+    expect(liq.occasionalGainsTax?.components).toHaveLength(1);
+    expect(liq.occasionalGainsTax?.components[0]!.kind).toBe('general');
+    expect(liq.occasionalGainsTax?.components[0]!.rate).toBe(0.15);
+    expect(liq.totalTaxDueCop).toBe(15_000_000);
+    expect(liq.warnings.some((warning) => warning.includes('15 %'))).toBe(true);
+  });
+
+  it('separa loterías (20 %) del resto (15 %) cuando el analista lo desglosa', () => {
+    // 115 = 60M ; 40M al 15 % = 6M ; 20M al 20 % = 4M ; total = 10M.
+    const draft = buildForm210Draft({
+      caseId: 'case-go-mixed',
+      taxYear: 2025,
+      records: [],
+      facts: [],
+      resolutions: [
+        makeAdjustBoxDecision({
+          id: 'dec-115',
+          caseId: 'case-go-mixed',
+          boxNumber: 115,
+          finalValue: 60_000_000,
+        }),
+      ],
+      occasionalGainsBreakdown: {
+        generalBaseCop: 40_000_000,
+        lotteryBaseCop: 20_000_000,
+      },
+    });
+    const liq = draft.preliminaryLiquidation!;
+    expect(liq.occasionalGainsTax?.totalTaxCop).toBe(10_000_000);
+    expect(liq.occasionalGainsTax?.components).toHaveLength(2);
+    expect(liq.occasionalGainsTax?.ruleSourceIds).toEqual(['et-art-314', 'et-art-317']);
+    expect(liq.totalTaxDueCop).toBe(10_000_000);
+    // No debería quejarse del 15 % porque el desglose es explícito.
+    expect(liq.warnings.some((warning) => warning.includes('15 %'))).toBe(false);
+  });
+
+  it('advierte cuando el desglose de GO no coincide con la casilla 115', () => {
+    // Casilla 115 = 60M pero se declaran 40+10 = 50M en desglose → warning.
+    const draft = buildForm210Draft({
+      caseId: 'case-go-mismatch',
+      taxYear: 2025,
+      records: [],
+      facts: [],
+      resolutions: [
+        makeAdjustBoxDecision({
+          id: 'dec-115',
+          caseId: 'case-go-mismatch',
+          boxNumber: 115,
+          finalValue: 60_000_000,
+        }),
+      ],
+      occasionalGainsBreakdown: {
+        generalBaseCop: 40_000_000,
+        lotteryBaseCop: 10_000_000,
+      },
+    });
+    const liq = draft.preliminaryLiquidation!;
+    expect(liq.warnings.some((warning) => warning.includes('no coincide'))).toBe(true);
+  });
+
+  it('suma impuesto de renta y de GO en totalTaxDueCop', () => {
+    // Renta 3.000 UVT → 480 UVT ≈ 23.9M. GO 100M → 15M. Total ≈ 38.9M.
+    const uvt = UVT_2025;
+    const draft = buildForm210Draft({
+      caseId: 'case-go-plus-income',
+      taxYear: 2025,
+      records: [],
+      facts: [],
+      resolutions: [
+        makeAdjustBoxDecision({
+          id: 'dec-42',
+          caseId: 'case-go-plus-income',
+          boxNumber: 42,
+          finalValue: 3_000 * uvt,
+        }),
+        makeAdjustBoxDecision({
+          id: 'dec-115',
+          caseId: 'case-go-plus-income',
+          boxNumber: 115,
+          finalValue: 100_000_000,
+        }),
+      ],
+    });
+    const liq = draft.preliminaryLiquidation!;
+    const expectedRenta = computeProgressiveIncomeTax(3_000 * uvt, 2025).totalTaxCopRounded;
+    expect(liq.incomeTax?.totalTaxCopRounded).toBe(expectedRenta);
+    expect(liq.occasionalGainsTax?.totalTaxCop).toBe(15_000_000);
+    expect(liq.totalTaxDueCop).toBe(expectedRenta + 15_000_000);
+    expect(liq.status).toBe('to_pay');
+  });
 });
