@@ -8,6 +8,7 @@ import {
   TAX_LIMIT_RULES_2025,
   TAX_UNIT_2025,
   applyLimitRule,
+  computeOccasionalGainsTax,
   computeProgressiveIncomeTax,
   copToUvt,
 } from '@nexus-tax/aegis-rules';
@@ -269,6 +270,10 @@ export function computePreliminaryLiquidation(
   boxes: readonly Form210BoxValue[],
   ruleVersion: string,
   generatedAt: string,
+  occasionalGainsBreakdown?: {
+    generalBaseCop: number;
+    lotteryBaseCop: number;
+  },
 ): Form210PreliminaryLiquidation {
   const get = (number: number): number | null => {
     const box = boxes.find((entry) => entry.number === number);
@@ -305,16 +310,31 @@ export function computePreliminaryLiquidation(
   // Ganancias ocasionales gravables: base disponible desde la casilla 115.
   const occasionalGainsTaxableCop = Math.max(0, get(115) ?? 0);
 
-  // El impuesto de GO depende del concepto (10 % general, 20 % loterías…).
-  // El motor se limita a exponer la base y deja el importe en null hasta que
-  // se modele la regla con fuente en una fase posterior.
-  const occasionalGainsTax = null;
+  // Impuesto de GO: si el analista provee el desglose entre general y
+  // loterías, cada componente aplica su tarifa (art. 314 / 317 ET). Si no lo
+  // provee, se asume que toda la casilla 115 tributa a la tarifa general y se
+  // emite una advertencia — es la interpretación más conservadora dado que la
+  // 20 % es mayor y podría subestimar el impuesto.
+  const providedBreakdown = occasionalGainsBreakdown ?? null;
+  const generalGoBase = providedBreakdown
+    ? Math.max(0, providedBreakdown.generalBaseCop)
+    : occasionalGainsTaxableCop;
+  const lotteryGoBase = providedBreakdown ? Math.max(0, providedBreakdown.lotteryBaseCop) : 0;
+  const occasionalGainsTax =
+    generalGoBase + lotteryGoBase > 0
+      ? computeOccasionalGainsTax({
+          taxYear: 2025,
+          generalBaseCop: generalGoBase,
+          lotteryBaseCop: lotteryGoBase,
+        })
+      : null;
 
   const priorYearAdvanceCop = Math.max(0, get(130) ?? 0);
   const priorYearBalanceCop = Math.max(0, get(131) ?? 0);
   const withholdingsCop = Math.max(0, get(132) ?? 0);
 
-  const totalTaxDueCop = incomeTax?.totalTaxCopRounded ?? 0;
+  const totalTaxDueCop =
+    (incomeTax?.totalTaxCopRounded ?? 0) + (occasionalGainsTax?.totalTaxCop ?? 0);
   const netBalanceCop =
     totalTaxDueCop - priorYearAdvanceCop - priorYearBalanceCop - withholdingsCop;
 
@@ -324,9 +344,18 @@ export function computePreliminaryLiquidation(
       'No hay renta líquida cedular suficiente para calcular el impuesto progresivo.',
     );
   }
-  if (occasionalGainsTaxableCop > 0) {
+  if (occasionalGainsTaxableCop > 0 && !providedBreakdown) {
     warnings.push(
-      'Hay ganancias ocasionales gravables pero la tarifa aplicable aún no se modela: revisa manualmente.',
+      'Se asumió que toda la casilla 115 tributa al 15 % (art. 314 ET). Si hay loterías, rifas o apuestas, indícalo para aplicar la tarifa del 20 % (art. 317 ET).',
+    );
+  }
+  if (
+    providedBreakdown &&
+    providedBreakdown.generalBaseCop + providedBreakdown.lotteryBaseCop !==
+      occasionalGainsTaxableCop
+  ) {
+    warnings.push(
+      'El desglose de ganancias ocasionales por tarifa no coincide con la casilla 115. Verifica las bases.',
     );
   }
   if (get(130) === null && get(131) === null && get(132) === null && incomeTax) {
@@ -498,6 +527,7 @@ export function buildForm210Draft(input: Form210BuildInput): Form210Draft {
     boxes,
     FORM_210_RULESET_2025.ruleVersion,
     generatedAt,
+    input.occasionalGainsBreakdown,
   );
   return {
     id: `form210:${input.caseId}:2025`,

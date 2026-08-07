@@ -5,6 +5,7 @@ import type {
   TaxResolutionDecision,
 } from '@nexus-tax/domain';
 import type {
+  OccasionalGainsTaxComputation,
   ProgressiveTaxComputation,
   TaxLimitComputation,
 } from '@nexus-tax/aegis-rules';
@@ -170,16 +171,12 @@ export interface Form210PreliminaryLiquidation {
    */
   occasionalGainsTaxableCop: number;
   /**
-   * Impuesto orientativo de ganancias ocasionales. El motor NO fija una tarifa
-   * aquí porque el tratamiento varía por concepto (10 % general, 20 % loterías,
-   * etc.); se deja `null` hasta que la regla se modele con fuente en fases
-   * futuras.
+   * Detalle del impuesto de ganancias ocasionales calculado por el motor puro
+   * (`computeOccasionalGainsTax`). El desglose por tipo (general 15 %, loterías
+   * 20 %) se toma de las bases informadas y conserva la fuente por componente.
+   * Es `null` cuando no hay base gravable (casilla 115 y loterías en cero).
    */
-  occasionalGainsTax: {
-    valueCop: number;
-    ruleSourceIds: readonly string[];
-    formula: string;
-  } | null;
+  occasionalGainsTax: OccasionalGainsTaxComputation | null;
 
   /** Total impuesto a cargo = impuesto renta + impuesto GO. */
   totalTaxDueCop: number;
@@ -240,6 +237,20 @@ export interface Form210RuleValidation {
   notes?: string;
 }
 
+/**
+ * Desglose orientativo de la base de ganancias ocasionales entre tarifa
+ * general (15 %) y loterías (20 %). Se conserva como input explícito del
+ * analista porque los adaptadores de exógena aún no distinguen loterías del
+ * resto de ganancias ocasionales. Si el desglose no se provee, el motor asume
+ * que toda la casilla 115 tributa a la tarifa general y emite una advertencia.
+ */
+export interface Form210OccasionalGainsBreakdown {
+  /** Base sujeta a tarifa general (art. 314 ET). */
+  generalBaseCop: number;
+  /** Base sujeta a tarifa de loterías (art. 317 ET). */
+  lotteryBaseCop: number;
+}
+
 export interface Form210BuildInput {
   caseId: string;
   taxYear: number;
@@ -253,4 +264,5 @@ export interface Form210BuildInput {
   }[];
   provisionalRecordIds?: readonly string[];
   generatedAt?: string;
+  occasionalGainsBreakdown?: Form210OccasionalGainsBreakdown;
 }
