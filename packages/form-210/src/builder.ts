@@ -23,6 +23,7 @@ import {
   detectDuplicatePatrimonyEntries,
   detectLiabilityWithoutAsset,
   detectMovementWithoutBalance,
+  evaluateCrossValidations,
   evaluatePriorYearBalance,
 } from '@nexus-tax/aegis-rules';
 import type {
@@ -915,6 +916,53 @@ export function buildForm210Draft(input: Form210BuildInput): Form210Draft {
     input.priorYearBalance,
     withholdingsConsolidation,
   );
+
+  // Validaciones cruzadas (Fase T): red de seguridad que compara
+  // indicadores agregados una vez que la liquidación está resuelta.
+  const readBox = (number: number) => {
+    const box = boxes.find((entry) => entry.number === number);
+    return box?.confirmedValue ?? box?.suggestedValue ?? 0;
+  };
+  const totalGrossIncomeCop =
+    Math.max(0, readBox(32)) +
+    Math.max(0, readBox(58)) +
+    Math.max(0, readBox(74)) +
+    Math.max(0, readBox(99)) +
+    Math.max(0, readBox(104)) +
+    Math.max(0, readBox(112));
+  const computedCedular =
+    Math.max(0, readBox(42)) + Math.max(0, readBox(66)) + Math.max(0, readBox(83));
+  const crossValidations = evaluateCrossValidations({
+    taxYear: 2025,
+    incomeTaxCop: preliminaryLiquidation.incomeTax?.totalTaxCopRounded ?? 0,
+    withholdingsAppliedCop: preliminaryLiquidation.withholdingsCop,
+    grossPatrimonyCop: readBox(29),
+    totalGrossIncomeCop,
+    reportedCedularTaxableIncomeCop: preliminaryLiquidation.generalCedularTaxableIncomeCop,
+    computedCedularTaxableIncomeCop: computedCedular,
+  });
+  const crossChecks = [
+    crossValidations.withholdingsExceedIncomeTax,
+    crossValidations.patrimonyIncomeDisproportion,
+    crossValidations.cedularSumMismatch,
+  ];
+  for (const check of crossChecks) {
+    if (!check.triggered) continue;
+    findings.push({
+      id: `cross-${check.code}`,
+      severity: 'warning',
+      code: check.code,
+      message: check.message,
+      boxNumbers:
+        check.code === 'withholdings_exceed_income_tax'
+          ? [132]
+          : check.code === 'patrimony_income_disproportion'
+            ? [29]
+            : [42, 66, 83],
+      sourceIds: [],
+    });
+  }
+
   return {
     id: `form210:${input.caseId}:2025`,
     caseId: input.caseId,

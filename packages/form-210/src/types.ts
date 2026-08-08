@@ -98,7 +98,10 @@ export interface Form210ValidationFinding {
     | 'implausible_value'
     | 'liability_without_asset'
     | 'movement_without_balance'
-    | 'duplicate_patrimony_entry';
+    | 'duplicate_patrimony_entry'
+    | 'withholdings_exceed_income_tax'
+    | 'patrimony_income_disproportion'
+    | 'cedular_sum_mismatch';
   message: string;
   boxNumbers: number[];
   sourceIds: string[];
