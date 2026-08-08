@@ -498,6 +498,122 @@ describe('liquidación privada preliminar (Fase K)', () => {
     );
   });
 
+  it('aplica el saldo a favor anterior cuando está confirmado y sin solicitudes pendientes', () => {
+    // Renta 3.000 UVT → impuesto 480 UVT. Saldo a favor confirmado 10M.
+    const uvt = UVT_2025;
+    const draft = buildForm210Draft({
+      caseId: 'case-prior-balance-applied',
+      taxYear: 2025,
+      records: [],
+      facts: [],
+      resolutions: [
+        makeAdjustBoxDecision({
+          id: 'dec-42',
+          caseId: 'case-prior-balance-applied',
+          boxNumber: 42,
+          finalValue: 3_000 * uvt,
+        }),
+      ],
+      priorYearBalance: {
+        declaredCop: 10_000_000,
+        confirmedByAnalyst: true,
+        hasPendingCompensationOrRefundRequest: false,
+        priorYearFilingDate: '2025-08-10',
+        evidence: 'F-210 AG 2024',
+      },
+    });
+    const liq = draft.preliminaryLiquidation!;
+    expect(liq.priorYearBalance).not.toBeNull();
+    expect(liq.priorYearBalance!.status).toBe('applied');
+    expect(liq.priorYearBalance!.appliedCop).toBe(10_000_000);
+    expect(liq.priorYearBalanceCop).toBe(10_000_000);
+    const expectedTax = computeProgressiveIncomeTax(3_000 * uvt, 2025).totalTaxCopRounded;
+    expect(liq.netBalanceCop).toBe(expectedTax - 10_000_000);
+  });
+
+  it('mantiene pending_confirmation cuando falta la confirmación humana', () => {
+    const uvt = UVT_2025;
+    const draft = buildForm210Draft({
+      caseId: 'case-prior-balance-pending',
+      taxYear: 2025,
+      records: [],
+      facts: [],
+      resolutions: [
+        makeAdjustBoxDecision({
+          id: 'dec-42',
+          caseId: 'case-prior-balance-pending',
+          boxNumber: 42,
+          finalValue: 3_000 * uvt,
+        }),
+      ],
+      priorYearBalance: {
+        declaredCop: 10_000_000,
+        confirmedByAnalyst: false,
+        hasPendingCompensationOrRefundRequest: false,
+      },
+    });
+    const liq = draft.preliminaryLiquidation!;
+    expect(liq.priorYearBalance!.status).toBe('pending_confirmation');
+    expect(liq.priorYearBalance!.appliedCop).toBe(0);
+    expect(liq.priorYearBalanceCop).toBe(0);
+    expect(liq.warnings.some((w) => w.includes('no confirmado'))).toBe(true);
+  });
+
+  it('bloquea el saldo cuando hay solicitud de devolución/compensación pendiente', () => {
+    const uvt = UVT_2025;
+    const draft = buildForm210Draft({
+      caseId: 'case-prior-balance-blocked',
+      taxYear: 2025,
+      records: [],
+      facts: [],
+      resolutions: [
+        makeAdjustBoxDecision({
+          id: 'dec-42',
+          caseId: 'case-prior-balance-blocked',
+          boxNumber: 42,
+          finalValue: 3_000 * uvt,
+        }),
+      ],
+      priorYearBalance: {
+        declaredCop: 8_000_000,
+        confirmedByAnalyst: true,
+        hasPendingCompensationOrRefundRequest: true,
+      },
+    });
+    const liq = draft.preliminaryLiquidation!;
+    expect(liq.priorYearBalance!.status).toBe('blocked_by_pending_request');
+    expect(liq.priorYearBalance!.appliedCop).toBe(0);
+    expect(liq.warnings.some((w) => w.includes('devolución o compensación'))).toBe(true);
+  });
+
+  it('advierte cuando la casilla 131 tiene valor pero falta el contexto de confirmación', () => {
+    const uvt = UVT_2025;
+    const draft = buildForm210Draft({
+      caseId: 'case-prior-balance-no-context',
+      taxYear: 2025,
+      records: [],
+      facts: [],
+      resolutions: [
+        makeAdjustBoxDecision({
+          id: 'dec-42',
+          caseId: 'case-prior-balance-no-context',
+          boxNumber: 42,
+          finalValue: 3_000 * uvt,
+        }),
+        makeAdjustBoxDecision({
+          id: 'dec-131',
+          caseId: 'case-prior-balance-no-context',
+          boxNumber: 131,
+          finalValue: 5_000_000,
+        }),
+      ],
+    });
+    const liq = draft.preliminaryLiquidation!;
+    expect(liq.priorYearBalance).toBeNull();
+    expect(liq.priorYearBalanceCop).toBe(0);
+    expect(liq.warnings.some((w) => w.includes('casilla 131'))).toBe(true);
+  });
+
   it('sin ingresos de trabajo la deducción es cero y se advierte', () => {
     const draft = buildForm210Draft({
       caseId: 'case-dependents-no-income',
