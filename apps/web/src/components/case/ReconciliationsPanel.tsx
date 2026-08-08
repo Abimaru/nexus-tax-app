@@ -14,6 +14,7 @@ import { Badge, Button, EmptyState, GlassPanel, formatCurrencyCOP } from '@nexus
 import { restorePreliminaryReconciliation, savePreliminaryReconciliation } from '@/lib/repository';
 import { evaluateReconciliationDifference } from '@nexus-tax/exogenous-parser';
 import { PRELIMINARY_RECONCILIATION_PRESENTATION } from '@/lib/presentationCatalogs';
+import { sortBySpanishLabel } from '@/lib/alphabeticalSort';
 import { AcceptedSourceAction } from './AcceptedSourceAction';
 
 /** Estados finales que el analista puede elegir al resolver manualmente. */
@@ -66,14 +67,21 @@ export function ReconciliationsPanel({
     ...activeReconciliations.flatMap((item) => item.exogenousRecordIds),
     ...acceptedSources.map((source) => source.exogenousRecordId),
   ]);
-  const pendingSuggestions = suggestions
-    .filter(
+  const pendingSuggestions = sortBySpanishLabel(
+    suggestions.filter(
       (suggestion) =>
         !existingSuggestionIds.has(`${suggestion.factId}:${suggestion.exogenousRecordId}`) &&
         !consumedFactIds.has(suggestion.factId) &&
         !consumedRecordIds.has(suggestion.exogenousRecordId),
-    )
-    .slice(0, 20);
+    ),
+    (suggestion) => {
+      const fact = facts.find((item) => item.id === suggestion.factId);
+      const record = result?.normalizedRecords.find(
+        (item) => item.id === suggestion.exogenousRecordId,
+      );
+      return `${record?.entityName ?? ''} ${fact?.originalConcept ?? record?.conceptLabel ?? ''}`;
+    },
+  ).slice(0, 20);
   async function confirm(suggestion: ReconciliationSuggestion) {
     const policy = evaluateReconciliationDifference({
       leftValue: suggestion.documentaryValue,
@@ -322,7 +330,7 @@ export function ReconciliationsPanel({
           <section>
             <h3 className="mb-3 font-medium text-content-strong">Decisiones registradas</h3>
             <div className="space-y-2">
-              {reconciliations.map((item) => (
+              {sortBySpanishLabel(reconciliations, (item) => item.explanation).map((item) => (
                 <GlassPanel
                   key={item.id}
                   className="flex flex-wrap items-center justify-between gap-3 p-4"

@@ -17,6 +17,7 @@ import {
 } from '@nexus-tax/domain';
 import { Badge, Button, EmptyState, GlassPanel, formatCurrencyCOP } from '@nexus-tax/ui';
 import { CATEGORY_LABEL, NATURE_LABEL, TREATMENT_LABEL } from '@/lib/analysisPresentation';
+import { sortBySpanishLabel } from '@/lib/alphabeticalSort';
 import { saveDocumentFact, updateDocumentFact } from '@/lib/repository';
 import {
   CAPTURE_METHOD_PRESENTATION,
@@ -200,11 +201,13 @@ export function FactsPanel({
                   <option className="bg-surface-raised" value="">
                     Sin asociar
                   </option>
-                  {result?.entities.map((entity) => (
-                    <option className="bg-surface-raised" key={entity.id} value={entity.id}>
-                      {entity.name}
-                    </option>
-                  ))}
+                  {sortBySpanishLabel(result?.entities ?? [], (entity) => entity.name).map(
+                    (entity) => (
+                      <option className="bg-surface-raised" key={entity.id} value={entity.id}>
+                        {entity.name}
+                      </option>
+                    ),
+                  )}
                 </select>
               </Field>
               <Field label="Documento asociado">
@@ -216,11 +219,13 @@ export function FactsPanel({
                   <option className="bg-surface-raised" value="">
                     Sin documento
                   </option>
-                  {documents.map((document) => (
-                    <option className="bg-surface-raised" key={document.id} value={document.id}>
-                      {document.fileName}
-                    </option>
-                  ))}
+                  {sortBySpanishLabel(documents, (document) => document.fileName).map(
+                    (document) => (
+                      <option className="bg-surface-raised" key={document.id} value={document.id}>
+                        {document.fileName}
+                      </option>
+                    ),
+                  )}
                 </select>
               </Field>
               <Field label="Producto">
@@ -232,7 +237,7 @@ export function FactsPanel({
                   <option className="bg-surface-raised" value="">
                     Producto por identificar
                   </option>
-                  {products.map((product) => (
+                  {sortBySpanishLabel(products, (product) => product.label).map((product) => (
                     <option className="bg-surface-raised" key={product.id} value={product.id}>
                       {product.label}
                     </option>
@@ -310,7 +315,10 @@ export function FactsPanel({
                   </option>
                   {requirementGroups.map(([entityName, entityRequirements]) => (
                     <optgroup key={entityName} label={entityName} className="bg-surface-raised">
-                      {entityRequirements.map((requirement) => (
+                      {sortBySpanishLabel(
+                        entityRequirements,
+                        (requirement) => requirement.documentName,
+                      ).map((requirement) => (
                         <option
                           className="bg-surface-raised"
                           key={requirement.id}
@@ -375,7 +383,10 @@ export function FactsPanel({
                     onChange={(event) => setCategory(event.target.value as typeof category)}
                     className={inputClass}
                   >
-                    {TaxCategorySchema.options.map((option) => (
+                    {sortBySpanishLabel(
+                      TaxCategorySchema.options,
+                      (option) => CATEGORY_LABEL[option],
+                    ).map((option) => (
                       <option className="bg-surface-raised" key={option} value={option}>
                         {CATEGORY_LABEL[option]}
                       </option>
@@ -388,7 +399,10 @@ export function FactsPanel({
                     onChange={(event) => setNature(event.target.value as typeof nature)}
                     className={inputClass}
                   >
-                    {TaxNatureSchema.options.map((option) => (
+                    {sortBySpanishLabel(
+                      TaxNatureSchema.options,
+                      (option) => NATURE_LABEL[option],
+                    ).map((option) => (
                       <option className="bg-surface-raised" key={option} value={option}>
                         {NATURE_LABEL[option]}
                       </option>
@@ -401,7 +415,10 @@ export function FactsPanel({
                     onChange={(event) => setTreatment(event.target.value as typeof treatment)}
                     className={inputClass}
                   >
-                    {TaxTreatmentSchema.options.map((option) => (
+                    {sortBySpanishLabel(
+                      TaxTreatmentSchema.options,
+                      (option) => TREATMENT_LABEL[option],
+                    ).map((option) => (
                       <option className="bg-surface-raised" key={option} value={option}>
                         {TREATMENT_LABEL[option]}
                       </option>
@@ -448,7 +465,7 @@ export function FactsPanel({
         />
       ) : (
         <div className="space-y-3">
-          {[...facts].reverse().map((fact) => (
+          {sortBySpanishLabel(facts, (fact) => fact.originalConcept).map((fact) => (
             <GlassPanel key={fact.id} className="p-4">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="flex min-w-0 items-start gap-3">

@@ -22,6 +22,7 @@ import {
 } from '@nexus-tax/domain';
 import { Badge, Button, EmptyState, GlassPanel, formatBytes } from '@nexus-tax/ui';
 import { DOCUMENT_KIND_LABEL } from '@/lib/dossierPresentation';
+import { sortBySpanishLabel } from '@/lib/alphabeticalSort';
 import {
   DOCUMENT_STATUS_PRESENTATION,
   DOCUMENT_STORAGE_PRESENTATION,
@@ -235,7 +236,10 @@ export function DocumentsPanel({
                 onChange={(event) => setKind(event.target.value as typeof kind)}
                 className={inputClass}
               >
-                {DocumentKindSchema.options.map((option) => (
+                {sortBySpanishLabel(
+                  DocumentKindSchema.options,
+                  (option) => DOCUMENT_KIND_LABEL[option],
+                ).map((option) => (
                   <option className="bg-surface-raised" key={option} value={option}>
                     {DOCUMENT_KIND_LABEL[option]}
                   </option>
@@ -271,6 +275,7 @@ export function DocumentsPanel({
                 </option>
                 {result?.entities
                   .filter((entity) => catalog.compatibleEntityCategories.includes(entity.category))
+                  .sort((left, right) => left.name.localeCompare(right.name, 'es-CO'))
                   .map((entity) => (
                     <option className="bg-surface-raised" key={entity.id} value={entity.id}>
                       {entity.name}
@@ -287,7 +292,7 @@ export function DocumentsPanel({
                 <option className="bg-surface-raised" value="">
                   Producto por identificar
                 </option>
-                {products.map((product) => (
+                {sortBySpanishLabel(products, (product) => product.label).map((product) => (
                   <option className="bg-surface-raised" key={product.id} value={product.id}>
                     {product.label}
                   </option>
@@ -311,13 +316,14 @@ export function DocumentsPanel({
                 <option className="bg-surface-raised" value="">
                   No reemplaza
                 </option>
-                {documents
-                  .filter((item) => item.status === 'active')
-                  .map((item) => (
-                    <option className="bg-surface-raised" key={item.id} value={item.id}>
-                      {item.fileName} · v{item.version}
-                    </option>
-                  ))}
+                {sortBySpanishLabel(
+                  documents.filter((item) => item.status === 'active'),
+                  (item) => item.fileName,
+                ).map((item) => (
+                  <option className="bg-surface-raised" key={item.id} value={item.id}>
+                    {item.fileName} · v{item.version}
+                  </option>
+                ))}
               </select>
             </Field>
             <div className="lg:col-span-2">
@@ -387,7 +393,10 @@ export function DocumentsPanel({
                         </span>
                       </legend>
                       <div className="mt-2 grid gap-1.5 md:grid-cols-2">
-                        {entityRequirements.map((requirement) => {
+                        {sortBySpanishLabel(
+                          entityRequirements,
+                          (requirement) => requirement.documentName,
+                        ).map((requirement) => {
                           const active = covered.includes(requirement.id);
                           const statuses = coverages
                             .filter((coverage) => coverage.requirementId === requirement.id)
@@ -541,7 +550,7 @@ export function DocumentsPanel({
         />
       ) : (
         <div className="grid gap-3 lg:grid-cols-2">
-          {documents.map((item) => {
+          {sortBySpanishLabel(documents, (item) => item.fileName).map((item) => {
             const relatedCoverage = coverages.filter((coverage) => coverage.documentId === item.id);
             const DocIcon = documentIcon(DOCUMENT_KIND_LABEL[item.kind]);
             return (

@@ -11,6 +11,7 @@ import {
 } from '@nexus-tax/domain';
 import { Badge, Button, EmptyState, GlassPanel, ProgressBar } from '@nexus-tax/ui';
 import { PRODUCT_LABEL } from '@/lib/dossierPresentation';
+import { compareSpanishText, sortBySpanishLabel } from '@/lib/alphabeticalSort';
 import {
   EMPLOYER_STATUS_PRESENTATION,
   ENTITY_CATEGORY_PRESENTATION,
@@ -53,7 +54,11 @@ export function EntitiesPanel({
     }
     const namedGroups = Array.from(withGroup.entries())
       .filter(([, list]) => list.length > 1) // solo consideramos "grupo" si hay ≥2 marcas
-      .sort((a, b) => a[0].localeCompare(b[0], 'es'));
+      .sort((a, b) => compareSpanishText(a[0], b[0]))
+      .map(
+        ([groupName, list]) =>
+          [groupName, sortBySpanishLabel(list, (entity) => entity.name)] as const,
+      );
     // Las entidades con groupName pero únicas se listan sueltas para no crear
     // secciones de un solo miembro que solo añaden ruido.
     const soloOrphans = [
@@ -62,7 +67,10 @@ export function EntitiesPanel({
         .filter(([, list]) => list.length === 1)
         .flatMap(([, list]) => list),
     ];
-    return { namedGroups, soloOrphans };
+    return {
+      namedGroups,
+      soloOrphans: sortBySpanishLabel(soloOrphans, (entity) => entity.name),
+    };
   }, [entities]);
 
   if (!entities.length)
@@ -84,7 +92,7 @@ export function EntitiesPanel({
             onChange={(event) => setEntityId(event.target.value)}
             className="rounded-lg border border-overlay/12 bg-overlay/5 px-3 py-2 text-sm text-content-strong"
           >
-            {entities.map((entity) => (
+            {sortBySpanishLabel(entities, (entity) => entity.name).map((entity) => (
               <option className="bg-surface-raised" key={entity.id} value={entity.id}>
                 {entity.name}
               </option>
@@ -96,11 +104,13 @@ export function EntitiesPanel({
             onChange={(event) => setType(event.target.value as typeof type)}
             className="rounded-lg border border-overlay/12 bg-overlay/5 px-3 py-2 text-sm text-content-strong"
           >
-            {ProductTypeSchema.options.map((option) => (
-              <option className="bg-surface-raised" key={option} value={option}>
-                {PRODUCT_LABEL[option]}
-              </option>
-            ))}
+            {sortBySpanishLabel(ProductTypeSchema.options, (option) => PRODUCT_LABEL[option]).map(
+              (option) => (
+                <option className="bg-surface-raised" key={option} value={option}>
+                  {PRODUCT_LABEL[option]}
+                </option>
+              ),
+            )}
           </select>
           <input
             aria-label="Nombre del producto"
@@ -233,13 +243,14 @@ function EntityCard({
         <Metric label="Hallazgos" value={entity.openFindingCount} />
       </dl>
       <div className="mt-3 flex flex-wrap gap-1">
-        {entity.inferredProducts.map((product) => (
+        {sortBySpanishLabel(entity.inferredProducts, (product) => product).map((product) => (
           <Badge key={`inferred:${product}`} tone="cyan">
             Inferido: {product}
           </Badge>
         ))}
         {products
           .filter((product) => product.entityId === entity.id)
+          .sort((left, right) => compareSpanishText(left.label, right.label))
           .map((product) => (
             <Badge key={product.id} tone="violet">
               {product.label}

@@ -51,6 +51,7 @@ import {
 } from '@nexus-tax/document-intelligence';
 import { Badge, Button, EmptyState, GlassPanel, Spinner } from '@nexus-tax/ui';
 import { CATEGORY_LABEL, NATURE_LABEL, TREATMENT_LABEL } from '@/lib/analysisPresentation';
+import { sortBySpanishLabel } from '@/lib/alphabeticalSort';
 import {
   MANUAL_CANDIDATE_FIELDS,
   MANUAL_CANDIDATE_FIELD_LABEL,
@@ -1433,11 +1434,13 @@ function ManualCandidatePanel({
               setCategory(event.target.value as (typeof TaxCategorySchema.options)[number])
             }
           >
-            {TaxCategorySchema.options.map((option) => (
-              <option key={option} value={option}>
-                {CATEGORY_LABEL[option]}
-              </option>
-            ))}
+            {sortBySpanishLabel(TaxCategorySchema.options, (option) => CATEGORY_LABEL[option]).map(
+              (option) => (
+                <option key={option} value={option}>
+                  {CATEGORY_LABEL[option]}
+                </option>
+              ),
+            )}
           </select>
         </label>
         <label className="text-xs text-content-muted">
@@ -1449,11 +1452,13 @@ function ManualCandidatePanel({
               setNature(event.target.value as (typeof TaxNatureSchema.options)[number])
             }
           >
-            {TaxNatureSchema.options.map((option) => (
-              <option key={option} value={option}>
-                {NATURE_LABEL[option]}
-              </option>
-            ))}
+            {sortBySpanishLabel(TaxNatureSchema.options, (option) => NATURE_LABEL[option]).map(
+              (option) => (
+                <option key={option} value={option}>
+                  {NATURE_LABEL[option]}
+                </option>
+              ),
+            )}
           </select>
         </label>
         <label className="text-xs text-content-muted">
@@ -1465,7 +1470,10 @@ function ManualCandidatePanel({
               setTreatment(event.target.value as (typeof TaxTreatmentSchema.options)[number])
             }
           >
-            {TaxTreatmentSchema.options.map((option) => (
+            {sortBySpanishLabel(
+              TaxTreatmentSchema.options,
+              (option) => TREATMENT_LABEL[option],
+            ).map((option) => (
               <option key={option} value={option}>
                 {TREATMENT_LABEL[option]}
               </option>

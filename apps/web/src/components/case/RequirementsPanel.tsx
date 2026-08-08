@@ -15,6 +15,7 @@ import {
 } from '@nexus-tax/domain';
 import { Badge, Button, EmptyState, GlassPanel } from '@nexus-tax/ui';
 import { saveRequirementCoverage } from '@/lib/repository';
+import { compareSpanishText, sortBySpanishLabel } from '@/lib/alphabeticalSort';
 import { documentIcon, entityVisual, TONE_BOX_CLASS } from '@/lib/entityVisuals';
 import { EmploymentIncomeGroupPanel } from './EmploymentIncomeGroupPanel';
 import { AcceptedSourceAction } from './AcceptedSourceAction';
@@ -99,7 +100,12 @@ export function RequirementsPanel({
       list.push(requirement);
       map.set(requirement.entityName, list);
     }
-    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0], 'es'));
+    return Array.from(map.entries())
+      .sort((a, b) => compareSpanishText(a[0], b[0]))
+      .map(
+        ([entityName, items]) =>
+          [entityName, sortBySpanishLabel(items, (item) => item.documentName)] as const,
+      );
   }, [requirements]);
 
   const totalCovered = requirements.filter(
@@ -111,7 +117,10 @@ export function RequirementsPanel({
       ).done,
   ).length;
 
-  const activeDocuments = documents.filter((document) => document.status === 'active');
+  const activeDocuments = sortBySpanishLabel(
+    documents.filter((document) => document.status === 'active'),
+    (document) => document.fileName,
+  );
 
   return (
     <div className="space-y-4">

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import type { EmploymentIncomeGroup, ProcessingResult, UploadedDocument } from '@nexus-tax/domain';
 import { Badge, Button, GlassPanel, ProgressBar } from '@nexus-tax/ui';
+import { sortBySpanishLabel } from '@/lib/alphabeticalSort';
 import {
   addEmployerInstance,
   associateEmployerDocument,
@@ -51,7 +52,10 @@ export function EmploymentIncomeGroupPanel({
   const [primaryByInstance, setPrimaryByInstance] = useState<Record<string, string>>({});
   const [complementByInstance, setComplementByInstance] = useState<Record<string, string>>({});
   const [message, setMessage] = useState('');
-  const activeDocuments = documents.filter((document) => document.status === 'active');
+  const activeDocuments = sortBySpanishLabel(
+    documents.filter((document) => document.status === 'active'),
+    (document) => document.fileName,
+  );
 
   async function run(action: () => Promise<unknown>) {
     setMessage('');
@@ -88,6 +92,7 @@ export function EmploymentIncomeGroupPanel({
     );
   }
 
+  const orderedInstances = sortBySpanishLabel(group.instances, (instance) => instance.employerName);
   const activeInstances = group.instances.filter((item) => item.status !== 'not_applicable');
   const coveredWeight = activeInstances.reduce(
     (sum, item) =>
@@ -151,7 +156,7 @@ export function EmploymentIncomeGroupPanel({
       ) : null}
 
       <div className="mt-5 space-y-4">
-        {group.instances.map((instance, index) => {
+        {orderedInstances.map((instance, index) => {
           const primaryId = primaryByInstance[instance.id] ?? instance.form220DocumentId ?? '';
           const primaryDocument = documents.find((document) => document.id === primaryId);
           const currentPrimary = documents.find(
@@ -237,11 +242,13 @@ export function EmploymentIncomeGroupPanel({
                         <option className="bg-surface-raised" value="">
                           Sin asociar
                         </option>
-                        {result?.entities.map((entity) => (
-                          <option className="bg-surface-raised" key={entity.id} value={entity.id}>
-                            {entity.name}
-                          </option>
-                        ))}
+                        {sortBySpanishLabel(result?.entities ?? [], (entity) => entity.name).map(
+                          (entity) => (
+                            <option className="bg-surface-raised" key={entity.id} value={entity.id}>
+                              {entity.name}
+                            </option>
+                          ),
+                        )}
                       </select>
                     </Field>
                   </div>
