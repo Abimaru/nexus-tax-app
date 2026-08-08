@@ -172,6 +172,41 @@ independiente. Orden sugerido:
 
 ## 6. Estado
 
+- **2026-08-07 22:30** — Fase N entregada. Retenciones consolidadas por
+  origen (art. 373 ET).
+  - **N ✅** Nuevos tipos `WithholdingOrigin`, `WithholdingSource`,
+    `WithholdingOriginBreakdown`, `DuplicateWithholdingPair` y
+    `WithholdingConsolidation` en aegis-rules; módulo puro
+    `withholdings.ts` con `consolidateWithholdings` y detección de
+    duplicados por retenedor con tolerancia relativa 1 %.
+  - Fuente `et-art-373` añadida al catálogo con
+    `relatedBoxNumbers: [132]`.
+  - `Form210BuildInput.withholdingsBreakdown` opcional. El builder toma
+    los records de `category === 'withholding'`, arma `WithholdingSource[]`
+    con `entityTaxId` del record y ejecuta la consolidación. Si la
+    casilla 132 tiene valor por ajuste manual que supera la suma de
+    records, agrega una fuente sintética `box:132:manual`.
+    `preliminaryLiquidation.withholdings` conserva la consolidación
+    completa; `withholdingsCop` deriva de `totalReportedCop`.
+  - Warnings automáticos: retenciones sin certificado, pares
+    sospechosos de duplicidad, desglose que no coincide con el total.
+  - Tests: 10 en `packages/aegis-rules/tests/withholdings.test.ts`
+    (total cero, suma con soporte, negativos, duplicados con y sin
+    retenedor, entradas sin entityTaxId ignoradas, desglose coincidente,
+    desglose con discrepancia, año no modelado) + 3 nuevos en
+    `preliminary-liquidation.test.ts` (consolidación con duplicados,
+    validación de desglose, respeto de ajuste manual).
+  - Doc nueva: `docs/WITHHOLDINGS_CONSOLIDATION_2025.md`;
+    `FORM_210_LIQUIDATION.md` actualizado con
+    `withholdings.ruleSourceId` en la sección de trazabilidad.
+  - Validación: `pnpm -r typecheck` verde; sweep `pnpm -r test` con
+    366 tests OK (aegis 118/118 con 10 nuevos, form-210 39/39 con 3
+    nuevos, resto sin regresiones).
+  - **Fuera de alcance de N (documentado):** inferencia automática del
+    origen desde `secondaryUses`, cruce automático con certificados
+    documentales, retenciones especiales de dividendos con tarifa
+    propia, numeración oficial de las casillas de retención por cédula.
+
 - **2026-08-07 22:20** — Fase M entregada. Saldo a favor del año anterior
   (art. 850 ET) con confirmación humana obligatoria.
   - **M ✅** Nuevos tipos `PriorYearBalanceStatus` y

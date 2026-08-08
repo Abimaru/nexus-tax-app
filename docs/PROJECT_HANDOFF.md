@@ -2,6 +2,28 @@
 
 _Última actualización: 2026-08-07._
 
+## Sprint 2.3.1 — Fase N (2026-08-07)
+
+Se agrega el motor puro **consolidación de retenciones** (art. 373 ET):
+suma total, conteo de retenciones sin certificado documental, detección
+de pares con mismo retenedor y valor similar (tolerancia 1 %), y
+validación opcional del desglose por origen (`employment`, `capital`,
+`non_labor`, `occasional_gain`, `dividends`, `other`) contra el total
+reportado.
+
+El builder del F-210 arma `WithholdingSource[]` desde los records de
+`category === 'withholding'` con `entityTaxId`; si la casilla 132 se
+ajusta manualmente por encima de la suma de records, agrega una fuente
+sintética `box:132:manual` para preservar el total. `Form210BuildInput
+.withholdingsBreakdown` permite aportar el desglose por origen.
+`preliminaryLiquidation.withholdings` conserva la consolidación
+completa; `withholdingsCop` deriva de allí.
+
+Documentación: [docs/WITHHOLDINGS_CONSOLIDATION_2025.md](WITHHOLDINGS_CONSOLIDATION_2025.md);
+[docs/FORM_210_LIQUIDATION.md](FORM_210_LIQUIDATION.md) actualizado.
+Verificación: `pnpm -r typecheck` verde; `pnpm -r test` = 366 tests OK
+(aegis 118, form-210 39, resto sin regresiones).
+
 ## Sprint 2.3.1 — Fase M (2026-08-07)
 
 Se agrega el motor puro **saldo a favor del año anterior** (art. 850 ET)
