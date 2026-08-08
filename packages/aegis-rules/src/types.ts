@@ -463,6 +463,76 @@ export interface PriorYearBalanceEvaluation {
   hasPendingCompensationOrRefundRequest: boolean;
 }
 
+/**
+ * Origen de una retención en la fuente para efectos de consolidación por
+ * cédula. Es una taxonomía interna del F-210: no todas las cédulas del
+ * formulario aceptan retención imputable, pero el motor guarda todas para
+ * conservar trazabilidad.
+ */
+export type WithholdingOrigin =
+  | 'employment'
+  | 'capital'
+  | 'non_labor'
+  | 'occasional_gain'
+  | 'dividends'
+  | 'other';
+
+/**
+ * Retención individual normalizada, tal como llega al motor de
+ * consolidación. `entityTaxId` es el NIT del retenedor (cuando se conoce);
+ * `hasDocumentSupport` indica si hay al menos un certificado documental
+ * asociado.
+ */
+export interface WithholdingSource {
+  sourceId: string;
+  label: string;
+  valueCop: number;
+  entityTaxId: string | null;
+  hasDocumentSupport: boolean;
+}
+
+/**
+ * Desglose declarativo de retenciones por origen. Cada monto es la porción
+ * de la casilla 132 que corresponde a la cédula respectiva. La suma de los
+ * seis debería igualar el total reportado; si no lo hace, el motor lo
+ * marca como discrepancia.
+ */
+export interface WithholdingOriginBreakdown {
+  employmentCop: number;
+  capitalCop: number;
+  nonLaborCop: number;
+  occasionalGainCop: number;
+  dividendsCop: number;
+  otherCop: number;
+}
+
+/** Par de retenciones sospechosas de duplicidad. */
+export interface DuplicateWithholdingPair {
+  a: WithholdingSource;
+  b: WithholdingSource;
+  reason: string;
+}
+
+/**
+ * Resultado explicable de consolidar retenciones. Incluye total reportado,
+ * desglose por origen (si se aportó), coherencia entre ambos, conteo de
+ * retenciones sin soporte documental y pares sospechosos de duplicidad.
+ */
+export interface WithholdingConsolidation {
+  taxYear: number;
+  totalReportedCop: number;
+  entriesCount: number;
+  entriesWithoutSupportCount: number;
+  entriesWithoutSupportIds: readonly string[];
+  breakdown: WithholdingOriginBreakdown | null;
+  breakdownTotalCop: number | null;
+  breakdownMatchesReported: boolean;
+  breakdownDifferenceCop: number;
+  suspectedDuplicates: readonly DuplicateWithholdingPair[];
+  formula: string;
+  ruleSourceId: string;
+}
+
 export interface FilingCriterion {
   id: FilingCriterionId;
   label: string;

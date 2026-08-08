@@ -37,3 +37,4 @@ export * from './patrimony-checks';
 export * from './electronic-invoicing';
 export * from './individual-deductions';
 export * from './prior-year-balance';
+export * from './withholdings';
