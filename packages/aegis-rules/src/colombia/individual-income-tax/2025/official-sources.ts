@@ -218,6 +218,18 @@ export const OFFICIAL_SOURCES_2025: readonly OfficialSourceReference[] = [
       'Retenciones en la fuente descontables como abono al impuesto sobre la renta',
     relatedBoxNumbers: [132],
   },
+  {
+    id: 'et-art-236',
+    authority: 'Estatuto Tributario',
+    title:
+      'Estatuto Tributario, artículo 236 — Renta por comparación patrimonial',
+    url: 'https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=6533#236',
+    verifiedAt: VERIFIED_AT,
+    taxYear: null,
+    scope:
+      'Justificación patrimonial: aumentos de patrimonio no explicados por los ingresos declarados',
+    relatedBoxNumbers: [29, 31],
+  },
 ] as const;
 
 /**
