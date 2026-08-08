@@ -670,7 +670,11 @@ export function CaseWorkbench({
           />
         ) : null}
         {stage === 'declaracion' && view === 'liquidacion-preliminar' ? (
-          <PreliminaryLiquidationPanel caseId={caseId} draft={workspace.form210Draft} />
+          <PreliminaryLiquidationPanel
+            caseId={caseId}
+            alias={taxCase.alias}
+            draft={workspace.form210Draft}
+          />
         ) : null}
 
         {stage === 'exportacion' && ['resumen-final', 'exportar', 'manifiesto'].includes(view) ? (

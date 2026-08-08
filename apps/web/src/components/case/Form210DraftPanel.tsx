@@ -5,7 +5,8 @@ import { Download, FileSpreadsheet, RotateCcw } from 'lucide-react';
 import type { TaxResolutionDecision } from '@nexus-tax/domain';
 import {
   FORM_210_RULESET_2025,
-  serializeForm210Draft,
+  buildForm210ExportBundle,
+  serializeForm210ExportBundle,
   type Form210BoxStatus,
   type Form210Draft,
   type Form210Section,
@@ -119,11 +120,11 @@ export function Form210DraftPanel({
               onClick={() =>
                 downloadTextFile(
                   `${alias.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-borrador-210.json`,
-                  serializeForm210Draft(draft),
+                  serializeForm210ExportBundle(buildForm210ExportBundle(draft)),
                 )
               }
             >
-              Exportar JSON
+              Exportar bundle
             </Button>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">

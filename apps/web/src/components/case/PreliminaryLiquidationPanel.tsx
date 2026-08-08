@@ -1,10 +1,15 @@
 'use client';
 
-import { Calculator, FileSpreadsheet, Info } from 'lucide-react';
+import { Calculator, Download, FileSpreadsheet, Info } from 'lucide-react';
 import type {
   Form210Draft,
   Form210PreliminaryLiquidation,
 } from '@nexus-tax/form-210';
+import {
+  buildForm210ExportBundle,
+  serializeForm210ExportBundle,
+} from '@nexus-tax/form-210';
+import { downloadTextFile } from '@/lib/download';
 import type {
   DependentsDeductionComputation,
   IndividualDeductionLimitComputation,
@@ -167,9 +172,11 @@ function CedularLimitBlock({
 
 export function PreliminaryLiquidationPanel({
   caseId,
+  alias,
   draft,
 }: {
   caseId: string;
+  alias: string;
   draft?: Form210Draft;
 }) {
   if (!draft) {
@@ -236,6 +243,20 @@ export function PreliminaryLiquidationPanel({
                     ? 'A favor del contribuyente'
                     : 'Saldo cero'}
               </p>
+              <div className="mt-3">
+                <Button
+                  variant="secondary"
+                  leadingIcon={<Download className="h-4 w-4" aria-hidden />}
+                  onClick={() =>
+                    downloadTextFile(
+                      `${alias.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-liquidacion-210.json`,
+                      serializeForm210ExportBundle(buildForm210ExportBundle(draft)),
+                    )
+                  }
+                >
+                  Exportar bundle
+                </Button>
+              </div>
             </div>
           </div>
         </div>
