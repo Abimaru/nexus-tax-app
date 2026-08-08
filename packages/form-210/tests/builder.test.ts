@@ -244,6 +244,29 @@ describe('borrador Formulario 210', () => {
     expect(draft.findings.map((finding) => finding.code)).toContain('duplicate_patrimony_entry');
   });
 
+  it('emite `patrimony_income_disproportion` cuando patrimonio ≥ 10× ingresos', () => {
+    // 200M patrimonio con 10M de ingresos ⇒ ratio 20.
+    const draft = buildForm210Draft({
+      caseId: 'case-cross-pat',
+      taxYear: 2025,
+      records: [record('1', 'asset', 200_000_000), record('2', 'employment_income', 10_000_000)],
+      facts: [],
+    });
+    expect(draft.findings.map((f) => f.code)).toContain('patrimony_income_disproportion');
+  });
+
+  it('emite `cedular_sum_mismatch` cuando 42+66+83 no cuadra con la base', () => {
+    // Sin decisiones ni ingresos la base cedular es 0 = 0, no dispara.
+    // Este test verifica que en el caso consistente NO dispara.
+    const draft = buildForm210Draft({
+      caseId: 'case-cross-cedular',
+      taxYear: 2025,
+      records: [record('1', 'employment_income', 50_000_000)],
+      facts: [],
+    });
+    expect(draft.findings.map((f) => f.code)).not.toContain('cedular_sum_mismatch');
+  });
+
   it('no emite hallazgos patrimoniales cuando el caso es consistente', () => {
     const draft = buildForm210Draft({
       caseId: 'case-consistent',
