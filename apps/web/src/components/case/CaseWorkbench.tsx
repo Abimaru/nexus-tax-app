@@ -65,6 +65,7 @@ import { DocumentLabPanel } from './DocumentLabPanel';
 import { CaseTasksPanel } from './CaseTasksPanel';
 import { ResolutionCenterPanel } from './ResolutionCenterPanel';
 import { Form210DraftPanel } from './Form210DraftPanel';
+import { PreliminaryLiquidationPanel } from './PreliminaryLiquidationPanel';
 import { ContextualNavigation, WorkflowStepper } from './WorkflowNavigation';
 import {
   BasicCaseDataPanel,
@@ -667,6 +668,9 @@ export function CaseWorkbench({
             decisions={workspace.resolutionDecisions}
             focusBoxNumber={tasks.find((task) => task.id === activeTaskId)?.formBoxNumber}
           />
+        ) : null}
+        {stage === 'declaracion' && view === 'liquidacion-preliminar' ? (
+          <PreliminaryLiquidationPanel caseId={caseId} draft={workspace.form210Draft} />
         ) : null}
 
         {stage === 'exportacion' && ['resumen-final', 'exportar', 'manifiesto'].includes(view) ? (
