@@ -14,6 +14,8 @@ import type {
   PriorYearBalanceEvaluation,
   ProgressiveTaxComputation,
   TaxLimitComputation,
+  WithholdingConsolidation,
+  WithholdingOriginBreakdown,
 } from '@nexus-tax/aegis-rules';
 
 export type Form210Section =
@@ -237,6 +239,13 @@ export interface Form210PreliminaryLiquidation {
   priorYearBalance: PriorYearBalanceEvaluation | null;
 
   /**
+   * Consolidación de retenciones en la fuente (casilla 132). Siempre está
+   * presente: si no hay retenciones, el total es cero. El desglose por
+   * origen es opcional y solo se llena cuando el analista lo aporta.
+   */
+  withholdings: WithholdingConsolidation;
+
+  /**
    * Saldo neto: positivo = a pagar; negativo = a favor. Fórmula:
    *   totalTaxDueCop + nextYearAdvance.netAdvanceCop
    *   − priorYearAdvanceCop − priorYearBalanceCop − withholdingsCop.
@@ -377,4 +386,11 @@ export interface Form210BuildInput {
     priorYearFilingDate?: string | null;
     evidence?: string | null;
   };
+  /**
+   * Desglose declarativo de retenciones por origen (art. 373 ET). Cada
+   * monto es la porción de la casilla 132 imputable a la cédula
+   * correspondiente. Cuando se aporta, el motor verifica que la suma
+   * coincida con las retenciones reportadas.
+   */
+  withholdingsBreakdown?: WithholdingOriginBreakdown;
 }

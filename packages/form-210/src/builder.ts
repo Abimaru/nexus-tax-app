@@ -18,13 +18,17 @@ import {
   computeElectronicInvoicingDeduction,
   computeOccasionalGainsTax,
   computeProgressiveIncomeTax,
+  consolidateWithholdings,
   copToUvt,
   detectDuplicatePatrimonyEntries,
   detectLiabilityWithoutAsset,
   detectMovementWithoutBalance,
   evaluatePriorYearBalance,
 } from '@nexus-tax/aegis-rules';
-import type { IndividualDeductionLimitComputation } from '@nexus-tax/aegis-rules';
+import type {
+  IndividualDeductionLimitComputation,
+  WithholdingSource,
+} from '@nexus-tax/aegis-rules';
 import { FORM_210_RULESET_2025 } from './ruleset-2025';
 import type {
   Form210BoxValue,
@@ -377,6 +381,7 @@ export function computePreliminaryLiquidation(
     priorYearFilingDate?: string | null;
     evidence?: string | null;
   },
+  withholdings: Form210PreliminaryLiquidation['withholdings'] | null = null,
 ): Form210PreliminaryLiquidation {
   const get = (number: number): number | null => {
     const box = boxes.find((entry) => entry.number === number);
@@ -433,7 +438,13 @@ export function computePreliminaryLiquidation(
       : null;
 
   const priorYearAdvanceCop = Math.max(0, get(130) ?? 0);
-  const withholdingsCop = Math.max(0, get(132) ?? 0);
+  const withholdingsConsolidation =
+    withholdings ??
+    consolidateWithholdings({
+      taxYear: 2025,
+      sources: [],
+    });
+  const withholdingsCop = withholdingsConsolidation.totalReportedCop;
 
   const totalTaxDueCop =
     (incomeTax?.totalTaxCopRounded ?? 0) + (occasionalGainsTax?.totalTaxCop ?? 0);
@@ -540,6 +551,24 @@ export function computePreliminaryLiquidation(
       'La casilla 131 tiene un valor de saldo anterior pero no se aportó el contexto de confirmación humana; el motor no lo descuenta hasta que se confirme (art. 850 ET).',
     );
   }
+  if (withholdingsConsolidation.entriesWithoutSupportCount > 0) {
+    warnings.push(
+      `${withholdingsConsolidation.entriesWithoutSupportCount} retenciones no tienen certificado documental asociado; adjunta el soporte antes de confirmar la casilla 132 (art. 373 ET).`,
+    );
+  }
+  for (const pair of withholdingsConsolidation.suspectedDuplicates) {
+    warnings.push(
+      `Posible doble conteo en retenciones: "${pair.a.label}" y "${pair.b.label}" comparten retenedor y valor similar (${pair.reason}).`,
+    );
+  }
+  if (
+    withholdingsConsolidation.breakdown !== null &&
+    !withholdingsConsolidation.breakdownMatchesReported
+  ) {
+    warnings.push(
+      `El desglose de retenciones por origen no coincide con las retenciones reportadas (diferencia ${withholdingsConsolidation.breakdownDifferenceCop.toLocaleString('es-CO')} pesos). Verifica los montos por cédula.`,
+    );
+  }
 
   let status: Form210PreliminaryLiquidation['status'];
   if (!anyCedularSignal && occasionalGainsTaxableCop === 0 && totalTaxDueCop === 0) {
@@ -568,6 +597,7 @@ export function computePreliminaryLiquidation(
     electronicInvoicingDeduction,
     individualDeductionLimits,
     priorYearBalance,
+    withholdings: withholdingsConsolidation,
     netBalanceCop,
     status,
     warnings,
@@ -837,6 +867,42 @@ export function buildForm210Draft(input: Form210BuildInput): Form210Draft {
   const populated = boxes.filter(
     (box) => box.suggestedValue !== null || box.confirmedValue !== null,
   ).length;
+  const withholdingRecords = input.records.filter(
+    (record) => record.category === 'withholding' && record.reportedValue !== null,
+  );
+  const includedWithholdings = withholdingRecords.filter((record) => {
+    const state = stateByRecord.get(record.id);
+    return !state || state.disposition === 'included';
+  });
+  const withholdingSources: WithholdingSource[] = includedWithholdings.map((record) => ({
+    sourceId: `record:${record.id}`,
+    label: record.conceptLabel ?? record.conceptCode ?? 'Retención',
+    valueCop: record.reportedValue ?? 0,
+    entityTaxId: record.entityTaxId ?? null,
+    hasDocumentSupport: false,
+  }));
+  // Si la casilla 132 tiene valor por un ajuste manual o por otro medio
+  // (no por records de category='withholding'), agregamos una fuente
+  // sintética por la diferencia para no perder el total declarado.
+  const box132 = boxes.find((box) => box.number === 132);
+  const box132Value = box132?.confirmedValue ?? box132?.suggestedValue ?? 0;
+  const recordsSum = withholdingSources.reduce((sum, source) => sum + source.valueCop, 0);
+  const boxOnlyDelta = Math.max(0, box132Value - recordsSum);
+  if (boxOnlyDelta > 0) {
+    withholdingSources.push({
+      sourceId: 'box:132:manual',
+      label: 'Retenciones de casilla 132 (fuente manual)',
+      valueCop: boxOnlyDelta,
+      entityTaxId: null,
+      hasDocumentSupport: false,
+    });
+  }
+  const withholdingsConsolidation = consolidateWithholdings({
+    taxYear: 2025,
+    sources: withholdingSources,
+    breakdown: input.withholdingsBreakdown,
+  });
+
   const preliminaryLiquidation = computePreliminaryLiquidation(
     boxes,
     FORM_210_RULESET_2025.ruleVersion,
@@ -847,6 +913,7 @@ export function buildForm210Draft(input: Form210BuildInput): Form210Draft {
     electronicInvoicingDeduction,
     individualDeductionLimits,
     input.priorYearBalance,
+    withholdingsConsolidation,
   );
   return {
     id: `form210:${input.caseId}:2025`,
