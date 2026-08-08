@@ -67,6 +67,7 @@ import { ResolutionCenterPanel } from './ResolutionCenterPanel';
 import { Form210DraftPanel } from './Form210DraftPanel';
 import { PreliminaryLiquidationPanel } from './PreliminaryLiquidationPanel';
 import { FilingStatesPanel } from './FilingStatesPanel';
+import { FinalReviewPanel } from './FinalReviewPanel';
 import { ContextualNavigation, WorkflowStepper } from './WorkflowNavigation';
 import {
   BasicCaseDataPanel,
@@ -679,6 +680,9 @@ export function CaseWorkbench({
         ) : null}
         {stage === 'declaracion' && view === 'estados' ? (
           <FilingStatesPanel draft={workspace.form210Draft} />
+        ) : null}
+        {stage === 'declaracion' && view === 'revision-final' ? (
+          <FinalReviewPanel draft={workspace.form210Draft} tasks={tasks} />
         ) : null}
 
         {stage === 'exportacion' && ['resumen-final', 'exportar', 'manifiesto'].includes(view) ? (

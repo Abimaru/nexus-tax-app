@@ -42,7 +42,7 @@ describe('deriveForm210BoxTasks (Fase S)', () => {
     // se genera una tarea por cada una.
     expect(tasks.length).toBeGreaterThan(0);
     expect(tasks.every((task) => task.type === 'resolve_form_box')).toBe(true);
-    expect(tasks[0]!.priority).toBe('medium');
+    expect(tasks[0]!.priority).toBe('low');
     expect(tasks[0]!.blocking).toBe(false);
     expect(tasks[0]!.source).toBe('filing');
     expect(tasks[0]!.stage).toBe('declaracion');

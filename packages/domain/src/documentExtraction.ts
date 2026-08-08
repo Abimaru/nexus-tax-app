@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { DocumentKindSchema } from './documents';
+import { AmountCandidateSchema } from './money';
 import { IsoTimestampSchema } from './primitives';
 import { ProductTypeSchema } from './taxDossier';
 import { TaxCategorySchema, TaxNatureSchema, TaxTreatmentSchema } from './taxClassification';
@@ -186,6 +187,24 @@ export const CandidateExogenousMatchSchema = z.object({
     'possible_contradiction',
   ]),
   reasons: z.array(z.string()),
+  exogenousValue: z.number().optional(),
+  documentDecimalValue: z.number().nullable().optional(),
+  roundedTaxValue: z.number().int().nullable().optional(),
+  difference: z.number().optional(),
+  differencePercentage: z.number().nullable().optional(),
+  possibleScaleFactor: z.number().nullable().optional(),
+  recommendedSource: z.enum(['document', 'exogenous', 'both', 'human_review']).optional(),
+  recommendationReason: z.string().optional(),
+  anomalyCodes: z
+    .array(
+      z.enum([
+        'amount_scale_suspected',
+        'decimal_separator_ambiguous',
+        'document_exogenous_amount_mismatch',
+        'monetary_parse_low_confidence',
+      ]),
+    )
+    .optional(),
 });
 
 export const CandidateDecisionSchema = z.object({
@@ -236,6 +255,10 @@ export const DocumentFactCandidateSchema = z.object({
   correctedNature: TaxNatureSchema.nullable(),
   correctedTreatment: TaxTreatmentSchema.nullable(),
   extractedValue: z.number(),
+  amount: AmountCandidateSchema.optional(),
+  moneyParserVersion: z.string().optional(),
+  requiresMoneyReanalysis: z.boolean().optional(),
+  previousParsedValue: z.number().nullable().optional(),
   correctedValue: z.number().nullable(),
   finalValue: z.number().nullable(),
   currency: z.string().length(3),

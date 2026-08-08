@@ -29,10 +29,11 @@ export * from './employment';
 export * from './navigation';
 export * from './acceptedSources';
 export * from './documentExtraction';
+export * from './money';
 export * from './documentProfile';
 export * from './extractionFeedback';
 export * from './caseTasks';
 export * from './taxResolution';
 
 /** Versión del contrato de dominio. Se incrementa ante cambios incompatibles. */
-export const DOMAIN_VERSION = '0.8.0';
+export const DOMAIN_VERSION = '0.9.0';

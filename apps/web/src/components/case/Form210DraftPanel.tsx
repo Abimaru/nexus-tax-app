@@ -41,6 +41,10 @@ const STATUS: Record<Form210BoxStatus, string> = {
   calculated: 'Calculada',
   contradicted: 'Contradicha',
   not_applicable: 'No aplica',
+  requires_review: 'Requiere revisión',
+  blocked: 'Bloqueada',
+  provisional: 'Provisional',
+  confirmed_zero: 'Cero confirmado',
 };
 
 export function Form210DraftPanel({
@@ -80,7 +84,9 @@ export function Form210DraftPanel({
     setPreviewImpact(null);
     setError(null);
   }
-  function validateInput(number: number): { parsed: number; box: (typeof currentDraft.boxes)[number] } | null {
+  function validateInput(
+    number: number,
+  ): { parsed: number; box: (typeof currentDraft.boxes)[number] } | null {
     const parsed = Number(value.replace(/[^0-9.-]/g, ''));
     if (!Number.isFinite(parsed) || parsed < 0) {
       setError('Ingresa un valor numérico igual o mayor que cero.');
@@ -136,9 +142,7 @@ export function Form210DraftPanel({
       }
       setPreviewImpact(computeResolutionImpact(currentDraft, tentativeDraft));
     } catch (caught) {
-      setError(
-        caught instanceof Error ? caught.message : 'No se pudo previsualizar el impacto.',
-      );
+      setError(caught instanceof Error ? caught.message : 'No se pudo previsualizar el impacto.');
     } finally {
       setPreviewLoading(false);
     }
@@ -165,6 +169,32 @@ export function Form210DraftPanel({
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'No se pudo guardar el ajuste.');
     }
+  }
+  async function applyExplicitState(number: number, type: 'mark_not_applicable' | 'confirm_zero') {
+    const box = currentDraft.boxes.find((item) => item.number === number);
+    if (!box) return;
+    const isZero = type === 'confirm_zero';
+    await saveTaxResolutionDecision(caseId, {
+      type,
+      objectType: 'form_box',
+      objectId: String(number),
+      previousState: box.status,
+      finalState: isZero ? 'confirmed_zero' : 'not_applicable',
+      selectedAlternative: isZero ? 'Confirmar valor cero' : 'Marcar como no aplicable',
+      originalValue: box.confirmedValue ?? box.suggestedValue,
+      finalValue: isZero ? 0 : null,
+      proposedBox: number,
+      reason: isZero
+        ? `El analista confirma que la casilla ${number} tiene valor cero.`
+        : `El analista confirma que la casilla ${number} no aplica al expediente.`,
+      evidence: [
+        {
+          kind: 'manual_note',
+          referenceId: null,
+          description: 'Decisión explícita registrada en la hoja de trabajo.',
+        },
+      ],
+    });
   }
   return (
     <div className="space-y-5">
@@ -285,7 +315,9 @@ export function Form210DraftPanel({
                               ? 'emerald'
                               : box.status === 'contradicted'
                                 ? 'rose'
-                                : box.status === 'incomplete'
+                                : box.status === 'incomplete' ||
+                                    box.status === 'requires_review' ||
+                                    box.status === 'provisional'
                                   ? 'amber'
                                   : 'neutral'
                           }
@@ -305,6 +337,14 @@ export function Form210DraftPanel({
                               <span className="font-medium text-content">{source.label}</span> ·{' '}
                               {formatCurrencyCOP(source.value)}
                               <span className="block text-content-subtle">{source.evidence}</span>
+                              <span className="block text-content-subtle">
+                                Original:{' '}
+                                {source.originalText ??
+                                  formatCurrencyCOP(source.originalValue ?? source.value)}
+                                {' · '}Transformación:{' '}
+                                {source.transformation ?? 'Sin transformación'}
+                                {' · '}Confianza: {source.confidence ?? 'no informada'}
+                              </span>
                             </li>
                           ))}
                         </ul>
@@ -313,6 +353,21 @@ export function Form210DraftPanel({
                           Sin una fuente aceptada para esta casilla.
                         </p>
                       )}
+                      {box.excludedSources.length ? (
+                        <div className="mt-3 border-t border-overlay/8 pt-3">
+                          <p className="text-xs font-medium text-content-muted">
+                            Fuentes excluidas ({box.excludedSources.length})
+                          </p>
+                          <ul className="mt-2 space-y-1">
+                            {box.excludedSources.map((source) => (
+                              <li key={source.sourceId} className="text-xs text-content-subtle">
+                                {source.label} ·{' '}
+                                {source.exclusionReason ?? 'Excluida por una decisión trazable'}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : null}
                     </details>
                     {editing === box.number ? (
                       <div className="mt-3 grid gap-3 rounded-xl border border-accent-cyan/20 bg-accent-cyan/5 p-3 sm:grid-cols-2">
@@ -370,9 +425,14 @@ export function Form210DraftPanel({
                                       <span className="font-medium text-content">
                                         {change.boxNumber} · {change.name}
                                       </span>
-                                      : {change.beforeCop === null ? '—' : formatCurrencyCOP(change.beforeCop)}{' '}
+                                      :{' '}
+                                      {change.beforeCop === null
+                                        ? '—'
+                                        : formatCurrencyCOP(change.beforeCop)}{' '}
                                       →{' '}
-                                      {change.afterCop === null ? '—' : formatCurrencyCOP(change.afterCop)}{' '}
+                                      {change.afterCop === null
+                                        ? '—'
+                                        : formatCurrencyCOP(change.afterCop)}{' '}
                                       <span
                                         className={
                                           change.deltaCop > 0
@@ -441,6 +501,18 @@ export function Form210DraftPanel({
                           }}
                         >
                           Crear ajuste trazable
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          onClick={() => void applyExplicitState(box.number, 'confirm_zero')}
+                        >
+                          Confirmar cero
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          onClick={() => void applyExplicitState(box.number, 'mark_not_applicable')}
+                        >
+                          No aplica
                         </Button>
                         {resolution?.reversible ? (
                           <Button

@@ -107,6 +107,21 @@ function detailRule(detail: string): ClassificationCore | null {
     );
   }
   if (
+    /(?:saldo|patrimonio|activo).*?(?:ano|vigencia) anterior|(?:ano|vigencia) anterior.*?(?:saldo|patrimonio|activo)|declarad[oa].*?(?:ano|vigencia) anterior/.test(
+      detail,
+    )
+  ) {
+    return core(
+      'informational',
+      'prior_year_balance',
+      'do_not_aggregate',
+      'high',
+      [],
+      'informational',
+      'Referencia de una vigencia anterior; nunca se suma al patrimonio actual.',
+    );
+  }
+  if (
     /cdt.*inversion (?:efectuada|realizada)|inversion (?:efectuada|realizada).*cdt/.test(detail)
   ) {
     return core(
@@ -162,6 +177,21 @@ function detailRule(detail: string): ClassificationCore | null {
   }
   if (/retencion|retefuente/.test(detail)) {
     return core('tax_credit', 'withholding', 'subtract_from_tax', 'high');
+  }
+  if (
+    /(?:intereses?|rendimientos?).*(?:fondo de )?cesantias|(?:fondo de )?cesantias.*(?:intereses?|rendimientos?)/.test(
+      detail,
+    )
+  ) {
+    return core(
+      'income',
+      'financial_income',
+      'add_to_income',
+      'high',
+      ['assets_reconciliation', 'document_checklist'],
+      'included',
+      'Rendimiento del fondo de cesantías clasificado por el concepto financiero, no por la palabra empleado.',
+    );
   }
   if (/salario|pago laboral|nomina|empleado/.test(detail)) {
     return core('income', 'employment_income', 'add_to_employment_income', 'high', [
@@ -237,17 +267,6 @@ function detailRule(detail: string): ClassificationCore | null {
       ['document_checklist'],
       'pending',
       'Posible deducción pendiente de soporte y revisión.',
-    );
-  }
-  if (/saldo.*ano anterior|vigencia anterior/.test(detail)) {
-    return core(
-      'informational',
-      'prior_year_balance',
-      'do_not_aggregate',
-      'medium',
-      [],
-      'informational',
-      'Saldo de referencia de otra vigencia; no se consolida.',
     );
   }
   return null;

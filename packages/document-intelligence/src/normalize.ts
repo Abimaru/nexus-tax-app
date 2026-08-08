@@ -21,25 +21,7 @@ export function comparableText(value: string): string {
 }
 
 export function parseColombianAmount(value: string): number | null {
-  const cleaned = value
-    .replace(/(?:cop|\$)/gi, '')
-    .replace(/\s/g, '')
-    .replace(/[^\d,.-]/g, '');
-  if (!cleaned || !/\d/.test(cleaned)) return null;
-  const negative = cleaned.startsWith('-') || /^\(.*\)$/.test(value.trim());
-  const unsigned = cleaned.replace(/-/g, '');
-  const lastComma = unsigned.lastIndexOf(',');
-  const lastDot = unsigned.lastIndexOf('.');
-  let normalized = unsigned;
-  if (lastComma > lastDot && unsigned.length - lastComma - 1 <= 2) {
-    normalized = unsigned.replace(/\./g, '').replace(',', '.');
-  } else if (lastDot > lastComma && unsigned.length - lastDot - 1 <= 2) {
-    normalized = unsigned.replace(/,/g, '');
-  } else {
-    normalized = unsigned.replace(/[.,]/g, '');
-  }
-  const parsed = Number(normalized);
-  return Number.isFinite(parsed) ? (negative ? -parsed : parsed) : null;
+  return parseMoneyAmount(value).parsedValue;
 }
 
 export function stableDocumentId(...parts: readonly string[]): string {
@@ -50,3 +32,4 @@ export function stableDocumentId(...parts: readonly string[]): string {
   }
   return (hash >>> 0).toString(16).padStart(8, '0');
 }
+import { parseMoneyAmount } from './money';

@@ -11,7 +11,7 @@ import type {
   ReconciliationSuggestion,
 } from '@nexus-tax/domain';
 import { Badge, Button, EmptyState, GlassPanel, formatCurrencyCOP } from '@nexus-tax/ui';
-import { savePreliminaryReconciliation, saveTaxResolutionDecision } from '@/lib/repository';
+import { restorePreliminaryReconciliation, savePreliminaryReconciliation } from '@/lib/repository';
 import { evaluateReconciliationDifference } from '@nexus-tax/exogenous-parser';
 import { PRELIMINARY_RECONCILIATION_PRESENTATION } from '@/lib/presentationCatalogs';
 import { AcceptedSourceAction } from './AcceptedSourceAction';
@@ -44,14 +44,14 @@ export function ReconciliationsPanel({
   const [explanation, setExplanation] = useState(
     'Coincidencia revisada por entidad, categoría, concepto y valor.',
   );
-  const [dismissed, setDismissed] = useState<string[]>([]);
   const [manualForm, setManualForm] = useState<{
     suggestionId: string | null;
     status: PreliminaryReconciliationStatus;
     reason: string;
   }>({ suggestionId: null, status: 'reconciled', reason: '' });
+  const activeReconciliations = reconciliations.filter((item) => item.status !== 'restored');
   const existingSuggestionIds = new Set(
-    reconciliations.flatMap((item) =>
+    activeReconciliations.flatMap((item) =>
       item.factIds.flatMap((factId) =>
         item.exogenousRecordIds.map((recordId) => `${factId}:${recordId}`),
       ),
@@ -61,9 +61,9 @@ export function ReconciliationsPanel({
   // fact o record ya haya sido usado en OTRA conciliación o aceptado como
   // fuente provisional. Esto evita ver 4 sugerencias cuando 2 documentos y 2
   // registros ya están cerrados por otras decisiones.
-  const consumedFactIds = new Set(reconciliations.flatMap((item) => item.factIds));
+  const consumedFactIds = new Set(activeReconciliations.flatMap((item) => item.factIds));
   const consumedRecordIds = new Set([
-    ...reconciliations.flatMap((item) => item.exogenousRecordIds),
+    ...activeReconciliations.flatMap((item) => item.exogenousRecordIds),
     ...acceptedSources.map((source) => source.exogenousRecordId),
   ]);
   const pendingSuggestions = suggestions
@@ -71,8 +71,7 @@ export function ReconciliationsPanel({
       (suggestion) =>
         !existingSuggestionIds.has(`${suggestion.factId}:${suggestion.exogenousRecordId}`) &&
         !consumedFactIds.has(suggestion.factId) &&
-        !consumedRecordIds.has(suggestion.exogenousRecordId) &&
-        !dismissed.includes(suggestion.id),
+        !consumedRecordIds.has(suggestion.exogenousRecordId),
     )
     .slice(0, 20);
   async function confirm(suggestion: ReconciliationSuggestion) {
@@ -129,23 +128,24 @@ export function ReconciliationsPanel({
   }
 
   async function reject(suggestion: ReconciliationSuggestion) {
-    await saveTaxResolutionDecision(caseId, {
-      type: 'reject_suggestion',
-      objectType: 'reconciliation',
-      objectId: suggestion.id,
-      previousState: 'suggested',
-      finalState: 'rejected',
-      selectedAlternative: 'Rechazar sugerencia',
-      reason: explanation,
-      originalValue: suggestion.exogenousValue,
-      finalValue: suggestion.documentaryValue,
-      evidence: suggestion.signals.map((description) => ({
-        kind: 'rule' as const,
-        referenceId: suggestion.id,
-        description,
-      })),
+    const timestamp = new Date().toISOString();
+    await savePreliminaryReconciliation(caseId, {
+      factIds: [suggestion.factId],
+      exogenousRecordIds: [suggestion.exogenousRecordId],
+      status: 'rejected',
+      exogenousValue: suggestion.exogenousValue,
+      documentaryValue: suggestion.documentaryValue,
+      productId: facts.find((fact) => fact.id === suggestion.factId)?.productId ?? null,
+      explanation,
+      analystDecision: explanation.trim() || 'Sugerencia rechazada por el analista.',
+      suggestionScore: suggestion.score,
+      suggestionSignals: suggestion.signals,
+      confirmedByHuman: true,
+      suggestionId: suggestion.id,
+      rejectedAt: timestamp,
+      restoredAt: null,
+      ruleVersion: 'nexustax.reconciliation.2025.v2',
     });
-    setDismissed((current) => [...current, suggestion.id]);
   }
   return (
     <div className="space-y-5">
@@ -349,6 +349,14 @@ export function ReconciliationsPanel({
                     <p className="mt-1 text-xs text-content-muted">
                       Diferencia {formatCurrencyCOP(item.difference)}
                     </p>
+                    {item.status === 'rejected' ? (
+                      <Button
+                        variant="ghost"
+                        onClick={() => void restorePreliminaryReconciliation(caseId, item.id)}
+                      >
+                        Restaurar sugerencia
+                      </Button>
+                    ) : null}
                   </div>
                 </GlassPanel>
               ))}

@@ -1,6 +1,7 @@
 import type {
   DocumentFact,
   NormalizedExogenousRecord,
+  PreliminaryReconciliation,
   TaxCategory,
   TaxResolutionDecision,
 } from '@nexus-tax/domain';
@@ -36,7 +37,23 @@ export type Form210BoxStatus =
   | 'confirmed'
   | 'calculated'
   | 'contradicted'
-  | 'not_applicable';
+  | 'not_applicable'
+  | 'provisional'
+  | 'requires_review'
+  | 'confirmed_zero'
+  | 'blocked';
+
+export type Form210SourceRole =
+  | 'closing_asset'
+  | 'asset_component'
+  | 'prior_year_reference'
+  | 'movement_only'
+  | 'informational'
+  | 'document_replacement'
+  | 'subtotal'
+  | 'summary'
+  | 'potential_duplicate'
+  | 'pending';
 
 export type Form210SourceType =
   | 'exogenous'
@@ -56,6 +73,13 @@ export interface Form210SourceTrace {
   label: string;
   value: number;
   evidence: string;
+  originalValue?: number;
+  originalText?: string;
+  transformation?: string | null;
+  confidence?: 'high' | 'medium' | 'low';
+  role?: Form210SourceRole;
+  included?: boolean;
+  exclusionReason?: string | null;
 }
 
 export interface Form210BoxDefinition {
@@ -73,6 +97,7 @@ export interface Form210BoxValue extends Form210BoxDefinition {
   sources: Form210SourceTrace[];
   includedSourceIds: string[];
   excludedSourceIds: string[];
+  excludedSources: Form210SourceTrace[];
   confidence: 'high' | 'medium' | 'low';
   status: Form210BoxStatus;
   warnings: string[];
@@ -101,7 +126,11 @@ export interface Form210ValidationFinding {
     | 'duplicate_patrimony_entry'
     | 'withholdings_exceed_income_tax'
     | 'patrimony_income_disproportion'
-    | 'cedular_sum_mismatch';
+    | 'cedular_sum_mismatch'
+    | 'amount_scale_suspected'
+    | 'decimal_separator_ambiguous'
+    | 'document_exogenous_amount_mismatch'
+    | 'monetary_parse_low_confidence';
   message: string;
   boxNumbers: number[];
   sourceIds: string[];
@@ -144,10 +173,7 @@ export interface Form210Draft {
  * a un borrador listo para presentar (nunca lo estarán en este proyecto).
  */
 export type Form210PreliminaryLiquidationStatus =
-  | 'insufficient_data'
-  | 'zero'
-  | 'refund'
-  | 'to_pay';
+  'insufficient_data' | 'zero' | 'refund' | 'to_pay';
 
 /**
  * Resultado explicable de la liquidación privada preliminar.
@@ -272,10 +298,7 @@ export interface Form210PreliminaryLiquidation {
  *   - `not_implemented`: la casilla existe en el modelo pero aún no se calcula.
  */
 export type Form210RuleValidationStatus =
-  | 'not_implemented'
-  | 'implemented_unverified'
-  | 'requires_review'
-  | 'verified';
+  'not_implemented' | 'implemented_unverified' | 'requires_review' | 'verified';
 
 /** Ejemplo manual de cálculo, usado como caso de verificación de una regla. */
 export interface Form210ValidationExample {
@@ -341,6 +364,7 @@ export interface Form210BuildInput {
   taxYear: number;
   records: readonly NormalizedExogenousRecord[];
   facts: readonly DocumentFact[];
+  reconciliations?: readonly PreliminaryReconciliation[];
   resolutions?: readonly TaxResolutionDecision[];
   recordStates?: readonly {
     recordId: string;

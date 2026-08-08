@@ -7,6 +7,7 @@ export const TaxNatureSchema = z.enum([
   'tax_credit',
   'expense_indicator',
   'possible_deduction',
+  'deduction',
   'movement',
   'informational',
   'unclassified',
@@ -35,6 +36,7 @@ export const TaxCategorySchema = z.enum([
   'social_security_contribution',
   'severance',
   'deduction_candidate',
+  'housing_interest',
   'prior_year_balance',
   'informational',
   'unclassified',
@@ -56,6 +58,7 @@ export const TaxTreatmentSchema = z.enum([
   'analyze_investment_threshold',
   'reconcile_with_certificate',
   'income_not_constitutive',
+  'deductible_subject_to_rules',
 ]);
 export type TaxTreatment = z.infer<typeof TaxTreatmentSchema>;
 

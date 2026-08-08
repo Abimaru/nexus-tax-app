@@ -1553,17 +1553,19 @@ export async function reviewDocumentCandidate(
   if (!candidate) throw new Error('El candidato ya no existe.');
   if (candidate.factId) return (await db.facts.get(candidate.factId)) ?? null;
   const correctedValue = input.correctedValue ?? candidate.correctedValue;
-  const value = correctedValue ?? candidate.extractedValue;
+  const value = correctedValue ?? candidate.amount?.roundedTaxValue ?? candidate.extractedValue;
   const category = input.category ?? candidate.correctedCategory ?? candidate.proposedCategory;
   const nature = input.nature ?? candidate.correctedNature ?? candidate.proposedNature;
   const treatment = input.treatment ?? candidate.correctedTreatment ?? candidate.proposedTreatment;
+  const hasValueCorrection = correctedValue !== null && correctedValue !== candidate.extractedValue;
   const hasCorrection =
-    value !== candidate.extractedValue ||
+    hasValueCorrection ||
     category !== candidate.proposedCategory ||
     nature !== candidate.proposedNature ||
     treatment !== candidate.proposedTreatment;
-  const relativeChange =
-    candidate.extractedValue === 0
+  const relativeChange = !hasValueCorrection
+    ? 0
+    : candidate.extractedValue === 0
       ? value === 0
         ? 0
         : 1
@@ -1636,6 +1638,8 @@ export async function reviewDocumentCandidate(
         author,
         extractionCandidateId: candidate.id,
         extractedValue: candidate.extractedValue,
+        amount: candidate.amount,
+        moneyParserVersion: candidate.moneyParserVersion,
         correctedValue: hasCorrection ? value : null,
         adapterId: candidate.adapterId,
         adapterVersion: candidate.adapterVersion,
@@ -2007,6 +2011,7 @@ export async function savePreliminaryReconciliation(
     await db.reconciliations.add(reconciliation);
     const relatedFacts = await db.facts.bulkGet(input.factIds);
     const supportingDocumentId = relatedFacts.find((fact) => fact?.documentId)?.documentId ?? null;
+    if (input.status === 'rejected' || input.status === 'restored') return;
     for (const recordId of input.exogenousRecordIds) {
       const accepted = await db.acceptedSources
         .where('caseId')
@@ -2048,6 +2053,24 @@ export async function savePreliminaryReconciliation(
 
 export async function listReconciliations(caseId: string): Promise<PreliminaryReconciliation[]> {
   return getDb().reconciliations.where('caseId').equals(caseId).sortBy('updatedAt');
+}
+
+export async function restorePreliminaryReconciliation(
+  caseId: string,
+  reconciliationId: string,
+): Promise<void> {
+  const reconciliation = await getDb().reconciliations.get(reconciliationId);
+  if (!reconciliation || reconciliation.caseId !== caseId || reconciliation.status !== 'rejected') {
+    throw new Error('No se encontró una sugerencia rechazada para restaurar.');
+  }
+  const timestamp = nowIso();
+  await getDb().reconciliations.update(reconciliationId, {
+    status: 'restored',
+    restoredAt: timestamp,
+    updatedAt: timestamp,
+    analystDecision: `${reconciliation.analystDecision} Restaurada para una nueva revisión.`,
+  });
+  await rebuildForm210Draft(caseId);
 }
 
 export async function getEmploymentIncomeGroup(
@@ -2495,20 +2518,23 @@ function form210RecordStates(analysis?: CaseAnalysis) {
 
 export async function rebuildForm210Draft(caseId: string): Promise<Form210Draft | undefined> {
   const db = getDb();
-  const [taxCase, stored, analysis, facts, resolutions, acceptedSources] = await Promise.all([
-    db.cases.get(caseId),
-    db.results.get(caseId),
-    db.analyses.get(caseId),
-    db.facts.where('caseId').equals(caseId).toArray(),
-    db.resolutionDecisions.where('caseId').equals(caseId).sortBy('decidedAt'),
-    db.acceptedSources.where('caseId').equals(caseId).toArray(),
-  ]);
+  const [taxCase, stored, analysis, facts, resolutions, acceptedSources, reconciliations] =
+    await Promise.all([
+      db.cases.get(caseId),
+      db.results.get(caseId),
+      db.analyses.get(caseId),
+      db.facts.where('caseId').equals(caseId).toArray(),
+      db.resolutionDecisions.where('caseId').equals(caseId).sortBy('decidedAt'),
+      db.acceptedSources.where('caseId').equals(caseId).toArray(),
+      db.reconciliations.where('caseId').equals(caseId).toArray(),
+    ]);
   if (!taxCase || taxCase.taxYear !== 2025) return undefined;
   const draft = buildForm210Draft({
     caseId,
     taxYear: taxCase.taxYear,
     records: stored?.result.normalizedRecords ?? [],
     facts,
+    reconciliations,
     resolutions,
     recordStates: form210RecordStates(analysis),
     provisionalRecordIds: acceptedSources
@@ -2534,20 +2560,23 @@ export async function previewForm210Adjustment(
   tentativeDecision: import('@nexus-tax/domain').TaxResolutionDecision,
 ): Promise<Form210Draft | undefined> {
   const db = getDb();
-  const [taxCase, stored, analysis, facts, resolutions, acceptedSources] = await Promise.all([
-    db.cases.get(caseId),
-    db.results.get(caseId),
-    db.analyses.get(caseId),
-    db.facts.where('caseId').equals(caseId).toArray(),
-    db.resolutionDecisions.where('caseId').equals(caseId).sortBy('decidedAt'),
-    db.acceptedSources.where('caseId').equals(caseId).toArray(),
-  ]);
+  const [taxCase, stored, analysis, facts, resolutions, acceptedSources, reconciliations] =
+    await Promise.all([
+      db.cases.get(caseId),
+      db.results.get(caseId),
+      db.analyses.get(caseId),
+      db.facts.where('caseId').equals(caseId).toArray(),
+      db.resolutionDecisions.where('caseId').equals(caseId).sortBy('decidedAt'),
+      db.acceptedSources.where('caseId').equals(caseId).toArray(),
+      db.reconciliations.where('caseId').equals(caseId).toArray(),
+    ]);
   if (!taxCase || taxCase.taxYear !== 2025) return undefined;
   return buildForm210Draft({
     caseId,
     taxYear: taxCase.taxYear,
     records: stored?.result.normalizedRecords ?? [],
     facts,
+    reconciliations,
     resolutions: [...resolutions, tentativeDecision],
     recordStates: form210RecordStates(analysis),
     provisionalRecordIds: acceptedSources

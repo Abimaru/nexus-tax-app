@@ -167,16 +167,22 @@ function enrichCandidate(
     input.entities?.find((item) => item.id === entity.entityId)?.name ?? candidate.entityName;
   const enriched = { ...candidate, proposedEntityId: entity.entityId, entityName };
   const product = suggestProduct(enriched, input.products ?? []);
+  const suggestedExogenousMatches = suggestExogenousMatches(enriched, input.exogenousRecords ?? []);
+  const monetaryWarnings = suggestedExogenousMatches.flatMap((match) =>
+    (match.anomalyCodes ?? []).map((code) => `Anomalía monetaria: ${code}.`),
+  );
   return {
     ...enriched,
     proposedProductId: product.productId,
     suggestedRequirementIds: suggestRequirements(enriched, input.requirements ?? []),
-    suggestedExogenousMatches: suggestExogenousMatches(enriched, input.exogenousRecords ?? []),
+    suggestedExogenousMatches,
     warnings: [
       ...enriched.warnings,
       ...(entity.ambiguous ? ['Varias entidades podrían corresponder al documento.'] : []),
       ...(product.ambiguous ? ['Varios productos podrían corresponder al valor.'] : []),
+      ...monetaryWarnings,
     ],
+    status: monetaryWarnings.length ? 'requires_review' : enriched.status,
   };
 }
 

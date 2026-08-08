@@ -24,6 +24,7 @@ import {
   saveDocumentFact,
   updateDocumentFact,
   savePreliminaryReconciliation,
+  restorePreliminaryReconciliation,
   saveRequirementCoverage,
   deleteCase,
   addEmployerInstance,
@@ -519,6 +520,32 @@ describe('repositorio (IndexedDB local)', () => {
       confirmedByHuman: true,
     });
     expect(saved).toMatchObject({ difference: 1, differencePercentage: 1, confirmedByHuman: true });
+  });
+
+  it('persiste y restaura el rechazo de una sugerencia de conciliación', async () => {
+    const created = await createCase({ alias: 'Rechazo persistente', taxYear: 2025 });
+    const rejected = await savePreliminaryReconciliation(created.id, {
+      factIds: ['fact:reject'],
+      exogenousRecordIds: ['record:reject'],
+      status: 'rejected',
+      exogenousValue: 100,
+      documentaryValue: 1_000,
+      productId: null,
+      explanation: 'Corresponde a otro producto.',
+      analystDecision: 'Rechazo confirmado por el analista.',
+      suggestionScore: 60,
+      suggestionSignals: ['entidad similar'],
+      confirmedByHuman: true,
+      suggestionId: 'fact:reject:record:reject',
+      rejectedAt: '2026-08-08T00:00:00.000Z',
+      restoredAt: null,
+      ruleVersion: 'test',
+    });
+    expect((await getTaxCaseWorkspace(created.id)).reconciliations[0]?.status).toBe('rejected');
+    await restorePreliminaryReconciliation(created.id, rejected.id);
+    expect((await getTaxCaseWorkspace(created.id)).reconciliations[0]).toMatchObject({
+      status: 'restored',
+    });
   });
 
   it('exporta el expediente sin incluir binarios', async () => {

@@ -25,6 +25,9 @@ export const TaxResolutionDecisionTypeSchema = z.enum([
   'confirm_reconciliation',
   'adjust_form_box',
   'restore_automatic_value',
+  'mark_not_applicable',
+  'confirm_zero',
+  'exclude_from_calculation',
   'revert_decision',
 ]);
 export type TaxResolutionDecisionType = z.infer<typeof TaxResolutionDecisionTypeSchema>;

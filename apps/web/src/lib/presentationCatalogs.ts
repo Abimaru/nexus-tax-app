@@ -128,6 +128,14 @@ export const PRELIMINARY_RECONCILIATION_PRESENTATION: Record<
     label: 'Dato exógeno cuestionado',
     description: 'La información exógena requiere validación.',
   },
+  rejected: {
+    label: 'Sugerencia rechazada',
+    description: 'La asociación fue descartada por el analista y conserva su trazabilidad.',
+  },
+  restored: {
+    label: 'Sugerencia restaurada',
+    description: 'La asociación vuelve a estar disponible para revisión.',
+  },
 };
 
 export const INFORMATION_SOURCE_PRESENTATION: Record<InformationSource, PresentationEntry> = {

@@ -6,6 +6,7 @@ import type {
   ReportingEntity,
 } from '@nexus-tax/domain';
 import { comparableText } from './normalize';
+import { detectMonetaryAnomalies } from './money';
 
 export function suggestEntity(input: {
   candidate: DocumentFactCandidate;
@@ -111,6 +112,9 @@ export function suggestExogenousMatches(
         reasons.push('Misma entidad normalizada.');
       }
       const difference = Math.abs((record.reportedValue ?? 0) - candidate.extractedValue);
+      const anomalies = candidate.amount
+        ? detectMonetaryAnomalies(candidate.amount, record.reportedValue)
+        : [];
       if (difference === 0) {
         score += 30;
         reasons.push('Mismo valor.');
@@ -118,7 +122,11 @@ export function suggestExogenousMatches(
         score += 15;
         reasons.push('Valor cercano.');
       }
-      return { record, score, reasons, difference };
+      if (anomalies.length) {
+        score = Math.min(score, 49);
+        reasons.push(...anomalies.map((anomaly) => anomaly.message));
+      }
+      return { record, score, reasons, difference, anomalies };
     })
     .filter((item) => item.score >= 35)
     .sort((a, b) => b.score - a.score || a.record.id.localeCompare(b.record.id));
@@ -136,5 +144,28 @@ export function suggestExogenousMatches(
               ? 'possible_contradiction'
               : 'no_match',
     reasons: item.reasons,
+    exogenousValue: item.record.reportedValue ?? 0,
+    documentDecimalValue: candidate.amount?.decimalValue ?? candidate.extractedValue,
+    roundedTaxValue: candidate.amount?.roundedTaxValue ?? Math.round(candidate.extractedValue),
+    difference: item.difference,
+    differencePercentage:
+      item.record.reportedValue === 0
+        ? null
+        : (item.difference / Math.abs(item.record.reportedValue ?? 0)) * 100,
+    possibleScaleFactor:
+      item.anomalies.find((anomaly) => anomaly.possibleScaleFactor)?.possibleScaleFactor ?? null,
+    recommendedSource: item.anomalies.length
+      ? ('human_review' as const)
+      : item.difference <= 1
+        ? ('both' as const)
+        : candidate.amount?.confidence === 'high'
+          ? ('document' as const)
+          : ('human_review' as const),
+    recommendationReason: item.anomalies.length
+      ? 'La diferencia puede provenir de la interpretación monetaria; confirma el texto original.'
+      : item.difference <= 1
+        ? 'Las fuentes coinciden después de considerar centavos y redondeo al peso.'
+        : 'La fuente documental conserva evidencia directa, pero requiere revisión humana.',
+    anomalyCodes: item.anomalies.map((anomaly) => anomaly.code),
   }));
 }

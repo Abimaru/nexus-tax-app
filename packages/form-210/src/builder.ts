@@ -46,6 +46,7 @@ const CATEGORY_BOX: Partial<Record<TaxCategory, number>> = {
   liability: 30,
   employment_income: 32,
   employment_non_constitutive_income: 33,
+  housing_interest: 38,
   financial_income: 58,
   other_income: 74,
   pension_income: 99,
@@ -69,6 +70,22 @@ function recordTrace(
     label: record.conceptLabel ?? record.conceptCode ?? 'Registro exógeno',
     value,
     evidence: `${record.source.sheet} · fila ${record.source.row}`,
+    originalValue: record.reportedValue ?? value,
+    originalText: record.reportedValue === null ? undefined : String(record.reportedValue),
+    transformation: null,
+    confidence: record.confidence,
+    role:
+      record.category === 'prior_year_balance'
+        ? 'prior_year_reference'
+        : ['bank_movement', 'investment_movement'].includes(record.category)
+          ? 'movement_only'
+          : /total|resumen|patrimonio bruto/i.test(record.conceptLabel ?? '')
+            ? 'summary'
+            : record.category === 'asset' || record.category === 'investment_asset'
+              ? 'closing_asset'
+              : 'informational',
+    included: true,
+    exclusionReason: null,
   };
 }
 
@@ -82,6 +99,21 @@ function factTrace(fact: DocumentFact): Form210SourceTrace {
     label: fact.originalConcept,
     value: fact.value,
     evidence: fact.evidence || fact.pageOrSection || 'Hecho confirmado por el analista',
+    originalValue: fact.amount?.decimalValue ?? fact.extractedValue ?? fact.value,
+    originalText: fact.amount?.rawText,
+    transformation: fact.amount
+      ? `${fact.amount.parsingStrategy}; redondeo al peso: ${fact.amount.decimalValue} → ${fact.value}`
+      : null,
+    confidence:
+      fact.finalConfidence === 'insufficient' ? 'low' : (fact.finalConfidence ?? fact.confidence),
+    role:
+      fact.category === 'asset' || fact.category === 'investment_asset'
+        ? 'closing_asset'
+        : fact.category === 'prior_year_balance'
+          ? 'prior_year_reference'
+          : 'informational',
+    included: true,
+    exclusionReason: null,
   };
 }
 
@@ -492,9 +524,7 @@ export function computePreliminaryLiquidation(
 
   const warnings: string[] = [];
   if (!incomeTax) {
-    warnings.push(
-      'No hay renta líquida cedular suficiente para calcular el impuesto progresivo.',
-    );
+    warnings.push('No hay renta líquida cedular suficiente para calcular el impuesto progresivo.');
   }
   if (occasionalGainsTaxableCop > 0 && !providedBreakdown) {
     warnings.push(
@@ -617,10 +647,19 @@ export function buildForm210Draft(input: Form210BuildInput): Form210Draft {
   const generatedAt = input.generatedAt ?? new Date().toISOString();
   const sourcesByBox = new Map<number, Form210SourceTrace[]>();
   const excludedByBox = new Map<number, string[]>();
+  const excludedSourcesByBox = new Map<number, Form210SourceTrace[]>();
   const pendingBoxNumbers = new Set<number>();
+  const moneyReviewByBox = new Map<number, string[]>();
   const duplicateSourceIds: string[] = [];
   const stateByRecord = new Map(input.recordStates?.map((state) => [state.recordId, state]));
   const provisional = new Set(input.provisionalRecordIds ?? []);
+  const documentReplacedRecordIds = new Set(
+    (input.reconciliations ?? [])
+      .filter(
+        (item) => ['reconciled', 'minor_difference'].includes(item.status) && item.confirmedByHuman,
+      )
+      .flatMap((item) => item.exogenousRecordIds),
+  );
 
   for (const record of input.records) {
     const state = stateByRecord.get(record.id);
@@ -628,8 +667,31 @@ export function buildForm210Draft(input: Form210BuildInput): Form210Draft {
     const boxNumber = CATEGORY_BOX[category];
     if (!boxNumber || record.reportedValue === null) continue;
     const trace = recordTrace(record, record.reportedValue, provisional.has(record.id));
+    if (documentReplacedRecordIds.has(record.id)) {
+      excludedByBox.set(boxNumber, [...(excludedByBox.get(boxNumber) ?? []), trace.sourceId]);
+      excludedSourcesByBox.set(boxNumber, [
+        ...(excludedSourcesByBox.get(boxNumber) ?? []),
+        {
+          ...trace,
+          included: false,
+          role: 'document_replacement',
+          exclusionReason:
+            'La conciliación humana confirmó un hecho documental como fuente de reemplazo; se evita el doble conteo.',
+        },
+      ]);
+      continue;
+    }
     if (state && state.disposition !== 'included') {
       excludedByBox.set(boxNumber, [...(excludedByBox.get(boxNumber) ?? []), trace.sourceId]);
+      excludedSourcesByBox.set(boxNumber, [
+        ...(excludedSourcesByBox.get(boxNumber) ?? []),
+        {
+          ...trace,
+          included: false,
+          role: state.disposition === 'pending' ? 'pending' : trace.role,
+          exclusionReason: `Disposición del análisis: ${state.disposition}.`,
+        },
+      ]);
       if (state.disposition === 'pending') pendingBoxNumbers.add(boxNumber);
       continue;
     }
@@ -642,6 +704,19 @@ export function buildForm210Draft(input: Form210BuildInput): Form210Draft {
     const boxNumber = CATEGORY_BOX[fact.category];
     if (!boxNumber) continue;
     const trace = factTrace(fact);
+    const moneyWarnings = fact.amount?.warnings ?? [];
+    if (
+      fact.moneyParserVersion === 'legacy' ||
+      fact.amount?.confidence === 'low' ||
+      moneyWarnings.length > 0
+    ) {
+      moneyReviewByBox.set(boxNumber, [
+        ...(moneyReviewByBox.get(boxNumber) ?? []),
+        ...(moneyWarnings.length
+          ? moneyWarnings
+          : ['La fuente fue generada con una versión monetaria anterior y requiere reanálisis.']),
+      ]);
+    }
     const duplicate = (sourcesByBox.get(boxNumber) ?? []).some(
       (source) =>
         source.value === trace.value &&
@@ -649,6 +724,15 @@ export function buildForm210Draft(input: Form210BuildInput): Form210Draft {
     );
     if (duplicate) {
       excludedByBox.set(boxNumber, [...(excludedByBox.get(boxNumber) ?? []), trace.sourceId]);
+      excludedSourcesByBox.set(boxNumber, [
+        ...(excludedSourcesByBox.get(boxNumber) ?? []),
+        {
+          ...trace,
+          included: false,
+          role: 'potential_duplicate',
+          exclusionReason: 'Posible duplicado de una fuente exógena ya incluida.',
+        },
+      ]);
       duplicateSourceIds.push(trace.sourceId);
     } else sourcesByBox.set(boxNumber, [...(sourcesByBox.get(boxNumber) ?? []), trace]);
   }
@@ -780,13 +864,18 @@ export function buildForm210Draft(input: Form210BuildInput): Form210Draft {
       .filter((id): id is string => Boolean(id)),
   );
   const adjustmentByBox = new Map<number, TaxResolutionDecision>();
+  const stateOverrideByBox = new Map<number, TaxResolutionDecision>();
   for (const decision of [...(input.resolutions ?? [])].sort((a, b) =>
     a.decidedAt.localeCompare(b.decidedAt),
   )) {
     if (decision.objectType !== 'form_box' || replacedIds.has(decision.id)) continue;
     const number = Number(decision.objectId);
-    if (decision.type === 'restore_automatic_value') adjustmentByBox.delete(number);
-    else if (decision.type === 'adjust_form_box') adjustmentByBox.set(number, decision);
+    if (decision.type === 'restore_automatic_value') {
+      adjustmentByBox.delete(number);
+      stateOverrideByBox.delete(number);
+    } else if (decision.type === 'adjust_form_box') adjustmentByBox.set(number, decision);
+    else if (decision.type === 'mark_not_applicable' || decision.type === 'confirm_zero')
+      stateOverrideByBox.set(number, decision);
   }
 
   const boxes: Form210BoxValue[] = FORM_210_RULESET_2025.boxes.map((definition) => {
@@ -795,46 +884,80 @@ export function buildForm210Draft(input: Form210BuildInput): Form210Draft {
       ? sources.reduce((sum, source) => sum + source.value, 0)
       : null;
     const adjustment = adjustmentByBox.get(definition.number);
+    const stateOverride = stateOverrideByBox.get(definition.number);
+    const markedNotApplicable = stateOverride?.type === 'mark_not_applicable';
+    const hasProvisionalSource = sources.some((source) => source.type === 'provisional_source');
+    const moneyWarnings = moneyReviewByBox.get(definition.number) ?? [];
     return {
       ...definition,
-      suggestedValue,
-      confirmedValue: adjustment?.finalValue ?? null,
-      sources,
-      includedSourceIds: sources.map((source) => source.sourceId),
-      excludedSourceIds: excludedByBox.get(definition.number) ?? [],
-      confidence: sources.some((source) => source.type === 'provisional_source')
-        ? 'low'
-        : sources.length
-          ? 'medium'
-          : 'low',
-      status: adjustment
-        ? 'confirmed'
-        : suggestedValue === null
-          ? 'no_data'
-          : definition.ruleComplete
-            ? 'suggested'
-            : 'incomplete',
+      suggestedValue: markedNotApplicable ? null : suggestedValue,
+      confirmedValue: stateOverride?.type === 'confirm_zero' ? 0 : (adjustment?.finalValue ?? null),
+      sources: markedNotApplicable ? [] : sources,
+      includedSourceIds: markedNotApplicable ? [] : sources.map((source) => source.sourceId),
+      excludedSourceIds: [
+        ...(excludedByBox.get(definition.number) ?? []),
+        ...(markedNotApplicable ? sources.map((source) => source.sourceId) : []),
+      ],
+      excludedSources: [
+        ...(excludedSourcesByBox.get(definition.number) ?? []),
+        ...(markedNotApplicable
+          ? sources.map((source) => ({
+              ...source,
+              included: false,
+              exclusionReason: 'El analista marcó la casilla como no aplicable.',
+            }))
+          : []),
+      ],
+      confidence: hasProvisionalSource ? 'low' : sources.length ? 'medium' : 'low',
+      status:
+        stateOverride?.type === 'mark_not_applicable'
+          ? 'not_applicable'
+          : stateOverride?.type === 'confirm_zero'
+            ? 'confirmed_zero'
+            : adjustment
+              ? 'confirmed'
+              : suggestedValue === null
+                ? 'no_data'
+                : moneyWarnings.length
+                  ? 'requires_review'
+                  : hasProvisionalSource
+                    ? 'provisional'
+                    : definition.ruleComplete
+                      ? 'suggested'
+                      : 'incomplete',
       warnings: definition.ruleComplete
-        ? []
+        ? moneyWarnings
         : [
             'La regla completa de esta casilla todavía no está incorporada; no se calcula automáticamente.',
+            ...moneyWarnings,
           ],
-      resolutionId: adjustment?.id ?? null,
+      resolutionId: stateOverride?.id ?? adjustment?.id ?? null,
       ruleVersion: FORM_210_RULESET_2025.ruleVersion,
     };
   });
 
   const getValue = (number: number) => {
     const target = boxes.find((box) => box.number === number);
+    if (target?.status === 'not_applicable') return 0;
     return target?.confirmedValue ?? target?.suggestedValue ?? null;
   };
   for (const box of boxes.filter((item) => item.formula && item.ruleComplete)) {
     if (box.confirmedValue !== null) continue;
     const calculated = computeFormula(box.number, getValue);
     if (calculated !== null) {
+      const dependencyNeedsReview = box.dependencies.some((dependency) =>
+        ['requires_review', 'provisional', 'blocked'].includes(
+          boxes.find((candidate) => candidate.number === dependency)?.status ?? 'no_data',
+        ),
+      );
       box.suggestedValue = calculated;
-      box.status = 'calculated';
-      box.confidence = 'high';
+      box.status = dependencyNeedsReview ? 'requires_review' : 'calculated';
+      box.confidence = dependencyNeedsReview ? 'low' : 'high';
+      if (dependencyNeedsReview) {
+        box.warnings.push(
+          'La fórmula depende de una casilla cuya fuente monetaria requiere revisión.',
+        );
+      }
       box.sources = box.dependencies.map((dependency) => ({
         type: 'calculation',
         sourceId: `box:${dependency}`,
@@ -850,6 +973,16 @@ export function buildForm210Draft(input: Form210BuildInput): Form210Draft {
   }
 
   const findings = validate(boxes, input, duplicateSourceIds, pendingBoxNumbers);
+  for (const [boxNumber, warnings] of moneyReviewByBox) {
+    findings.push({
+      id: `money-review-${boxNumber}`,
+      severity: 'error',
+      code: 'monetary_parse_low_confidence',
+      message: `La casilla ${boxNumber} contiene una fuente monetaria que debe reanalizarse: ${warnings.join(' ')}`,
+      boxNumbers: [boxNumber],
+      sourceIds: (sourcesByBox.get(boxNumber) ?? []).map((source) => source.sourceId),
+    });
+  }
   for (const computation of individualDeductionLimits) {
     if (computation.bindingCandidate === 'declared') continue;
     findings.push({
@@ -862,7 +995,9 @@ export function buildForm210Draft(input: Form210BuildInput): Form210Draft {
     });
   }
   const pendingBoxes = boxes.filter((box) =>
-    ['incomplete', 'requires_decision', 'contradicted'].includes(box.status),
+    ['incomplete', 'requires_decision', 'contradicted', 'requires_review', 'blocked'].includes(
+      box.status,
+    ),
   ).length;
   const blockers = findings.filter((finding) => finding.severity === 'error').length;
   const populated = boxes.filter(

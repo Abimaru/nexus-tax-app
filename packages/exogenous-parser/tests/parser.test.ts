@@ -613,6 +613,31 @@ describe('clasificacion resoluble, relaciones y matriz tributaria', () => {
     );
   });
 
+  it('excluye patrimonio anterior y clasifica rendimientos de cesantías por su concepto', () => {
+    const result = processDian([
+      {
+        reportedDocument: '1234567890',
+        detail: 'Total patrimonio bruto declarado en el año anterior',
+        value: 148_000_000,
+      },
+      {
+        reportedDocument: '1234567890',
+        detail:
+          'Valor de los intereses o rendimientos causados en el periodo (Formato del fondo de cesantías). Empleado',
+        value: 28_523,
+      },
+    ]);
+    expect(result.normalizedRecords[0]).toMatchObject({
+      category: 'prior_year_balance',
+      consolidationDisposition: 'informational',
+    });
+    expect(result.normalizedRecords[1]).toMatchObject({
+      category: 'financial_income',
+      consolidationDisposition: 'included',
+    });
+    expect(result.matrix.groups.find((group) => group.id === 'assets')?.consolidatedValue).toBe(0);
+  });
+
   it('evita doble conteo cuando un resumen coincide con sus componentes', () => {
     const result = processDian([
       { reportedDocument: '1234567890', detail: 'Total activos', value: 300 },

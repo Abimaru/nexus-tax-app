@@ -44,6 +44,7 @@ export const CATEGORY_LABEL: Record<TaxCategory, string> = {
   social_security_contribution: 'Seguridad social',
   severance: 'Cesantías',
   deduction_candidate: 'Posible deducción',
+  housing_interest: 'Intereses de vivienda',
   prior_year_balance: 'Saldo año anterior',
   informational: 'Informativo',
   unclassified: 'Sin clasificar',
@@ -56,6 +57,7 @@ export const NATURE_LABEL: Record<TaxNature, string> = {
   tax_credit: 'Crédito tributario',
   expense_indicator: 'Indicador de compras o gastos',
   possible_deduction: 'Posible deducción',
+  deduction: 'Deducción',
   movement: 'Movimiento',
   informational: 'Informativo',
   unclassified: 'Sin clasificar',
@@ -76,6 +78,7 @@ export const TREATMENT_LABEL: Record<TaxTreatment, string> = {
   analyze_investment_threshold: 'Analizar tope de movimientos',
   reconcile_with_certificate: 'Conciliar con certificado',
   income_not_constitutive: 'Ingreso no constitutivo de renta',
+  deductible_subject_to_rules: 'Deducible sujeto a reglas',
 };
 
 export const RESOLUTION_LABEL: Record<ResolutionStatus, string> = {

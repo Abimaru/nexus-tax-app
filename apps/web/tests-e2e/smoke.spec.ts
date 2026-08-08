@@ -406,6 +406,13 @@ test('flujo guiado completo del expediente', async ({ page }, testInfo) => {
   await expect(page.getByRole('heading', { name: 'Estados separados' })).toBeVisible();
   await expect(page.getByText(/4 · Presentación/)).toBeVisible();
   await expect(page.getByText(/Fuera de alcance/)).toBeVisible();
+  await selectView(page, 'Revisión final');
+  await expect(page.getByRole('heading', { name: 'Revisión final del expediente' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '¿Qué me falta?' })).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('revision-final-1280.png'), fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: testInfo.outputPath('revision-final-390.png'), fullPage: true });
+  await page.setViewportSize({ width: 1280, height: 900 });
   // Volver al borrador para no romper pasos posteriores del smoke.
   await selectView(page, 'Borrador Formulario 210');
 

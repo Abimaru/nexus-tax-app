@@ -72,6 +72,124 @@ function fact(overrides: Partial<DocumentFact> = {}): DocumentFact {
 }
 
 describe('borrador Formulario 210', () => {
+  it('lleva intereses de vivienda confirmados a la casilla 38 y deriva la 40', () => {
+    const draft = buildForm210Draft({
+      caseId: 'case-1',
+      taxYear: 2025,
+      records: [],
+      facts: [
+        fact({
+          id: 'fact-housing',
+          originalConcept: 'Intereses pagados en crédito de vivienda',
+          category: 'housing_interest',
+          nature: 'deduction',
+          treatment: 'deductible_subject_to_rules',
+          value: 2_500_000,
+          cutoffDate: '2025-12-31',
+          period: '2025',
+        }),
+      ],
+    });
+    expect(draft.boxes.find((box) => box.number === 38)?.suggestedValue).toBe(2_500_000);
+    expect(draft.boxes.find((box) => box.number === 40)?.suggestedValue).toBe(2_500_000);
+  });
+
+  it('evita duplicar exógena y documento cuando la conciliación confirma reemplazo', () => {
+    const financialRecord = record('58', 'financial_income', 28_523);
+    const draft = buildForm210Draft({
+      caseId: 'case-1',
+      taxYear: 2025,
+      records: [financialRecord],
+      facts: [
+        fact({
+          id: 'fact-financial',
+          originalConcept: 'Rendimientos financieros',
+          category: 'financial_income',
+          nature: 'income',
+          treatment: 'add_to_income',
+          value: 28_523,
+          cutoffDate: '2025-12-31',
+          period: '2025',
+        }),
+      ],
+      reconciliations: [
+        {
+          id: 'reconciliation-1',
+          caseId: 'case-1',
+          factIds: ['fact-financial'],
+          exogenousRecordIds: [financialRecord.id],
+          status: 'reconciled',
+          exogenousValue: 28_523,
+          documentaryValue: 28_523,
+          difference: 0,
+          differencePercentage: 0,
+          productId: null,
+          explanation: 'Mismo rendimiento.',
+          analystDecision: 'Usar documento como fuente.',
+          suggestionScore: 100,
+          suggestionSignals: ['mismo valor'],
+          confirmedByHuman: true,
+          createdAt: '2026-08-08T00:00:00.000Z',
+          updatedAt: '2026-08-08T00:00:00.000Z',
+        },
+      ],
+    });
+    const box58 = draft.boxes.find((box) => box.number === 58);
+    expect(box58?.suggestedValue).toBe(28_523);
+    expect(box58?.sources).toHaveLength(1);
+    expect(box58?.excludedSources).toEqual([
+      expect.objectContaining({ sourceId: `record:${financialRecord.id}`, included: false }),
+    ]);
+  });
+
+  it('distingue cero confirmado de no aplicable mediante decisiones explícitas', () => {
+    const baseDecision: TaxResolutionDecision = {
+      id: 'state-1',
+      caseId: 'case-1',
+      type: 'confirm_zero',
+      objectType: 'form_box',
+      objectId: '38',
+      previousState: 'no_data',
+      finalState: 'confirmed_zero',
+      selectedAlternative: 'Confirmar cero',
+      originalValue: null,
+      finalValue: 0,
+      originalCategory: null,
+      finalCategory: null,
+      proposedBox: 38,
+      reason: 'Prueba sintética',
+      note: '',
+      evidence: [],
+      localAuthor: 'Analista local',
+      decidedAt: '2026-08-08T00:00:00.000Z',
+      ruleVersion: 'test',
+      reversible: true,
+      replacesDecisionId: null,
+    };
+    const draft = buildForm210Draft({
+      caseId: 'case-1',
+      taxYear: 2025,
+      records: [],
+      facts: [],
+      resolutions: [
+        baseDecision,
+        {
+          ...baseDecision,
+          id: 'state-2',
+          type: 'mark_not_applicable',
+          objectId: '39',
+          proposedBox: 39,
+          finalState: 'not_applicable',
+          finalValue: null,
+        },
+      ],
+    });
+    expect(draft.boxes.find((box) => box.number === 38)).toMatchObject({
+      status: 'confirmed_zero',
+      confirmedValue: 0,
+    });
+    expect(draft.boxes.find((box) => box.number === 39)?.status).toBe('not_applicable');
+  });
   it('separa ganancias ocasionales de rentas de trabajo y calcula patrimonio', () => {
     const draft = buildForm210Draft({
       caseId: 'case-1',
@@ -271,10 +389,7 @@ describe('borrador Formulario 210', () => {
     const draft = buildForm210Draft({
       caseId: 'case-consistent',
       taxYear: 2025,
-      records: [
-        record('1', 'asset', 20_000_000),
-        record('2', 'liability', 5_000_000),
-      ],
+      records: [record('1', 'asset', 20_000_000), record('2', 'liability', 5_000_000)],
       facts: [],
     });
     const codes = draft.findings.map((finding) => finding.code);

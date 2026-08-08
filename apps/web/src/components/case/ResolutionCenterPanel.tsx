@@ -10,7 +10,7 @@ import type {
   WorkflowStageId,
   WorkflowViewId,
 } from '@nexus-tax/domain';
-import { Badge, Button, EmptyState, GlassPanel } from '@nexus-tax/ui';
+import { Badge, Button, EmptyState, GlassPanel, formatCurrencyCOP } from '@nexus-tax/ui';
 import { revertTaxResolutionDecision, saveTaxResolutionDecision } from '@/lib/repository';
 import { compareCaseTasks } from '@/lib/caseTaskPriority';
 
@@ -37,6 +37,12 @@ function target(task: CaseTask): { objectType: TaxResolutionObjectType; objectId
 }
 
 function alternatives(task: CaseTask): { type: TaxResolutionDecisionType; label: string }[] {
+  if (task.type === 'resolve_form_box')
+    return [
+      { type: 'mark_not_applicable', label: 'Marcar no aplica' },
+      { type: 'confirm_zero', label: 'Confirmar cero' },
+      { type: 'leave_pending', label: 'Mantener pendiente' },
+    ];
   if (task.type === 'resolve_matrix_group')
     return [
       { type: 'accept_rounding_difference', label: 'Aceptar diferencia por redondeo' },
@@ -116,6 +122,8 @@ export function ResolutionCenterPanel({
         selectedAlternative: option.label,
         reason: notes[task.id] ?? '',
         proposedBox: task.formBoxNumber ?? null,
+        originalValue: task.currentValue ?? null,
+        finalValue: choice === 'confirm_zero' ? 0 : null,
         evidence: task.evidence.map((description) => ({
           kind: 'rule' as const,
           referenceId: task.ruleId,
@@ -201,7 +209,23 @@ export function ResolutionCenterPanel({
                       {task.evidence[0] ?? 'Sin valor cuantitativo asociado'}
                     </dd>
                   </div>
+                  <div>
+                    <dt className="text-content-subtle">Valor actual</dt>
+                    <dd className="text-content">
+                      {task.currentValue === null || task.currentValue === undefined
+                        ? 'Sin valor confirmado'
+                        : formatCurrencyCOP(task.currentValue)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-content-subtle">Fuente esperada</dt>
+                    <dd className="text-content">{task.expectedSource ?? 'Evidencia trazable'}</dd>
+                  </div>
                 </dl>
+                <p className="mt-3 rounded-lg border border-overlay/8 bg-overlay/[0.02] p-3 text-xs text-content-muted">
+                  <span className="font-medium text-content">Dónde resolver:</span>{' '}
+                  {task.destinationLabel ?? task.recommendedAction}
+                </p>
                 {affected ? (
                   <div className="mt-4 space-y-3 rounded-xl border border-overlay/8 bg-overlay/[0.02] p-3">
                     <label className="block text-xs text-content-muted">
@@ -224,6 +248,18 @@ export function ResolutionCenterPanel({
                         ))}
                       </select>
                     </label>
+                    {selected[task.id] ? (
+                      <p className="text-xs text-content-subtle">
+                        Efecto:{' '}
+                        {task.resolutionOptions?.find((option) =>
+                          selected[task.id] === 'mark_not_applicable'
+                            ? option.type === 'mark_not_applicable'
+                            : selected[task.id] === 'confirm_zero'
+                              ? option.type === 'confirm_zero'
+                              : false,
+                        )?.effect ?? 'La decisión queda registrada y puede revertirse.'}
+                      </p>
+                    ) : null}
                     <label className="block text-xs text-content-muted">
                       Motivo obligatorio
                       <textarea
@@ -250,7 +286,7 @@ export function ResolutionCenterPanel({
                     leadingIcon={<ArrowRight className="h-4 w-4" aria-hidden />}
                     onClick={() => onNavigate(task.stage, task.view, task.id)}
                   >
-                    Abrir evidencia
+                    {task.destinationLabel ? 'Abrir casilla exacta' : 'Abrir evidencia'}
                   </Button>
                 </div>
               </GlassPanel>

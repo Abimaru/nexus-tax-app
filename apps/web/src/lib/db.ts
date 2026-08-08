@@ -258,6 +258,44 @@ class NexusTaxDatabase extends Dexie {
       resolutionDecisions: 'id, caseId, objectType, objectId, type, decidedAt',
       form210Drafts: 'id, caseId, taxYear, generatedAt',
     });
+    this.version(12)
+      .stores({
+        cases: 'id, updatedAt, taxYear, status',
+        documents: 'id, caseId, uploadedAt, sha256, status, kind, *entityIds',
+        results: 'caseId, updatedAt',
+        filingInputs: 'caseId, updatedAt',
+        analyses: 'caseId, updatedAt, ruleVersion',
+        documentBlobs: 'documentId, caseId, storedAt',
+        products: 'id, caseId, entityId, type, status',
+        coverages: 'id, caseId, requirementId, documentId, factId, entityId, status',
+        facts: 'id, caseId, documentId, entityId, productId, category, reviewStatus, updatedAt',
+        reconciliations: 'id, caseId, status, *factIds, *exogenousRecordIds, updatedAt',
+        employmentGroups: 'id, caseId, coverage, updatedAt',
+        navigationStates: 'caseId, lastStage, recommendedStage, updatedAt',
+        acceptedSources: 'id, caseId, exogenousRecordId, requirementId, status, updatedAt',
+        requirementSourceDecisions: 'id, caseId, requirementId, status, updatedAt',
+        extractionSessions: 'id, caseId, documentId, status, updatedAt',
+        documentCandidates:
+          'id, caseId, documentId, extractionSessionId, status, moneyParserVersion, updatedAt',
+        caseTasks: 'id, caseId, status, priority, stage, type, updatedAt',
+        documentProfiles: 'id, documentKind, status, updatedAt',
+        extractionFeedback:
+          'id, documentId, extractionSessionId, candidateId, applicability, createdAt',
+        resolutionDecisions: 'id, caseId, objectType, objectId, type, decidedAt',
+        form210Drafts: 'id, caseId, taxYear, generatedAt',
+      })
+      .upgrade(async (transaction) => {
+        await transaction
+          .table('documentCandidates')
+          .toCollection()
+          .modify((candidate: Record<string, unknown>) => {
+            if (candidate.moneyParserVersion) return;
+            candidate.moneyParserVersion = 'legacy';
+            candidate.requiresMoneyReanalysis = true;
+            candidate.previousParsedValue =
+              typeof candidate.extractedValue === 'number' ? candidate.extractedValue : null;
+          });
+      });
   }
 }
 

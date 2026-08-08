@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { EntityCategorySchema } from './aggregates';
 import { ConfidenceLevelSchema } from './checklist';
 import { IsoTimestampSchema } from './primitives';
+import { AmountCandidateSchema } from './money';
 import { TaxCategorySchema, TaxNatureSchema, TaxTreatmentSchema } from './taxClassification';
 
 export const ProductTypeSchema = z.enum([
@@ -109,6 +110,8 @@ export const DocumentFactSchema = z.object({
   history: z.array(DocumentFactHistorySchema),
   extractionCandidateId: z.string().nullable().optional(),
   extractedValue: z.number().nullable().optional(),
+  amount: AmountCandidateSchema.optional(),
+  moneyParserVersion: z.string().optional(),
   correctedValue: z.number().nullable().optional(),
   adapterId: z.string().nullable().optional(),
   adapterVersion: z.string().nullable().optional(),
@@ -126,6 +129,8 @@ export const PreliminaryReconciliationStatusSchema = z.enum([
   'not_comparable',
   'other_product',
   'exogenous_data_questioned',
+  'rejected',
+  'restored',
 ]);
 export type PreliminaryReconciliationStatus = z.infer<typeof PreliminaryReconciliationStatusSchema>;
 
@@ -145,6 +150,10 @@ export const PreliminaryReconciliationSchema = z.object({
   suggestionScore: z.number().min(0).max(100).nullable(),
   suggestionSignals: z.array(z.string()),
   confirmedByHuman: z.boolean(),
+  suggestionId: z.string().nullable().optional(),
+  rejectedAt: IsoTimestampSchema.nullable().optional(),
+  restoredAt: IsoTimestampSchema.nullable().optional(),
+  ruleVersion: z.string().optional(),
   createdAt: IsoTimestampSchema,
   updatedAt: IsoTimestampSchema,
 });

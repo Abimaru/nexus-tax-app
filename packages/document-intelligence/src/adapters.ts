@@ -1,4 +1,4 @@
-import type { DocumentFactCandidate, DocumentKind } from '@nexus-tax/domain';
+import type { AmountCandidate, DocumentFactCandidate, DocumentKind } from '@nexus-tax/domain';
 import type {
   AdapterRule,
   CandidateBuildContext,
@@ -7,9 +7,10 @@ import type {
   ExtractionResult,
   PdfReadLimits,
 } from './contracts';
-import { comparableText, parseColombianAmount, stableDocumentId } from './normalize';
+import { comparableText, stableDocumentId } from './normalize';
+import { MONEY_PARSER_VERSION, parseMoneyAmount } from './money';
 
-const VERSION = '1.1.0';
+const VERSION = '1.2.0';
 
 function rule(
   id: string,
@@ -266,9 +267,9 @@ export const DOCUMENT_ADAPTERS: readonly DocumentAdapter[] = [
       rule(
         'housing-interest',
         ['intereses pagados'],
-        'deduction_candidate',
-        'possible_deduction',
-        'review_as_deduction',
+        'housing_interest',
+        'deduction',
+        'deductible_subject_to_rules',
         'mortgage_loan',
       ),
       rule(
@@ -375,6 +376,7 @@ const VALUE_PATTERN = /(?:cop\s*)?\$?\s*-?\d[\d.,]*(?:,\d{1,2})?/gi;
 interface MonetaryMatch {
   raw: string;
   value: number;
+  amount: AmountCandidate;
   index: number;
 }
 
@@ -426,6 +428,21 @@ export function extractCandidates(
       const amountBlock = relatedBlocks.find((block) =>
         block.text.includes(seed.amount.raw.trim()),
       );
+      const amount = parseMoneyAmount(seed.amount.raw, {
+        sourceDocumentId: context.documentId,
+        page: page.pageNumber,
+        boundingBox:
+          amountBlock?.x === undefined || amountBlock.y === undefined
+            ? null
+            : {
+                x: amountBlock.x,
+                y: amountBlock.y,
+                width: amountBlock.width ?? null,
+                height: amountBlock.height ?? null,
+              },
+        extractionMethod: 'native',
+        originalEvidence: excerpt,
+      });
       candidates.push({
         id: `candidate:${stableDocumentId(context.sessionId, fingerprint)}`,
         caseId: context.caseId,
@@ -458,6 +475,10 @@ export function extractCandidates(
         correctedNature: null,
         correctedTreatment: null,
         extractedValue: seed.amount.value,
+        amount,
+        moneyParserVersion: MONEY_PARSER_VERSION,
+        requiresMoneyReanalysis: false,
+        previousParsedValue: null,
         correctedValue: null,
         finalValue: null,
         currency: 'COP',
@@ -486,7 +507,7 @@ export function extractCandidates(
                 : `Regla ${seed.rule.id} del adaptador ${selected.id}.`,
           ],
         },
-        warnings: selected.limitations.slice(),
+        warnings: [...selected.limitations, ...amount.warnings],
         status: selected === GENERIC_DOCUMENT_ADAPTER ? 'requires_review' : 'pending',
         possibleDuplicateIds: [],
         suggestedRequirementIds: [...(context.requirementIds ?? [])],
@@ -575,7 +596,8 @@ function monetaryMatches(line: string): MonetaryMatch[] {
   return [...line.matchAll(VALUE_PATTERN)].flatMap((match) => {
     const raw = match[0];
     const index = match.index ?? 0;
-    const value = parseColombianAmount(raw);
+    const amount = parseMoneyAmount(raw, { originalEvidence: line });
+    const value = amount.parsedValue;
     if (value === null || isOutlineNumber(line, raw, index)) return [];
     const following = line.slice(index + raw.length, index + raw.length + 2);
     const preceding = line.slice(Math.max(0, index - 1), index);
@@ -585,7 +607,7 @@ function monetaryMatches(line: string): MonetaryMatch[] {
     const formatted = /[.,]/.test(raw);
     const terminalZero = value === 0 && line.slice(index + raw.length).trim() === '';
     if (!explicitCurrency && !formatted && Math.abs(value) < 10_000 && !terminalZero) return [];
-    return [{ raw, value, index }];
+    return [{ raw, value, amount, index }];
   });
 }
 

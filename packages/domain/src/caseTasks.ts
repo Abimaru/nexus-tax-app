@@ -69,6 +69,33 @@ export const CaseTaskSchema = z.object({
   blocking: z.boolean(),
   status: CaseTaskStatusSchema,
   recommendedAction: z.string().min(1),
+  currentValue: z.number().nullable().optional(),
+  expectedSource: z.string().nullable().optional(),
+  destinationLabel: z.string().optional(),
+  resolutionOptions: z
+    .array(
+      z.object({
+        type: z.enum([
+          'confirm_proposal',
+          'correct_value',
+          'choose_source',
+          'replace_source',
+          'exclude_from_calculation',
+          'accept_exogenous_provisionally',
+          'use_document',
+          'register_manual_value',
+          'mark_not_applicable',
+          'confirm_zero',
+          'request_document',
+          'review_document',
+          'reject_suggestion',
+          'restore_automatic',
+        ]),
+        label: z.string(),
+        effect: z.string(),
+      }),
+    )
+    .optional(),
   ruleId: z.string().min(1),
   evidence: z.array(z.string()),
   createdAt: IsoTimestampSchema,
@@ -76,4 +103,4 @@ export const CaseTaskSchema = z.object({
 });
 export type CaseTask = z.infer<typeof CaseTaskSchema>;
 
-export const CASE_TASK_SCHEMA_VERSION = '2.3.0';
+export const CASE_TASK_SCHEMA_VERSION = '2.3.2';

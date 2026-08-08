@@ -115,7 +115,16 @@ describe('clasificación y adaptadores', () => {
       DEFAULT_PDF_LIMITS,
     );
     expect(result.candidates.map((item) => item.extractedValue)).toEqual([92_953.96]);
-    expect(result.candidates[0]).toMatchObject({ ruleId: 'gmf' });
+    expect(result.candidates[0]).toMatchObject({
+      ruleId: 'gmf',
+      moneyParserVersion: '2.0.0',
+      amount: {
+        rawText: '$92.953,96',
+        parsedValue: 92_953.96,
+        roundedTaxValue: 92_954,
+        detectedLocale: 'es_CO',
+      },
+    });
   });
 
   it('extrae variantes de fondo de empleados sin tomar numeración, año ni totales', () => {
