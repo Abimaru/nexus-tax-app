@@ -66,7 +66,7 @@ laboratorio documental al cierre final, sin datos reales ni servicios externos.
 - `pnpm test`: 422 pruebas unitarias verdes.
 - `pnpm build`: verde.
 - `pnpm test:e2e`: 4/4 Playwright verdes.
-- `pnpm check:encoding`: 342 archivos revisados, sin mojibake.
+- `pnpm check:encoding`: 343 archivos revisados, sin mojibake.
 - Capturas verificadas: `revision-final-1280.png` y
   `revision-final-390.png` en la salida local de Playwright.
 

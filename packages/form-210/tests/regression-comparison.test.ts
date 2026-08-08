@@ -1,15 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { compareForm210WithReference, type Form210BoxValue } from '../src';
 import {
-  compareForm210WithReference,
-  type Form210BoxValue,
-  type Form210ReferenceValue,
-} from '../src';
-
-const REFERENCE: Form210ReferenceValue[] = [
-  { boxNumber: 29, expectedValue: 379_888_164, label: 'Patrimonio bruto' },
-  { boxNumber: 37, expectedValue: 104_780_000, label: 'Total rentas de trabajo' },
-  { boxNumber: 40, expectedValue: 12_400_000, label: 'Deducciones imputables' },
-];
+  ANONYMIZED_DEPENDENTS_REFERENCE,
+  ANONYMIZED_FORM_210_REFERENCE,
+} from './fixtures/reference-form210';
 
 function box(
   number: number,
@@ -38,16 +32,17 @@ function box(
 }
 
 describe('comparación de regresión del Formulario 210', () => {
-  it('distingue coincidencia, redondeo, revisión y fallo sin completar valores', () => {
+  it('conserva el oráculo completo y distingue resultado sin forzar coincidencias', () => {
+    const reference = ANONYMIZED_FORM_210_REFERENCE.slice(0, 3);
     const result = compareForm210WithReference(
       {
         boxes: [
-          box(29, 379_888_164, 'confirmed'),
-          box(37, 104_780_001, 'calculated'),
-          box(40, 11_000_000, 'requires_review'),
+          box(29, 148_984_000, 'confirmed'),
+          box(30, 120_032_001, 'calculated'),
+          box(31, 20_000_000, 'requires_review'),
         ],
       },
-      REFERENCE,
+      reference,
     );
     expect(result.map((item) => item.status)).toEqual([
       'exact_match',
@@ -55,10 +50,12 @@ describe('comparación de regresión del Formulario 210', () => {
       'requires_review',
     ]);
     expect(
-      compareForm210WithReference({ boxes: [box(29, 1, 'confirmed')] }, REFERENCE)[1]?.status,
-    ).toBe('requires_review');
-    expect(
-      compareForm210WithReference({ boxes: [box(29, 100, 'confirmed')] }, REFERENCE)[0]?.status,
+      compareForm210WithReference({ boxes: [box(29, 100, 'confirmed')] }, reference)[0]?.status,
     ).toBe('failure');
+    expect(ANONYMIZED_FORM_210_REFERENCE).toHaveLength(34);
+    expect(ANONYMIZED_DEPENDENTS_REFERENCE).toEqual({
+      count: 1,
+      additionalDeductionCop: 3_586_000,
+    });
   });
 });
