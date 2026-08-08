@@ -424,6 +424,45 @@ export interface IndividualDeductionLimitComputation {
   ruleSourceIds: readonly string[];
 }
 
+/**
+ * Estado explicable de la evaluación del saldo a favor del año anterior.
+ *
+ * - `no_declared`: el analista no declaró saldo a favor previo.
+ * - `pending_confirmation`: hay un saldo declarado pero el analista no
+ *   confirmó su aplicabilidad (por ejemplo, aún no verificó la última
+ *   declaración presentada). El motor NO lo descuenta.
+ * - `blocked_by_pending_request`: el analista confirmó el saldo pero
+ *   declaró tener una solicitud de devolución o compensación pendiente
+ *   (art. 850 ET); no se puede volver a aplicar aquí.
+ * - `applied`: el saldo está confirmado y sin solicitudes pendientes; se
+ *   descuenta del saldo del año actual.
+ */
+export type PriorYearBalanceStatus =
+  | 'no_declared'
+  | 'pending_confirmation'
+  | 'blocked_by_pending_request'
+  | 'applied';
+
+/**
+ * Resultado explicable de evaluar el saldo a favor del año anterior. El
+ * motor no persiste el estado; recibe la declaración del analista y devuelve
+ * el estado y el importe aplicado. La confirmación humana es un requisito
+ * porque NexusTax no consulta la DIAN y no puede verificar la existencia
+ * del saldo por sí mismo.
+ */
+export interface PriorYearBalanceEvaluation {
+  taxYear: number;
+  declaredCop: number;
+  appliedCop: number;
+  status: PriorYearBalanceStatus;
+  reason: string;
+  ruleSourceId: string;
+  priorYearFilingDate: string | null;
+  evidence: string | null;
+  confirmedByAnalyst: boolean;
+  hasPendingCompensationOrRefundRequest: boolean;
+}
+
 export interface FilingCriterion {
   id: FilingCriterionId;
   label: string;
