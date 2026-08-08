@@ -22,6 +22,7 @@ import {
   detectDuplicatePatrimonyEntries,
   detectLiabilityWithoutAsset,
   detectMovementWithoutBalance,
+  evaluatePriorYearBalance,
 } from '@nexus-tax/aegis-rules';
 import type { IndividualDeductionLimitComputation } from '@nexus-tax/aegis-rules';
 import { FORM_210_RULESET_2025 } from './ruleset-2025';
@@ -369,6 +370,13 @@ export function computePreliminaryLiquidation(
   dependentsDeduction: Form210PreliminaryLiquidation['dependentsDeduction'] = null,
   electronicInvoicingDeduction: Form210PreliminaryLiquidation['electronicInvoicingDeduction'] = null,
   individualDeductionLimits: Form210PreliminaryLiquidation['individualDeductionLimits'] = [],
+  priorYearBalanceContext?: {
+    declaredCop: number;
+    confirmedByAnalyst: boolean;
+    hasPendingCompensationOrRefundRequest: boolean;
+    priorYearFilingDate?: string | null;
+    evidence?: string | null;
+  },
 ): Form210PreliminaryLiquidation {
   const get = (number: number): number | null => {
     const box = boxes.find((entry) => entry.number === number);
@@ -425,7 +433,6 @@ export function computePreliminaryLiquidation(
       : null;
 
   const priorYearAdvanceCop = Math.max(0, get(130) ?? 0);
-  const priorYearBalanceCop = Math.max(0, get(131) ?? 0);
   const withholdingsCop = Math.max(0, get(132) ?? 0);
 
   const totalTaxDueCop =
@@ -447,6 +454,22 @@ export function computePreliminaryLiquidation(
           withholdingsCop,
         })
       : null;
+
+  // Saldo a favor del año anterior (art. 850 ET). Se descuenta solo cuando
+  // el analista lo confirma y no tiene solicitud de devolución/compensación
+  // pendiente. Sin contexto, se ignora la casilla 131 en el descuento.
+  const priorYearBalance = priorYearBalanceContext
+    ? evaluatePriorYearBalance({
+        taxYear: 2025,
+        declaredCop: priorYearBalanceContext.declaredCop,
+        confirmedByAnalyst: priorYearBalanceContext.confirmedByAnalyst,
+        hasPendingCompensationOrRefundRequest:
+          priorYearBalanceContext.hasPendingCompensationOrRefundRequest,
+        priorYearFilingDate: priorYearBalanceContext.priorYearFilingDate ?? null,
+        evidence: priorYearBalanceContext.evidence ?? null,
+      })
+    : null;
+  const priorYearBalanceCop = priorYearBalance?.appliedCop ?? 0;
 
   const netBalanceCop =
     totalTaxDueCop +
@@ -502,6 +525,21 @@ export function computePreliminaryLiquidation(
       'Los dependientes declarados no producen deducción: la casilla 32 no tiene ingresos brutos de rentas de trabajo aún.',
     );
   }
+  if (priorYearBalance && priorYearBalance.status === 'pending_confirmation') {
+    warnings.push(
+      'El saldo a favor del año anterior está declarado pero no confirmado por el analista: no se descuenta hasta que se confirme (art. 850 ET).',
+    );
+  }
+  if (priorYearBalance && priorYearBalance.status === 'blocked_by_pending_request') {
+    warnings.push(
+      'El saldo a favor del año anterior tiene una solicitud de devolución o compensación pendiente; no puede volver a aplicarse aquí (art. 850 ET).',
+    );
+  }
+  if (!priorYearBalance && get(131) !== null && (get(131) ?? 0) > 0) {
+    warnings.push(
+      'La casilla 131 tiene un valor de saldo anterior pero no se aportó el contexto de confirmación humana; el motor no lo descuenta hasta que se confirme (art. 850 ET).',
+    );
+  }
 
   let status: Form210PreliminaryLiquidation['status'];
   if (!anyCedularSignal && occasionalGainsTaxableCop === 0 && totalTaxDueCop === 0) {
@@ -529,6 +567,7 @@ export function computePreliminaryLiquidation(
     dependentsDeduction,
     electronicInvoicingDeduction,
     individualDeductionLimits,
+    priorYearBalance,
     netBalanceCop,
     status,
     warnings,
@@ -807,6 +846,7 @@ export function buildForm210Draft(input: Form210BuildInput): Form210Draft {
     dependentsDeduction,
     electronicInvoicingDeduction,
     individualDeductionLimits,
+    input.priorYearBalance,
   );
   return {
     id: `form210:${input.caseId}:2025`,

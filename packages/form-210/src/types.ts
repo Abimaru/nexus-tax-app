@@ -11,6 +11,7 @@ import type {
   ElectronicInvoicingDeductionComputation,
   IndividualDeductionLimitComputation,
   OccasionalGainsTaxComputation,
+  PriorYearBalanceEvaluation,
   ProgressiveTaxComputation,
   TaxLimitComputation,
 } from '@nexus-tax/aegis-rules';
@@ -227,6 +228,15 @@ export interface Form210PreliminaryLiquidation {
   individualDeductionLimits: readonly IndividualDeductionLimitComputation[];
 
   /**
+   * Evaluación del saldo a favor del año anterior (art. 850 ET). `null`
+   * cuando el analista no aporta el contexto. El importe efectivamente
+   * descontado del saldo del año se lee de `applied.appliedCop` cuando
+   * `status === 'applied'`; en cualquier otro estado se descuenta 0 y
+   * se emite un warning.
+   */
+  priorYearBalance: PriorYearBalanceEvaluation | null;
+
+  /**
    * Saldo neto: positivo = a pagar; negativo = a favor. Fórmula:
    *   totalTaxDueCop + nextYearAdvance.netAdvanceCop
    *   − priorYearAdvanceCop − priorYearBalanceCop − withholdingsCop.
@@ -353,5 +363,18 @@ export interface Form210BuildInput {
     afcFvpAvcCop?: number;
     housingInterestCop?: number;
     prepaidMedicineCop?: number;
+  };
+  /**
+   * Contexto del saldo a favor del año anterior (art. 850 ET). Se descuenta
+   * solo cuando `confirmedByAnalyst && !hasPendingCompensationOrRefundRequest`.
+   * Sin este campo, la casilla 131 no participa del descuento del saldo del
+   * año actual y se conserva un warning explícito.
+   */
+  priorYearBalance?: {
+    declaredCop: number;
+    confirmedByAnalyst: boolean;
+    hasPendingCompensationOrRefundRequest: boolean;
+    priorYearFilingDate?: string | null;
+    evidence?: string | null;
   };
 }
