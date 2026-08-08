@@ -26,9 +26,9 @@ export function FilingStatesPanel({
             Estados separados
           </h2>
           <p className="mt-2 text-sm text-content-muted">
-            Cada etapa se mantiene independiente: obligación, borrador,
-            liquidación y presentación. NexusTax nunca presenta ante la DIAN;
-            el estado de "Presentación" está fuera de alcance por diseño.
+            Cada etapa se mantiene independiente: obligación, borrador, liquidación y presentación.
+            NexusTax nunca presenta ante la DIAN; el estado de “Presentación” está fuera de alcance
+            por diseño.
           </p>
         </div>
       </GlassPanel>
@@ -66,8 +66,7 @@ export function FilingStatesPanel({
                   <p className="mt-1 text-sm text-content">{stage.description}</p>
                   {isPresentation ? (
                     <p className="mt-2 text-xs text-content-subtle">
-                      Estado fijo <code>out_of_scope</code>. Es un contrato explícito
-                      del proyecto.
+                      Estado fijo <code>out_of_scope</code>. Es un contrato explícito del proyecto.
                     </p>
                   ) : null}
                 </div>
