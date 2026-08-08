@@ -194,6 +194,18 @@ export const OFFICIAL_SOURCES_2025: readonly OfficialSourceReference[] = [
       'Deducción de intereses de crédito para vivienda; tope 100 UVT mensuales / 1.200 UVT anuales',
     relatedBoxNumbers: [38],
   },
+  {
+    id: 'et-art-850',
+    authority: 'Estatuto Tributario',
+    title:
+      'Estatuto Tributario, artículo 850 — Devolución de saldos a favor',
+    url: 'https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=6533#850',
+    verifiedAt: VERIFIED_AT,
+    taxYear: null,
+    scope:
+      'Saldo a favor del año anterior: aplicabilidad sujeta a no haber solicitado devolución ni compensación',
+    relatedBoxNumbers: [131],
+  },
 ] as const;
 
 /**
