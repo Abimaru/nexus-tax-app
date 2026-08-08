@@ -31,6 +31,11 @@ motivo, evidencia e historial reversible; además genera un **borrador de trabaj
 del Formulario 210 AG 2025** con casillas, fórmulas seguras, procedencia y
 validaciones. No calcula el impuesto ni presenta información ante la DIAN.
 
+Sprint 2.3.1 añade una **liquidación privada preliminar orientativa** con reglas
+tributarias puras y versionadas, estados separados, simulación previa a los
+ajustes, tareas por casilla y un bundle exportable con fuentes. No firma ni
+presenta la declaración y mantiene visibles las reglas pendientes de validación.
+
 Un PDF escaneado o con texto insuficiente ya no se rechaza: se diagnostica y el
 analista decide si ejecuta OCR local (Tesseract.js vendorizado, sin red durante el reconocimiento) sobre
 una página, varias o ninguna. El OCR nunca se ejecuta automáticamente ni
@@ -121,6 +126,11 @@ Detalles en `docs/SECURITY_PRIVACY.md`.
 - [Ruleset Formulario 210 AG 2025](docs/FORM_210_RULESET_2025.md)
 - [Trazabilidad del Formulario 210](docs/FORM_210_TRACEABILITY.md)
 - [Validación del Formulario 210](docs/FORM_210_VALIDATION.md)
+- [Liquidación preliminar del Formulario 210](docs/FORM_210_LIQUIDATION.md)
+- [Matriz de validación tributaria](docs/TAX_RULE_VALIDATION_MATRIX.md)
+- [Estados separados del expediente](docs/FILING_STATES.md)
+- [Bundle exportable del Formulario 210](docs/FORM_210_EXPORT_BUNDLE.md)
+- [Plan y cierre del Sprint 2.3.1](docs/PLAN_SPRINT_2.3.1.md)
 - [Quality gate visual](docs/UX_QUALITY_GATE.md)
 - [Guía de microcopy](docs/MICROCOPY_GUIDE.md)
 - [Validación funcional del Sprint 2](docs/SPRINT_2_VALIDATION.md)
@@ -159,3 +169,11 @@ Decisiones tributarias inmutables y reversibles, priorización bloqueante, polí
 conciliación con redondeos de $1/$5, separación de ganancias ocasionales, tratamiento contextual de
 aportes laborales y hoja de trabajo local del Formulario 210 AG 2025. El manifiesto 2.3.0 conserva
 decisiones y borrador sin incluir archivos binarios.
+
+## Sprint 2.3.1 — validación tributaria y liquidación preliminar
+
+Las fases A–X consolidan fuentes oficiales y UVT, incorporan once motores puros para AG 2025,
+validaciones cruzadas, impacto de decisiones, simulación controlada y liquidación preliminar. La
+interfaz añade las vistas Liquidación y Estados, y exporta un bundle trazable con ruleset y fuentes.
+El resultado sigue siendo una hoja de trabajo orientativa sometida a revisión humana; presentación,
+firma, sanciones automáticas y conexión con la DIAN permanecen fuera de alcance.

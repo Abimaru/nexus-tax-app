@@ -1,6 +1,51 @@
-# Handoff del proyecto — NexusTax (Sprint 2.3)
+# Handoff del proyecto — NexusTax (Sprint 2.3.1)
 
-_Última actualización: 2026-08-07._
+_Última actualización: 2026-08-08._
+
+## Cierre del Sprint 2.3.1 — validación tributaria y liquidación preliminar
+
+Las 24 fases técnicas A–X quedaron implementadas y verificadas. El sprint amplía el borrador
+trazable del Formulario 210 AG 2025 sin convertirlo en una declaración definitiva: conserva
+revisión humana, ejecución local, fuentes versionadas y estados separados para obligación,
+borrador, liquidación y presentación. Este último siempre permanece fuera de alcance.
+
+### Resultado consolidado
+
+- Catálogo único de fuentes oficiales y UVT 2025 centralizada.
+- Once motores puros: tarifa progresiva, límite cedular, ganancias ocasionales, anticipo,
+  dependientes, factura electrónica, deducciones individuales, validaciones patrimoniales, saldo
+  anterior, retenciones y validaciones cruzadas.
+- Liquidación privada preliminar explicable, impacto de decisiones y simulación
+  previsualizar→confirmar sin mutar el dato original.
+- Bundle exportable con ruleset, fuentes y borrador; tareas derivadas por casilla pendiente.
+- Vistas Borrador F-210 extendido, Liquidación preliminar y Estados, con catálogos humanos y sin
+  exponer enums internos.
+- Veintidós documentos nuevos del sprint en `docs/`; el plan conserva el detalle por fase.
+
+### Validación final reproducible
+
+| Paso                  | Resultado                                                                          |
+| --------------------- | ---------------------------------------------------------------------------------- |
+| `pnpm check:encoding` | OK; 332 archivos revisados, 1 fixture excluida                                     |
+| `pnpm typecheck`      | OK; 8 de 9 proyectos                                                               |
+| `pnpm lint`           | OK; 0 errores y 0 advertencias                                                     |
+| `pnpm test`           | OK; 402/402 (15 dominio, 129 Aegis, 47 parser, 66 documental, 64 Form 210, 81 web) |
+| `pnpm build`          | OK; compilación Next.js y 5 páginas generadas                                      |
+| `pnpm test:e2e`       | OK; 4/4 Chromium                                                                   |
+
+El gate visual revisó capturas sintéticas en 1440 px, 1280 px y 390 px, temas oscuro/claro y
+ausencia de desbordamiento horizontal. Durante el cierre se corrigieron dos comillas JSX de la
+vista Estados que impedían pasar `react/no-unescaped-entities`.
+
+### Decisiones y pendientes posteriores
+
+- Se conserva el historial por fase; no se hace squash porque aporta trazabilidad normativa.
+- Los estados `implemented_unverified` continúan visibles y no se promueven a `verified` sin una
+  revisión normativa independiente.
+- Siguen fuera de alcance firma, presentación DIAN/MUISCA, sanciones automáticas, backend e IA
+  externa.
+- Próximo paso seguro: revisión tributaria independiente de la matriz y ampliación del corpus
+  sintético antes de modelar otro año gravable.
 
 ## Sprint 2.3.1 — Fase N (2026-08-07)
 

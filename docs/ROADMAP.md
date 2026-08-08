@@ -69,8 +69,8 @@ semánticos, filtros y detalle de Registros reorganizados, accesibilidad y
 
 ## Más adelante (no comprometido)
 
-- Propuestas de valores para el **Formulario 210** con explicación y confianza
-  (nunca liquidación automática sin revisión humana).
+- Ampliar el **Formulario 210** a otros años gravables solo después de una revisión normativa
+  independiente de la matriz AG 2025.
 - Enriquecimiento opcional mediante el contrato abstracto, sin habilitar envío
   de documentos ni texto completo por defecto.
 - Sincronización opcional cifrada entre dispositivos del usuario.
@@ -125,3 +125,15 @@ validaciones, ajustes y export JSON; Dexie v11 y manifiesto 2.3.0.
 Siguiente evolución segura: ampliar el ruleset solo desde fuentes oficiales versionadas, añadir
 límites completos de rentas exentas/deducciones y validar más cédulas con corpus sintético. Siguen
 fuera de alcance la liquidación definitiva, firma, presentación, autenticación DIAN y backend.
+
+## Sprint 2.3.1 — validación tributaria y liquidación preliminar
+
+Implementado: catálogo versionado de fuentes, UVT única, matriz de validación, once motores puros
+AG 2025, liquidación privada preliminar, impacto de decisiones, simulación controlada, tareas por
+casilla, validaciones cruzadas y bundle exportable. La web incorpora las vistas Liquidación y
+Estados; Playwright cubre el flujo, temas y responsive.
+
+Siguiente evolución segura: revisión normativa independiente de las reglas todavía marcadas
+`implemented_unverified`, ampliación del corpus sintético y definición versionada de un año
+gravable adicional. Firma, presentación DIAN/MUISCA, sanciones automáticas, backend obligatorio e
+IA externa siguen fuera de alcance.

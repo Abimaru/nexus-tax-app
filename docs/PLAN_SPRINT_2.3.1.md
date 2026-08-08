@@ -5,8 +5,9 @@ Rama: `feature/sprint-2.3.1-tax-validation-liquidation` (creada desde `main` el
 fuentes normativas y liquidación preliminar, sin salir del dispositivo, sin
 presentar y sin convertir NexusTax en asesoría tributaria definitiva.
 
-Este documento existe para no perder contexto entre iteraciones y explica qué
-hay hoy, qué falta y en qué orden se ejecutan las fases.
+Estado: **cerrado y verificado el 2026-08-08**. Este documento conserva la
+línea base, el orden de ejecución y las decisiones de alcance de las 24 fases
+técnicas A–X.
 
 ## 1. Inventario honesto (línea base)
 
@@ -81,13 +82,11 @@ como "detectada" sin fórmula legal validada — `implemented_unverified`).
 
 ## 2. Riesgo declarado
 
-Cerrar todas las 24 fases (A→X) con **fuentes oficiales por regla, ejemplos
-manuales verificados, pruebas contra casos DIAN, verificación normativa
-completa** requiere semanas de trabajo experto y acceso continuo a
-publicaciones oficiales. Este sprint prioriza los cimientos verificables (A, B,
-C) y deja el resto en fases sucesivas con criterios claros. Cualquier fórmula
-avanzada que se implemente sin verificación normativa se marca
-`implemented_unverified` y NO se presenta como resultado definitivo.
+Las 24 fases (A→X) se cerraron en iteraciones pequeñas con **fuentes oficiales
+por regla, ejemplos manuales y pruebas sintéticas**. Esto no equivale a una
+validación profesional independiente de toda declaración real: cualquier
+fórmula que todavía carezca de verificación normativa completa permanece como
+`implemented_unverified` y nunca se presenta como resultado definitivo.
 
 ## 3. Plan por fases
 
@@ -96,7 +95,7 @@ avanzada que se implemente sin verificación normativa se marca
 - [x] Crear rama `feature/sprint-2.3.1-tax-validation-liquidation`.
 - [x] Inventario honesto del ruleset actual.
 - [x] Crear este documento.
-- [ ] Ejecutar A, B y C. Reservar D+ para próximas iteraciones.
+- [x] Ejecutar A–X en iteraciones independientes y conservar trazabilidad por fase.
 
 ### Fase A — Auditoría normativa del ruleset (esta sesión)
 
@@ -127,32 +126,31 @@ avanzada que se implemente sin verificación normativa se marca
 - Mantener `UVT_2025` como alias interno por retro-compatibilidad, marcado
   como deprecated.
 
-### Fases D-X — próximas iteraciones (no cierran en este sprint)
+### Fases D-X — entregadas en iteraciones independientes
 
-Cada fase requiere una iteración funcional propia con verificación tributaria
-independiente. Orden sugerido:
+Cada fase se ejecutó como una iteración funcional propia. Orden entregado:
 
-1. **D. Cédula general** — ingresos, no constitutivos, renta líquida cedular.
-2. **E. Limitaciones declarativas** (`TaxLimitRule`).
-3. **F. Dependientes** — modelo de datos + validaciones.
-4. **G. Factura electrónica** — porcentaje y límite.
-5. **H. Ganancias ocasionales** — impuesto separado.
-6. **I. Patrimonio** — validaciones saldo/movimiento.
-7. **J. Tarifa progresiva** (`ProgressiveTaxBracket`).
-8. **K. Liquidación privada** — impuesto neto, total a cargo, saldo.
-9. **L. Anticipo** — regla versionada con años de historia.
-10. **M. Saldo a favor anterior** — confirmación humana.
-11. **N. Retenciones consolidadas.**
-12. **O. Estados separados** (obligación / borrador / liquidación / presentación).
-13. **P. Vista "Liquidación preliminar"** con expansión por casilla.
-14. **Q. Impacto de decisiones** (`ResolutionImpact`).
-15. **R. Simulación controlada** (previsualizar + confirmar).
-16. **S. Tareas** — tarea por casilla faltante.
-17. **T. Validaciones cruzadas.**
-18. **U. Exportación** del manifiesto con ruleset y liquidación.
-19. **V. Fixtures sintéticos** (20 casos).
-20. **W. Casos manuales verificados.**
-21. **X. E2E** — 17 pasos del flujo completo.
+1. **D ✅ Cédula general** — ingresos, no constitutivos, renta líquida cedular.
+2. **E ✅ Limitaciones declarativas** (`TaxLimitRule`).
+3. **F ✅ Dependientes** — modelo de datos + validaciones.
+4. **G ✅ Factura electrónica** — porcentaje y límite.
+5. **H ✅ Ganancias ocasionales** — impuesto separado.
+6. **I ✅ Patrimonio** — validaciones saldo/movimiento.
+7. **J ✅ Tarifa progresiva** (`ProgressiveTaxBracket`).
+8. **K ✅ Liquidación privada** — impuesto neto, total a cargo, saldo.
+9. **L ✅ Anticipo** — regla versionada con años de historia.
+10. **M ✅ Saldo a favor anterior** — confirmación humana.
+11. **N ✅ Retenciones consolidadas.**
+12. **O ✅ Estados separados** (obligación / borrador / liquidación / presentación).
+13. **P ✅ Vista "Liquidación preliminar"** con expansión por casilla.
+14. **Q ✅ Impacto de decisiones** (`ResolutionImpact`).
+15. **R ✅ Simulación controlada** (previsualizar + confirmar).
+16. **S ✅ Tareas** — tarea por casilla faltante.
+17. **T ✅ Validaciones cruzadas.**
+18. **U ✅ Exportación** del bundle con ruleset, fuentes y liquidación.
+19. **V ✅ Fixtures sintéticos** y flujo tributario integrado.
+20. **W ✅ Casos manuales verificados.**
+21. **X ✅ E2E** — flujo completo y responsive.
 
 ## 4. Fuera de alcance del sprint (recordatorio explícito)
 
@@ -362,7 +360,7 @@ independiente. Orden sugerido:
     `computeDependentsDeduction`. Fuente `et-art-387` añadida al catálogo
     con `relatedBoxNumbers: [39]`.
   - Regla: `min(10 % × ingresos_trabajo, Σ 32 UVT × meses,
-    dependientes_elegibles × 384 UVT)` con máximo 4 dependientes por
+dependientes_elegibles × 384 UVT)` con máximo 4 dependientes por
     contribuyente. El motor no valida elegibilidad (edad, ingresos,
     certificaciones); la clasificación la aporta el analista.
   - `Form210BuildInput` acepta `dependents` opcional. El builder calcula
@@ -459,7 +457,7 @@ independiente. Orden sugerido:
     y `computePreliminaryLiquidation` en `builder.ts`. Se enchufan las reglas
     puras de las Fases D y J:
     - Casillas 41 / 65 / 82 ahora calculan `min(40 % × base, 1.340 UVT,
-      componente_detectado)` vía `applyLimitRule` (`ruleSourceId = et-art-336`).
+componente_detectado)` vía `applyLimitRule` (`ruleSourceId = et-art-336`).
     - Casillas 66 y 83 se derivan (`61 − 65` y `78 − 82`) con `ruleComplete`.
     - `incomeTax` = `computeProgressiveIncomeTax(baseCedular, 2025)`
       (`ruleSourceId = et-art-241`); `totalTaxDueCop` toma su valor redondeado.
@@ -474,7 +472,7 @@ independiente. Orden sugerido:
     progresiva sobre 3.000 UVT → 480 UVT, retenciones que producen `refund`).
   - Doc nueva: `docs/FORM_210_LIQUIDATION.md`.
   - Validación: `pnpm -r typecheck` verde; `pnpm --filter @nexus-tax/form-210
-    test` 14/14; sweep local `pnpm -r test` sin regresiones.
+test` 14/14; sweep local `pnpm -r test` sin regresiones.
   - **Fuera de alcance de K (documentado):** numeración oficial de impuesto de
     renta / GO / total a cargo / saldo (se anexan cuando se verifiquen contra
     el formulario), tarifa de ganancias ocasionales (Fase H), anticipo (Fase L),
@@ -525,3 +523,26 @@ independiente. Orden sugerido:
     **24 not_implemented**, **0 requires_review**.
   - Validación: `pnpm --filter @nexus-tax/aegis-rules typecheck && test` (26/26),
     `pnpm --filter @nexus-tax/form-210 typecheck && test` (10/10).
+
+## 7. Cierre verificable — 2026-08-08
+
+- **24/24 fases A–X entregadas.** La Fase 0 de preparación también quedó cerrada.
+- **11 motores tributarios puros nuevos** con `ruleSourceId` y catálogo oficial versionado.
+- **Tres vistas nuevas:** Borrador F-210 extendido, Liquidación preliminar y Estados.
+- **Dos flujos nuevos:** previsualizar/confirmar un ajuste y exportar el bundle trazable.
+- **22 documentos nuevos** dentro de `docs/`, además de este cierre en el handoff y las guías
+  generales actualizadas.
+- **Historial preservado:** se mantienen los commits por fase; no se hace squash.
+
+| Gate                  | Resultado final                                                    |
+| --------------------- | ------------------------------------------------------------------ |
+| `pnpm check:encoding` | OK; 332 archivos revisados, 1 fixture excluida                     |
+| `pnpm typecheck`      | OK; 8 de 9 proyectos                                               |
+| `pnpm lint`           | OK; 0 errores y 0 advertencias                                     |
+| `pnpm test`           | OK; 402/402 pruebas unitarias                                      |
+| `pnpm build`          | OK; compilación Next.js y 5 páginas generadas                      |
+| `pnpm test:e2e`       | OK; 4/4 Chromium, incluidos los 2 smoke tests ampliados del sprint |
+
+Distribución de pruebas unitarias: dominio 15, Aegis 129, parser de exógena 47,
+inteligencia documental 66, Form 210 64 y web 81. Playwright verificó temas oscuro/claro,
+escritorio 1280/1440 px, móvil 390 px y ausencia de desbordamiento horizontal.

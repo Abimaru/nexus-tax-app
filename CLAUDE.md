@@ -76,7 +76,8 @@ reglas: **Aegis Engine** (`packages/aegis-rules`).
 - **Centro de resolución**: consolida tareas bloqueantes/no bloqueantes y registra
   decisiones inmutables, motivadas, evidenciadas y reversibles.
 - **Borrador Formulario 210 AG 2025**: `packages/form-210` compone casillas,
-  procedencia, fórmulas seguras y validaciones sin liquidar impuesto ni presentar.
+  procedencia, fórmulas seguras, validaciones y una liquidación privada preliminar orientativa con
+  estados separados, simulación y bundle trazable. No firma ni presenta ante la DIAN.
 
 ## Límites de arquitectura (no cruzar)
 
