@@ -172,6 +172,40 @@ independiente. Orden sugerido:
 
 ## 6. Estado
 
+- **2026-08-07 22:20** — Fase M entregada. Saldo a favor del año anterior
+  (art. 850 ET) con confirmación humana obligatoria.
+  - **M ✅** Nuevos tipos `PriorYearBalanceStatus` y
+    `PriorYearBalanceEvaluation` en aegis-rules; módulo puro
+    `prior-year-balance.ts` con `evaluatePriorYearBalance`. Cuatro estados
+    posibles: `no_declared`, `pending_confirmation`,
+    `blocked_by_pending_request`, `applied`.
+  - Fuente `et-art-850` añadida al catálogo `OFFICIAL_SOURCES_2025` con
+    `relatedBoxNumbers: [131]`.
+  - `Form210BuildInput.priorYearBalance` opcional
+    (`declaredCop`, `confirmedByAnalyst`,
+    `hasPendingCompensationOrRefundRequest`, `priorYearFilingDate`,
+    `evidence`). El builder consume el motor: `priorYearBalanceCop` deja
+    de leer directamente la casilla 131 y pasa a usar `appliedCop`. El
+    resultado completo se expone en
+    `preliminaryLiquidation.priorYearBalance`.
+  - Warnings automáticos por `pending_confirmation`,
+    `blocked_by_pending_request` y por casilla 131 con valor sin contexto
+    aportado.
+  - Tests: 6 en `packages/aegis-rules/tests/prior-year-balance.test.ts`
+    (los cuatro estados, normalización de negativos, año no modelado) +
+    4 nuevos en `preliminary-liquidation.test.ts` (aplicado con
+    confirmación, `pending_confirmation`, `blocked_by_pending_request`,
+    casilla 131 con valor pero sin contexto).
+  - Doc nueva: `docs/PRIOR_YEAR_BALANCE_2025.md`;
+    `FORM_210_LIQUIDATION.md` actualizado con
+    `priorYearBalance.ruleSourceId` en la sección de trazabilidad.
+  - Validación: `pnpm -r typecheck` verde; sweep `pnpm -r test` con
+    352 tests OK (aegis 108/108 con 6 nuevos, form-210 36/36 con 4
+    nuevos, resto sin regresiones).
+  - **Fuera de alcance de M (documentado):** verificación DIAN de la
+    existencia del saldo, rastreo multi-año automático del uso previo,
+    numeración oficial de la casilla del saldo del año actual.
+
 - **2026-08-07 16:05** — Fase E entregada. Limitaciones declarativas por
   concepto (AFC/AVC/FVP, intereses de vivienda, medicina prepagada).
   - **E ✅** Nuevos tipos `IndividualDeductionLimitRule` e

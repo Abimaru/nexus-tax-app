@@ -2,6 +2,24 @@
 
 _Última actualización: 2026-08-07._
 
+## Sprint 2.3.1 — Fase M (2026-08-07)
+
+Se agrega el motor puro **saldo a favor del año anterior** (art. 850 ET)
+con confirmación humana obligatoria. Cuatro estados:
+`no_declared`, `pending_confirmation`, `blocked_by_pending_request`,
+`applied`. Solo el estado `applied` produce descuento; los demás publican
+`appliedCop = 0` y emiten warnings específicos.
+
+`Form210BuildInput.priorYearBalance` es opcional. Sin él, el motor ignora
+la casilla 131 y emite un warning si tiene valor. Con él,
+`preliminaryLiquidation.priorYearBalance` conserva la evaluación completa
+(estado, razón legible, fecha de la declaración anterior, evidencia).
+
+Documentación: [docs/PRIOR_YEAR_BALANCE_2025.md](PRIOR_YEAR_BALANCE_2025.md);
+[docs/FORM_210_LIQUIDATION.md](FORM_210_LIQUIDATION.md) actualizado.
+Verificación: `pnpm -r typecheck` verde; `pnpm -r test` = 352 tests OK
+(aegis 108, form-210 36, resto sin regresiones).
+
 ## Sprint 2.3.1 — Fase E (2026-08-07)
 
 Se agregan **límites individuales declarativos** por concepto: AFC/AVC/FVP
