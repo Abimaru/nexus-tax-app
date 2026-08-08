@@ -206,6 +206,18 @@ export const OFFICIAL_SOURCES_2025: readonly OfficialSourceReference[] = [
       'Saldo a favor del año anterior: aplicabilidad sujeta a no haber solicitado devolución ni compensación',
     relatedBoxNumbers: [131],
   },
+  {
+    id: 'et-art-373',
+    authority: 'Estatuto Tributario',
+    title:
+      'Estatuto Tributario, artículo 373 — Los valores retenidos se imputan al impuesto',
+    url: 'https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=6533#373',
+    verifiedAt: VERIFIED_AT,
+    taxYear: null,
+    scope:
+      'Retenciones en la fuente descontables como abono al impuesto sobre la renta',
+    relatedBoxNumbers: [132],
+  },
 ] as const;
 
 /**
