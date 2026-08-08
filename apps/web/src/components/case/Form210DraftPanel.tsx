@@ -6,14 +6,17 @@ import type { TaxResolutionDecision } from '@nexus-tax/domain';
 import {
   FORM_210_RULESET_2025,
   buildForm210ExportBundle,
+  computeResolutionImpact,
   serializeForm210ExportBundle,
   type Form210BoxStatus,
   type Form210Draft,
   type Form210Section,
+  type ResolutionImpact,
 } from '@nexus-tax/form-210';
 import { Badge, Button, EmptyState, GlassPanel, formatCurrencyCOP } from '@nexus-tax/ui';
 import { downloadTextFile } from '@/lib/download';
 import {
+  previewForm210Adjustment,
   rebuildForm210Draft,
   revertTaxResolutionDecision,
   saveTaxResolutionDecision,
@@ -57,6 +60,8 @@ export function Form210DraftPanel({
   const [value, setValue] = useState('');
   const [reason, setReason] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [previewImpact, setPreviewImpact] = useState<ResolutionImpact | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
   if (!draft)
     return (
       <EmptyState
@@ -68,31 +73,95 @@ export function Form210DraftPanel({
     );
   const currentDraft = draft;
   const sections = [...new Set(draft.boxes.map((box) => box.section))];
-  async function adjust(number: number) {
+  function resetEditor() {
+    setEditing(null);
+    setValue('');
+    setReason('');
+    setPreviewImpact(null);
+    setError(null);
+  }
+  function validateInput(number: number): { parsed: number; box: (typeof currentDraft.boxes)[number] } | null {
     const parsed = Number(value.replace(/[^0-9.-]/g, ''));
     if (!Number.isFinite(parsed) || parsed < 0) {
       setError('Ingresa un valor numérico igual o mayor que cero.');
-      return;
+      return null;
     }
-    const box = currentDraft.boxes.find((item) => item.number === number)!;
+    if (!reason.trim()) {
+      setError('Explica el motivo del ajuste.');
+      return null;
+    }
+    const box = currentDraft.boxes.find((item) => item.number === number);
+    if (!box) {
+      setError('Casilla no encontrada.');
+      return null;
+    }
+    return { parsed, box };
+  }
+  async function previewAdjust(number: number) {
+    const valid = validateInput(number);
+    if (!valid) return;
+    setError(null);
+    setPreviewLoading(true);
+    try {
+      // Decisión tentativa con el mismo shape que persistiría
+      // `saveTaxResolutionDecision`. `id` y `decidedAt` no importan para
+      // el impacto porque el motor solo compara los campos numéricos.
+      const tentative: TaxResolutionDecision = {
+        id: `preview-${number}`,
+        caseId,
+        type: 'adjust_form_box',
+        objectType: 'form_box',
+        objectId: String(number),
+        previousState: valid.box.status,
+        finalState: 'confirmed',
+        selectedAlternative: 'Ajustar casilla con fuente manual',
+        originalValue: valid.box.confirmedValue ?? valid.box.suggestedValue,
+        finalValue: valid.parsed,
+        originalCategory: null,
+        finalCategory: null,
+        proposedBox: number,
+        reason: reason.trim(),
+        note: '',
+        evidence: [{ kind: 'manual_note', referenceId: null, description: reason.trim() }],
+        localAuthor: 'Analista local (preview)',
+        decidedAt: new Date().toISOString(),
+        ruleVersion: 'nexustax.resolution.2025.v1',
+        reversible: true,
+        replacesDecisionId: null,
+      };
+      const tentativeDraft = await previewForm210Adjustment(caseId, tentative);
+      if (!tentativeDraft) {
+        setError('No se pudo construir el borrador tentativo.');
+        return;
+      }
+      setPreviewImpact(computeResolutionImpact(currentDraft, tentativeDraft));
+    } catch (caught) {
+      setError(
+        caught instanceof Error ? caught.message : 'No se pudo previsualizar el impacto.',
+      );
+    } finally {
+      setPreviewLoading(false);
+    }
+  }
+  async function confirmAdjust(number: number) {
+    const valid = validateInput(number);
+    if (!valid) return;
     setError(null);
     try {
       await saveTaxResolutionDecision(caseId, {
         type: 'adjust_form_box',
         objectType: 'form_box',
         objectId: String(number),
-        previousState: box.status,
+        previousState: valid.box.status,
         finalState: 'confirmed',
         selectedAlternative: 'Ajustar casilla con fuente manual',
-        originalValue: box.confirmedValue ?? box.suggestedValue,
-        finalValue: parsed,
+        originalValue: valid.box.confirmedValue ?? valid.box.suggestedValue,
+        finalValue: valid.parsed,
         proposedBox: number,
-        reason,
-        evidence: [{ kind: 'manual_note', referenceId: null, description: reason }],
+        reason: reason.trim(),
+        evidence: [{ kind: 'manual_note', referenceId: null, description: reason.trim() }],
       });
-      setEditing(null);
-      setValue('');
-      setReason('');
+      resetEditor();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'No se pudo guardar el ajuste.');
     }
@@ -252,7 +321,10 @@ export function Form210DraftPanel({
                           <input
                             inputMode="decimal"
                             value={value}
-                            onChange={(event) => setValue(event.target.value)}
+                            onChange={(event) => {
+                              setValue(event.target.value);
+                              setPreviewImpact(null);
+                            }}
                             className="mt-1 w-full rounded-lg border border-overlay/12 bg-surface-raised px-3 py-2 text-sm text-content-strong"
                           />
                         </label>
@@ -260,13 +332,100 @@ export function Form210DraftPanel({
                           Motivo obligatorio
                           <input
                             value={reason}
-                            onChange={(event) => setReason(event.target.value)}
+                            onChange={(event) => {
+                              setReason(event.target.value);
+                              setPreviewImpact(null);
+                            }}
                             className="mt-1 w-full rounded-lg border border-overlay/12 bg-surface-raised px-3 py-2 text-sm text-content-strong"
                           />
                         </label>
-                        <div className="flex gap-2 sm:col-span-2">
-                          <Button onClick={() => void adjust(box.number)}>Confirmar ajuste</Button>
-                          <Button variant="ghost" onClick={() => setEditing(null)}>
+                        {previewImpact ? (
+                          <div className="sm:col-span-2 rounded-lg border border-overlay/12 bg-surface-raised/60 p-3 text-sm">
+                            <p className="font-medium text-content-strong">
+                              Impacto en la liquidación preliminar
+                            </p>
+                            <p className="mt-1 text-content-muted">{previewImpact.summary}</p>
+                            <dl className="mt-3 grid grid-cols-2 gap-2 text-xs text-content-muted">
+                              <div>
+                                <dt>Saldo neto antes</dt>
+                                <dd className="text-content">
+                                  {formatCurrencyCOP(previewImpact.before.netBalanceCop)}
+                                </dd>
+                              </div>
+                              <div>
+                                <dt>Saldo neto después</dt>
+                                <dd className="text-content">
+                                  {formatCurrencyCOP(previewImpact.after.netBalanceCop)}
+                                </dd>
+                              </div>
+                            </dl>
+                            {previewImpact.changedBoxes.length ? (
+                              <details className="mt-3 text-xs">
+                                <summary className="cursor-pointer text-tone-cyan">
+                                  {previewImpact.changedBoxes.length} casilla(s) afectada(s)
+                                </summary>
+                                <ul className="mt-2 space-y-1">
+                                  {previewImpact.changedBoxes.map((change) => (
+                                    <li key={change.boxNumber} className="text-content-muted">
+                                      <span className="font-medium text-content">
+                                        {change.boxNumber} · {change.name}
+                                      </span>
+                                      : {change.beforeCop === null ? '—' : formatCurrencyCOP(change.beforeCop)}{' '}
+                                      →{' '}
+                                      {change.afterCop === null ? '—' : formatCurrencyCOP(change.afterCop)}{' '}
+                                      <span
+                                        className={
+                                          change.deltaCop > 0
+                                            ? 'text-tone-amber'
+                                            : change.deltaCop < 0
+                                              ? 'text-tone-emerald'
+                                              : ''
+                                        }
+                                      >
+                                        ({change.deltaCop >= 0 ? '+' : ''}
+                                        {formatCurrencyCOP(change.deltaCop)})
+                                      </span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </details>
+                            ) : null}
+                            {previewImpact.newWarnings.length ? (
+                              <div className="mt-3 text-xs text-tone-amber">
+                                {previewImpact.newWarnings.length} advertencia(s) nueva(s):
+                                <ul className="mt-1 list-disc pl-4">
+                                  {previewImpact.newWarnings.map((warning, index) => (
+                                    <li key={index}>{warning}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            ) : null}
+                            {previewImpact.resolvedWarnings.length ? (
+                              <div className="mt-2 text-xs text-tone-emerald">
+                                {previewImpact.resolvedWarnings.length} advertencia(s) resuelta(s).
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : null}
+                        <div className="flex flex-wrap gap-2 sm:col-span-2">
+                          {previewImpact ? (
+                            <>
+                              <Button onClick={() => void confirmAdjust(box.number)}>
+                                Confirmar ajuste
+                              </Button>
+                              <Button variant="ghost" onClick={() => setPreviewImpact(null)}>
+                                Revisar de nuevo
+                              </Button>
+                            </>
+                          ) : (
+                            <Button
+                              onClick={() => void previewAdjust(box.number)}
+                              disabled={previewLoading}
+                            >
+                              {previewLoading ? 'Calculando…' : 'Previsualizar impacto'}
+                            </Button>
+                          )}
+                          <Button variant="ghost" onClick={resetEditor}>
                             Cancelar
                           </Button>
                         </div>
@@ -278,6 +437,7 @@ export function Form210DraftPanel({
                           onClick={() => {
                             setEditing(box.number);
                             setValue(String(shown ?? ''));
+                            setPreviewImpact(null);
                           }}
                         >
                           Crear ajuste trazable
