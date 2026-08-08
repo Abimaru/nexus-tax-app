@@ -38,3 +38,4 @@ export * from './electronic-invoicing';
 export * from './individual-deductions';
 export * from './prior-year-balance';
 export * from './withholdings';
+export * from './cross-validations';

@@ -533,6 +533,35 @@ export interface WithholdingConsolidation {
   ruleSourceId: string;
 }
 
+/**
+ * Códigos de las validaciones cruzadas del F-210. Sirven para que el
+ * consumidor mapee cada resultado a su propio catálogo de findings.
+ */
+export type CrossValidationCode =
+  | 'withholdings_exceed_income_tax'
+  | 'patrimony_income_disproportion'
+  | 'cedular_sum_mismatch';
+
+/** Resultado individual de una validación cruzada. */
+export interface CrossValidationCheckResult {
+  code: CrossValidationCode;
+  triggered: boolean;
+  ratio?: number;
+  differenceCop?: number;
+  thresholdRatio?: number;
+  thresholdCop?: number;
+  ruleSourceId?: string;
+  message: string;
+}
+
+/** Conjunto de validaciones cruzadas evaluadas de una sola vez. */
+export interface CrossValidationEvaluation {
+  taxYear: number;
+  withholdingsExceedIncomeTax: CrossValidationCheckResult;
+  patrimonyIncomeDisproportion: CrossValidationCheckResult;
+  cedularSumMismatch: CrossValidationCheckResult;
+}
+
 export interface FilingCriterion {
   id: FilingCriterionId;
   label: string;
