@@ -23,7 +23,7 @@ import type {
   ExtractionFeedback,
   TaxResolutionDecision,
 } from '@nexus-tax/domain';
-import type { Form210Draft } from '@nexus-tax/form-210';
+import { deriveForm210BoxTasks, type Form210Draft } from '@nexus-tax/form-210';
 import { MAX_EMPLOYER_INSTANCES, TAX_CASE_EXPORT_SCHEMA_VERSION } from '@nexus-tax/domain';
 import { compareCaseTasks } from './caseTaskPriority';
 
@@ -555,38 +555,41 @@ export function buildCaseTasks(input: {
   }
 
   const form210Draft = input.form210Draft;
-  for (const box of form210Draft?.boxes ?? []) {
-    if (!['incomplete', 'requires_decision', 'contradicted'].includes(box.status)) continue;
-    tasks.push({
-      id: `task:${input.caseId}:form210:${box.number}`,
-      caseId: input.caseId,
-      type: 'resolve_form_box',
-      title: `Revisar casilla ${box.number}: ${box.name}`,
-      explanation:
-        box.warnings[0] ?? 'La casilla necesita una decisión o una fuente antes de continuar.',
-      source: 'filing',
-      stage: 'declaracion',
-      view: 'formulario-210',
-      entityId: null,
-      documentId: null,
-      requirementId: null,
-      candidateId: null,
-      reconciliationId: null,
-      matrixGroupId: null,
-      extractionSessionId: null,
-      profileId: null,
-      page: null,
-      formBoxNumber: box.number,
-      resolutionDecisionId: box.resolutionId,
-      priority: box.status === 'contradicted' ? 'high' : 'medium',
-      blocking: box.status === 'contradicted',
-      status: 'pending',
-      recommendedAction: `Abrir casilla ${box.number}`,
-      ruleId: `${form210Draft?.ruleVersion ?? 'form210.pending'}.box.${box.number}`,
-      evidence: box.sources.map((source) => source.evidence),
-      createdAt: timestamp,
-      updatedAt: timestamp,
-    });
+  if (form210Draft) {
+    const boxTemplates = deriveForm210BoxTasks(form210Draft);
+    const boxByNumber = new Map(form210Draft.boxes.map((box) => [box.number, box]));
+    for (const template of boxTemplates) {
+      const box = boxByNumber.get(template.formBoxNumber);
+      tasks.push({
+        id: `task:${input.caseId}:form210:${template.formBoxNumber}`,
+        caseId: input.caseId,
+        type: template.type,
+        title: template.title,
+        explanation: template.explanation,
+        source: template.source,
+        stage: template.stage,
+        view: template.view,
+        entityId: null,
+        documentId: null,
+        requirementId: null,
+        candidateId: null,
+        reconciliationId: null,
+        matrixGroupId: null,
+        extractionSessionId: null,
+        profileId: null,
+        page: null,
+        formBoxNumber: template.formBoxNumber,
+        resolutionDecisionId: box?.resolutionId ?? null,
+        priority: template.priority,
+        blocking: template.blocking,
+        status: 'pending',
+        recommendedAction: template.recommendedAction,
+        ruleId: `${form210Draft.ruleVersion}.${template.ruleId}`,
+        evidence: box?.sources.map((source) => source.evidence) ?? [],
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      });
+    }
   }
   if (input.result && input.vatResponsibility === null) {
     tasks.push({

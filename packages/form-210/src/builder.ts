@@ -4,11 +4,38 @@ import type {
   TaxCategory,
   TaxResolutionDecision,
 } from '@nexus-tax/domain';
+import {
+  AFC_FVP_AVC_LIMIT_RULE_2025,
+  DEPENDENTS_MAX_ELIGIBLE,
+  HOUSING_INTEREST_LIMIT_RULE_2025,
+  PREPAID_MEDICINE_LIMIT_RULE_2025,
+  TAX_LIMIT_RULES_2025,
+  TAX_UNIT_2025,
+  applyIndividualDeductionLimit,
+  applyLimitRule,
+  computeAdvancePayment,
+  computeDependentsDeduction,
+  computeElectronicInvoicingDeduction,
+  computeOccasionalGainsTax,
+  computeProgressiveIncomeTax,
+  consolidateWithholdings,
+  copToUvt,
+  detectDuplicatePatrimonyEntries,
+  detectLiabilityWithoutAsset,
+  detectMovementWithoutBalance,
+  evaluateCrossValidations,
+  evaluatePriorYearBalance,
+} from '@nexus-tax/aegis-rules';
+import type {
+  IndividualDeductionLimitComputation,
+  WithholdingSource,
+} from '@nexus-tax/aegis-rules';
 import { FORM_210_RULESET_2025 } from './ruleset-2025';
 import type {
   Form210BoxValue,
   Form210BuildInput,
   Form210Draft,
+  Form210PreliminaryLiquidation,
   Form210SourceTrace,
   Form210ValidationFinding,
 } from './types';
@@ -65,6 +92,29 @@ function safeSubtract(values: number[]): number {
   );
 }
 
+/**
+ * Aplica el límite conjunto de rentas exentas y deducciones (art. 336 ET) a la
+ * casilla objetivo. La regla se toma de `TAX_LIMIT_RULES_2025`; si la casilla
+ * no tiene una regla asociada, se devuelve `null` para dejar que la fórmula
+ * genérica intente resolver la casilla.
+ */
+function applyCedularLimit(
+  targetBoxNumber: number,
+  get: (box: number) => number | null,
+): number | null {
+  const rule = TAX_LIMIT_RULES_2025.find((entry) => entry.targetBoxNumber === targetBoxNumber);
+  if (!rule) return null;
+  const inputs: Record<number, number> = {};
+  inputs[rule.baseBoxNumber] = get(rule.baseBoxNumber) ?? 0;
+  for (const boxNumber of rule.componentBoxNumbers) inputs[boxNumber] = get(boxNumber) ?? 0;
+  const hasSomeSignal =
+    get(rule.baseBoxNumber) !== null ||
+    rule.componentBoxNumbers.some((boxNumber) => get(boxNumber) !== null);
+  if (!hasSomeSignal) return null;
+  const result = applyLimitRule(rule, inputs, 2025);
+  return result.appliedValueCop;
+}
+
 function computeFormula(number: number, get: (box: number) => number | null): number | null {
   const formula: Partial<Record<number, () => number | null>> = {
     31: () =>
@@ -72,13 +122,20 @@ function computeFormula(number: number, get: (box: number) => number | null): nu
     34: () => (get(32) !== null ? safeSubtract([get(32) ?? 0, get(33) ?? 0]) : null),
     37: () => (get(35) !== null || get(36) !== null ? (get(35) ?? 0) + (get(36) ?? 0) : null),
     40: () => (get(38) !== null || get(39) !== null ? (get(38) ?? 0) + (get(39) ?? 0) : null),
+    41: () => applyCedularLimit(41, get),
     42: () =>
       get(34) !== null && get(41) !== null ? safeSubtract([get(34) ?? 0, get(41) ?? 0]) : null,
     61: () => (get(58) !== null ? safeSubtract([get(58) ?? 0, get(59) ?? 0, get(60) ?? 0]) : null),
+    65: () => applyCedularLimit(65, get),
+    66: () =>
+      get(61) !== null && get(65) !== null ? safeSubtract([get(61) ?? 0, get(65) ?? 0]) : null,
     78: () =>
       get(74) !== null
         ? safeSubtract([get(74) ?? 0, get(75) ?? 0, get(76) ?? 0, get(77) ?? 0])
         : null,
+    82: () => applyCedularLimit(82, get),
+    83: () =>
+      get(78) !== null && get(82) !== null ? safeSubtract([get(78) ?? 0, get(82) ?? 0]) : null,
     101: () => (get(99) !== null ? safeSubtract([get(99) ?? 0, get(100) ?? 0]) : null),
     103: () =>
       get(101) !== null && get(102) !== null ? safeSubtract([get(101) ?? 0, get(102) ?? 0]) : null,
@@ -217,7 +274,341 @@ function validate(
       sourceIds: box.excludedSourceIds,
     });
   }
+
+  // Validaciones patrimoniales (art. 261 ET). Se apoyan en el motor puro
+  // `patrimony-checks` y solo dependen del estado ya construido del borrador.
+  const grossPatrimonyBox = boxes.find((box) => box.number === 29);
+  const liabilitiesBox = boxes.find((box) => box.number === 30);
+  const grossPatrimonyCop =
+    grossPatrimonyBox?.confirmedValue ?? grossPatrimonyBox?.suggestedValue ?? 0;
+  const liabilitiesCop = liabilitiesBox?.confirmedValue ?? liabilitiesBox?.suggestedValue ?? 0;
+
+  const liabilityCheck = detectLiabilityWithoutAsset({
+    grossPatrimonyCop,
+    liabilitiesCop,
+  });
+  if (liabilityCheck.triggered) {
+    findings.push({
+      id: 'patrimony-liability-without-asset',
+      severity: 'warning',
+      code: 'liability_without_asset',
+      message:
+        'Hay deudas declaradas en la casilla 30 pero el patrimonio bruto (casilla 29) es cero: probablemente falta declarar el activo que respalda la deuda.',
+      boxNumbers: [29, 30],
+      sourceIds: liabilitiesBox?.includedSourceIds ?? [],
+    });
+  }
+
+  const movementCategories = new Set<TaxCategory>([
+    'bank_movement',
+    'card_consumption',
+    'investment_movement',
+    'purchase',
+  ]);
+  const movementSources = input.records
+    .filter(
+      (record) =>
+        movementCategories.has(record.category) &&
+        record.reportedValue !== null &&
+        record.reportedValue > 0,
+    )
+    .map((record) => ({
+      sourceId: `record:${record.id}`,
+      label: record.conceptLabel ?? record.conceptCode ?? 'Movimiento',
+      valueCop: record.reportedValue ?? 0,
+    }));
+  const movementCheck = detectMovementWithoutBalance({
+    taxYear: 2025,
+    grossPatrimonyCop,
+    movementSources,
+  });
+  if (movementCheck.triggered) {
+    findings.push({
+      id: 'patrimony-movement-without-balance',
+      severity: 'warning',
+      code: 'movement_without_balance',
+      message: `Se declararon movimientos (bancarios, tarjetas o inversiones) por más de ${movementCheck.thresholdCop.toLocaleString('es-CO')} pesos sin patrimonio bruto declarado. Revisa si falta el saldo asociado (art. 261 ET).`,
+      boxNumbers: [29],
+      sourceIds: [...movementCheck.significantSourceIds],
+    });
+  }
+
+  const patrimonySources = (grossPatrimonyBox?.sources ?? []).map((source) => ({
+    sourceId: source.sourceId,
+    label: source.label,
+    valueCop: source.value,
+  }));
+  const duplicatesCheck = detectDuplicatePatrimonyEntries({ sources: patrimonySources });
+  for (const pair of duplicatesCheck.pairs) {
+    findings.push({
+      id: `patrimony-duplicate-${pair.a.sourceId}-${pair.b.sourceId}`,
+      severity: 'warning',
+      code: 'duplicate_patrimony_entry',
+      message: `Dos entradas de patrimonio parecen duplicadas ("${pair.a.label}" y "${pair.b.label}"): verifica si se están contando dos veces.`,
+      boxNumbers: [29],
+      sourceIds: [pair.a.sourceId, pair.b.sourceId],
+    });
+  }
+
   return findings;
+}
+
+/**
+ * Deriva la liquidación privada preliminar del borrador. La numeración de las
+ * casillas de impuesto y saldo (119, 123, 133, 139…) NO se afirma aquí porque
+ * varía entre versiones del formulario y aún no ha sido verificada contra el
+ * instructivo DIAN 2025. Los importes viven en el objeto de liquidación con
+ * fórmula y fuente propias hasta que la numeración se confirme.
+ */
+export function computePreliminaryLiquidation(
+  boxes: readonly Form210BoxValue[],
+  ruleVersion: string,
+  generatedAt: string,
+  occasionalGainsBreakdown?: {
+    generalBaseCop: number;
+    lotteryBaseCop: number;
+  },
+  advancePaymentContext?: {
+    filingCountIncludingCurrent: 1 | 2 | 3;
+    priorNetIncomeTaxCop: number | null;
+  },
+  dependentsDeduction: Form210PreliminaryLiquidation['dependentsDeduction'] = null,
+  electronicInvoicingDeduction: Form210PreliminaryLiquidation['electronicInvoicingDeduction'] = null,
+  individualDeductionLimits: Form210PreliminaryLiquidation['individualDeductionLimits'] = [],
+  priorYearBalanceContext?: {
+    declaredCop: number;
+    confirmedByAnalyst: boolean;
+    hasPendingCompensationOrRefundRequest: boolean;
+    priorYearFilingDate?: string | null;
+    evidence?: string | null;
+  },
+  withholdings: Form210PreliminaryLiquidation['withholdings'] | null = null,
+): Form210PreliminaryLiquidation {
+  const get = (number: number): number | null => {
+    const box = boxes.find((entry) => entry.number === number);
+    return box?.confirmedValue ?? box?.suggestedValue ?? null;
+  };
+  const findLimit = (targetBox: number) => {
+    const rule = TAX_LIMIT_RULES_2025.find((entry) => entry.targetBoxNumber === targetBox);
+    if (!rule) return null;
+    const inputs: Record<number, number> = {};
+    inputs[rule.baseBoxNumber] = get(rule.baseBoxNumber) ?? 0;
+    for (const boxNumber of rule.componentBoxNumbers) inputs[boxNumber] = get(boxNumber) ?? 0;
+    const hasSignal =
+      get(rule.baseBoxNumber) !== null ||
+      rule.componentBoxNumbers.some((boxNumber) => get(boxNumber) !== null);
+    return hasSignal ? applyLimitRule(rule, inputs, 2025) : null;
+  };
+
+  const employmentLimit = findLimit(41);
+  const capitalLimit = findLimit(65);
+  const nonLaborLimit = findLimit(82);
+
+  // Renta líquida gravable de la cédula general = suma de rentas líquidas
+  // ordinarias de trabajo (42), capital (66) y no laboral (83).
+  const cedularParts: readonly (number | null)[] = [get(42), get(66), get(83)];
+  const anyCedularSignal = cedularParts.some((part) => part !== null);
+  let generalCedularTaxableIncomeCop = 0;
+  for (const part of cedularParts) generalCedularTaxableIncomeCop += Math.max(0, part ?? 0);
+  const generalCedularTaxableIncomeUvt = copToUvt(generalCedularTaxableIncomeCop, 2025);
+
+  const incomeTax = anyCedularSignal
+    ? computeProgressiveIncomeTax(generalCedularTaxableIncomeCop, 2025)
+    : null;
+
+  // Ganancias ocasionales gravables: base disponible desde la casilla 115.
+  const occasionalGainsTaxableCop = Math.max(0, get(115) ?? 0);
+
+  // Impuesto de GO: si el analista provee el desglose entre general y
+  // loterías, cada componente aplica su tarifa (art. 314 / 317 ET). Si no lo
+  // provee, se asume que toda la casilla 115 tributa a la tarifa general y se
+  // emite una advertencia — es la interpretación más conservadora dado que la
+  // 20 % es mayor y podría subestimar el impuesto.
+  const providedBreakdown = occasionalGainsBreakdown ?? null;
+  const generalGoBase = providedBreakdown
+    ? Math.max(0, providedBreakdown.generalBaseCop)
+    : occasionalGainsTaxableCop;
+  const lotteryGoBase = providedBreakdown ? Math.max(0, providedBreakdown.lotteryBaseCop) : 0;
+  const occasionalGainsTax =
+    generalGoBase + lotteryGoBase > 0
+      ? computeOccasionalGainsTax({
+          taxYear: 2025,
+          generalBaseCop: generalGoBase,
+          lotteryBaseCop: lotteryGoBase,
+        })
+      : null;
+
+  const priorYearAdvanceCop = Math.max(0, get(130) ?? 0);
+  const withholdingsConsolidation =
+    withholdings ??
+    consolidateWithholdings({
+      taxYear: 2025,
+      sources: [],
+    });
+  const withholdingsCop = withholdingsConsolidation.totalReportedCop;
+
+  const totalTaxDueCop =
+    (incomeTax?.totalTaxCopRounded ?? 0) + (occasionalGainsTax?.totalTaxCop ?? 0);
+
+  // Anticipo del año siguiente (art. 807 ET). Se calcula solo si el analista
+  // aporta el contexto (número de veces que declara e histórico) y si el
+  // impuesto neto de renta es positivo. El impuesto neto usado como base es
+  // `incomeTax.totalTaxCopRounded`: el motor puro NO conoce descuentos
+  // tributarios porque aún no se modelan.
+  const currentNetIncomeTaxCop = incomeTax?.totalTaxCopRounded ?? 0;
+  const nextYearAdvance =
+    advancePaymentContext && currentNetIncomeTaxCop > 0
+      ? computeAdvancePayment({
+          taxYear: 2025,
+          filingCountIncludingCurrent: advancePaymentContext.filingCountIncludingCurrent,
+          currentNetIncomeTaxCop,
+          priorNetIncomeTaxCop: advancePaymentContext.priorNetIncomeTaxCop,
+          withholdingsCop,
+        })
+      : null;
+
+  // Saldo a favor del año anterior (art. 850 ET). Se descuenta solo cuando
+  // el analista lo confirma y no tiene solicitud de devolución/compensación
+  // pendiente. Sin contexto, se ignora la casilla 131 en el descuento.
+  const priorYearBalance = priorYearBalanceContext
+    ? evaluatePriorYearBalance({
+        taxYear: 2025,
+        declaredCop: priorYearBalanceContext.declaredCop,
+        confirmedByAnalyst: priorYearBalanceContext.confirmedByAnalyst,
+        hasPendingCompensationOrRefundRequest:
+          priorYearBalanceContext.hasPendingCompensationOrRefundRequest,
+        priorYearFilingDate: priorYearBalanceContext.priorYearFilingDate ?? null,
+        evidence: priorYearBalanceContext.evidence ?? null,
+      })
+    : null;
+  const priorYearBalanceCop = priorYearBalance?.appliedCop ?? 0;
+
+  const netBalanceCop =
+    totalTaxDueCop +
+    (nextYearAdvance?.netAdvanceCop ?? 0) -
+    priorYearAdvanceCop -
+    priorYearBalanceCop -
+    withholdingsCop;
+
+  const warnings: string[] = [];
+  if (!incomeTax) {
+    warnings.push(
+      'No hay renta líquida cedular suficiente para calcular el impuesto progresivo.',
+    );
+  }
+  if (occasionalGainsTaxableCop > 0 && !providedBreakdown) {
+    warnings.push(
+      'Se asumió que toda la casilla 115 tributa al 15 % (art. 314 ET). Si hay loterías, rifas o apuestas, indícalo para aplicar la tarifa del 20 % (art. 317 ET).',
+    );
+  }
+  if (
+    providedBreakdown &&
+    providedBreakdown.generalBaseCop + providedBreakdown.lotteryBaseCop !==
+      occasionalGainsTaxableCop
+  ) {
+    warnings.push(
+      'El desglose de ganancias ocasionales por tarifa no coincide con la casilla 115. Verifica las bases.',
+    );
+  }
+  if (get(130) === null && get(131) === null && get(132) === null && incomeTax) {
+    warnings.push(
+      'No hay retenciones ni anticipo ni saldo anterior confirmados; el saldo puede subir al incorporarlos.',
+    );
+  }
+  if (incomeTax && !advancePaymentContext) {
+    warnings.push(
+      'El anticipo del año siguiente (art. 807 ET) no se calculó porque falta indicar cuántas veces has declarado.',
+    );
+  }
+  if (
+    dependentsDeduction &&
+    dependentsDeduction.dependentsProvidedCount > dependentsDeduction.dependentsEligibleCount
+  ) {
+    warnings.push(
+      `Se declararon ${dependentsDeduction.dependentsProvidedCount} dependientes; solo los primeros ${DEPENDENTS_MAX_ELIGIBLE} entran en la deducción del art. 387 ET.`,
+    );
+  }
+  if (
+    dependentsDeduction &&
+    dependentsDeduction.dependentsEligibleCount > 0 &&
+    dependentsDeduction.appliedDeductionCop === 0
+  ) {
+    warnings.push(
+      'Los dependientes declarados no producen deducción: la casilla 32 no tiene ingresos brutos de rentas de trabajo aún.',
+    );
+  }
+  if (priorYearBalance && priorYearBalance.status === 'pending_confirmation') {
+    warnings.push(
+      'El saldo a favor del año anterior está declarado pero no confirmado por el analista: no se descuenta hasta que se confirme (art. 850 ET).',
+    );
+  }
+  if (priorYearBalance && priorYearBalance.status === 'blocked_by_pending_request') {
+    warnings.push(
+      'El saldo a favor del año anterior tiene una solicitud de devolución o compensación pendiente; no puede volver a aplicarse aquí (art. 850 ET).',
+    );
+  }
+  if (!priorYearBalance && get(131) !== null && (get(131) ?? 0) > 0) {
+    warnings.push(
+      'La casilla 131 tiene un valor de saldo anterior pero no se aportó el contexto de confirmación humana; el motor no lo descuenta hasta que se confirme (art. 850 ET).',
+    );
+  }
+  if (withholdingsConsolidation.entriesWithoutSupportCount > 0) {
+    warnings.push(
+      `${withholdingsConsolidation.entriesWithoutSupportCount} retenciones no tienen certificado documental asociado; adjunta el soporte antes de confirmar la casilla 132 (art. 373 ET).`,
+    );
+  }
+  for (const pair of withholdingsConsolidation.suspectedDuplicates) {
+    warnings.push(
+      `Posible doble conteo en retenciones: "${pair.a.label}" y "${pair.b.label}" comparten retenedor y valor similar (${pair.reason}).`,
+    );
+  }
+  if (
+    withholdingsConsolidation.breakdown !== null &&
+    !withholdingsConsolidation.breakdownMatchesReported
+  ) {
+    warnings.push(
+      `El desglose de retenciones por origen no coincide con las retenciones reportadas (diferencia ${withholdingsConsolidation.breakdownDifferenceCop.toLocaleString('es-CO')} pesos). Verifica los montos por cédula.`,
+    );
+  }
+
+  let status: Form210PreliminaryLiquidation['status'];
+  if (!anyCedularSignal && occasionalGainsTaxableCop === 0 && totalTaxDueCop === 0) {
+    status = 'insufficient_data';
+  } else if (netBalanceCop > 0) status = 'to_pay';
+  else if (netBalanceCop < 0) status = 'refund';
+  else status = 'zero';
+
+  return {
+    ruleVersion,
+    generatedAt,
+    generalCedularTaxableIncomeCop,
+    generalCedularTaxableIncomeUvt,
+    employmentLimit,
+    capitalLimit,
+    nonLaborLimit,
+    incomeTax,
+    occasionalGainsTaxableCop,
+    occasionalGainsTax,
+    totalTaxDueCop,
+    priorYearAdvanceCop,
+    priorYearBalanceCop,
+    withholdingsCop,
+    nextYearAdvance,
+    dependentsDeduction,
+    electronicInvoicingDeduction,
+    individualDeductionLimits,
+    priorYearBalance,
+    withholdings: withholdingsConsolidation,
+    netBalanceCop,
+    status,
+    warnings,
+    notice: 'Liquidación preliminar orientativa — no presentada ante la DIAN',
+  };
+}
+
+// Sanity check: la UVT usada por copToUvt corresponde al año modelado.
+if (TAX_UNIT_2025.taxYear !== 2025) {
+  throw new Error('TAX_UNIT_2025.taxYear debe ser 2025.');
 }
 
 export function buildForm210Draft(input: Form210BuildInput): Form210Draft {
@@ -260,6 +651,127 @@ export function buildForm210Draft(input: Form210BuildInput): Form210Draft {
       excludedByBox.set(boxNumber, [...(excludedByBox.get(boxNumber) ?? []), trace.sourceId]);
       duplicateSourceIds.push(trace.sourceId);
     } else sourcesByBox.set(boxNumber, [...(sourcesByBox.get(boxNumber) ?? []), trace]);
+  }
+
+  // Deducción por dependientes (art. 387 ET): se calcula con el motor puro
+  // usando los ingresos brutos de rentas de trabajo (casilla 32 = suma de
+  // sources reunidas hasta aquí) y se cablea a la casilla 39 como una fuente
+  // de tipo `calculation`. La misma computación se expondrá luego en
+  // `preliminaryLiquidation.dependentsDeduction`.
+  const dependentsInput = input.dependents ?? [];
+  const grossEmploymentIncomeCop = (sourcesByBox.get(32) ?? []).reduce(
+    (sum, source) => sum + source.value,
+    0,
+  );
+  const dependentsDeduction = dependentsInput.length
+    ? computeDependentsDeduction({
+        taxYear: 2025,
+        dependents: dependentsInput,
+        grossEmploymentIncomeCop,
+      })
+    : null;
+  if (dependentsDeduction && dependentsDeduction.appliedDeductionCop > 0) {
+    const label =
+      dependentsDeduction.dependentsEligibleCount === 1
+        ? 'Deducción por dependientes (art. 387 ET)'
+        : `Deducción por ${dependentsDeduction.dependentsEligibleCount} dependientes (art. 387 ET)`;
+    const dependentsTrace: Form210SourceTrace = {
+      type: 'calculation',
+      sourceId: 'calc:dependents-387',
+      recordId: null,
+      documentId: null,
+      factId: null,
+      label,
+      value: dependentsDeduction.appliedDeductionCop,
+      evidence: dependentsDeduction.formula,
+    };
+    sourcesByBox.set(39, [...(sourcesByBox.get(39) ?? []), dependentsTrace]);
+  }
+
+  // Deducción por facturas electrónicas (art. 336-1 ET). El motor recibe la
+  // base de compras calificadas que aporta el analista y aplica 1 % con
+  // tope de 240 UVT. Se cablea a la casilla 39 como una fuente adicional.
+  const electronicInvoicingInput = input.electronicInvoicing;
+  const electronicInvoicingDeduction =
+    electronicInvoicingInput && electronicInvoicingInput.purchasesWithElectronicInvoiceCop > 0
+      ? computeElectronicInvoicingDeduction({
+          taxYear: 2025,
+          purchasesWithElectronicInvoiceCop:
+            electronicInvoicingInput.purchasesWithElectronicInvoiceCop,
+        })
+      : null;
+  if (electronicInvoicingDeduction && electronicInvoicingDeduction.appliedDeductionCop > 0) {
+    const electronicInvoicingTrace: Form210SourceTrace = {
+      type: 'calculation',
+      sourceId: 'calc:electronic-invoicing-336-1',
+      recordId: null,
+      documentId: null,
+      factId: null,
+      label: 'Deducción por facturas electrónicas (art. 336-1 ET)',
+      value: electronicInvoicingDeduction.appliedDeductionCop,
+      evidence: electronicInvoicingDeduction.formula,
+    };
+    sourcesByBox.set(39, [...(sourcesByBox.get(39) ?? []), electronicInvoicingTrace]);
+  }
+
+  // Límites individuales declarativos (Fase E): AFC/AVC/FVP (art. 126-1/126-4),
+  // intereses de vivienda (art. 119) y medicina prepagada (art. 387 par. 2).
+  // El motor puro recibe el declarado y — cuando aplica — el ingreso base
+  // de trabajo. Cada resultado se acumula en `individualDeductionLimits`
+  // y se cablea a su casilla objetivo como fuente `calculation`.
+  const individualDeductionLimits: IndividualDeductionLimitComputation[] = [];
+  const declaredDeductions = input.individualDeductions;
+  if (declaredDeductions) {
+    const specs: readonly {
+      rule: typeof AFC_FVP_AVC_LIMIT_RULE_2025;
+      declaredCop: number | undefined;
+      sourceId: string;
+      label: string;
+    }[] = [
+      {
+        rule: AFC_FVP_AVC_LIMIT_RULE_2025,
+        declaredCop: declaredDeductions.afcFvpAvcCop,
+        sourceId: 'calc:afc-fvp-avc-126',
+        label: 'Aportes AFC/AVC/FVP limitados (arts. 126-1 y 126-4 ET)',
+      },
+      {
+        rule: HOUSING_INTEREST_LIMIT_RULE_2025,
+        declaredCop: declaredDeductions.housingInterestCop,
+        sourceId: 'calc:housing-interest-119',
+        label: 'Intereses de vivienda limitados (art. 119 ET)',
+      },
+      {
+        rule: PREPAID_MEDICINE_LIMIT_RULE_2025,
+        declaredCop: declaredDeductions.prepaidMedicineCop,
+        sourceId: 'calc:prepaid-medicine-387',
+        label: 'Medicina prepagada limitada (art. 387 ET, par. 2)',
+      },
+    ];
+    for (const spec of specs) {
+      if (spec.declaredCop === undefined || spec.declaredCop <= 0) continue;
+      const computation = applyIndividualDeductionLimit(spec.rule, {
+        taxYear: 2025,
+        declaredCop: spec.declaredCop,
+        baseIncomeCop: spec.rule.baseIncomeRequired ? grossEmploymentIncomeCop : null,
+      });
+      individualDeductionLimits.push(computation);
+      if (computation.appliedCop > 0) {
+        const trace: Form210SourceTrace = {
+          type: 'calculation',
+          sourceId: spec.sourceId,
+          recordId: null,
+          documentId: null,
+          factId: null,
+          label: spec.label,
+          value: computation.appliedCop,
+          evidence: computation.formula,
+        };
+        sourcesByBox.set(spec.rule.targetBoxNumber, [
+          ...(sourcesByBox.get(spec.rule.targetBoxNumber) ?? []),
+          trace,
+        ]);
+      }
+    }
   }
 
   const replacedIds = new Set(
@@ -338,6 +850,17 @@ export function buildForm210Draft(input: Form210BuildInput): Form210Draft {
   }
 
   const findings = validate(boxes, input, duplicateSourceIds, pendingBoxNumbers);
+  for (const computation of individualDeductionLimits) {
+    if (computation.bindingCandidate === 'declared') continue;
+    findings.push({
+      id: `individual-limit-${computation.ruleId}`,
+      severity: 'warning',
+      code: 'unsupported_deduction',
+      message: `La deducción declarada excede el límite del ruleset (${computation.formula}). Aplicado: ${computation.appliedCop.toLocaleString('es-CO')} pesos.`,
+      boxNumbers: [computation.targetBoxNumber],
+      sourceIds: [],
+    });
+  }
   const pendingBoxes = boxes.filter((box) =>
     ['incomplete', 'requires_decision', 'contradicted'].includes(box.status),
   ).length;
@@ -345,6 +868,101 @@ export function buildForm210Draft(input: Form210BuildInput): Form210Draft {
   const populated = boxes.filter(
     (box) => box.suggestedValue !== null || box.confirmedValue !== null,
   ).length;
+  const withholdingRecords = input.records.filter(
+    (record) => record.category === 'withholding' && record.reportedValue !== null,
+  );
+  const includedWithholdings = withholdingRecords.filter((record) => {
+    const state = stateByRecord.get(record.id);
+    return !state || state.disposition === 'included';
+  });
+  const withholdingSources: WithholdingSource[] = includedWithholdings.map((record) => ({
+    sourceId: `record:${record.id}`,
+    label: record.conceptLabel ?? record.conceptCode ?? 'Retención',
+    valueCop: record.reportedValue ?? 0,
+    entityTaxId: record.entityTaxId ?? null,
+    hasDocumentSupport: false,
+  }));
+  // Si la casilla 132 tiene valor por un ajuste manual o por otro medio
+  // (no por records de category='withholding'), agregamos una fuente
+  // sintética por la diferencia para no perder el total declarado.
+  const box132 = boxes.find((box) => box.number === 132);
+  const box132Value = box132?.confirmedValue ?? box132?.suggestedValue ?? 0;
+  const recordsSum = withholdingSources.reduce((sum, source) => sum + source.valueCop, 0);
+  const boxOnlyDelta = Math.max(0, box132Value - recordsSum);
+  if (boxOnlyDelta > 0) {
+    withholdingSources.push({
+      sourceId: 'box:132:manual',
+      label: 'Retenciones de casilla 132 (fuente manual)',
+      valueCop: boxOnlyDelta,
+      entityTaxId: null,
+      hasDocumentSupport: false,
+    });
+  }
+  const withholdingsConsolidation = consolidateWithholdings({
+    taxYear: 2025,
+    sources: withholdingSources,
+    breakdown: input.withholdingsBreakdown,
+  });
+
+  const preliminaryLiquidation = computePreliminaryLiquidation(
+    boxes,
+    FORM_210_RULESET_2025.ruleVersion,
+    generatedAt,
+    input.occasionalGainsBreakdown,
+    input.advancePaymentContext,
+    dependentsDeduction,
+    electronicInvoicingDeduction,
+    individualDeductionLimits,
+    input.priorYearBalance,
+    withholdingsConsolidation,
+  );
+
+  // Validaciones cruzadas (Fase T): red de seguridad que compara
+  // indicadores agregados una vez que la liquidación está resuelta.
+  const readBox = (number: number) => {
+    const box = boxes.find((entry) => entry.number === number);
+    return box?.confirmedValue ?? box?.suggestedValue ?? 0;
+  };
+  const totalGrossIncomeCop =
+    Math.max(0, readBox(32)) +
+    Math.max(0, readBox(58)) +
+    Math.max(0, readBox(74)) +
+    Math.max(0, readBox(99)) +
+    Math.max(0, readBox(104)) +
+    Math.max(0, readBox(112));
+  const computedCedular =
+    Math.max(0, readBox(42)) + Math.max(0, readBox(66)) + Math.max(0, readBox(83));
+  const crossValidations = evaluateCrossValidations({
+    taxYear: 2025,
+    incomeTaxCop: preliminaryLiquidation.incomeTax?.totalTaxCopRounded ?? 0,
+    withholdingsAppliedCop: preliminaryLiquidation.withholdingsCop,
+    grossPatrimonyCop: readBox(29),
+    totalGrossIncomeCop,
+    reportedCedularTaxableIncomeCop: preliminaryLiquidation.generalCedularTaxableIncomeCop,
+    computedCedularTaxableIncomeCop: computedCedular,
+  });
+  const crossChecks = [
+    crossValidations.withholdingsExceedIncomeTax,
+    crossValidations.patrimonyIncomeDisproportion,
+    crossValidations.cedularSumMismatch,
+  ];
+  for (const check of crossChecks) {
+    if (!check.triggered) continue;
+    findings.push({
+      id: `cross-${check.code}`,
+      severity: 'warning',
+      code: check.code,
+      message: check.message,
+      boxNumbers:
+        check.code === 'withholdings_exceed_income_tax'
+          ? [132]
+          : check.code === 'patrimony_income_disproportion'
+            ? [29]
+            : [42, 66, 83],
+      sourceIds: [],
+    });
+  }
+
   return {
     id: `form210:${input.caseId}:2025`,
     caseId: input.caseId,
@@ -356,6 +974,7 @@ export function buildForm210Draft(input: Form210BuildInput): Form210Draft {
     notice: 'Borrador de trabajo — no presentado ante la DIAN',
     boxes,
     findings,
+    preliminaryLiquidation,
     status: {
       status:
         populated === 0

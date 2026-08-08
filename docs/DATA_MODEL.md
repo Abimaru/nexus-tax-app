@@ -268,3 +268,17 @@ Dexie v10 agrega `documentProfiles` y `extractionFeedback`, ambas sin índice po
 Dexie v11 agrega `resolutionDecisions` y `form210Drafts`. Ambas participan en borrado de expediente
 y limpieza total. El manifiesto 2.3.0 exporta las decisiones y el borrador, nunca el PDF/Excel ni
 binarios documentales.
+
+## Cambios 2.3.1
+
+- `Form210Draft.preliminaryLiquidation` conserva estado, impuesto progresivo, ganancias
+  ocasionales, anticipo, saldo anterior, retenciones, límites y validaciones cruzadas.
+- `Form210BuildInput` admite contextos opcionales aportados por el analista para dependientes,
+  facturación electrónica, deducciones, ganancias ocasionales, anticipo, saldo anterior y
+  retenciones; una ausencia se representa como información pendiente, no como cero confirmado.
+- `Form210FilingStates` separa obligación, disponibilidad del borrador, liquidación y presentación.
+  El estado de presentación es fijo y permanece fuera de alcance.
+- `Form210ExportBundle` empaqueta borrador, versión del ruleset y referencias oficiales sin incluir
+  archivos originales.
+- `ResolutionImpact` y la simulación controlada son derivados efímeros; solo la confirmación humana
+  crea el ajuste persistido.

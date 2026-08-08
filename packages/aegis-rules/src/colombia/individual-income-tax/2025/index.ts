@@ -26,3 +26,16 @@ export const INDIVIDUAL_INCOME_TAX_RULESET_2025 = {
 export * from './deadlines-2026';
 export * from './filing-obligation';
 export * from './sources';
+export * from './official-sources';
+export * from './tax-unit';
+export * from './progressive-tax';
+export * from './tax-limits';
+export * from './occasional-gains';
+export * from './advance-payment';
+export * from './dependents';
+export * from './patrimony-checks';
+export * from './electronic-invoicing';
+export * from './individual-deductions';
+export * from './prior-year-balance';
+export * from './withholdings';
+export * from './cross-validations';

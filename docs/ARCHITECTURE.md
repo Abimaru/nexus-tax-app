@@ -203,3 +203,13 @@ El dominio incorpora eventos `TaxResolutionDecision`. Dexie v11 persiste esos ev
 `Form210Draft`; el repositorio reconstruye matriz/borrador al cambiar una fuente o decisión. El
 manifiesto 2.3.0 exporta ambos sin binarios. La política de diferencias vive en
 `exogenous-parser/reconciliationPolicy.ts` y es compartida por matriz y conciliación UI.
+
+## Sprint 2.3.1: reglas tributarias y liquidación preliminar
+
+`packages/aegis-rules` concentra UVT, fuentes oficiales y once motores tributarios puros para AG 2025. Cada resultado conserva `ruleSourceId`, fórmula o candidato limitante y evidencia suficiente
+para explicación; ningún motor accede a React, Dexie, DOM o red.
+
+`packages/form-210` orquesta esas reglas en `Form210PreliminaryLiquidation`, calcula impacto sin
+persistir mediante `ResolutionImpact`, deriva tareas por casilla y compone cuatro estados
+independientes del expediente. `apps/web` solo reúne entradas, previsualiza, solicita confirmación y
+persiste el borrador resultante. El bundle exportable incluye ruleset y fuentes, nunca binarios.

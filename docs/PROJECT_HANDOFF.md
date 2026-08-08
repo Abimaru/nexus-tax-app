@@ -1,6 +1,224 @@
-# Handoff del proyecto — NexusTax (Sprint 2.3)
+# Handoff del proyecto — NexusTax (Sprint 2.3.1)
 
-_Última actualización: 2026-08-02._
+_Última actualización: 2026-08-08._
+
+## Cierre del Sprint 2.3.1 — validación tributaria y liquidación preliminar
+
+Las 24 fases técnicas A–X quedaron implementadas y verificadas. El sprint amplía el borrador
+trazable del Formulario 210 AG 2025 sin convertirlo en una declaración definitiva: conserva
+revisión humana, ejecución local, fuentes versionadas y estados separados para obligación,
+borrador, liquidación y presentación. Este último siempre permanece fuera de alcance.
+
+### Resultado consolidado
+
+- Catálogo único de fuentes oficiales y UVT 2025 centralizada.
+- Once motores puros: tarifa progresiva, límite cedular, ganancias ocasionales, anticipo,
+  dependientes, factura electrónica, deducciones individuales, validaciones patrimoniales, saldo
+  anterior, retenciones y validaciones cruzadas.
+- Liquidación privada preliminar explicable, impacto de decisiones y simulación
+  previsualizar→confirmar sin mutar el dato original.
+- Bundle exportable con ruleset, fuentes y borrador; tareas derivadas por casilla pendiente.
+- Vistas Borrador F-210 extendido, Liquidación preliminar y Estados, con catálogos humanos y sin
+  exponer enums internos.
+- Veintidós documentos nuevos del sprint en `docs/`; el plan conserva el detalle por fase.
+
+### Validación final reproducible
+
+| Paso                  | Resultado                                                                          |
+| --------------------- | ---------------------------------------------------------------------------------- |
+| `pnpm check:encoding` | OK; 332 archivos revisados, 1 fixture excluida                                     |
+| `pnpm typecheck`      | OK; 8 de 9 proyectos                                                               |
+| `pnpm lint`           | OK; 0 errores y 0 advertencias                                                     |
+| `pnpm test`           | OK; 402/402 (15 dominio, 129 Aegis, 47 parser, 66 documental, 64 Form 210, 81 web) |
+| `pnpm build`          | OK; compilación Next.js y 5 páginas generadas                                      |
+| `pnpm test:e2e`       | OK; 4/4 Chromium                                                                   |
+
+El gate visual revisó capturas sintéticas en 1440 px, 1280 px y 390 px, temas oscuro/claro y
+ausencia de desbordamiento horizontal. Durante el cierre se corrigieron dos comillas JSX de la
+vista Estados que impedían pasar `react/no-unescaped-entities`.
+
+### Decisiones y pendientes posteriores
+
+- Se conserva el historial por fase; no se hace squash porque aporta trazabilidad normativa.
+- Los estados `implemented_unverified` continúan visibles y no se promueven a `verified` sin una
+  revisión normativa independiente.
+- Siguen fuera de alcance firma, presentación DIAN/MUISCA, sanciones automáticas, backend e IA
+  externa.
+- Próximo paso seguro: revisión tributaria independiente de la matriz y ampliación del corpus
+  sintético antes de modelar otro año gravable.
+
+## Sprint 2.3.1 — Fase N (2026-08-07)
+
+Se agrega el motor puro **consolidación de retenciones** (art. 373 ET):
+suma total, conteo de retenciones sin certificado documental, detección
+de pares con mismo retenedor y valor similar (tolerancia 1 %), y
+validación opcional del desglose por origen (`employment`, `capital`,
+`non_labor`, `occasional_gain`, `dividends`, `other`) contra el total
+reportado.
+
+El builder del F-210 arma `WithholdingSource[]` desde los records de
+`category === 'withholding'` con `entityTaxId`; si la casilla 132 se
+ajusta manualmente por encima de la suma de records, agrega una fuente
+sintética `box:132:manual` para preservar el total. `Form210BuildInput
+.withholdingsBreakdown` permite aportar el desglose por origen.
+`preliminaryLiquidation.withholdings` conserva la consolidación
+completa; `withholdingsCop` deriva de allí.
+
+Documentación: [docs/WITHHOLDINGS_CONSOLIDATION_2025.md](WITHHOLDINGS_CONSOLIDATION_2025.md);
+[docs/FORM_210_LIQUIDATION.md](FORM_210_LIQUIDATION.md) actualizado.
+Verificación: `pnpm -r typecheck` verde; `pnpm -r test` = 366 tests OK
+(aegis 118, form-210 39, resto sin regresiones).
+
+## Sprint 2.3.1 — Fase M (2026-08-07)
+
+Se agrega el motor puro **saldo a favor del año anterior** (art. 850 ET)
+con confirmación humana obligatoria. Cuatro estados:
+`no_declared`, `pending_confirmation`, `blocked_by_pending_request`,
+`applied`. Solo el estado `applied` produce descuento; los demás publican
+`appliedCop = 0` y emiten warnings específicos.
+
+`Form210BuildInput.priorYearBalance` es opcional. Sin él, el motor ignora
+la casilla 131 y emite un warning si tiene valor. Con él,
+`preliminaryLiquidation.priorYearBalance` conserva la evaluación completa
+(estado, razón legible, fecha de la declaración anterior, evidencia).
+
+Documentación: [docs/PRIOR_YEAR_BALANCE_2025.md](PRIOR_YEAR_BALANCE_2025.md);
+[docs/FORM_210_LIQUIDATION.md](FORM_210_LIQUIDATION.md) actualizado.
+Verificación: `pnpm -r typecheck` verde; `pnpm -r test` = 352 tests OK
+(aegis 108, form-210 36, resto sin regresiones).
+
+## Sprint 2.3.1 — Fase E (2026-08-07)
+
+Se agregan **límites individuales declarativos** por concepto: AFC/AVC/FVP
+(30 % del ingreso, 3.800 UVT anuales — arts. 126-1/126-4), intereses de
+vivienda (1.200 UVT anuales — art. 119) y medicina prepagada (192 UVT
+anuales — art. 387 par. 2).
+
+`Form210BuildInput.individualDeductions` es opcional. Cuando se aporta, el
+builder ejecuta `applyIndividualDeductionLimit` para cada concepto,
+cablea el aplicado a la casilla objetivo (35, 38, 39) como fuente
+`calculation` y expone la lista completa de computaciones en
+`preliminaryLiquidation.individualDeductionLimits`. Los recortes generan
+findings `unsupported_deduction` con severidad `warning`.
+
+Documentación: [docs/INDIVIDUAL_DEDUCTIONS_2025.md](INDIVIDUAL_DEDUCTIONS_2025.md);
+[docs/FORM_210_LIQUIDATION.md](FORM_210_LIQUIDATION.md) actualizado.
+Verificación: `pnpm -r typecheck` verde; `pnpm -r test` = 342 tests OK
+(aegis 102, form-210 32, resto sin regresiones).
+
+## Sprint 2.3.1 — Fase G (2026-08-07)
+
+Se agrega la **deducción por facturas electrónicas** (art. 336-1 ET, Ley
+2277 de 2022) al motor puro y al borrador del F-210. Regla:
+`min(1 % × compras_con_FE, 240 UVT)` con `bindingCandidate` explícito.
+
+`Form210BuildInput.electronicInvoicing` es opcional. Cuando se aporta, el
+builder ejecuta `computeElectronicInvoicingDeduction`, cablea la deducción
+como fuente `calc:electronic-invoicing-336-1` en la casilla 39 (se acumula
+con la de dependientes) y expone la computación en
+`preliminaryLiquidation.electronicInvoicingDeduction`.
+
+Documentación: [docs/ELECTRONIC_INVOICING_2025.md](ELECTRONIC_INVOICING_2025.md);
+[docs/FORM_210_LIQUIDATION.md](FORM_210_LIQUIDATION.md) actualizado.
+Verificación: `pnpm -r typecheck` verde; `pnpm -r test` = 331 tests OK
+(aegis 91, form-210 31, resto sin regresiones).
+
+## Sprint 2.3.1 — Fase I (2026-08-07)
+
+Se agrega un motor puro de **validaciones patrimoniales** (art. 261 ET) con
+tres reglas: deuda sin activo respaldo, movimientos significativos sin
+patrimonio bruto declarado y posibles duplicados en la casilla 29. Las
+funciones son puras y parametrizables por UVT (`thresholdUvt`) y tolerancia
+(`toleranceRelative`).
+
+`Form210ValidationFinding['code']` se extiende con `liability_without_asset`,
+`movement_without_balance` y `duplicate_patrimony_entry`. `validate()` del
+builder invoca las tres funciones al final del ciclo y emite un finding por
+disparo, con casillas y sourceIds vinculados.
+
+Documentación: [docs/PATRIMONY_CHECKS_2025.md](PATRIMONY_CHECKS_2025.md).
+Verificación: `pnpm -r typecheck` verde; `pnpm -r test` = 321 tests OK
+(aegis 84, form-210 28, resto sin regresiones).
+
+## Sprint 2.3.1 — Fase F (2026-08-07)
+
+Se agrega la **deducción por dependientes** (art. 387 ET) al motor puro y al
+borrador del F-210. Regla: `min(10 % × ingresos_trabajo, Σ 32 UVT × meses,
+dependientes_elegibles × 384 UVT)` con máximo 4 dependientes.
+
+`Form210BuildInput.dependents` es opcional. Cuando se aporta, el builder
+calcula los ingresos brutos desde la casilla 32, ejecuta
+`computeDependentsDeduction` y cablea el resultado como fuente
+`calc:dependents-387` en la casilla 39. La computación queda en
+`preliminaryLiquidation.dependentsDeduction` con todos los candidatos
+limitantes. Warnings automáticos por exceso de dependientes o ausencia de
+ingresos.
+
+Documentación: [docs/DEPENDENTS_DEDUCTION_2025.md](DEPENDENTS_DEDUCTION_2025.md);
+[docs/FORM_210_LIQUIDATION.md](FORM_210_LIQUIDATION.md) actualizado.
+Verificación: `pnpm -r typecheck` verde; `pnpm -r test` = 303 tests OK
+(aegis 70, form-210 24, resto sin regresiones).
+
+## Sprint 2.3.1 — Fase L (2026-08-07)
+
+Se agrega el **anticipo del impuesto de renta del año siguiente** (art. 807
+ET) al motor puro y a la liquidación privada preliminar del F-210. Tres
+tramos: 25 % / 50 % / 75 % según `filingCountIncludingCurrent`.
+`computeAdvancePayment` elige la base más conservadora entre `current_only`
+y `average_of_two`, descuenta las retenciones del año declarado y jamás
+produce anticipo negativo.
+
+`Form210BuildInput.advancePaymentContext` es opcional. Si el analista lo
+provee y hay impuesto de renta positivo, `nextYearAdvance` se calcula y
+`netBalanceCop` lo suma; si falta, se emite un warning explícito.
+
+Documentación: [docs/ADVANCE_PAYMENT_2025.md](ADVANCE_PAYMENT_2025.md);
+[docs/FORM_210_LIQUIDATION.md](FORM_210_LIQUIDATION.md) actualizado.
+Verificación: `pnpm -r typecheck` verde; `pnpm -r test` = 288 tests OK
+(aegis 61, form-210 21, resto sin regresiones).
+
+## Sprint 2.3.1 — Fase H (2026-08-07)
+
+Se agrega el **impuesto orientativo de ganancias ocasionales** al motor puro
+(`packages/aegis-rules`) y se cablea a la liquidación privada preliminar del
+Formulario 210. Dos tarifas versionadas:
+
+- `general` 15 % — art. 314 ET (Ley 2277 de 2022), `et-art-314`.
+- `lottery` 20 % — art. 317 ET, `et-art-317`.
+
+`Form210BuildInput` acepta un `occasionalGainsBreakdown` opcional. Si no se
+provee, toda la casilla 115 tributa al 15 % con warning que invita a
+desglosar. `Form210PreliminaryLiquidation.occasionalGainsTax` pasa de `null` a
+`OccasionalGainsTaxComputation | null`, y `totalTaxDueCop` suma renta + GO.
+
+Documentación: [docs/OCCASIONAL_GAINS_2025.md](OCCASIONAL_GAINS_2025.md);
+[docs/FORM_210_LIQUIDATION.md](FORM_210_LIQUIDATION.md) actualizado.
+Verificación: `pnpm -r typecheck` verde; `pnpm -r test` = 278 tests OK
+(aegis 51, form-210 18, resto sin regresiones).
+
+## Sprint 2.3.1 — Fase K (2026-08-07)
+
+Se entrega la **liquidación privada preliminar** del Formulario 210 AG 2025.
+El `Form210Draft` ahora incluye `preliminaryLiquidation`
+(`Form210PreliminaryLiquidation`) con:
+
+- Casillas 41 / 65 / 82 calculadas con el art. 336 ET (min(40 %, 1.340 UVT,
+  componente_detectado)) vía `applyLimitRule` de aegis-rules.
+- Casillas 66 y 83 derivadas por sustracción y marcadas `ruleComplete`.
+- Impuesto de renta con la tarifa progresiva del art. 241 ET (`computeProgressiveIncomeTax`).
+- Descuento de anticipos, saldo a favor previo y retenciones (130/131/132).
+- Estado `insufficient_data | zero | refund | to_pay`, warnings y aviso fijo
+  "Liquidación preliminar orientativa — no presentada ante la DIAN".
+
+Se decide **no** inventar numeración oficial para las casillas de impuesto,
+GO, total a cargo y saldo hasta verificarlas contra el formulario. La tarifa de
+ganancias ocasionales, el anticipo y las sanciones permanecen fuera de alcance
+hasta las Fases H / L / manuales.
+
+Documentación: [docs/FORM_210_LIQUIDATION.md](FORM_210_LIQUIDATION.md).
+Plan actualizado en [docs/PLAN_SPRINT_2.3.1.md](PLAN_SPRINT_2.3.1.md).
+Verificación: `pnpm -r typecheck` verde; `pnpm --filter @nexus-tax/form-210
+test` 14/14; sweep `pnpm -r test` sin regresiones.
 
 ## 1. Estado actual
 
@@ -1045,3 +1263,111 @@ Validación de P6: `check:encoding` revisó 272 archivos; typecheck y lint compl
 240/240 pruebas unitarias y 4/4 E2E Chromium sobre el preview activo. El build se ejecutó con
 `NEXUSTAX_NEXT_DIST_DIR=.next-build` para no interferir con el servidor de desarrollo del usuario:
 compilación correcta y 5 páginas generadas.
+
+## Sprint 2.3.1 — cimientos de validación normativa (2026-08-02)
+
+### Estado inicial
+
+`packages/form-210` calculaba ~10 casillas por sumas/restas literales del
+instructivo y ~9 por agrupación heurística de `TaxCategory → box`. No existía
+un catálogo consolidado de fuentes oficiales (aegis-rules y form-210 tenían
+listas paralelas), la UVT vivía como constante en `filing-obligation.ts` y no
+había una matriz de validación normativa que dejara explícito qué reglas están
+verificadas y cuáles no.
+
+### Cambios implementados (Fases A, B, C)
+
+- **Fuentes oficiales.** Nuevo tipo `OfficialSourceReference` en
+  `@nexus-tax/aegis-rules` como superconjunto retro-compatible de
+  `FilingRuleSource`. Catálogo consolidado `OFFICIAL_SOURCES_2025` (6 fuentes:
+  guía general, UVT, calendario, formulario, resoluciones 000044 y 000227) con
+  helpers `getOfficialSource(id)` y `officialSourcesForBox(number)`.
+- **UVT como fuente única.** Nuevo tipo `TaxUnitDefinition` y `TAX_UNIT_2025`
+  en aegis-rules, más helpers `getTaxUnit`, `uvtToCop`, `copToUvt`. `UVT_2025`
+  permanece como alias interno para no romper consumidores existentes.
+- **Matriz de validación normativa.** Nuevo tipo `Form210RuleValidation`, más
+  `FORM_210_VALIDATION_MATRIX_2025` en `@nexus-tax/form-210` (43 filas, 1 por
+  casilla del ruleset). Un bloqueo de coherencia lanza al cargar si la matriz
+  y el ruleset dejan de coincidir. Helpers `getBoxValidation(boxNumber)` y
+  `summarizeValidationStatus()`.
+- **Test dedicado.** `tests/validation-matrix.test.ts` valida cobertura,
+  ejemplos deterministas y consistencia aritmética de las casillas `verified`.
+- **Documento vivo.** `docs/TAX_RULE_VALIDATION_MATRIX.md` publica los criterios
+  y la línea base de cobertura.
+
+### Validaciones exactas
+
+| Paso               | Comando                                          | Resultado                        |
+| ------------------ | ------------------------------------------------ | -------------------------------- |
+| Typecheck aegis    | `pnpm --filter @nexus-tax/aegis-rules typecheck` | OK                               |
+| Tests aegis        | `pnpm --filter @nexus-tax/aegis-rules test`      | OK; 26/26                        |
+| Typecheck form-210 | `pnpm --filter @nexus-tax/form-210 typecheck`    | OK                               |
+| Tests form-210     | `pnpm --filter @nexus-tax/form-210 test`         | OK; 10/10 (5 builder + 5 matriz) |
+
+### Riesgos y siguiente paso
+
+El sprint 2.3.1 completo (fases D-X) requiere semanas de trabajo experto en
+tributación colombiana con verificación normativa por regla. Cerrar todo en un
+solo pase implicaría fórmulas sin respaldo oficial confirmado, lo que rompe la
+política de "no afirmar obligaciones legales que sean solo interpretaciones".
+
+Siguiente paso exacto: retomar por la Fase D (cédula general) con la matriz
+como brújula — cada casilla que pase a `verified` debe adjuntar el número de
+regla del instructivo DIAN y su ejemplo determinista. Ver
+`docs/PLAN_SPRINT_2.3.1.md` para el orden previsto.
+
+## Sprint 2.3.1 — tarifa progresiva y límites cedulares (2026-08-03)
+
+### Estado inicial
+
+Tras cerrar Fases A, B y C (auditoría, catálogo de fuentes y UVT centralizada),
+el motor puro no incluía todavía la tarifa progresiva del art. 241 ET ni el
+límite conjunto del art. 336 ET. Ambos se necesitan para hablar de liquidación
+preliminar de renta con respaldo normativo verificable.
+
+### Cambios implementados (Fases J y D)
+
+- **Tarifa progresiva de renta.** Nuevos tipos `ProgressiveTaxBracket`,
+  `ProgressiveTaxTable`, `ProgressiveTaxComputation`. Tabla
+  `PROGRESSIVE_TAX_BRACKETS_2025` con los 7 rangos del art. 241 ET; función
+  `computeProgressiveIncomeTax` devuelve el detalle explicable (rango, tarifa
+  marginal, excess UVT, impuesto UVT, impuesto redondeado a pesos, fórmula,
+  `ruleSourceId`). Cada caso manual del art. 241 se ejercita en
+  `tests/progressive-tax.test.ts` (9/9).
+- **Límite conjunto del art. 336 ET.** Nuevos tipos `TaxLimitRule` y
+  `TaxLimitComputation`. Tabla `TAX_LIMIT_RULES_2025` con 3 reglas (trabajo,
+  capital, no laboral) usando el patrón `min(40 % × base, 1.340 UVT,
+componente_detectado)`. La función `applyLimitRule` reporta explícitamente
+  cuál candidato limitó el resultado. `tests/tax-limits.test.ts` cubre cada
+  candidato limitante y casos degenerados (8/8).
+- **Fuentes.** Se añadieron `et-art-241` y `et-art-336` al catálogo
+  `OFFICIAL_SOURCES_2025`, con `relatedBoxNumbers` para las tres casillas
+  limitadas (41, 65, 82).
+- **Docs.** `docs/PROGRESSIVE_TAX_RATE_2025.md` y `docs/TAX_LIMITS_2025.md`
+  documentan la fuente, la tabla, los ejemplos verificados y las reglas de
+  actualización futura.
+
+### Validaciones exactas
+
+| Paso            | Comando                                          | Resultado      |
+| --------------- | ------------------------------------------------ | -------------- |
+| Typecheck aegis | `pnpm --filter @nexus-tax/aegis-rules typecheck` | OK             |
+| Tests aegis     | `pnpm --filter @nexus-tax/aegis-rules test`      | OK; 43/43      |
+| Sweep completo  | `pnpm -r test`                                   | OK; 240+ tests |
+
+### Nota importante
+
+El motor puro está listo y con fuente verificada, pero el `builder` del F-210
+**aún no consume** estas reglas. Las casillas 41 / 65 / 82 permanecen en
+`not_implemented` en la matriz de validación hasta que se cablen dentro del
+builder (previsto en la fase K junto con la liquidación privada). Ese cambio
+de estado debe ir acompañado de un ejemplo determinista adicional en la
+matriz.
+
+### Siguiente paso exacto
+
+Continuar por la Fase K (impuesto neto, saldo a pagar / saldo a favor)
+cableando `computeProgressiveIncomeTax` sobre la renta gravable resultante y
+usando `applyLimitRule` en las casillas 41/65/82 del builder. Cada casilla que
+pase a `verified` en la matriz debe añadir su ejemplo determinista y una
+prueba dedicada en `packages/form-210/tests`.
