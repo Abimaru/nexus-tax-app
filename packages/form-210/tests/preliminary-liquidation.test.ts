@@ -614,6 +614,95 @@ describe('liquidación privada preliminar (Fase K)', () => {
     expect(liq.warnings.some((w) => w.includes('casilla 131'))).toBe(true);
   });
 
+  it('consolida retenciones desde records con entityTaxId y detecta duplicados', () => {
+    const withholdingRecord = (
+      id: string,
+      value: number,
+      entityTaxId: string,
+      label: string,
+    ): NormalizedExogenousRecord => ({
+      ...employmentRecord(id, value),
+      category: 'withholding',
+      treatment: 'subtract_from_tax',
+      nature: 'tax_credit',
+      entityTaxId,
+      conceptLabel: label,
+    });
+    const draft = buildForm210Draft({
+      caseId: 'case-withholdings-consolidation',
+      taxYear: 2025,
+      records: [
+        withholdingRecord('w1', 3_000_000, '900000001', 'Retención Empresa A cert 1'),
+        withholdingRecord('w2', 3_010_000, '900000001', 'Retención Empresa A cert 2'),
+        withholdingRecord('w3', 2_000_000, '900000002', 'Retención Empresa B'),
+      ],
+      facts: [],
+    });
+    const liq = draft.preliminaryLiquidation!;
+    expect(liq.withholdings.totalReportedCop).toBe(8_010_000);
+    expect(liq.withholdings.entriesCount).toBe(3);
+    expect(liq.withholdings.entriesWithoutSupportCount).toBe(3);
+    expect(liq.withholdings.suspectedDuplicates).toHaveLength(1);
+    expect(liq.withholdings.suspectedDuplicates[0]!.a.sourceId).toBe('record:w1');
+    expect(liq.withholdingsCop).toBe(8_010_000);
+    expect(liq.withholdings.ruleSourceId).toBe('et-art-373');
+    expect(liq.warnings.some((w) => w.includes('doble conteo'))).toBe(true);
+    expect(liq.warnings.some((w) => w.includes('certificado documental'))).toBe(true);
+  });
+
+  it('valida desglose de retenciones contra el total reportado', () => {
+    const withholdingRecord = (id: string, value: number): NormalizedExogenousRecord => ({
+      ...employmentRecord(id, value),
+      category: 'withholding',
+      treatment: 'subtract_from_tax',
+      nature: 'tax_credit',
+      entityTaxId: '900000001',
+    });
+    const draft = buildForm210Draft({
+      caseId: 'case-withholdings-breakdown',
+      taxYear: 2025,
+      records: [withholdingRecord('w1', 10_000_000)],
+      facts: [],
+      withholdingsBreakdown: {
+        employmentCop: 7_000_000,
+        capitalCop: 2_000_000,
+        nonLaborCop: 0,
+        occasionalGainCop: 0,
+        dividendsCop: 0,
+        otherCop: 500_000,
+      },
+    });
+    const liq = draft.preliminaryLiquidation!;
+    expect(liq.withholdings.breakdown).not.toBeNull();
+    expect(liq.withholdings.breakdownTotalCop).toBe(9_500_000);
+    expect(liq.withholdings.breakdownMatchesReported).toBe(false);
+    expect(liq.withholdings.breakdownDifferenceCop).toBe(-500_000);
+    expect(liq.warnings.some((w) => w.includes('desglose de retenciones'))).toBe(true);
+  });
+
+  it('respeta ajustes manuales al box 132 cuando no hay records de retención', () => {
+    // Cuando el analista ajusta directamente la casilla 132, la
+    // consolidación agrega una fuente sintética por la diferencia.
+    const draft = buildForm210Draft({
+      caseId: 'case-withholdings-manual',
+      taxYear: 2025,
+      records: [],
+      facts: [],
+      resolutions: [
+        makeAdjustBoxDecision({
+          id: 'dec-132',
+          caseId: 'case-withholdings-manual',
+          boxNumber: 132,
+          finalValue: 5_000_000,
+        }),
+      ],
+    });
+    const liq = draft.preliminaryLiquidation!;
+    expect(liq.withholdings.totalReportedCop).toBe(5_000_000);
+    expect(liq.withholdings.entriesCount).toBe(1);
+    expect(liq.withholdingsCop).toBe(5_000_000);
+  });
+
   it('sin ingresos de trabajo la deducción es cero y se advierte', () => {
     const draft = buildForm210Draft({
       caseId: 'case-dependents-no-income',
