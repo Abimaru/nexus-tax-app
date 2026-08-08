@@ -1,6 +1,78 @@
-# Handoff del proyecto — NexusTax (Sprint 2.3.1)
+# Handoff del proyecto — NexusTax (Sprint 2.3.2)
 
 _Última actualización: 2026-08-08._
+
+## Sprint 2.3.2 — exactitud monetaria y cierre guiado
+
+### Diagnóstico y correcciones
+
+- El normalizador anterior devolvía solo un `number` y no conservaba cómo
+  interpretó separadores. `AmountCandidate` + parser `2.0.0` separa evidencia,
+  decimal y peso fiscal; detecta escalas ×10/×100/×1000.
+- Las alertas monetarias ahora impiden consolidar una casilla como confiable y
+  se propagan a fórmulas dependientes.
+- La regla laboral genérica capturaba rendimientos de cesantías por la palabra
+  "empleado"; la regla financiera específica se evalúa antes.
+- El patrimonio anterior podía caer en la regla patrimonial genérica; ahora es
+  `prior_year_reference` informativo. Movimientos e inversiones efectuadas no
+  se convierten en saldos de cierre.
+- Intereses de vivienda confirmados llegan a R38; R37 y R40 derivan de sus
+  operandos. Una conciliación confirmada excluye la exógena reemplazada para
+  evitar doble conteo, conservando procedencia.
+- Rechazar conciliación antes solo afectaba estado React. Ahora se persiste y
+  restaura en Dexie; la sugerencia rechazada no reaparece tras recargar.
+
+### Modelo, migración y UX
+
+- Dexie v12 marca candidatos monetarios heredados para reanálisis y conserva el
+  valor anterior. No altera hechos/resoluciones confirmados.
+- Casillas: `provisional`, `requires_review`, `not_applicable`,
+  `confirmed_zero` y `blocked`, además de estados previos.
+- Procedencia visible con valor original, transformación, confianza y fuentes
+  excluidas. Centro de resolución con valor, fuente esperada, destino y efecto.
+- Nueva vista **Revisión final** y bloque **¿Qué me falta?**. Nunca afirma que
+  la declaración fue presentada.
+
+### Regresión y límites conocidos
+
+`Form210RegressionComparison` clasifica coincidencia exacta, redondeo, revisión
+y fallo en fixtures. Los valores del formulario manual de referencia no se
+incluyen en producción. El motor ya protege R29 contra el saldo anterior, R58
+contra doble fuente conciliada y R38/R40 contra pérdida de propagación.
+
+Todavía requieren intervención humana: validar fuentes reales de renta exenta y
+otras deducciones, confirmar documentos de confianza media, justificar
+exclusiones, registrar declaración anterior si se desea comparar y verificar el
+fundamento oficial de la política de redondeo al peso. No se afirma coincidencia
+integral con el formulario real mientras esas fuentes no estén modeladas.
+
+### Documentación nueva
+
+- `MONEY_PARSING.md`
+- `RESOLUTION_WORKFLOW.md`
+- `CASE_CLOSURE.md`
+- `FORM_210.md` como índice
+
+### Siguiente incremento
+
+Completar un corpus sintético multiproducto para todas las casillas del oráculo,
+incorporar el comparativo de año anterior como fuente separada y ampliar E2E del
+laboratorio documental al cierre final, sin datos reales ni servicios externos.
+
+### Verificación ejecutada
+
+- `pnpm typecheck`: verde.
+- `pnpm lint`: verde, cero advertencias.
+- `pnpm test`: 422 pruebas unitarias verdes.
+- `pnpm build`: verde.
+- `pnpm test:e2e`: 4/4 Playwright verdes.
+- `pnpm check:encoding`: 342 archivos revisados, sin mojibake.
+- Capturas verificadas: `revision-final-1280.png` y
+  `revision-final-390.png` en la salida local de Playwright.
+
+Playwright solo reporta advertencias no bloqueantes conocidas: `sharp`
+opcional, variables npm que cambiarán en una versión mayor y la limitación de
+generación estática al usar edge runtime.
 
 ## Cierre del Sprint 2.3.1 — validación tributaria y liquidación preliminar
 

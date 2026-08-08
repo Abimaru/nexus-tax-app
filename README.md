@@ -1,5 +1,9 @@
 # NexusTax
 
+> Sprint 2.3.2 incorpora interpretación monetaria documental v2, resolución
+> accionable por casilla y revisión final. Ver
+> [MONEY_PARSING](docs/MONEY_PARSING.md) y [CASE_CLOSURE](docs/CASE_CLOSURE.md).
+
 **Estación personal de análisis tributario** para Colombia. Local, privada y
 extensible. Motor de reglas y análisis: **Aegis Engine**.
 

@@ -1,5 +1,9 @@
 # CLAUDE.md — Reglas permanentes de NexusTax
 
+> Desde Sprint 2.3.2 toda extracción monetaria documental usa
+> `AmountCandidate`/parser `2.0.0`; la evidencia original es inmutable y una
+> anomalía de escala impide confiar automáticamente en la casilla.
+
 Guía para Claude Code al trabajar en este repositorio. Complementa (no
 reemplaza) la documentación de `docs/`.
 

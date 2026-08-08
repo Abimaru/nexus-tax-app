@@ -1,5 +1,9 @@
 # Modelo de datos — NexusTax
 
+> Sprint 2.3.2 incorpora `AmountCandidate`, versión monetaria, estados
+> explícitos de casilla y conciliaciones `rejected/restored`. Dexie v12 marca
+> candidatos heredados sin cambiar decisiones humanas confirmadas.
+
 Todos los tipos y esquemas viven en `packages/domain` como esquemas **Zod**, de
 los que se derivan los tipos TypeScript (`z.infer`). Así, validación y tipos
 comparten una sola fuente de verdad.

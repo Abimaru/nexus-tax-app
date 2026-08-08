@@ -1,5 +1,9 @@
 # Aegis Document Intelligence
 
+> Desde Sprint 2.3.2 los adaptadores generan `AmountCandidate` con parser
+> `2.0.0` y conservan texto original, interpretación, redondeo y factor de
+> escala. Ver [MONEY_PARSING.md](./MONEY_PARSING.md).
+
 ## Propósito y frontera
 
 `@nexus-tax/document-intelligence` convierte una representación PDF textual en

@@ -1,5 +1,9 @@
 # Procesamiento local de PDF
 
+> La lectura PDF/OCR entrega evidencia al parser monetario versionado; no
+> aplana separadores ni sustituye texto original. OCR continúa local y bajo
+> demanda; un resultado ambiguo exige revisión humana.
+
 ## Implementación
 
 NexusTax usa `pdfjs-dist` 5.4.624. La aplicación copia durante `predev` y

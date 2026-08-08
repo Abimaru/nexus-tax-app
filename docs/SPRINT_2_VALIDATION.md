@@ -1,5 +1,9 @@
 # Validación funcional del Sprint 2
 
+> Sprint 2.3.2 cubre parser monetario, patrimonio anterior, cesantías,
+> R38/R40, no aplica/cero, reemplazo sin duplicación, rechazo/restauración y
+> comparación de regresión.
+
 Guia reproducible con datos exclusivamente sinteticos. No uses archivos ni
 identificaciones tributarias reales.
 

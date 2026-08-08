@@ -1,5 +1,9 @@
 # Arquitectura — NexusTax
 
+> Sprint 2.3.2: `document-intelligence` interpreta montos, `domain` define
+> `AmountCandidate`, `form-210` hereda alertas y `web` persiste decisiones. Ver
+> [MONEY_PARSING.md](./MONEY_PARSING.md).
+
 ## Monorepo
 
 Workspace pnpm con dos capas: **aplicaciones** (`apps/*`) y **paquetes**

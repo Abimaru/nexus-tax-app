@@ -1,5 +1,9 @@
 # Reglas tributarias locales
 
+> Una fuente monetaria heredada, ambigua o de baja confianza deja la casilla y
+> sus fórmulas en revisión. El redondeo técnico queda separado del fundamento
+> jurídico pendiente de verificación.
+
 Las reglas de NexusTax son locales, explicables y versionadas. Se separan en dos
 capas:
 

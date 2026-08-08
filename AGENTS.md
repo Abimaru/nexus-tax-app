@@ -39,6 +39,8 @@ solo una hoja de trabajo preliminar. Motor de reglas: **Aegis Engine** (`package
   explícito, reglas versionadas).
 - **Nada de datos tributarios reales** en el repositorio (solo fixtures
   sintéticos).
+- **Montos documentales versionados**: conserva `AmountCandidate.rawText`, no
+  consolides alertas de escala y reanaliza candidatos anteriores a `2.0.0`.
 
 ## Estructura
 

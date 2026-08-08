@@ -1,5 +1,8 @@
 # Roadmap — NexusTax
 
+> Después de Sprint 2.3.2: ampliar corpus de regresión F-210, modelar fuentes
+> verificadas pendientes de R35–R42 y formalizar el comparativo del año anterior.
+
 ## Entregado hasta hoy ✅
 
 **Fundaciones locales.** Expediente local, carga de exógena, inspección,

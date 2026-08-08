@@ -1,5 +1,9 @@
 # Conciliacion preliminar
 
+> Sprint 2.3.2 persiste rechazo/restauración. Una conciliación confirmada puede
+> reemplazar la exógena y conservarla como fuente excluida del F-210. Ver
+> [RESOLUTION_WORKFLOW.md](./RESOLUTION_WORKFLOW.md).
+
 La matriz compara agregados homogéneos con los cinco topes extraídos del mismo
 reporte. Es una ayuda de revisión local y una fuente del borrador 210; no confirma
 la procedencia fiscal ni liquida el impuesto.
