@@ -2523,6 +2523,39 @@ export async function getForm210Draft(caseId: string): Promise<Form210Draft | un
   return getDb().form210Drafts.where('caseId').equals(caseId).first();
 }
 
+/**
+ * Construye un borrador tentativo del F-210 anexando `tentativeDecision` a
+ * las decisiones ya persistidas, **sin escribir en IndexedDB**. Sirve para
+ * previsualizar el impacto (Fase R) antes de confirmar la decisión con
+ * `saveTaxResolutionDecision`.
+ */
+export async function previewForm210Adjustment(
+  caseId: string,
+  tentativeDecision: import('@nexus-tax/domain').TaxResolutionDecision,
+): Promise<Form210Draft | undefined> {
+  const db = getDb();
+  const [taxCase, stored, analysis, facts, resolutions, acceptedSources] = await Promise.all([
+    db.cases.get(caseId),
+    db.results.get(caseId),
+    db.analyses.get(caseId),
+    db.facts.where('caseId').equals(caseId).toArray(),
+    db.resolutionDecisions.where('caseId').equals(caseId).sortBy('decidedAt'),
+    db.acceptedSources.where('caseId').equals(caseId).toArray(),
+  ]);
+  if (!taxCase || taxCase.taxYear !== 2025) return undefined;
+  return buildForm210Draft({
+    caseId,
+    taxYear: taxCase.taxYear,
+    records: stored?.result.normalizedRecords ?? [],
+    facts,
+    resolutions: [...resolutions, tentativeDecision],
+    recordStates: form210RecordStates(analysis),
+    provisionalRecordIds: acceptedSources
+      .filter((item) => ['provisionally_accepted', 'pending_support'].includes(item.status))
+      .map((item) => item.exogenousRecordId),
+  });
+}
+
 export async function removeExogenousSource(caseId: string): Promise<void> {
   const db = getDb();
   const timestamp = nowIso();
