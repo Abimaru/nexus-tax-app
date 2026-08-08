@@ -377,18 +377,37 @@ test('flujo guiado completo del expediente', async ({ page }, testInfo) => {
   await box29.getByRole('button', { name: 'Crear ajuste trazable' }).click();
   await box29.getByLabel('Valor ajustado').fill('1250001');
   await box29.getByLabel('Motivo obligatorio').fill('Ajuste sintético validado en E2E.');
+  // Fase R: flujo previsualizar → confirmar.
+  await box29.getByRole('button', { name: /Previsualizar impacto/ }).click();
+  await expect(box29.getByText(/Impacto en la liquidación preliminar/)).toBeVisible();
   await box29.getByRole('button', { name: 'Confirmar ajuste' }).click();
   await expect(box29.getByText('Confirmada')).toBeVisible();
   await page.reload();
   await expect(page.locator('#form210-box-29').getByText('Confirmada')).toBeVisible();
+  // Fase U: bundle exportable con ruleset + fuentes.
   const downloadPromise = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Exportar JSON' }).click();
+  await page.getByRole('button', { name: 'Exportar bundle' }).click();
   const download = await downloadPromise;
   const downloadPath = await download.path();
   expect(downloadPath).not.toBeNull();
-  expect(JSON.parse(readFileSync(downloadPath!, 'utf8')).schema).toBe(
-    'nexustax.form210.working-draft',
-  );
+  const bundle = JSON.parse(readFileSync(downloadPath!, 'utf8'));
+  expect(bundle.schema).toBe('nexustax.form210.export-bundle');
+  expect(bundle.ruleset.ruleVersion).toBe('co.dian.form210.2025.v1');
+  expect(Array.isArray(bundle.officialSources)).toBe(true);
+  expect(bundle.draft.preliminaryLiquidation).toBeTruthy();
+
+  // Fase P: vista de liquidación preliminar con saldo neto y trazabilidad.
+  await selectView(page, 'Liquidación preliminar');
+  await expect(page.getByRole('heading', { name: 'Liquidación privada preliminar' })).toBeVisible();
+  await expect(page.getByText(/no presentada ante la DIAN/i)).toBeVisible();
+
+  // Fase O: vista Estados con los cuatro estados independientes.
+  await selectView(page, 'Estados');
+  await expect(page.getByRole('heading', { name: 'Estados separados' })).toBeVisible();
+  await expect(page.getByText(/4 · Presentación/)).toBeVisible();
+  await expect(page.getByText(/Fuera de alcance/)).toBeVisible();
+  // Volver al borrador para no romper pasos posteriores del smoke.
+  await selectView(page, 'Borrador Formulario 210');
 
   await selectStage(page, 'Organización');
   await selectView(page, 'Documentos');
