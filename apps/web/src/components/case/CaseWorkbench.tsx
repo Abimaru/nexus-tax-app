@@ -66,6 +66,7 @@ import { CaseTasksPanel } from './CaseTasksPanel';
 import { ResolutionCenterPanel } from './ResolutionCenterPanel';
 import { Form210DraftPanel } from './Form210DraftPanel';
 import { PreliminaryLiquidationPanel } from './PreliminaryLiquidationPanel';
+import { FilingStatesPanel } from './FilingStatesPanel';
 import { ContextualNavigation, WorkflowStepper } from './WorkflowNavigation';
 import {
   BasicCaseDataPanel,
@@ -675,6 +676,9 @@ export function CaseWorkbench({
             alias={taxCase.alias}
             draft={workspace.form210Draft}
           />
+        ) : null}
+        {stage === 'declaracion' && view === 'estados' ? (
+          <FilingStatesPanel draft={workspace.form210Draft} />
         ) : null}
 
         {stage === 'exportacion' && ['resumen-final', 'exportar', 'manifiesto'].includes(view) ? (
