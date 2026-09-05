@@ -134,6 +134,7 @@ Detalles en `docs/SECURITY_PRIVACY.md`.
 - [Matriz de validación tributaria](docs/TAX_RULE_VALIDATION_MATRIX.md)
 - [Estados separados del expediente](docs/FILING_STATES.md)
 - [Bundle exportable del Formulario 210](docs/FORM_210_EXPORT_BUNDLE.md)
+- [Declaraciones anteriores (Sprint 2.4)](docs/PRIOR_YEAR_RETURNS.md)
 - [Plan y cierre del Sprint 2.3.1](docs/PLAN_SPRINT_2.3.1.md)
 - [Quality gate visual](docs/UX_QUALITY_GATE.md)
 - [Guía de microcopy](docs/MICROCOPY_GUIDE.md)

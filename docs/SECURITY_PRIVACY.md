@@ -82,6 +82,18 @@ sensible, pero declara `includesBinaryData: false`. No incluye archivo fuente, P
 OCR completo, contraseña temporal ni llamadas a la DIAN. El ruleset se distribuye versionado con la
 aplicación y no consulta fuentes oficiales durante el uso normal.
 
+## Declaraciones anteriores (Sprint 2.4)
+
+El Formulario 210 de un año anterior se lee localmente con el mismo lector PDF (`readPdfText`) que
+el resto del motor documental; nunca se envía a un servidor. La identidad detectada se enmascara de
+inmediato (`taxpayerIdentityMasked`, solo últimos dígitos visibles) antes de persistirse en Dexie
+v13 (`priorYearReturns`); las tarjetas generales de la UI nunca muestran el NIT o número de
+formulario completos, solo en el modo avanzado del drawer de detalle y siempre como fragmento corto
+de evidencia, no el PDF íntegro. El documento fuente respeta el modo de almacenamiento elegido por
+el analista (por defecto solo metadatos). Ningún valor histórico se traslada automáticamente: todo
+arrastre (anticipo, saldo a favor) requiere confirmación humana explícita y queda registrado como
+decisión trazable.
+
 ## Buenas prácticas para contribuir
 
 - No agregar dependencias que realicen telemetría o llamadas de red implícitas.

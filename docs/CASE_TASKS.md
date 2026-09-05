@@ -33,3 +33,15 @@ identificador para mantener determinismo.
 El Centro de resolución consume la misma lista: ofrece alternativas compatibles, exige motivo,
 conserva evidencia e historial y abre el destino exacto. Una decisión activa suprime el pendiente;
 una restauración o reversión permite derivarlo nuevamente.
+
+## Declaraciones anteriores (Sprint 2.4, Fase B1)
+
+Cinco tipos nuevos con `source: 'prior_year_return'` y destino
+`declaracion/declaraciones-anteriores`: identidad no coincidente (bloqueante),
+casillas no reconocidas con confianza suficiente, dos declaraciones vigentes
+para el mismo año sin indicar corrección, arrastre pendiente de confirmación
+(anticipo o saldo a favor, incluida la pregunta de devolución/compensación) y
+anomalía de escala frente al año anterior (nunca corrige el valor, solo
+advierte). Se generan en `buildCaseTasks` a partir de las declaraciones y
+candidatos de arrastre vigentes; la Revisión final ("¿Qué me falta?") las
+muestra como cualquier otra tarea, con deep-link a la tarjeta exacta.

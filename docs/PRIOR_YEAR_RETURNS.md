@@ -120,16 +120,83 @@ por eso la casilla 89 queda en `requires_review` sin fórmula automática.
 
 - El motor del beneficio de 72 UVT por dependiente (art. 336 ET) y las
   casillas 138/139 — Fase C.
-- La UI de navegación ("Declaraciones anteriores" dentro del expediente,
-  tareas con deep-link, capturas del quality gate) — la capa de persistencia
-  y el motor puro están completos y probados
-  (`apps/web/src/lib/repository.ts`: `savePriorYearReturn`,
-  `getPriorYearReturns`, `refreshPriorYearCarryForwardCandidates`,
-  `decideCarryForwardCandidate`, `answerRefundCarryForwardQuestion`,
-  `getTaxEvolutionComparison`), pero el componente visual y su wiring en la
-  navegación del expediente quedan pendientes para una iteración siguiente,
-  a fin de no mezclar cambios de motor con cambios de UI sin revisión
-  intermedia.
-- Subir el PDF y orquestar el flujo completo lectura→diagnóstico→OCR de
-  respaldo→resolución manual en la web (el parser puro ya existe y está
-  probado; falta la orquestación de UI).
+- Facturación electrónica DIAN, inmuebles, administración de propiedad
+  horizontal y medicina prepagada — secciones D-G del Sprint 2.4 original,
+  no iniciadas.
+
+## 7. Integración UX (Sprint 2.4, Fase B1)
+
+Completa funcionalmente el flujo descrito en la Fase B1: un analista puede
+cargar, confirmar, comparar y trasladar valores **únicamente desde la UI**,
+sin tocar Dexie ni fixtures.
+
+### Componentes
+
+- `apps/web/src/lib/priorYearReturns.ts`: orquesta lectura local del PDF
+  (`readPdfText`, reutilizado) → `extractPriorYearForm210` → construcción del
+  contrato `PriorYearTaxReturn` con identidad ya enmascarada
+  (`checkPriorYearIdentity` compara el expediente contra el PDF por los
+  últimos dígitos visibles).
+- `apps/web/src/lib/priorYearBoxLabels.ts`: catálogo puro de etiquetas
+  humanas y roles de casilla (`roleForPriorYearBox`), compartido entre la
+  orquestación de carga y la derivación de tareas.
+- `apps/web/src/components/case/PriorYearReturnsPanel.tsx`: sección
+  `Declaraciones anteriores` dentro de la etapa Declaración — listado por
+  año (con soporte para correcciones múltiples y marca `Vigente`), carga con
+  estados humanos (`Analizando documento…` / `Formulario reconocido` /
+  `Requiere revisión` / `No reconocido`), drawer de detalle con modo avanzado
+  de procedencia, tarjetas de arrastre de anticipo/saldo a favor (con la
+  pregunta de devolución/compensación del art. 850 ET) y la vista de
+  evolución tributaria con hallazgos de anomalía de escala descartables.
+- `buildCaseTasks` (`apps/web/src/lib/taxCaseAnalysis.ts`) deriva tareas de
+  identidad no coincidente, casillas no reconocidas, conflicto entre
+  declaraciones del mismo año, arrastres pendientes y anomalías de escala.
+  La Revisión final las muestra con deep-link (`onNavigate`) igual que el
+  resto de tareas del expediente.
+
+### Aplicación de arrastres al Formulario 210
+
+Al confirmar un arrastre, el panel reutiliza el mecanismo YA probado de
+ajuste de casilla (`saveTaxResolutionDecision` con
+`type: 'adjust_form_box'`), que ya recalcula el borrador
+(`rebuildForm210Draft`) y la liquidación preliminar. **Limitación conocida**:
+esto es una simplificación deliberada — el motor puro también expone un
+input dedicado `Form210BuildInput.priorYearBalance` (con
+`hasPendingCompensationOrRefundRequest`) para el saldo a favor, pero
+`rebuildForm210Draft` todavía no lo persiste ni lo lee; usar el ajuste
+genérico de casilla evita construir esa persistencia adicional sin revisión
+previa. Queda como trabajo futuro conectar `priorYearBalance` de forma
+nativa si se necesita la trazabilidad completa de esa nuance normativa en
+`preliminaryLiquidation`.
+
+### Privacidad
+
+El documento se registra como `DocumentKind = 'prior_year_return'` con el
+modo de almacenamiento que elija el analista (por defecto solo metadatos).
+La identidad detectada se enmascara de inmediato (`taxpayerIdentityMasked`)
+y nunca se muestra completa en tarjetas generales; el modo avanzado del
+drawer expone evidencia de extracción (fragmento corto, página, método) pero
+nunca el PDF completo.
+
+### Pruebas
+
+- `apps/web/src/lib/taxCaseAnalysis.test.ts`: deriva correctamente las 5
+  tareas nuevas (identidad, conflicto, arrastre con/sin valor).
+- `apps/web/src/components/case/PriorYearReturnsPanel.test.tsx`: estado
+  vacío, tarjeta de año, tarjeta de arrastre y bloqueo por identidad.
+- `apps/web/src/lib/repository.test.ts`: persistencia, historial de
+  correcciones y no duplicación de candidatos de arrastre.
+- `apps/web/tests-e2e/prior-year-returns.spec.ts`: dos escenarios E2E
+  completos (flujo feliz con arrastre de anticipo aplicado y verificado en
+  el borrador F-210, más evolución tributaria; y bloqueo por identidad no
+  coincidente), con capturas desktop (1280 px) y móvil (390 px). Usa un PDF
+  sintético generado en texto plano (sin datos reales, sin acentos por
+  limitación del generador de PDF de prueba) con valores anonimizados
+  derivados del oráculo AG2024.
+
+### Pendiente explícito de esta fase
+
+- Facturación electrónica DIAN, inmuebles, administración de propiedad
+  horizontal, medicina prepagada y el motor de 72 UVT (Fase C) — fuera de
+  alcance por instrucción explícita.
+- Conexión nativa de `priorYearBalance` (ver limitación arriba).

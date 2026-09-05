@@ -1,6 +1,72 @@
-# Handoff del proyecto — NexusTax (Sprint 2.4, Fase B0 + Fase B)
+# Handoff del proyecto — NexusTax (Sprint 2.4, Fase B0 + B + B1)
 
 _Última actualización: 2026-09-05._
+
+## Sprint 2.4 — Fase B1 (integración UX de declaraciones anteriores)
+
+Continúa exactamente sobre el estado local de Fase B0+B (commits `c9f7ca7`…`8e36c8e`, verificados
+al inicio de esta fase). Ver detalle completo en
+[`docs/PRIOR_YEAR_RETURNS.md`](./PRIOR_YEAR_RETURNS.md).
+
+### Verificación inicial (punto 0 de la adenda)
+
+- Los 6 commits de Fase B0+B existen en `HEAD`/historial local; `git status` estaba limpio antes de
+  empezar.
+- `docs/PRIOR_YEAR_RETURNS.md` existe en el working tree y su contenido corresponde al commit
+  `8e36c8e`.
+- `docs/PROJECT_HANDOFF.md` ya contenía el cierre de Fase B0+B antes de esta fase.
+- **Discrepancia de `docs.zip`**: la sesión opera en un *worktree* (`aibarguen-bocc-...`) separado
+  del checkout principal (`main`) del repositorio. Los commits de Fase B0+B viven únicamente en la
+  rama de este worktree — todavía no están fusionados a `main`. Un ZIP de `docs/` tomado desde el
+  checkout principal (o desde `main`) necesariamente mostrará la documentación previa al Sprint 2.4,
+  porque esos archivos no han cambiado ahí. No es una inconsistencia del repositorio: es el
+  historial esperado de una rama de trabajo todavía no fusionada.
+
+### Fase B1 — completada funcionalmente
+
+Un analista puede ahora, únicamente desde la UI (`Declaración → Declaraciones anteriores`):
+
+1. Agregar una declaración cargando un Formulario 210 en PDF.
+2. Ver el análisis local en tiempo real (`Analizando documento…` → `Formulario reconocido` /
+   `Requiere revisión` / `No reconocido`).
+3. Confirmar año gravable e indicar si corrige una declaración ya cargada.
+4. Revisar identidad (bloqueo explícito y trazable si no coincide, nunca un "continuar de todas
+   formas" genérico).
+5. Ver las casillas extraídas con concepto humano, valor, confianza y procedencia (modo avanzado).
+6. Ver la comparación de evolución tributaria contra el año actual, con anomalías de escala
+   descartables (nunca autocorregidas).
+7. Confirmar, corregir o rechazar el arrastre de anticipo (R133→R130) y de saldo a favor
+   (R137→R131, con la pregunta de devolución/compensación del art. 850 ET).
+8. Ver el impacto reflejado de inmediato en el borrador del Formulario 210 y en Revisión final.
+
+Implementado: nueva vista `declaraciones-anteriores` en la etapa Declaración;
+`apps/web/src/lib/priorYearReturns.ts` y `priorYearBoxLabels.ts` (orquestación de carga, sin
+segundo parser en React); `PriorYearReturnsPanel.tsx` (listado, carga, drawer de detalle,
+tarjetas de arrastre, evolución tributaria); 5 tipos de tarea nuevos derivados en `buildCaseTasks`
+con deep-link desde Revisión final; reutilización de `saveTaxResolutionDecision` +
+`rebuildForm210Draft` para aplicar arrastres (sin reimplementar el motor de liquidación);
+`removePriorYearReturn` y `discardCaseTask` en el repositorio.
+
+### Limitación conocida, documentada explícitamente
+
+El arrastre se aplica mediante un ajuste genérico de casilla (`adjust_form_box`), no mediante el
+input dedicado `Form210BuildInput.priorYearBalance` del motor puro (que ya modela la nuance de
+devolución/compensación de forma más trazable). `rebuildForm210Draft` todavía no persiste ni lee
+ese contexto. Documentado como trabajo futuro en `docs/PRIOR_YEAR_RETURNS.md` §7.
+
+### Verificación ejecutada
+
+- `pnpm --filter @nexus-tax/web typecheck`: verde.
+- `pnpm --filter @nexus-tax/web lint`: verde, cero advertencias.
+- `pnpm --filter @nexus-tax/web test`: 89/89 verdes (84 previos de la sesión + 1 nuevo en
+  `taxCaseAnalysis.test.ts` + 4 nuevos en `PriorYearReturnsPanel.test.tsx`).
+- `pnpm build`: verde (monorepo completo).
+- `pnpm test:e2e`: 6/6 verdes (4 previos + 2 nuevos: flujo feliz completo y bloqueo por identidad),
+  con capturas desktop (1280 px) y móvil (390 px) verificadas visualmente.
+- `pnpm check:encoding`: sin mojibake.
+
+Ningún test previo de la sesión desapareció; el conteo total pasó de 454 a 459 tests unitarios más
+2 escenarios E2E nuevos (6/6 en total).
 
 ## Sprint 2.4 — Fase B0 (esqueleto Formulario 210) + Fase B (declaraciones anteriores)
 
