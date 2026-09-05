@@ -17,6 +17,8 @@ import { Badge } from '@nexus-tax/ui';
 import {
   deleteCase,
   enableManualCase,
+  getPriorYearCarryForwardCandidates,
+  getPriorYearReturns,
   getTaxCaseWorkspace,
   markWorkflowViewCompleted,
   removeExogenousSource,
@@ -68,6 +70,7 @@ import { Form210DraftPanel } from './Form210DraftPanel';
 import { PreliminaryLiquidationPanel } from './PreliminaryLiquidationPanel';
 import { FilingStatesPanel } from './FilingStatesPanel';
 import { FinalReviewPanel } from './FinalReviewPanel';
+import { PriorYearReturnsPanel } from './PriorYearReturnsPanel';
 import { ContextualNavigation, WorkflowStepper } from './WorkflowNavigation';
 import {
   BasicCaseDataPanel,
@@ -91,6 +94,11 @@ export function CaseWorkbench({
 }) {
   const router = useRouter();
   const workspace = useLiveQuery(() => getTaxCaseWorkspace(caseId), [caseId]);
+  const priorYearReturns = useLiveQuery(() => getPriorYearReturns(caseId), [caseId]);
+  const carryForwardCandidates = useLiveQuery(
+    () => getPriorYearCarryForwardCandidates(caseId),
+    [caseId],
+  );
   const taxCase = workspace?.taxCase;
   const result = workspace?.result;
   const analysis = workspace?.analysis;
@@ -159,9 +167,11 @@ export function CaseWorkbench({
         reconciliations: workspace?.reconciliations ?? [],
         requirementSourceDecisions: workspace?.requirementSourceDecisions ?? [],
         vatResponsibility: workspace?.filingInputs?.isVatResponsibleAtYearEnd ?? null,
+        priorYearReturns,
+        carryForwardCandidates,
         now: taskTimestamp,
       }),
-    [caseId, result, analysis, workspace, taskTimestamp],
+    [caseId, result, analysis, workspace, priorYearReturns, carryForwardCandidates, taskTimestamp],
   );
   useEffect(() => {
     if (!workspace) return;
@@ -523,6 +533,7 @@ export function CaseWorkbench({
               analysis={analysis}
               progress={progress}
               vatResponsibility={workspace.filingInputs?.isVatResponsibleAtYearEnd ?? null}
+              priorYearReturns={priorYearReturns}
               onNavigate={(section) =>
                 applyDestination(
                   section === 'matriz' || section === 'hallazgos' ? 'conciliacion' : 'organizacion',
@@ -671,6 +682,17 @@ export function CaseWorkbench({
             focusBoxNumber={tasks.find((task) => task.id === activeTaskId)?.formBoxNumber}
           />
         ) : null}
+        {stage === 'declaracion' && view === 'declaraciones-anteriores' ? (
+          <PriorYearReturnsPanel
+            caseId={caseId}
+            taxCase={taxCase}
+            form210Draft={workspace.form210Draft}
+            priorYearReturns={priorYearReturns ?? []}
+            carryForwardCandidates={carryForwardCandidates ?? []}
+            tasks={tasks}
+            focusTaskId={activeTaskId}
+          />
+        ) : null}
         {stage === 'declaracion' && view === 'liquidacion-preliminar' ? (
           <PreliminaryLiquidationPanel
             caseId={caseId}
@@ -682,7 +704,7 @@ export function CaseWorkbench({
           <FilingStatesPanel draft={workspace.form210Draft} />
         ) : null}
         {stage === 'declaracion' && view === 'revision-final' ? (
-          <FinalReviewPanel draft={workspace.form210Draft} tasks={tasks} />
+          <FinalReviewPanel draft={workspace.form210Draft} tasks={tasks} onNavigate={navigateToTask} />
         ) : null}
 
         {stage === 'exportacion' && ['resumen-final', 'exportar', 'manifiesto'].includes(view) ? (

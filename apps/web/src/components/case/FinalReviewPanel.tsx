@@ -20,9 +20,11 @@ const SECTION_LABELS: Record<Form210Section, string> = {
 export function FinalReviewPanel({
   draft,
   tasks,
+  onNavigate,
 }: {
   draft?: Form210Draft;
   tasks: readonly CaseTask[];
+  onNavigate?: (stage: CaseTask['stage'], view: CaseTask['view'], taskId: string) => void;
 }) {
   if (!draft) {
     return (
@@ -140,7 +142,17 @@ export function FinalReviewPanel({
                   {group.tasks.length ? (
                     group.tasks.map((task) => (
                       <li key={task.id} className="rounded-lg border border-overlay/8 p-3 text-sm">
-                        <p className="font-medium text-content-strong">{task.title}</p>
+                        {onNavigate ? (
+                          <button
+                            type="button"
+                            onClick={() => onNavigate(task.stage, task.view, task.id)}
+                            className="text-left font-medium text-content-strong hover:text-tone-cyan focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cyan/50"
+                          >
+                            {task.title}
+                          </button>
+                        ) : (
+                          <p className="font-medium text-content-strong">{task.title}</p>
+                        )}
                         <p className="mt-1 text-content-muted">{task.recommendedAction}</p>
                         {task.destinationLabel ? (
                           <p className="mt-1 text-xs text-tone-cyan">
@@ -162,8 +174,9 @@ export function FinalReviewPanel({
           </p>
         )}
         <p className="mt-4 text-xs text-content-subtle">
-          Comparación con declaración anterior: no disponible hasta adjuntar o registrar esa fuente.
-          No se infieren valores.
+          {tasks.some((task) => task.source === 'prior_year_return')
+            ? 'Hay pendientes derivados de una declaración anterior: revísalos en Declaraciones anteriores.'
+            : 'Comparación con declaración anterior: agrega una en "Declaraciones anteriores" si quieres trasladar anticipo, saldo a favor o comparar variaciones.'}
         </p>
       </GlassPanel>
     </div>
