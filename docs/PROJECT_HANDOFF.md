@@ -1,6 +1,79 @@
-# Handoff del proyecto — NexusTax (Sprint 2.3.2)
+# Handoff del proyecto — NexusTax (Sprint 2.4, Fase B0 + Fase B)
 
-_Última actualización: 2026-08-08._
+_Última actualización: 2026-09-05._
+
+## Sprint 2.4 — Fase B0 (esqueleto Formulario 210) + Fase B (declaraciones anteriores)
+
+Continúa sobre el cierre del Sprint 2.3.2. Ejecutado sobre `main`, sin operaciones destructivas
+de Git. Ver detalle completo en [`docs/PRIOR_YEAR_RETURNS.md`](./PRIOR_YEAR_RETURNS.md).
+
+### Corrección de la auditoría de Fase A
+
+La conclusión inicial de la Fase A (que la adición de 72 UVT se resta directamente de la renta
+líquida gravable consolidada) se corrigió: por instructivo oficial, la casilla 139 es un
+**componente explícito** de la casilla 92 (rentas exentas y deducciones limitadas de la cédula
+general), no una resta independiente posterior. La casilla 92 queda estructuralmente representada
+pero sin fórmula calculada (`not_implemented`) hasta la Fase C.
+
+### Fase B0 — esqueleto del Formulario 210
+
+- `FORM_210_BOXES_2025` se completó con 14 casillas estructurales (89, 91, 92, 93, 111, 126, 127,
+  129, 133, 137, 138, 139, 140, 141) usando un patrón nuevo (`structuralBox`) que declara
+  `implementationStatus` y `legalBasisSourceIds` sin inventar fórmulas no verificadas.
+- `Form210Section` agrega `general_income_consolidation`, `tax_settlement` e `informational`.
+- Las casillas 126, 127, 129, 133 y 137 se cablean **informativamente** en `buildForm210Draft` con
+  valores ya calculados por motores probados (impuesto de renta, impuesto de ganancias
+  ocasionales, total a cargo, anticipo del año siguiente, saldo a favor) — la numeración oficial
+  de casilla queda marcada como no verificada.
+- **Hallazgo documentado, no oculto**: la aritmética de los fixtures de referencia sugiere una
+  subcédula de "rentas de trabajo sin relación laboral" (honorarios/servicios, aprox. 43-57) no
+  modelada; la casilla 89 queda en `requires_review` sin fórmula automática.
+- Regresión ejecutada antes y después: 68/68 tests de `form-210` seguían verdes antes de agregar
+  las 3 pruebas nuevas de la Fase B0 (71/71 después). Ningún valor previamente verificado cambió.
+
+### Fase B — declaraciones anteriores
+
+- Nuevos contratos en `@nexus-tax/domain`: `PriorYearTaxReturn`, `PriorYearBoxValue` (con `role`
+  explícito: `carry_forward_candidate`/`calculation_input`/`historical_reference`/
+  `comparison_only`/`context_prefill`/`not_reusable`), `PriorYearCarryForwardCandidate`.
+- Nuevo parser puro en `@nexus-tax/document-intelligence`
+  (`extractPriorYearForm210`) que detecta el Formulario 210, año gravable, identidad (enmascarada),
+  estado y corrección, y extrae casillas por patrón número+etiqueta+valor. Verificado exactamente
+  contra el oráculo anonimizado AG2024 de la adenda (23 casillas, incluidas 89, 126, 129, 133,
+  137, 138, 139).
+- Nuevo motor puro en `@nexus-tax/form-210` (`prior-year.ts`): arrastres de anticipo (R133→R130) y
+  saldo a favor (R137→R131, con la pregunta de devolución/compensación del art. 850 ET),
+  comparación de evolución tributaria (`stable`/`increase`/`decrease`/`relevant_variation`/
+  `incomplete`/`not_comparable`) y detector de anomalías de escala histórica que **reutiliza**
+  `detectMonetaryAnomalies` de Sprint 2.3.2 en vez de reimplementarlo.
+- Dexie v13 agrega `priorYearReturns` y `priorYearCarryForwardCandidates` de forma aditiva.
+  `apps/web/src/lib/repository.ts` expone la capa de persistencia completa y probada
+  (`savePriorYearReturn`, `refreshPriorYearCarryForwardCandidates`,
+  `decideCarryForwardCandidate`, `answerRefundCarryForwardQuestion`,
+  `getTaxEvolutionComparison`).
+- `CaseTaskType` agrega 5 tipos nuevos para declaraciones anteriores;
+  `CaseTask.source` agrega `'prior_year_return'`.
+
+### Pendiente explícito (no se avanzó, por decisión de alcance)
+
+- El componente visual "Declaraciones anteriores" dentro del expediente y su wiring en la
+  navegación (deep-links de tareas, quality gate visual, capturas Playwright). El motor y la
+  persistencia están completos y probados; la UI queda para una iteración siguiente con revisión
+  intermedia, tal como se solicitó explícitamente ("detente para revisión antes de Fase C").
+- Fase C (beneficio de 72 UVT por dependiente, art. 336 ET, casillas 138/139) — explícitamente
+  fuera de alcance de este incremento.
+- Facturación electrónica DIAN, inmuebles, administración de propiedad horizontal y medicina
+  prepagada (secciones D-G del Sprint 2.4) no se iniciaron.
+
+### Verificación ejecutada
+
+- `pnpm --filter @nexus-tax/domain test`: 19/19 verdes (15 previos + 4 nuevos).
+- `pnpm --filter @nexus-tax/document-intelligence test`: 90/90 verdes (80 previos + 10 nuevos).
+- `pnpm --filter @nexus-tax/form-210 test`: 84/84 verdes (68 previos + 16 nuevos).
+- `pnpm --filter @nexus-tax/web typecheck`: verde.
+- `pnpm --filter @nexus-tax/web test`: 84/84 verdes (82 previos + 2 nuevos).
+- No se ejecutó `pnpm build` completo del monorepo ni Playwright E2E en este incremento (ver
+  limitaciones); se recomienda ejecutarlos antes de fusionar.
 
 ## Sprint 2.3.2 — exactitud monetaria y cierre guiado
 

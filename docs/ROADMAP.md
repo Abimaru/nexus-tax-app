@@ -1,7 +1,10 @@
 # Roadmap — NexusTax
 
-> Después de Sprint 2.3.2: ampliar corpus de regresión F-210, modelar fuentes
-> verificadas pendientes de R35–R42 y formalizar el comparativo del año anterior.
+> Sprint 2.4 (Fase B0 + Fase B) en curso: esqueleto de casillas del F-210
+> completado y declaraciones anteriores implementadas como fuente
+> estructurada con arrastres explícitos. Pendiente: UI de navegación, Fase C
+> (72 UVT dependientes) y el resto del Sprint 2.4 (facturación electrónica,
+> inmuebles, salud).
 
 ## Entregado hasta hoy ✅
 
@@ -140,3 +143,19 @@ Siguiente evolución segura: revisión normativa independiente de las reglas tod
 `implemented_unverified`, ampliación del corpus sintético y definición versionada de un año
 gravable adicional. Firma, presentación DIAN/MUISCA, sanciones automáticas, backend obligatorio e
 IA externa siguen fuera de alcance.
+
+## Sprint 2.4 — Fase B0 (esqueleto F-210) + Fase B (declaraciones anteriores)
+
+Implementado: catálogo de casillas del F-210 completado estructuralmente (89, 91-93, 111, 126,
+127, 129, 133, 137-141) con estado explícito de verificación normativa; corrección documentada de
+la conclusión de Fase A sobre la casilla 92/139; nueva fuente estructurada `PriorYearTaxReturn` con
+parser de PDF que detecta el formulario, año, identidad y estado, y extrae casillas por patrón
+(verificado contra un oráculo AG2024 anonimizado); motor de arrastres de anticipo y saldo a favor
+con confirmación humana obligatoria; comparación de evolución tributaria y detector de anomalías
+de escala histórica (reutiliza el motor monetario de Sprint 2.3.2); Dexie v13.
+
+Pendiente explícito de este incremento: componente de UI "Declaraciones anteriores" y su wiring en
+la navegación del expediente (el motor puro y la persistencia ya están completos y probados). Fase
+C (72 UVT dependientes, art. 336 ET) y el resto del Sprint 2.4 (facturación electrónica DIAN,
+inmuebles, administración de propiedad horizontal, medicina prepagada) no se iniciaron: quedan
+para incrementos siguientes con revisión intermedia. Ver `docs/PRIOR_YEAR_RETURNS.md`.

@@ -286,3 +286,25 @@ binarios documentales.
   archivos originales.
 - `ResolutionImpact` y la simulación controlada son derivados efímeros; solo la confirmación humana
   crea el ajuste persistido.
+
+## Cambios 2.4.0 (Fase B0 + Fase B — declaraciones anteriores)
+
+Ver [`PRIOR_YEAR_RETURNS.md`](./PRIOR_YEAR_RETURNS.md) para el detalle completo. Resumen de modelo:
+
+- `Form210BoxDefinition` gana campos opcionales `implementationStatus`, `legalBasisSourceIds` y
+  `verificationNote`; retrocompatible con las casillas existentes (se derivan de `ruleComplete`
+  cuando no se declaran explícitamente).
+- `Form210Section` agrega `general_income_consolidation`, `tax_settlement` e `informational` para
+  las casillas de consolidación de la cédula general (89, 91-93, 111) y de liquidación del impuesto
+  (126, 127, 129, 133, 137-141) que no encajan en las secciones por cédula existentes.
+- Nuevo contrato `PriorYearTaxReturn` (`@nexus-tax/domain`): declaración de un año anterior con
+  `boxes: Record<string, PriorYearBoxValue>`, `identityMatch`, `replaces`/`replacedBy` (historial de
+  correcciones nunca borrado) e `isCurrentVersion`.
+- Nuevo contrato `PriorYearCarryForwardCandidate`: candidato trazable de arrastre (R133→R130,
+  R137→R131) con `decision` que inicia siempre en `pending`; nunca se aplica automáticamente.
+- `CaseTaskType` agrega `review_prior_year_identity_mismatch`, `confirm_prior_year_carry_forward`,
+  `review_historical_scale_anomaly`, `resolve_prior_year_conflict` y
+  `resolve_prior_year_extraction_gap`. `CaseTask.source` agrega `prior_year_return`.
+
+Dexie v13 agrega `priorYearReturns` y `priorYearCarryForwardCandidates` de forma aditiva; ninguna
+tabla ni dato previo se modifica.
