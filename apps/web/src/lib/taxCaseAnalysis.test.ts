@@ -210,6 +210,114 @@ describe('expediente tributario derivado', () => {
     expect(resolved.some((task) => task.type === 'confirm_vat')).toBe(false);
   });
 
+  it('deriva tareas de declaraciones anteriores (Sprint 2.4, Fase B1)', () => {
+    const basePriorReturn = {
+      id: 'prior-return:1',
+      caseId: 'case:1',
+      taxYear: 2024,
+      filingYear: 2025,
+      formType: '210' as const,
+      formNumber: '1102345678901',
+      previousFormNumber: null,
+      taxpayerIdentityMasked: '••••4567',
+      submittedAt: '2025-05-10T00:00:00.000Z',
+      sourceDocumentId: 'doc-prior-1',
+      status: 'submitted' as const,
+      identityMatch: 'match' as const,
+      replaces: null,
+      replacedBy: null,
+      isCurrentVersion: true,
+      boxes: {},
+      extractionConfidence: 'high' as const,
+      parserVersion: 'form210-prior-year-1.0.0',
+      createdAt: '2026-09-05T00:00:00.000Z',
+      updatedAt: '2026-09-05T00:00:00.000Z',
+    };
+    const mismatchTasks = buildCaseTasks({
+      caseId: 'case:1',
+      documents: [],
+      coverages: [],
+      candidates: [],
+      reconciliations: [],
+      vatResponsibility: false,
+      priorYearReturns: [{ ...basePriorReturn, identityMatch: 'mismatch' }],
+      now: '2026-09-05T00:00:00.000Z',
+    });
+    expect(
+      mismatchTasks.some(
+        (task) => task.type === 'review_prior_year_identity_mismatch' && task.blocking,
+      ),
+    ).toBe(true);
+
+    const carryForwardTasks = buildCaseTasks({
+      caseId: 'case:1',
+      documents: [],
+      coverages: [],
+      candidates: [],
+      reconciliations: [],
+      vatResponsibility: false,
+      priorYearReturns: [basePriorReturn],
+      carryForwardCandidates: [
+        {
+          id: 'carry:1',
+          caseId: 'case:1',
+          priorYearReturnId: 'prior-return:1',
+          priorYearTaxYear: 2024,
+          sourceBoxNumber: 133,
+          targetBoxNumber: 130,
+          sourceValueCop: 79_000,
+          refundOrCompensationRequested: null,
+          decision: 'pending',
+          finalValueCop: null,
+          evidence: '133 Anticipo 79.000',
+          decidedAt: null,
+          createdAt: '2026-09-05T00:00:00.000Z',
+          updatedAt: '2026-09-05T00:00:00.000Z',
+        },
+        {
+          id: 'carry:2',
+          caseId: 'case:1',
+          priorYearReturnId: 'prior-return:1',
+          priorYearTaxYear: 2024,
+          sourceBoxNumber: 137,
+          targetBoxNumber: 131,
+          sourceValueCop: 0,
+          refundOrCompensationRequested: 'unknown',
+          decision: 'pending',
+          finalValueCop: null,
+          evidence: '137 Saldo a favor 0',
+          decidedAt: null,
+          createdAt: '2026-09-05T00:00:00.000Z',
+          updatedAt: '2026-09-05T00:00:00.000Z',
+        },
+      ],
+      now: '2026-09-05T00:00:00.000Z',
+    });
+    // El candidato de anticipo (valor > 0) genera tarea; el de saldo a
+    // favor en cero NO genera una tarea innecesaria (adenda punto 9).
+    expect(
+      carryForwardTasks.some((task) => task.id === 'task:prior-year-carry-forward:carry:1'),
+    ).toBe(true);
+    expect(
+      carryForwardTasks.some((task) => task.id === 'task:prior-year-carry-forward:carry:2'),
+    ).toBe(false);
+
+    const conflictTasks = buildCaseTasks({
+      caseId: 'case:1',
+      documents: [],
+      coverages: [],
+      candidates: [],
+      reconciliations: [],
+      vatResponsibility: false,
+      priorYearReturns: [
+        basePriorReturn,
+        { ...basePriorReturn, id: 'prior-return:2', sourceDocumentId: 'doc-prior-2' },
+      ],
+      now: '2026-09-05T00:00:00.000Z',
+    });
+    expect(conflictTasks.some((task) => task.type === 'resolve_prior_year_conflict')).toBe(true);
+  });
+
   it('deriva tareas OCR con destino exacto de documento y página', () => {
     const timestamp = '2026-08-02T00:00:00.000Z';
     const document: UploadedDocument = {

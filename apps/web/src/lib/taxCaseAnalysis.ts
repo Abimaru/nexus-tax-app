@@ -6,6 +6,8 @@ import type {
   CaseTask,
   DocumentFact,
   PreliminaryReconciliation,
+  PriorYearCarryForwardCandidate,
+  PriorYearTaxReturn,
   ProcessingResult,
   ReconciliationSuggestion,
   ReportingEntity,
@@ -24,8 +26,10 @@ import type {
   TaxResolutionDecision,
 } from '@nexus-tax/domain';
 import { deriveForm210BoxTasks, type Form210Draft } from '@nexus-tax/form-210';
+import { compareTaxEvolution, detectHistoricalScaleAnomalies } from '@nexus-tax/form-210';
 import { MAX_EMPLOYER_INSTANCES, TAX_CASE_EXPORT_SCHEMA_VERSION } from '@nexus-tax/domain';
 import { compareCaseTasks } from './caseTaskPriority';
+import { priorYearBoxLabel } from './priorYearBoxLabels';
 
 function percentage(numerator: number, denominator: number): number {
   return denominator === 0 ? 0 : Math.round((numerator / denominator) * 100);
@@ -245,6 +249,8 @@ export function buildCaseTasks(input: {
   reconciliations: readonly PreliminaryReconciliation[];
   requirementSourceDecisions?: readonly RequirementSourceDecision[];
   vatResponsibility: boolean | null;
+  priorYearReturns?: readonly PriorYearTaxReturn[];
+  carryForwardCandidates?: readonly PriorYearCarryForwardCandidate[];
   now?: string;
 }): CaseTask[] {
   const timestamp = input.now ?? new Date().toISOString();
@@ -624,6 +630,202 @@ export function buildCaseTasks(input: {
       updatedAt: timestamp,
     });
   }
+
+  // --- Declaraciones anteriores (Sprint 2.4, Fase B1) ---
+  const priorYearReturns = input.priorYearReturns ?? [];
+  const carryForwardCandidates = input.carryForwardCandidates ?? [];
+  const currentVersions = priorYearReturns.filter((item) => item.isCurrentVersion);
+  for (const priorReturn of currentVersions) {
+    if (priorReturn.identityMatch === 'mismatch') {
+      tasks.push({
+        id: `task:prior-year-identity:${priorReturn.id}`,
+        caseId: input.caseId,
+        type: 'review_prior_year_identity_mismatch',
+        title: `La declaración AG ${priorReturn.taxYear} parece pertenecer a otra persona`,
+        explanation:
+          'La identidad detectada en el PDF no coincide con la del expediente. No se generan arrastres hasta resolver esta discrepancia.',
+        source: 'prior_year_return',
+        stage: 'declaracion',
+        view: 'declaraciones-anteriores',
+        entityId: null,
+        documentId: priorReturn.sourceDocumentId,
+        requirementId: null,
+        candidateId: null,
+        reconciliationId: null,
+        matrixGroupId: null,
+        extractionSessionId: null,
+        profileId: null,
+        page: null,
+        priority: 'high',
+        blocking: true,
+        status: 'pending',
+        recommendedAction: 'Revisar identificación detectada o eliminar el documento',
+        ruleId: 'case-task.prior-year-identity-mismatch.v1',
+        evidence: [priorReturn.taxpayerIdentityMasked ?? 'Identidad no detectada'],
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      });
+    }
+    if (
+      priorReturn.identityMatch !== 'mismatch' &&
+      priorReturn.extractionConfidence === 'insufficient'
+    ) {
+      tasks.push({
+        id: `task:prior-year-extraction-gap:${priorReturn.id}`,
+        caseId: input.caseId,
+        type: 'resolve_prior_year_extraction_gap',
+        title: `No pudimos reconocer las casillas de la declaración AG ${priorReturn.taxYear}`,
+        explanation:
+          'El parser local no encontró casillas con confianza suficiente en este PDF. Puede requerir OCR de respaldo o registro manual.',
+        source: 'prior_year_return',
+        stage: 'declaracion',
+        view: 'declaraciones-anteriores',
+        entityId: null,
+        documentId: priorReturn.sourceDocumentId,
+        requirementId: null,
+        candidateId: null,
+        reconciliationId: null,
+        matrixGroupId: null,
+        extractionSessionId: null,
+        profileId: null,
+        page: null,
+        priority: 'medium',
+        blocking: false,
+        status: 'pending',
+        recommendedAction: 'Revisar el documento o registrar los valores manualmente',
+        ruleId: 'case-task.prior-year-extraction-gap.v1',
+        evidence: [],
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      });
+    }
+  }
+  // Conflicto: más de una declaración vigente para el mismo año gravable
+  // (el analista no indicó que una corrige a la otra).
+  const currentByYear = new Map<number, PriorYearTaxReturn[]>();
+  for (const priorReturn of currentVersions) {
+    const list = currentByYear.get(priorReturn.taxYear) ?? [];
+    list.push(priorReturn);
+    currentByYear.set(priorReturn.taxYear, list);
+  }
+  for (const [taxYear, group] of currentByYear) {
+    if (group.length < 2) continue;
+    tasks.push({
+      id: `task:prior-year-conflict:${input.caseId}:${taxYear}`,
+      caseId: input.caseId,
+      type: 'resolve_prior_year_conflict',
+      title: `Hay ${group.length} declaraciones vigentes para AG ${taxYear}`,
+      explanation:
+        'Existen dos declaraciones cargadas para el mismo año sin indicar que una corrige a la otra. Confirma cuál es la vigente.',
+      source: 'prior_year_return',
+      stage: 'declaracion',
+      view: 'declaraciones-anteriores',
+      entityId: null,
+      documentId: null,
+      requirementId: null,
+      candidateId: null,
+      reconciliationId: null,
+      matrixGroupId: null,
+      extractionSessionId: null,
+      profileId: null,
+      page: null,
+      priority: 'medium',
+      blocking: false,
+      status: 'pending',
+      recommendedAction: 'Indicar cuál declaración corrige a la otra',
+      ruleId: 'case-task.prior-year-conflict.v1',
+      evidence: [],
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+  }
+  for (const candidate of carryForwardCandidates) {
+    if (candidate.decision !== 'pending') continue;
+    if (!candidate.sourceValueCop) continue; // R133/R137 = 0: no genera tarea innecesaria.
+    const isRefund = candidate.targetBoxNumber === 131;
+    const needsAnswer = isRefund && candidate.refundOrCompensationRequested === 'unknown';
+    tasks.push({
+      id: `task:prior-year-carry-forward:${candidate.id}`,
+      caseId: input.caseId,
+      type: 'confirm_prior_year_carry_forward',
+      title: needsAnswer
+        ? 'Definir uso del saldo a favor de la declaración anterior'
+        : isRefund
+          ? 'Confirmar saldo a favor de la declaración anterior'
+          : 'Confirmar anticipo de la declaración anterior',
+      explanation: needsAnswer
+        ? '¿Este saldo a favor ya fue solicitado en devolución o compensación?'
+        : `${priorYearBoxLabel(candidate.sourceBoxNumber)} de AG ${candidate.priorYearTaxYear}: candidato para la casilla ${candidate.targetBoxNumber} de este año.`,
+      source: 'prior_year_return',
+      stage: 'declaracion',
+      view: 'declaraciones-anteriores',
+      entityId: null,
+      documentId: null,
+      requirementId: null,
+      candidateId: null,
+      reconciliationId: null,
+      matrixGroupId: null,
+      extractionSessionId: null,
+      profileId: null,
+      page: null,
+      formBoxNumber: candidate.targetBoxNumber,
+      priority: 'medium',
+      blocking: false,
+      status: 'pending',
+      recommendedAction: needsAnswer
+        ? 'Responder si el saldo fue solicitado en devolución o compensación'
+        : 'Aplicar, corregir o no usar el arrastre',
+      ruleId: 'case-task.prior-year-carry-forward.v1',
+      evidence: [candidate.evidence],
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+  }
+  if (input.form210Draft) {
+    for (const priorReturn of currentVersions) {
+      const currentBoxValues: Record<number, number | null> = {};
+      for (const box of input.form210Draft.boxes) {
+        currentBoxValues[box.number] = box.confirmedValue ?? box.suggestedValue ?? null;
+      }
+      const metrics = compareTaxEvolution(priorReturn, currentBoxValues);
+      const anomalies = detectHistoricalScaleAnomalies(metrics);
+      for (const anomaly of anomalies) {
+        tasks.push({
+          id: `task:prior-year-scale-anomaly:${priorReturn.id}:${anomaly.boxNumber}`,
+          caseId: input.caseId,
+          type: 'review_historical_scale_anomaly',
+          title: `Posible error de escala en ${anomaly.label.toLowerCase()}`,
+          explanation:
+            anomaly.anomalies[0]?.message ??
+            'El valor actual difiere del año anterior por un factor de escala inusual.',
+          source: 'prior_year_return',
+          stage: 'declaracion',
+          view: 'declaraciones-anteriores',
+          entityId: null,
+          documentId: null,
+          requirementId: null,
+          candidateId: null,
+          reconciliationId: null,
+          matrixGroupId: null,
+          extractionSessionId: null,
+          profileId: null,
+          page: null,
+          priority: 'medium',
+          blocking: false,
+          status: 'pending',
+          recommendedAction: 'Revisar el valor actual o descartar la alerta',
+          ruleId: 'case-task.prior-year-scale-anomaly.v1',
+          evidence: [
+            `Anterior: ${anomaly.priorValueCop.toLocaleString('es-CO')}`,
+            `Actual: ${anomaly.currentValueCop.toLocaleString('es-CO')}`,
+          ],
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        });
+      }
+    }
+  }
+
   const replacedDecisionIds = new Set(
     (input.resolutionDecisions ?? [])
       .map((decision) => decision.replacesDecisionId)
