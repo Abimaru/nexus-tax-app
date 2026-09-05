@@ -13,3 +13,4 @@ export * from './matching';
 export * from './reader';
 export * from './structure';
 export * from './pipeline';
+export * from './form210PriorYear';
