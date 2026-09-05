@@ -2398,6 +2398,16 @@ export async function synchronizeCaseTasks(caseId: string, derivedTasks: readonl
   });
 }
 
+/**
+ * Descarta una tarea de forma persistente (p. ej. una alerta de anomalía de
+ * escala histórica que el analista revisó y decidió ignorar). Nunca
+ * corrige el valor subyacente: solo cambia el estado de la tarea.
+ * `synchronizeCaseTasks` preserva `discarded` en las siguientes derivaciones.
+ */
+export async function discardCaseTask(taskId: string): Promise<void> {
+  await getDb().caseTasks.update(taskId, { status: 'discarded', updatedAt: nowIso() });
+}
+
 export interface SaveTaxResolutionDecisionInput {
   type: TaxResolutionDecisionType;
   objectType: TaxResolutionDecision['objectType'];
@@ -2743,6 +2753,33 @@ export async function getTaxCaseWorkspace(caseId: string) {
 // La declaración anterior es evidencia histórica y fuente de ARRASTRES
 // EXPLÍCITOS confirmados por el analista; nunca es una plantilla para copiar
 // automáticamente la declaración del año actual (ver `docs/PROJECT_HANDOFF.md`).
+
+/**
+ * Elimina un registro histórico de declaración anterior (no el documento PDF
+ * fuente, que se conserva según su modo de almacenamiento). Si es la versión
+ * vigente y reemplazaba a otra, restaura la anterior como vigente para no
+ * perder el historial.
+ */
+export async function removePriorYearReturn(id: string): Promise<void> {
+  const db = getDb();
+  await db.transaction('rw', [db.priorYearReturns, db.priorYearCarryForwardCandidates], async () => {
+    const target = await db.priorYearReturns.get(id);
+    if (!target) return;
+    if (target.replaces) {
+      const previous = await db.priorYearReturns.get(target.replaces);
+      if (previous) {
+        await db.priorYearReturns.put({
+          ...previous,
+          isCurrentVersion: true,
+          replacedBy: null,
+          updatedAt: nowIso(),
+        });
+      }
+    }
+    await db.priorYearReturns.delete(id);
+    await db.priorYearCarryForwardCandidates.where('priorYearReturnId').equals(id).delete();
+  });
+}
 
 export async function getPriorYearReturns(caseId: string): Promise<PriorYearTaxReturn[]> {
   return getDb()

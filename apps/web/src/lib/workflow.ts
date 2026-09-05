@@ -105,6 +105,7 @@ export const WORKFLOW_STAGES: readonly WorkflowStageDefinition[] = [
       { id: 'obligacion', label: 'Obligación' },
       { id: 'calendario', label: 'Calendario' },
       { id: 'formulario-210', label: 'Borrador Formulario 210' },
+      { id: 'declaraciones-anteriores', label: 'Declaraciones anteriores' },
       { id: 'liquidacion-preliminar', label: 'Liquidación preliminar' },
       { id: 'estados', label: 'Estados' },
       { id: 'revision-final', label: 'Revisión final' },
