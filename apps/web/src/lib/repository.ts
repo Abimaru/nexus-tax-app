@@ -34,6 +34,8 @@ import type {
   PdfDocumentDiagnosis,
   OcrPageOutcome,
   PreliminaryReconciliation,
+  PriorYearCarryForwardCandidate,
+  PriorYearTaxReturn,
   ProcessingResult,
   RecordResolution,
   RequirementCoverage,
@@ -59,6 +61,12 @@ import {
 } from '@nexus-tax/domain';
 import type { FilingObligationInputs } from '@nexus-tax/aegis-rules';
 import { buildForm210Draft, type Form210Draft } from '@nexus-tax/form-210';
+import {
+  compareTaxEvolution,
+  derivePriorYearCarryForwardCandidates,
+  resolveRefundCarryForwardAnswer,
+  type TaxEvolutionMetric,
+} from '@nexus-tax/form-210';
 import {
   ANALYSIS_RULE_VERSION,
   automaticClassificationSnapshot,
@@ -2728,4 +2736,149 @@ export async function getTaxCaseWorkspace(caseId: string) {
         }
       : undefined,
   };
+}
+
+// --- Declaraciones anteriores (Sprint 2.4, Fase B) ---
+//
+// La declaración anterior es evidencia histórica y fuente de ARRASTRES
+// EXPLÍCITOS confirmados por el analista; nunca es una plantilla para copiar
+// automáticamente la declaración del año actual (ver `docs/PROJECT_HANDOFF.md`).
+
+export async function getPriorYearReturns(caseId: string): Promise<PriorYearTaxReturn[]> {
+  return getDb()
+    .priorYearReturns.where('caseId')
+    .equals(caseId)
+    .reverse()
+    .sortBy('taxYear');
+}
+
+export async function getCurrentPriorYearReturn(
+  caseId: string,
+  taxYear: number,
+): Promise<PriorYearTaxReturn | undefined> {
+  const returns = await getDb()
+    .priorYearReturns.where('caseId')
+    .equals(caseId)
+    .filter((item) => item.taxYear === taxYear && item.isCurrentVersion)
+    .toArray();
+  return returns[0];
+}
+
+/**
+ * Persiste una nueva declaración anterior. Si `replaces` apunta a otra
+ * declaración del mismo caso, esta la reemplaza como versión vigente — pero
+ * NUNCA se borra el historial: la anterior se conserva con
+ * `isCurrentVersion: false` y `replacedBy` apuntando a la nueva.
+ */
+export async function savePriorYearReturn(priorReturn: PriorYearTaxReturn): Promise<void> {
+  const db = getDb();
+  await db.transaction('rw', [db.priorYearReturns], async () => {
+    if (priorReturn.replaces) {
+      const previous = await db.priorYearReturns.get(priorReturn.replaces);
+      if (previous) {
+        await db.priorYearReturns.put({
+          ...previous,
+          isCurrentVersion: false,
+          replacedBy: priorReturn.id,
+          updatedAt: nowIso(),
+        });
+      }
+    }
+    await db.priorYearReturns.put(priorReturn);
+  });
+}
+
+/**
+ * Calcula los candidatos de arrastre (R133→R130, R137→R131) para la versión
+ * vigente de cada declaración anterior del caso y persiste solo los que
+ * todavía no existían. Nunca sobreescribe una decisión ya tomada por el
+ * analista (`decision !== 'pending'`).
+ */
+export async function refreshPriorYearCarryForwardCandidates(
+  caseId: string,
+): Promise<PriorYearCarryForwardCandidate[]> {
+  const db = getDb();
+  const [priorReturns, existing] = await Promise.all([
+    db.priorYearReturns.where('caseId').equals(caseId).toArray(),
+    db.priorYearCarryForwardCandidates.where('caseId').equals(caseId).toArray(),
+  ]);
+  const existingIds = new Set(existing.map((item) => item.id));
+  const newCandidates = priorReturns
+    .filter((item) => item.isCurrentVersion)
+    .flatMap((item) => derivePriorYearCarryForwardCandidates(item, { existingCandidateIds: existingIds }));
+  if (newCandidates.length) {
+    await db.priorYearCarryForwardCandidates.bulkPut(newCandidates);
+  }
+  return db.priorYearCarryForwardCandidates.where('caseId').equals(caseId).toArray();
+}
+
+export async function getPriorYearCarryForwardCandidates(
+  caseId: string,
+): Promise<PriorYearCarryForwardCandidate[]> {
+  return getDb().priorYearCarryForwardCandidates.where('caseId').equals(caseId).toArray();
+}
+
+/**
+ * Confirma, corrige o rechaza un candidato de arrastre. `finalValueCop` solo
+ * se usa cuando `decision` es `confirmed` o `corrected`; en cualquier otro
+ * caso el candidato no aporta valor al año actual.
+ */
+export async function decideCarryForwardCandidate(
+  candidateId: string,
+  decision: Extract<PriorYearCarryForwardCandidate['decision'], 'confirmed' | 'corrected' | 'rejected'>,
+  finalValueCop: number | null,
+): Promise<PriorYearCarryForwardCandidate | undefined> {
+  const db = getDb();
+  const candidate = await db.priorYearCarryForwardCandidates.get(candidateId);
+  if (!candidate) return undefined;
+  const timestamp = nowIso();
+  const updated: PriorYearCarryForwardCandidate = {
+    ...candidate,
+    decision,
+    finalValueCop: decision === 'rejected' ? null : (finalValueCop ?? candidate.sourceValueCop),
+    decidedAt: timestamp,
+    updatedAt: timestamp,
+  };
+  await db.priorYearCarryForwardCandidates.put(updated);
+  return updated;
+}
+
+/**
+ * Responde la pregunta del art. 850 ET ("¿el saldo a favor fue solicitado en
+ * devolución o compensación?") para un candidato de arrastre de saldo a
+ * favor (R137→R131). `no` habilita el candidato como aplicable; `yes` lo
+ * descarta; `unknown` lo deja pendiente de revisión. Nunca se asume la
+ * respuesta automáticamente.
+ */
+export async function answerRefundCarryForwardQuestion(
+  candidateId: string,
+  answer: 'yes' | 'no' | 'unknown',
+): Promise<PriorYearCarryForwardCandidate | undefined> {
+  const db = getDb();
+  const candidate = await db.priorYearCarryForwardCandidates.get(candidateId);
+  if (!candidate) return undefined;
+  const resolved = resolveRefundCarryForwardAnswer(candidate, answer);
+  await db.priorYearCarryForwardCandidates.put(resolved);
+  return resolved;
+}
+
+/**
+ * Compara el año actual contra la declaración anterior vigente del caso
+ * (Fase B, "Evolución tributaria"). Usa el borrador F-210 ya persistido
+ * (`getForm210Draft`) como fuente de los valores actuales; si todavía no
+ * existe, todas las métricas quedan `incomplete`.
+ */
+export async function getTaxEvolutionComparison(
+  caseId: string,
+  priorTaxYear: number,
+): Promise<TaxEvolutionMetric[]> {
+  const [priorReturn, currentDraft] = await Promise.all([
+    getCurrentPriorYearReturn(caseId, priorTaxYear),
+    getForm210Draft(caseId),
+  ]);
+  const currentBoxValues: Record<number, number | null> = {};
+  for (const box of currentDraft?.boxes ?? []) {
+    currentBoxValues[box.number] = box.confirmedValue ?? box.suggestedValue ?? null;
+  }
+  return compareTaxEvolution(priorReturn ?? null, currentBoxValues);
 }

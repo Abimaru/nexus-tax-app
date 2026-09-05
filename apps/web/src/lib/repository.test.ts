@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { DocumentFactCandidate, ProcessingResult } from '@nexus-tax/domain';
+import type { DocumentFactCandidate, PriorYearTaxReturn, ProcessingResult } from '@nexus-tax/domain';
 import { processWorkbookFile } from '@nexus-tax/exogenous-parser';
 import * as XLSX from 'xlsx';
 import {
@@ -57,6 +57,14 @@ import {
   saveTaxResolutionDecision,
   revertTaxResolutionDecision,
   listTaxResolutionDecisions,
+  savePriorYearReturn,
+  getPriorYearReturns,
+  getCurrentPriorYearReturn,
+  refreshPriorYearCarryForwardCandidates,
+  getPriorYearCarryForwardCandidates,
+  decideCarryForwardCandidate,
+  answerRefundCarryForwardQuestion,
+  getTaxEvolutionComparison,
 } from './repository';
 import { buildTaxCaseManifest } from './taxCaseAnalysis';
 
@@ -1400,5 +1408,122 @@ describe('repositorio (IndexedDB local)', () => {
     expect(workspace.documentCandidates).toHaveLength(2);
     expect(workspace.documentCandidates.every((item) => item.status === 'obsolete')).toBe(true);
     expect(await getDocumentBinary(document.id)).toBeUndefined();
+  });
+
+  it('persiste declaraciones anteriores, deriva arrastres y compara evolución (Sprint 2.4, Fase B)', async () => {
+    const created = await createCase({ alias: 'Declaración anterior', taxYear: 2025 });
+    const timestamp = '2026-09-05T00:00:00.000Z';
+    const priorReturn: PriorYearTaxReturn = {
+      id: 'prior-return:test-1',
+      caseId: created.id,
+      taxYear: 2024,
+      filingYear: 2025,
+      formType: '210',
+      formNumber: '1102345678901',
+      previousFormNumber: null,
+      taxpayerIdentityMasked: '••••4567',
+      submittedAt: '2025-05-10T00:00:00.000Z',
+      sourceDocumentId: 'doc-prior-1',
+      status: 'submitted',
+      identityMatch: 'match',
+      replaces: null,
+      replacedBy: null,
+      isCurrentVersion: true,
+      boxes: {
+        '29': {
+          boxNumber: 29,
+          rawValue: '148.984.000',
+          normalizedValueCop: 148_984_000,
+          extractionMethod: 'native_text',
+          confidence: 'high',
+          role: 'historical_reference',
+          page: 1,
+          evidence: '29 Patrimonio bruto 148.984.000',
+        },
+        '133': {
+          boxNumber: 133,
+          rawValue: '79.000',
+          normalizedValueCop: 79_000,
+          extractionMethod: 'native_text',
+          confidence: 'medium',
+          role: 'carry_forward_candidate',
+          page: 2,
+          evidence: '133 Anticipo 79.000',
+        },
+        '137': {
+          boxNumber: 137,
+          rawValue: '0',
+          normalizedValueCop: 0,
+          extractionMethod: 'native_text',
+          confidence: 'high',
+          role: 'carry_forward_candidate',
+          page: 2,
+          evidence: '137 Saldo a favor 0',
+        },
+      },
+      extractionConfidence: 'high',
+      parserVersion: 'form210-prior-year-1.0.0',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    };
+    await savePriorYearReturn(priorReturn);
+    expect(await getPriorYearReturns(created.id)).toHaveLength(1);
+    expect(await getCurrentPriorYearReturn(created.id, 2024)).toMatchObject({
+      id: 'prior-return:test-1',
+    });
+
+    const candidates = await refreshPriorYearCarryForwardCandidates(created.id);
+    expect(candidates).toHaveLength(2);
+    const advance = candidates.find((item) => item.targetBoxNumber === 130)!;
+    expect(advance.sourceValueCop).toBe(79_000);
+    expect(advance.decision).toBe('pending');
+    const refund = candidates.find((item) => item.targetBoxNumber === 131)!;
+    expect(refund.refundOrCompensationRequested).toBe('unknown');
+
+    // No duplica candidatos si se vuelve a refrescar.
+    expect(await refreshPriorYearCarryForwardCandidates(created.id)).toHaveLength(2);
+
+    const answered = await answerRefundCarryForwardQuestion(refund.id, 'no');
+    expect(answered?.refundOrCompensationRequested).toBe('no');
+
+    const decided = await decideCarryForwardCandidate(advance.id, 'confirmed', 79_000);
+    expect(decided).toMatchObject({ decision: 'confirmed', finalValueCop: 79_000 });
+    expect(await getPriorYearCarryForwardCandidates(created.id)).toHaveLength(2);
+
+    // Sin borrador F-210 todavía, la comparación de evolución no inventa
+    // valores actuales: quedan `incomplete` salvo que no exista declaración
+    // anterior para la casilla.
+    const evolution = await getTaxEvolutionComparison(created.id, 2024);
+    const patrimony = evolution.find((metric) => metric.key === 'grossPatrimony')!;
+    expect(patrimony.priorValueCop).toBe(148_984_000);
+    expect(patrimony.status).toBe('incomplete');
+  });
+
+  it('rechaza generar arrastres cuando la identidad de la declaración anterior no coincide', async () => {
+    const created = await createCase({ alias: 'Identidad no coincide', taxYear: 2025 });
+    const timestamp = '2026-09-05T00:00:00.000Z';
+    await savePriorYearReturn({
+      id: 'prior-return:mismatch',
+      caseId: created.id,
+      taxYear: 2024,
+      filingYear: 2025,
+      formType: '210',
+      formNumber: null,
+      previousFormNumber: null,
+      taxpayerIdentityMasked: '••••9999',
+      submittedAt: null,
+      sourceDocumentId: 'doc-prior-2',
+      status: 'unknown',
+      identityMatch: 'mismatch',
+      replaces: null,
+      replacedBy: null,
+      isCurrentVersion: true,
+      boxes: {},
+      extractionConfidence: 'low',
+      parserVersion: 'form210-prior-year-1.0.0',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+    expect(await refreshPriorYearCarryForwardCandidates(created.id)).toHaveLength(0);
   });
 });

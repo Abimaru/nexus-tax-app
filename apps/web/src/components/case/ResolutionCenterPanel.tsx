@@ -24,6 +24,7 @@ const TASK_SOURCE: Record<CaseTask['source'], string> = {
   ocr: 'OCR local',
   profile: 'Perfil documental',
   system: 'Sistema',
+  prior_year_return: 'Declaración de año anterior',
 };
 
 function target(task: CaseTask): { objectType: TaxResolutionObjectType; objectId: string } | null {

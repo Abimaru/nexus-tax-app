@@ -12,6 +12,9 @@ const SECTION_LABELS: Record<Form210Section, string> = {
   dividends: 'Dividendos',
   occasional_gains: 'Ganancias ocasionales',
   private_settlement: 'Liquidación preliminar',
+  general_income_consolidation: 'Consolidación de la cédula general',
+  tax_settlement: 'Liquidación del impuesto',
+  informational: 'Información complementaria',
 };
 
 export function FinalReviewPanel({
