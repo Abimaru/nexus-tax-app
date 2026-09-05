@@ -7,3 +7,4 @@ export * from './resolution-impact';
 export * from './filing-states';
 export * from './derive-box-tasks';
 export * from './regression-comparison';
+export * from './prior-year';

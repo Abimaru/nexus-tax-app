@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@nexus-tax/aegis-rules": "workspace:*",
+    "@nexus-tax/document-intelligence": "workspace:*",
     "@nexus-tax/domain": "workspace:*"
   },
   "devDependencies": {
