@@ -24,6 +24,16 @@ export const CaseTaskTypeSchema = z.enum([
   'test_document_profile',
   'resolve_form_box',
   'review_resolution',
+  /** La declaración anterior cargada no coincide con la identidad del expediente (Fase B). */
+  'review_prior_year_identity_mismatch',
+  /** Confirmar, corregir o rechazar un candidato de arrastre (R133→R130, R137→R131). */
+  'confirm_prior_year_carry_forward',
+  /** Comparación de evolución sugiere un posible error de escala ×10/×100/×1000. */
+  'review_historical_scale_anomaly',
+  /** Existen dos declaraciones para el mismo año que no se han conciliado (original/corrección). */
+  'resolve_prior_year_conflict',
+  /** El parser no pudo identificar una casilla requerida en la declaración anterior. */
+  'resolve_prior_year_extraction_gap',
 ]);
 export type CaseTaskType = z.infer<typeof CaseTaskTypeSchema>;
 
@@ -51,6 +61,7 @@ export const CaseTaskSchema = z.object({
     'ocr',
     'profile',
     'system',
+    'prior_year_return',
   ]),
   stage: WorkflowStageIdSchema,
   view: WorkflowViewIdSchema,
@@ -103,4 +114,4 @@ export const CaseTaskSchema = z.object({
 });
 export type CaseTask = z.infer<typeof CaseTaskSchema>;
 
-export const CASE_TASK_SCHEMA_VERSION = '2.3.2';
+export const CASE_TASK_SCHEMA_VERSION = '2.4.0';
