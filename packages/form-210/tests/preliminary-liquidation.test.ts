@@ -747,3 +747,92 @@ describe('liquidación privada preliminar (Fase K)', () => {
     expect(liq.status).toBe('to_pay');
   });
 });
+
+describe('casillas estructurales de liquidación (Fase B0, Sprint 2.4)', () => {
+  it('cablea 126, 127 y 129 informativamente sin alterar el impuesto ya calculado', () => {
+    const uvt = UVT_2025;
+    const draft = buildForm210Draft({
+      caseId: 'case-b0-tax-boxes',
+      taxYear: 2025,
+      records: [],
+      facts: [],
+      resolutions: [
+        makeAdjustBoxDecision({
+          id: 'dec-42',
+          caseId: 'case-b0-tax-boxes',
+          boxNumber: 42,
+          finalValue: 3_000 * uvt,
+        }),
+        makeAdjustBoxDecision({
+          id: 'dec-115',
+          caseId: 'case-b0-tax-boxes',
+          boxNumber: 115,
+          finalValue: 100_000_000,
+        }),
+      ],
+    });
+    const liq = draft.preliminaryLiquidation!;
+    const box126 = draft.boxes.find((box) => box.number === 126)!;
+    const box127 = draft.boxes.find((box) => box.number === 127)!;
+    const box129 = draft.boxes.find((box) => box.number === 129)!;
+    expect(box126.suggestedValue).toBe(liq.incomeTax!.totalTaxCopRounded);
+    expect(box127.suggestedValue).toBe(liq.occasionalGainsTax!.totalTaxCop);
+    expect(box129.suggestedValue).toBe(liq.totalTaxDueCop);
+    expect(box129.suggestedValue).toBe(box126.suggestedValue! + box127.suggestedValue!);
+    // El estado de implementación sigue marcado como no verificado: la
+    // numeración oficial de estas casillas no está confirmada.
+    expect(box126.implementationStatus).toBe('implemented_unverified');
+    expect(box127.implementationStatus).toBe('requires_review');
+  });
+
+  it('cablea 133 (anticipo siguiente año) y 137 (saldo a favor) cuando aplican', () => {
+    const uvt = UVT_2025;
+    const retenciones = 30_000_000;
+    const draft = buildForm210Draft({
+      caseId: 'case-b0-settlement-boxes',
+      taxYear: 2025,
+      records: [],
+      facts: [],
+      resolutions: [
+        makeAdjustBoxDecision({
+          id: 'dec-42',
+          caseId: 'case-b0-settlement-boxes',
+          boxNumber: 42,
+          finalValue: 3_000 * uvt,
+        }),
+        makeAdjustBoxDecision({
+          id: 'dec-132',
+          caseId: 'case-b0-settlement-boxes',
+          boxNumber: 132,
+          finalValue: retenciones,
+        }),
+      ],
+      advancePaymentContext: {
+        filingCountIncludingCurrent: 1,
+        priorNetIncomeTaxCop: null,
+      },
+    });
+    const liq = draft.preliminaryLiquidation!;
+    const box133 = draft.boxes.find((box) => box.number === 133)!;
+    const box137 = draft.boxes.find((box) => box.number === 137)!;
+    expect(box133.suggestedValue).toBe(liq.nextYearAdvance!.netAdvanceCop);
+    expect(liq.status).toBe('refund');
+    expect(box137.suggestedValue).toBe(-liq.netBalanceCop);
+  });
+
+  it('deja 138 y 139 sin calcular (pendientes de la Fase C)', () => {
+    const draft = buildForm210Draft({
+      caseId: 'case-b0-dependents-336',
+      taxYear: 2025,
+      records: [employmentRecord('rec-1', 60_000_000)],
+      facts: [],
+      dependents: [{ id: 'dep-1', kind: 'child_minor', monthsClaimed: 12 }],
+    });
+    const box138 = draft.boxes.find((box) => box.number === 138)!;
+    const box139 = draft.boxes.find((box) => box.number === 139)!;
+    expect(box138.suggestedValue).toBeNull();
+    expect(box139.suggestedValue).toBeNull();
+    expect(box138.status).toBe('no_data');
+    expect(box139.status).toBe('no_data');
+  });
+});

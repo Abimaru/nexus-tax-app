@@ -313,6 +313,109 @@ export const FORM_210_VALIDATION_MATRIX_2025: readonly Form210RuleValidation[] =
     formulaDescription: 'Retenciones del año gravable (categoría `withholding`).',
     notes: 'Falta consolidación por origen (trabajo/capital/otros) y detección de duplicados.',
   }),
+
+  // === Consolidación cédula general (Fase B0, Sprint 2.4) ===
+  row(89, 'requires_review', {
+    formulaDescription:
+      'Renta líquida gravable de la cédula general (consolidación de subcédulas). ' +
+      'Fórmula candidata sin confirmar: 42 + 57(honorarios, no modelada) + 66 + 83.',
+    additionalSources: ['et-art-336'],
+    notes:
+      'Hallazgo Fase B0: la aritmética contra los fixtures de referencia sugiere una ' +
+      'subcédula de rentas de trabajo sin relación laboral (honorarios/servicios) no ' +
+      'modelada todavía (aprox. casillas 43-57). No se calcula hasta confirmar con el ' +
+      'instructivo oficial.',
+  }),
+  row(91, 'not_implemented', {
+    formulaDescription: 'Renta líquida cédula general antes de beneficios del art. 336 ET.',
+    additionalSources: ['et-art-336'],
+  }),
+  row(92, 'not_implemented', {
+    formulaDescription:
+      'Rentas exentas y deducciones limitadas de la cédula general, incluida la adición ' +
+      'por dependientes de 72 UVT (casilla 139) como componente explícito.',
+    additionalSources: ['et-art-336'],
+    notes:
+      'Corrección de Fase A/B0: la adición de 72 UVT (art. 336, num. 3) es un componente ' +
+      'de esta casilla, no una resta posterior independiente. Pendiente de la Fase C.',
+  }),
+  row(93, 'not_implemented', {
+    formulaDescription: 'Renta líquida ordinaria de la cédula general = 91 - 92.',
+    additionalSources: ['et-art-336'],
+  }),
+  row(111, 'not_implemented', {
+    formulaDescription:
+      'Base gravable conjunta para la tarifa progresiva del art. 241 ET ' +
+      '(cédula general + pensiones + dividendos).',
+    additionalSources: ['et-art-241'],
+  }),
+
+  // === Liquidación del impuesto (Fase B0, Sprint 2.4) ===
+  row(126, 'implemented_unverified', {
+    formulaDescription: 'Impuesto de renta líquida gravable (tarifa progresiva, art. 241 ET).',
+    additionalSources: ['et-art-241'],
+    notes:
+      'Cableada informativamente desde `preliminaryLiquidation.incomeTax` (motor probado ' +
+      'en `computeProgressiveIncomeTax`). La numeración de casilla no está confirmada.',
+  }),
+  row(127, 'requires_review', {
+    formulaDescription: 'Impuesto de ganancias ocasionales (arts. 314 y 317 ET).',
+    additionalSources: ['et-art-314', 'et-art-317'],
+    notes:
+      'Cableada informativamente desde `preliminaryLiquidation.occasionalGainsTax`. ' +
+      'Posición 127 evidenciada solo por un fixture anterior (Sprint 2.3.2), sin ' +
+      'segunda fuente independiente que la confirme.',
+  }),
+  row(129, 'implemented_unverified', {
+    formulaDescription: 'Total impuesto a cargo = 126 + 127.',
+    additionalSources: ['et-art-241', 'et-art-314'],
+    examples: [
+      {
+        description: 'Impuesto de renta 4.840.000 y sin ganancias ocasionales.',
+        inputs: { box126: 4_840_000, box127: 0 },
+        expected: 4_840_000,
+      },
+    ],
+    notes:
+      'Cableada informativamente desde `preliminaryLiquidation.totalTaxDueCop`. La ' +
+      'numeración de casilla no está confirmada contra el instructivo oficial.',
+  }),
+  row(133, 'implemented_unverified', {
+    formulaDescription: 'Anticipo de renta por el año gravable siguiente (art. 807 ET).',
+    additionalSources: ['et-art-807'],
+    notes:
+      'Cableada informativamente desde `preliminaryLiquidation.nextYearAdvance` (motor ' +
+      'probado en `computeAdvancePayment`). Candidato de arrastre hacia la casilla 130 ' +
+      'del año siguiente (Fase B, adenda Sprint 2.4 punto 13).',
+  }),
+  row(137, 'implemented_unverified', {
+    formulaDescription: 'Saldo a favor = max(0, -(126 + 127 + 133 - 130 - 131 - 132)).',
+    notes:
+      'Cableada informativamente desde `preliminaryLiquidation.netBalanceCop` cuando el ' +
+      'saldo neto es negativo. Candidato de arrastre hacia la casilla 131 del año ' +
+      'siguiente (Fase B, adenda Sprint 2.4 punto 13).',
+  }),
+
+  // === Información complementaria (Fase B0, Sprint 2.4) ===
+  row(138, 'not_implemented', {
+    formulaDescription: 'Número de dependientes económicos (adición 72 UVT, art. 336 ET).',
+    additionalSources: ['et-art-336'],
+    notes: 'Pendiente de la Fase C (motor del beneficio de 72 UVT, separado del art. 387).',
+  }),
+  row(139, 'not_implemented', {
+    formulaDescription:
+      'Adición por dependientes a la casilla 92 (número de dependientes × 72 UVT).',
+    additionalSources: ['et-art-336'],
+    notes:
+      'Pendiente de la Fase C. Por instructivo oficial es un componente de la casilla 92 ' +
+      'y queda fuera del límite conjunto de 40 %/1.340 UVT.',
+  }),
+  row(140, 'not_implemented', {
+    formulaDescription: 'Casilla informativa complementaria — pendiente de verificar.',
+  }),
+  row(141, 'not_implemented', {
+    formulaDescription: 'Casilla informativa complementaria — pendiente de verificar.',
+  }),
 ];
 
 /**

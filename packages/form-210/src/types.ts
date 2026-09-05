@@ -27,7 +27,28 @@ export type Form210Section =
   | 'pensions'
   | 'dividends'
   | 'occasional_gains'
-  | 'private_settlement';
+  | 'private_settlement'
+  /**
+   * Consolidación entre subcédulas de la cédula general (casillas 89, 91-93)
+   * y base conjunta del art. 241 ET (casilla 111). Se separa de
+   * `employment_income`/`capital_income`/`non_labor_income` porque estas
+   * casillas combinan las tres subcédulas y no pertenecen a ninguna en
+   * particular (Fase B0, Sprint 2.4).
+   */
+  | 'general_income_consolidation'
+  /**
+   * Liquidación del impuesto propiamente dicho (impuesto de renta,
+   * impuesto de ganancias ocasionales y total a cargo). Se distingue de
+   * `private_settlement` (anticipo/saldo/retenciones, que son créditos
+   * contra el impuesto) porque estas casillas SON el impuesto (Fase B0).
+   */
+  | 'tax_settlement'
+  /**
+   * Casillas informativas que no participan directamente de la
+   * liquidación (p. ej. número de dependientes) o cuyo rol normativo
+   * todavía no se ha verificado contra el instructivo oficial (Fase B0).
+   */
+  | 'informational';
 
 export type Form210BoxStatus =
   | 'no_data'
@@ -89,6 +110,21 @@ export interface Form210BoxDefinition {
   formula: string | null;
   dependencies: number[];
   ruleComplete: boolean;
+  /**
+   * Estado de verificación normativa de la casilla (Fase B0, Sprint 2.4).
+   * Opcional y retrocompatible: las casillas históricas no lo declaran
+   * explícitamente y se derivan de `ruleComplete` (`verified` si
+   * `ruleComplete`, `implemented_unverified` en otro caso) por
+   * `deriveBoxImplementationStatus` en `ruleset-2025.ts`. Las casillas
+   * nuevas SÍ lo declaran para poder existir en el catálogo sin tener una
+   * fórmula calculada todavía (`not_implemented`) o con una numeración de
+   * casilla oficial aún no confirmada contra el instructivo (`requires_review`).
+   */
+  implementationStatus?: Form210RuleValidationStatus;
+  /** Ids de `OFFICIAL_SOURCES_2025` que respaldan esta casilla, si existen. */
+  legalBasisSourceIds?: readonly string[];
+  /** Nota breve sobre el estado de verificación, visible en modo avanzado. */
+  verificationNote?: string;
 }
 
 export interface Form210BoxValue extends Form210BoxDefinition {

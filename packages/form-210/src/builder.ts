@@ -386,11 +386,55 @@ function validate(
 }
 
 /**
+ * Asigna informativamente el valor de una casilla estructural (Fase B0,
+ * Sprint 2.4) usando un valor YA calculado por un motor probado en otra
+ * parte del builder. Solo actúa sobre casillas que no tienen fórmula propia
+ * (`structuralBox` en `ruleset-2025.ts`, `formula: null`) y por tanto nunca
+ * pisa un valor derivado por `computeFormula`. No modifica ninguna casilla
+ * verificada existente.
+ */
+function attachInformationalBoxValue(
+  boxes: Form210BoxValue[],
+  boxNumber: number,
+  value: number | null,
+  trace: Pick<Form210SourceTrace, 'sourceId' | 'label' | 'evidence'>,
+): void {
+  if (value === null) return;
+  const index = boxes.findIndex((box) => box.number === boxNumber);
+  if (index === -1) return;
+  const target = boxes[index];
+  if (!target) return;
+  if (target.confirmedValue !== null || target.status === 'not_applicable') return;
+  const source: Form210SourceTrace = {
+    type: 'calculation',
+    sourceId: trace.sourceId,
+    recordId: null,
+    documentId: null,
+    factId: null,
+    label: trace.label,
+    value,
+    evidence: trace.evidence,
+  };
+  boxes[index] = {
+    ...target,
+    suggestedValue: value,
+    confirmedValue: target.confirmedValue,
+    sources: [source],
+    includedSourceIds: [source.sourceId],
+    status: value === 0 ? 'confirmed_zero' : 'calculated',
+    confidence: 'medium',
+  };
+}
+
+/**
  * Deriva la liquidación privada preliminar del borrador. La numeración de las
- * casillas de impuesto y saldo (119, 123, 133, 139…) NO se afirma aquí porque
- * varía entre versiones del formulario y aún no ha sido verificada contra el
- * instructivo DIAN 2025. Los importes viven en el objeto de liquidación con
- * fórmula y fuente propias hasta que la numeración se confirme.
+ * casillas de impuesto y saldo (91-93, 111, 116…) que todavía NO se cablea
+ * NO se afirma aquí porque varía entre versiones del formulario y aún no ha
+ * sido verificada contra el instructivo DIAN 2025. Los importes viven en el
+ * objeto de liquidación con fórmula y fuente propias; las casillas 126, 127,
+ * 129, 133 y 137 se cablean informativamente en `buildForm210Draft` (Fase B0)
+ * con estado `implemented_unverified`/`requires_review` en el catálogo hasta
+ * que la numeración se confirme contra el instructivo oficial.
  */
 export function computePreliminaryLiquidation(
   boxes: readonly Form210BoxValue[],
@@ -1051,6 +1095,59 @@ export function buildForm210Draft(input: Form210BuildInput): Form210Draft {
     input.priorYearBalance,
     withholdingsConsolidation,
   );
+
+  // Fase B0 (Sprint 2.4): cablear informativamente las casillas 126, 127,
+  // 129, 133 y 137 con valores YA calculados por motores probados. No se
+  // toca ninguna casilla existente ni se cambia `totalTaxDueCop`/
+  // `netBalanceCop`: solo se les asigna la numeración de casilla propuesta
+  // (marcada `implemented_unverified`/`requires_review` en el catálogo
+  // porque esa numeración no está confirmada contra el instructivo oficial).
+  // Se omiten por completo cuando la liquidación no tiene datos suficientes
+  // (evita marcar "confirmado en cero" un expediente vacío).
+  if (preliminaryLiquidation.status !== 'insufficient_data') {
+    attachInformationalBoxValue(
+      boxes,
+      126,
+      preliminaryLiquidation.incomeTax?.totalTaxCopRounded ?? null,
+      {
+        sourceId: 'calc:income-tax-241',
+        label: 'Impuesto de renta líquida gravable (art. 241 ET)',
+        evidence: preliminaryLiquidation.incomeTax?.formula ?? 'Tarifa progresiva art. 241 ET',
+      },
+    );
+    attachInformationalBoxValue(
+      boxes,
+      127,
+      preliminaryLiquidation.occasionalGainsTax?.totalTaxCop ?? null,
+      {
+        sourceId: 'calc:occasional-gains-tax',
+        label: 'Impuesto de ganancias ocasionales',
+        evidence: preliminaryLiquidation.occasionalGainsTax?.formula ?? 'Arts. 314 y 317 ET',
+      },
+    );
+    attachInformationalBoxValue(boxes, 129, preliminaryLiquidation.totalTaxDueCop, {
+      sourceId: 'calc:total-tax-due',
+      label: 'Total impuesto a cargo (renta + ganancias ocasionales)',
+      evidence: 'Casilla 126 + casilla 127',
+    });
+    attachInformationalBoxValue(
+      boxes,
+      133,
+      preliminaryLiquidation.nextYearAdvance?.netAdvanceCop ?? null,
+      {
+        sourceId: 'calc:next-year-advance-807',
+        label: 'Anticipo de renta por el año gravable siguiente (art. 807 ET)',
+        evidence: preliminaryLiquidation.nextYearAdvance?.formula ?? 'Art. 807 ET',
+      },
+    );
+    const refundValue =
+      preliminaryLiquidation.netBalanceCop < 0 ? -preliminaryLiquidation.netBalanceCop : 0;
+    attachInformationalBoxValue(boxes, 137, refundValue, {
+      sourceId: 'calc:refund-balance',
+      label: 'Saldo a favor',
+      evidence: 'Casillas 126 + 127 + 133 − 130 − 131 − 132, cuando el resultado es negativo',
+    });
+  }
 
   // Validaciones cruzadas (Fase T): red de seguridad que compara
   // indicadores agregados una vez que la liquidación está resuelta.
