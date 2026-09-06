@@ -45,3 +45,18 @@ anomalía de escala frente al año anterior (nunca corrige el valor, solo
 advierte). Se generan en `buildCaseTasks` a partir de las declaraciones y
 candidatos de arrastre vigentes; la Revisión final ("¿Qué me falta?") las
 muestra como cualquier otra tarea, con deep-link a la tarjeta exacta.
+
+## Dependientes económicos (Sprint 2.4, Fase C)
+
+Ocho tipos nuevos con `source: 'dependent'`, campo `dependentId` para
+trazabilidad y destino `declaracion/beneficios-dependientes`: soporte
+documental faltante o parcial, evaluación de elegibilidad pendiente de
+revisión (`pending_review`/`requires_support`), evaluación marcada
+`stale_due_to_rule_change` tras un cambio de reglas o del registro base,
+elección de beneficio requerida cuando el contribuyente es independiente y un
+dependiente califica para ambos beneficios (art. 387 y art. 336 num. 3), y
+naturaleza de ingresos laborales sin confirmar (bloquea la resolución de
+coexistencia). Se derivan en `buildCaseTasks` recorriendo `taxDependents`,
+`dependentEvaluations` y `dependentsCaseContext` del expediente. Ver
+`docs/DEPENDENTS_BENEFITS_2025.md` para el detalle normativo de cada
+beneficio.

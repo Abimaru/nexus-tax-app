@@ -1,6 +1,105 @@
-# Handoff del proyecto — NexusTax (Sprint 2.4, Fase B0 + B + B1)
+# Handoff del proyecto — NexusTax (Sprint 2.4, Fase B0 + B + B1 + C)
 
-_Última actualización: 2026-09-05._
+_Última actualización: 2026-09-06._
+
+## Sprint 2.4 — Fase C (beneficios de dependientes: art. 387 + art. 336 num. 3 ET)
+
+Continúa sobre el estado local de Fase B0+B+B1 (rama de trabajo local
+`feature/sprint-2.4-dependents`, creada sobre el checkout que ya contenía los
+13 commits reales de esa fase — ver "Estado de Git" al final de esta sección).
+Ver detalle completo en
+[`docs/DEPENDENTS_BENEFITS_2025.md`](./DEPENDENTS_BENEFITS_2025.md) y
+[`docs/DEPENDENTS_DEDUCTION_2025.md`](./DEPENDENTS_DEDUCTION_2025.md).
+
+### Auditoría normativa previa a cualquier código
+
+Antes de escribir código se verificó, con dos fuentes independientes
+(Gerencie.com, Tributi.com):
+
+1. **Bug real encontrado en el motor existente del art. 387 ET**: el tope de
+   32 UVT/mes y 384 UVT/año se estaba multiplicando por el número de
+   dependientes elegibles (hasta 4), permitiendo un tope efectivo de hasta
+   1.536 UVT/año. La doctrina es explícita: el tope es **agregado para el
+   contribuyente**, no por dependiente. Corregido — ver
+   `DEPENDENTS_DEDUCTION_2025.md`.
+2. El art. 336 num. 3 ET (72 UVT × dependiente, máx. 4) es **expresamente
+   adicional** tanto al tope general del 40 %/1.340 UVT como al propio art.
+   387 — deben modelarse como motores independientes, nunca fusionados.
+3. Ley 2411 de 2024 amplió el rango de "hijo estudiante" de 18-23 a 18-25
+   años, vigente para AG2025.
+4. La casilla 139 (72 UVT) es un componente algebraico de la casilla 92
+   (confirmado con la misma fuente secundaria usada en Fase B0 para R91-93).
+5. **Hallazgo flagged, no corregido** (fuera de alcance): la misma fuente
+   sugiere que el 1 % de facturación electrónica podría pertenecer a R92 en
+   lugar de R39 — contradice la documentación existente; requiere
+   verificación adicional antes de tocar R39 (ya verificado contra fixture
+   real).
+
+### Implementado
+
+- **Motor art. 387 corregido** (`dependents.ts`): sin escalado por número de
+  dependientes, sin cupo de 4 (ese cupo es exclusivo del art. 336).
+- **Motor art. 336 num. 3 nuevo e independiente**
+  (`dependents-additional-336.ts`): 72 UVT/dependiente, máx. 4, nunca
+  saturado por el 40 %/1.340 UVT.
+- **Evaluador de elegibilidad** (`dependent-eligibility.ts`): nunca devuelve
+  un falso `not_eligible` por datos incompletos — usa
+  `pending_review`/`requires_support`/`possibly_eligible`.
+- **Resolutor de coexistencia** (`dependents-coexistence.ts`): implementa el
+  Decreto 1625/2231-2023 — ambos beneficios simultáneos solo si el
+  contribuyente es asalariado; independientes eligen uno por dependiente. El
+  motor decide; la UI solo pregunta la naturaleza del ingreso.
+- **Casillas 91/92/93/138/139** cableadas en `form-210` (`implemented_unverified`).
+- **Dominio** (`taxDependent.ts`): `TaxDependent`, `DependentSupport`,
+  `DependentEvaluation`. `DOMAIN_VERSION` 0.11.0.
+- **Dexie v14**: `taxDependents`, `dependentSupports`, `dependentEvaluations`,
+  `dependentsCaseContext` (aditivo).
+- **8 tipos de tarea nuevos** con `source: 'dependent'` (ver `CASE_TASKS.md`).
+- **UI** (`DependentsPanel.tsx`, vista `beneficios-dependientes`): selector de
+  naturaleza de ingresos, tarjetas de dependiente, formulario seccionado,
+  modo avanzado con detalle normativo. Bug encontrado y corregido en E2E: el
+  banner de confirmación "No tengo dependientes" no se mostraba cuando la
+  lista estaba vacía (el caso exacto para el que existe el botón).
+
+### Pendiente explícito (no se avanzó, por decisión de alcance)
+
+- Adjuntar un documento de la biblioteca como soporte de un dependiente desde
+  la UI (campo estructural `documentLibraryFileId` listo; acción pendiente).
+- El 1 % de facturación electrónica como posible componente de R92 (flagged,
+  no aplicado).
+- Casilla 89 (subcédula de honorarios) — hallazgo abierto de Fase B0, sin
+  resolver.
+- Facturación electrónica DIAN, inmuebles, administración de propiedad
+  horizontal y medicina prepagada (secciones D-G del Sprint 2.4).
+
+### Verificación ejecutada
+
+- `pnpm --filter @nexus-tax/aegis-rules test`: 167/167 verdes.
+- `pnpm --filter @nexus-tax/form-210 test`: 89/89 verdes.
+- `pnpm --filter @nexus-tax/domain typecheck`: verde.
+- `pnpm --filter @nexus-tax/web test`: 99/99 verdes.
+- `pnpm --filter @nexus-tax/web typecheck` / `lint`: verdes.
+- `pnpm --filter @nexus-tax/web test:e2e`: 8/8 verdes (6 previos + 2 nuevos de
+  `dependents.spec.ts`), capturas desktop (1280 px) y móvil (390 px)
+  verificadas visualmente.
+
+### Estado de Git (limitación de entorno, no resuelta)
+
+El entorno de esta sesión **bloquea por completo** `git push` y la creación
+de PR: `git push` responde `Permission ... denied to AIBARGUEN_bocc` (403);
+la herramienta `create_pull_request` falla al intentar crear un fork
+("Enterprise Managed User ... cannot access this content", 403). Ninguna vía
+disponible en esta sesión permite publicar el trabajo. Por eso:
+
+- Fase B0+B+B1 (13 commits reales) y Fase C existen **únicamente** en el
+  worktree local, en la rama `feature/sprint-2.4-dependents`.
+- El PR #3 en GitHub (`feature/sprint-2.4-prior-year-returns`) fue fusionado
+  a `main`, pero su contenido real era un commit de estilo no relacionado
+  (orden alfabético) — **no** contiene el trabajo de declaraciones
+  anteriores. `main` no refleja ninguna de las fases de este sprint.
+- Un humano con permisos debe empujar la rama local y abrir el PR
+  manualmente, o ejecutar `gh auth login` con una cuenta habilitada en este
+  mismo entorno.
 
 ## Sprint 2.4 — Fase B1 (integración UX de declaraciones anteriores)
 
