@@ -50,6 +50,22 @@ export const CaseTaskTypeSchema = z.enum([
   'dependent_stale_rule_change',
   /** El contribuyente es independiente y debe elegir un único beneficio para este dependiente. */
   'dependent_requires_coexistence_choice',
+  /** El reporte DIAN de facturación electrónica no está conciliado contra el Tope 5 de la exógena (Sprint 2.4, Fase D). */
+  'electronic_invoice_report_not_reconciled',
+  /** Una factura tiene CUFE duplicado con valores distintos: bloquea la consolidación automática. */
+  'electronic_invoice_duplicate_conflicting',
+  /** Una factura no trae CUFE. */
+  'electronic_invoice_missing_cufe',
+  /** El medio de pago de una factura está reportado como "Error en datos". */
+  'electronic_invoice_payment_method_error',
+  /** Una compra susceptible de beneficio no tiene decisión tributaria (posible doble beneficio sin resolver). */
+  'electronic_invoice_requires_benefit_decision',
+  /** La diferencia entre el reporte y el Tope 5 de la exógena es relevante (no redondeo). */
+  'electronic_invoice_relevant_difference',
+  /** La base susceptible del beneficio del 1 % existe pero no se ha revisado ninguna decisión. */
+  'electronic_invoice_base_without_decision',
+  /** El archivo cargado no se reconoció como reporte DIAN de facturación electrónica. */
+  'electronic_invoice_file_not_recognized',
 ]);
 export type CaseTaskType = z.infer<typeof CaseTaskTypeSchema>;
 
@@ -79,6 +95,7 @@ export const CaseTaskSchema = z.object({
     'system',
     'prior_year_return',
     'dependent',
+    'electronic_invoice',
   ]),
   stage: WorkflowStageIdSchema,
   view: WorkflowViewIdSchema,
@@ -95,6 +112,10 @@ export const CaseTaskSchema = z.object({
   resolutionDecisionId: z.string().nullable().optional(),
   /** Dependiente concreto al que deep-linkea la tarea (Sprint 2.4, Fase C). */
   dependentId: z.string().nullable().optional(),
+  /** Factura concreta a la que deep-linkea la tarea (Sprint 2.4, Fase D). */
+  electronicInvoicePurchaseId: z.string().nullable().optional(),
+  /** Reporte de facturación electrónica al que deep-linkea la tarea (Sprint 2.4, Fase D). */
+  electronicInvoiceReportId: z.string().nullable().optional(),
   priority: z.enum(['high', 'medium', 'low']),
   blocking: z.boolean(),
   status: CaseTaskStatusSchema,
@@ -133,4 +154,4 @@ export const CaseTaskSchema = z.object({
 });
 export type CaseTask = z.infer<typeof CaseTaskSchema>;
 
-export const CASE_TASK_SCHEMA_VERSION = '2.4.1';
+export const CASE_TASK_SCHEMA_VERSION = '2.4.2';

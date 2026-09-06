@@ -20,6 +20,8 @@ import {
   getDependentEvaluations,
   getDependentsCaseContext,
   getDependentSupports,
+  getElectronicInvoicePurchases,
+  getElectronicInvoiceReport,
   getPriorYearCarryForwardCandidates,
   getPriorYearReturns,
   getTaxCaseWorkspace,
@@ -76,6 +78,7 @@ import { FilingStatesPanel } from './FilingStatesPanel';
 import { FinalReviewPanel } from './FinalReviewPanel';
 import { PriorYearReturnsPanel } from './PriorYearReturnsPanel';
 import { DependentsPanel } from './DependentsPanel';
+import { ElectronicInvoicingPanel } from './ElectronicInvoicingPanel';
 import { ContextualNavigation, WorkflowStepper } from './WorkflowNavigation';
 import {
   BasicCaseDataPanel,
@@ -108,7 +111,13 @@ export function CaseWorkbench({
   const dependentSupports = useLiveQuery(() => getDependentSupports(caseId), [caseId]);
   const dependentEvaluations = useLiveQuery(() => getDependentEvaluations(caseId), [caseId]);
   const dependentsCaseContext = useLiveQuery(() => getDependentsCaseContext(caseId), [caseId]);
+  const electronicInvoiceReport = useLiveQuery(() => getElectronicInvoiceReport(caseId), [caseId]);
+  const electronicInvoicePurchases = useLiveQuery(
+    () => getElectronicInvoicePurchases(caseId),
+    [caseId],
+  );
   const [advancedDependents, setAdvancedDependents] = useState(false);
+  const [advancedElectronicInvoicing, setAdvancedElectronicInvoicing] = useState(false);
   const taxCase = workspace?.taxCase;
   const result = workspace?.result;
   const analysis = workspace?.analysis;
@@ -182,6 +191,8 @@ export function CaseWorkbench({
         dependents: taxDependents,
         dependentEvaluations,
         noDependentsDeclared: dependentsCaseContext?.noDependentsDeclared ?? false,
+        electronicInvoiceReport,
+        electronicInvoicePurchases,
         now: taskTimestamp,
       }),
     [
@@ -194,6 +205,8 @@ export function CaseWorkbench({
       taxDependents,
       dependentEvaluations,
       dependentsCaseContext,
+      electronicInvoiceReport,
+      electronicInvoicePurchases,
       taskTimestamp,
     ],
   );
@@ -730,6 +743,18 @@ export function CaseWorkbench({
             tasks={tasks}
             advanced={advancedDependents}
             onToggleAdvanced={() => setAdvancedDependents((value) => !value)}
+          />
+        ) : null}
+        {stage === 'declaracion' && view === 'facturacion-electronica' ? (
+          <ElectronicInvoicingPanel
+            caseId={caseId}
+            taxYear={taxCase.taxYear}
+            report={electronicInvoiceReport}
+            purchases={electronicInvoicePurchases ?? []}
+            form210Draft={workspace.form210Draft}
+            tasks={tasks}
+            advanced={advancedElectronicInvoicing}
+            onToggleAdvanced={() => setAdvancedElectronicInvoicing((value) => !value)}
           />
         ) : null}
         {stage === 'declaracion' && view === 'liquidacion-preliminar' ? (
