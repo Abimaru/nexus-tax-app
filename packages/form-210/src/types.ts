@@ -8,6 +8,8 @@ import type {
 import type {
   AdvancePaymentComputation,
   DependentDeclaration,
+  DependentsAdditionalDeductionCandidate,
+  DependentsAdditionalDeductionComputation,
   DependentsDeductionComputation,
   ElectronicInvoicingDeductionComputation,
   IndividualDeductionLimitComputation,
@@ -279,6 +281,15 @@ export interface Form210PreliminaryLiquidation {
   dependentsDeduction: DependentsDeductionComputation | null;
 
   /**
+   * Adición por dependientes (72 UVT, art. 336 num. 3 ET). `null` cuando el
+   * analista no aporta candidatos. El importe se cablea como componente
+   * explícito de la casilla 92 (nunca de la 39/41) y se conserva aquí con
+   * los excluidos y advertencias para trazabilidad. Independiente y sin
+   * fusionar con `dependentsDeduction` (art. 387).
+   */
+  dependentsAdditionalDeduction: DependentsAdditionalDeductionComputation | null;
+
+  /**
    * Deducción por facturas electrónicas (art. 336-1 ET, Ley 2277 de 2022).
    * `null` cuando el analista no aporta la base de compras con factura
    * electrónica. El importe se cablea a la casilla 39 y se conserva aquí
@@ -417,6 +428,14 @@ export interface Form210BuildInput {
    * casilla 39 del borrador y la expone en `preliminaryLiquidation`.
    */
   dependents?: readonly DependentDeclaration[];
+  /**
+   * Candidatos ya resueltos (elegibilidad + coexistencia, ver
+   * `@nexus-tax/aegis-rules` `resolveDependentBenefitCoexistence`) para el
+   * beneficio adicional de 72 UVT (art. 336 num. 3 ET). El motor aplica el
+   * tope de cuatro, cablea R138/R139 y el componente de R92, y NUNCA lo
+   * suma a R39/R41. Independiente del campo `dependents` (art. 387).
+   */
+  dependentsAdditional?: readonly DependentsAdditionalDeductionCandidate[];
   /**
    * Base de compras soportadas con factura electrónica y medio de pago
    * electrónico calificado (art. 336-1 ET). El motor aplica 1 % con tope de

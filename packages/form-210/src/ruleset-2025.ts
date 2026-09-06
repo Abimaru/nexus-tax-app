@@ -185,31 +185,47 @@ export const FORM_210_BOXES_2025: readonly Form210BoxDefinition[] = [
       'aprox. casillas 43-57) que el motor actual no modela. No se calcula ' +
       'automáticamente hasta confirmar la fórmula con el instructivo oficial.',
   ),
-  structuralBox(
-    91,
-    'Renta líquida cédula general antes de beneficios del art. 336 ET',
-    'general_income_consolidation',
-    'not_implemented',
-    ['et-art-336'],
-  ),
-  structuralBox(
-    92,
-    'Rentas exentas y deducciones limitadas de la cédula general',
-    'general_income_consolidation',
-    'not_implemented',
-    ['et-art-336'],
-    'Corrección de Fase A/B0: según el instructivo oficial, la adición por ' +
-      'dependientes de 72 UVT (casilla 139) es un COMPONENTE de esta ' +
-      'casilla, no una resta independiente posterior. Se deja sin calcular ' +
-      'hasta la Fase C (motor del art. 336 — 72 UVT).',
-  ),
-  structuralBox(
-    93,
-    'Renta líquida ordinaria de la cédula general',
-    'general_income_consolidation',
-    'not_implemented',
-    ['et-art-336'],
-  ),
+  {
+    number: 91,
+    name: 'Renta líquida cédula general antes de beneficios del art. 336 ET',
+    section: 'general_income_consolidation',
+    formula: '34 + 61 + 78',
+    dependencies: [34, 61, 78],
+    ruleComplete: true,
+    implementationStatus: 'implemented_unverified',
+    legalBasisSourceIds: ['et-art-336'],
+    verificationNote:
+      'Fase C (Sprint 2.4): derivada algebraicamente de la mecánica R91→R92→R93 ' +
+      'descrita por fuentes secundarias (Gerencie); no es una cita literal del ' +
+      'instructivo DIAN, por eso permanece `implemented_unverified`.',
+  },
+  {
+    number: 92,
+    name: 'Rentas exentas y deducciones limitadas de la cédula general (incluye adición por dependientes)',
+    section: 'general_income_consolidation',
+    formula: '41 + 65 + 82 + 139',
+    dependencies: [41, 65, 82, 139],
+    ruleComplete: true,
+    implementationStatus: 'implemented_unverified',
+    legalBasisSourceIds: ['et-art-336', 'et-art-336-num-3'],
+    verificationNote:
+      'Fase C (Sprint 2.4): R139 (72 UVT por dependiente, art. 336 num. 3 ET) ' +
+      'se modela como COMPONENTE EXPLÍCITO de esta casilla, tal como indica el ' +
+      'instructivo (nunca como resta de R39/R41). Pendiente: confirmar si el ' +
+      '1 % de facturación electrónica (art. 336-1 ET) también debería ser ' +
+      'componente de R92 en vez de fluir por R39 (hallazgo de auditoría, ' +
+      'fuera de alcance de la Fase C — ver docs/DEPENDENTS_BENEFITS_2025.md).',
+  },
+  {
+    number: 93,
+    name: 'Renta líquida ordinaria de la cédula general',
+    section: 'general_income_consolidation',
+    formula: '91 - 92',
+    dependencies: [91, 92],
+    ruleComplete: true,
+    implementationStatus: 'implemented_unverified',
+    legalBasisSourceIds: ['et-art-336'],
+  },
   structuralBox(
     111,
     'Base gravable conjunta para la tarifa del art. 241 ET (cédula general + pensiones + dividendos)',
@@ -272,19 +288,23 @@ export const FORM_210_BOXES_2025: readonly Form210BoxDefinition[] = [
     138,
     'Número de dependientes económicos (adición 72 UVT, art. 336 ET)',
     'informational',
-    'not_implemented',
-    ['et-art-336'],
-    'Pendiente de la Fase C (motor del beneficio de 72 UVT por dependiente, ' +
-      'separado del art. 387 ya implementado).',
+    'implemented_unverified',
+    ['et-art-336-num-3'],
+    'Fase C (Sprint 2.4): cableada informativamente desde ' +
+      '`preliminaryLiquidation.dependentsAdditionalDeduction.dependentsAppliedCount` ' +
+      '(motor probado). Refleja el número CONFIRMADO por elegibilidad y ' +
+      'coexistencia, no `dependents.length` bruto.',
   ),
   structuralBox(
     139,
     'Adición por dependientes a la casilla 92 (72 UVT, art. 336 ET)',
     'informational',
-    'not_implemented',
-    ['et-art-336'],
-    'Pendiente de la Fase C. Por instructivo oficial, es un componente de ' +
-      'la casilla 92 y queda fuera del límite conjunto de 40 %/1.340 UVT.',
+    'implemented_unverified',
+    ['et-art-336-num-3'],
+    'Fase C (Sprint 2.4): cableada informativamente desde ' +
+      '`preliminaryLiquidation.dependentsAdditionalDeduction.totalCop` (motor ' +
+      'probado). Por instructivo oficial es un componente de la casilla 92 y ' +
+      'queda fuera del límite conjunto de 40 %/1.340 UVT.',
   ),
   structuralBox(
     140,

@@ -6,7 +6,6 @@ import type {
 } from '@nexus-tax/domain';
 import {
   AFC_FVP_AVC_LIMIT_RULE_2025,
-  DEPENDENTS_MAX_ELIGIBLE,
   HOUSING_INTEREST_LIMIT_RULE_2025,
   PREPAID_MEDICINE_LIMIT_RULE_2025,
   TAX_LIMIT_RULES_2025,
@@ -14,6 +13,7 @@ import {
   applyIndividualDeductionLimit,
   applyLimitRule,
   computeAdvancePayment,
+  computeDependentsAdditionalDeduction,
   computeDependentsDeduction,
   computeElectronicInvoicingDeduction,
   computeOccasionalGainsTax,
@@ -173,6 +173,16 @@ function computeFormula(number: number, get: (box: number) => number | null): nu
       get(101) !== null && get(102) !== null ? safeSubtract([get(101) ?? 0, get(102) ?? 0]) : null,
     115: () =>
       get(112) !== null ? safeSubtract([get(112) ?? 0, get(113) ?? 0, get(114) ?? 0]) : null,
+    91: () =>
+      get(34) !== null || get(61) !== null || get(78) !== null
+        ? (get(34) ?? 0) + (get(61) ?? 0) + (get(78) ?? 0)
+        : null,
+    92: () =>
+      get(41) !== null || get(65) !== null || get(82) !== null || get(139) !== null
+        ? (get(41) ?? 0) + (get(65) ?? 0) + (get(82) ?? 0) + (get(139) ?? 0)
+        : null,
+    93: () =>
+      get(91) !== null && get(92) !== null ? safeSubtract([get(91) ?? 0, get(92) ?? 0]) : null,
   };
   return formula[number]?.() ?? null;
 }
@@ -459,6 +469,7 @@ export function computePreliminaryLiquidation(
     evidence?: string | null;
   },
   withholdings: Form210PreliminaryLiquidation['withholdings'] | null = null,
+  dependentsAdditionalDeduction: Form210PreliminaryLiquidation['dependentsAdditionalDeduction'] = null,
 ): Form210PreliminaryLiquidation {
   const get = (number: number): number | null => {
     const box = boxes.find((entry) => entry.number === number);
@@ -596,14 +607,6 @@ export function computePreliminaryLiquidation(
   }
   if (
     dependentsDeduction &&
-    dependentsDeduction.dependentsProvidedCount > dependentsDeduction.dependentsEligibleCount
-  ) {
-    warnings.push(
-      `Se declararon ${dependentsDeduction.dependentsProvidedCount} dependientes; solo los primeros ${DEPENDENTS_MAX_ELIGIBLE} entran en la deducción del art. 387 ET.`,
-    );
-  }
-  if (
-    dependentsDeduction &&
     dependentsDeduction.dependentsEligibleCount > 0 &&
     dependentsDeduction.appliedDeductionCop === 0
   ) {
@@ -669,6 +672,7 @@ export function computePreliminaryLiquidation(
     withholdingsCop,
     nextYearAdvance,
     dependentsDeduction,
+    dependentsAdditionalDeduction,
     electronicInvoicingDeduction,
     individualDeductionLimits,
     priorYearBalance,
@@ -814,6 +818,45 @@ export function buildForm210Draft(input: Form210BuildInput): Form210Draft {
       evidence: dependentsDeduction.formula,
     };
     sourcesByBox.set(39, [...(sourcesByBox.get(39) ?? []), dependentsTrace]);
+  }
+
+  // Adición por dependientes (72 UVT, art. 336 num. 3 ET). Independiente del
+  // art. 387: recibe candidatos YA resueltos por elegibilidad y coexistencia
+  // (fuera de este builder); solo aplica el tope de cuatro y multiplica por
+  // 72 UVT. R138 (conteo) y R139 (valor) se cablean como fuentes propias —
+  // R139 NUNCA se agrega a la casilla 39: es un componente de R92 (fórmula
+  // 92 = 41 + 65 + 82 + 139 en `computeFormula`).
+  const dependentsAdditionalInput = input.dependentsAdditional ?? [];
+  const dependentsAdditionalDeduction = dependentsAdditionalInput.length
+    ? computeDependentsAdditionalDeduction({ taxYear: 2025, dependents: dependentsAdditionalInput })
+    : null;
+  if (dependentsAdditionalDeduction) {
+    sourcesByBox.set(138, [
+      {
+        type: 'calculation',
+        sourceId: 'calc:dependents-additional-336-count',
+        recordId: null,
+        documentId: null,
+        factId: null,
+        label: 'Número de dependientes económicos confirmados (adición 72 UVT)',
+        value: dependentsAdditionalDeduction.dependentsAppliedCount,
+        evidence: `${dependentsAdditionalDeduction.dependentsAppliedCount} dependiente(s) confirmado(s) de ${dependentsAdditionalDeduction.dependentsEligibleCount} elegible(s)`,
+      },
+    ]);
+    if (dependentsAdditionalDeduction.totalCop > 0) {
+      sourcesByBox.set(139, [
+        {
+          type: 'calculation',
+          sourceId: 'calc:dependents-additional-336',
+          recordId: null,
+          documentId: null,
+          factId: null,
+          label: 'Adición por dependientes (72 UVT, art. 336 num. 3 ET)',
+          value: dependentsAdditionalDeduction.totalCop,
+          evidence: dependentsAdditionalDeduction.formula,
+        },
+      ]);
+    }
   }
 
   // Deducción por facturas electrónicas (art. 336-1 ET). El motor recibe la
@@ -1094,6 +1137,7 @@ export function buildForm210Draft(input: Form210BuildInput): Form210Draft {
     individualDeductionLimits,
     input.priorYearBalance,
     withholdingsConsolidation,
+    dependentsAdditionalDeduction,
   );
 
   // Fase B0 (Sprint 2.4): cablear informativamente las casillas 126, 127,

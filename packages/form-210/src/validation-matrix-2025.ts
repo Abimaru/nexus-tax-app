@@ -326,22 +326,49 @@ export const FORM_210_VALIDATION_MATRIX_2025: readonly Form210RuleValidation[] =
       'modelada todavía (aprox. casillas 43-57). No se calcula hasta confirmar con el ' +
       'instructivo oficial.',
   }),
-  row(91, 'not_implemented', {
-    formulaDescription: 'Renta líquida cédula general antes de beneficios del art. 336 ET.',
+  row(91, 'implemented_unverified', {
+    formulaDescription: 'Renta líquida cédula general antes de beneficios del art. 336 ET = 34 + 61 + 78.',
     additionalSources: ['et-art-336'],
-  }),
-  row(92, 'not_implemented', {
-    formulaDescription:
-      'Rentas exentas y deducciones limitadas de la cédula general, incluida la adición ' +
-      'por dependientes de 72 UVT (casilla 139) como componente explícito.',
-    additionalSources: ['et-art-336'],
+    examples: [
+      {
+        description: 'Trabajo 60M, capital 10M, no laboral 20M.',
+        inputs: { box34: 60_000_000, box61: 10_000_000, box78: 20_000_000 },
+        expected: 90_000_000,
+      },
+    ],
     notes:
-      'Corrección de Fase A/B0: la adición de 72 UVT (art. 336, num. 3) es un componente ' +
-      'de esta casilla, no una resta posterior independiente. Pendiente de la Fase C.',
+      'Implementado en Fase C (Sprint 2.4). Derivado algebraicamente de la mecánica ' +
+      'R91→R92→R93 (fuente secundaria, no cita literal del instructivo DIAN).',
   }),
-  row(93, 'not_implemented', {
+  row(92, 'implemented_unverified', {
+    formulaDescription:
+      'Rentas exentas y deducciones limitadas de la cédula general = 41 + 65 + 82 + 139, ' +
+      'incluida la adición por dependientes de 72 UVT (casilla 139) como componente explícito.',
+    additionalSources: ['et-art-336', 'et-art-336-num-3'],
+    examples: [
+      {
+        description: 'Limitadas 41=10M, 65=2M, 82=3M; adición dependientes 139=3.585.528 (1 dependiente).',
+        inputs: { box41: 10_000_000, box65: 2_000_000, box82: 3_000_000, box139: 3_585_528 },
+        expected: 18_585_528,
+      },
+    ],
+    notes:
+      'Implementado en Fase C (Sprint 2.4): la adición de 72 UVT (art. 336 num. 3) es un ' +
+      'componente explícito de esta casilla, no una resta posterior independiente. ' +
+      'Pendiente adicional (fuera de esta fase): confirmar si el 1 % de facturación ' +
+      'electrónica también debería sumarse aquí en vez de fluir por la casilla 39.',
+  }),
+  row(93, 'implemented_unverified', {
     formulaDescription: 'Renta líquida ordinaria de la cédula general = 91 - 92.',
     additionalSources: ['et-art-336'],
+    examples: [
+      {
+        description: 'R91 = 90M; R92 = 18.585.528.',
+        inputs: { box91: 90_000_000, box92: 18_585_528 },
+        expected: 71_414_472,
+      },
+    ],
+    notes: 'Implementado en Fase C (Sprint 2.4).',
   }),
   row(111, 'not_implemented', {
     formulaDescription:
@@ -396,19 +423,31 @@ export const FORM_210_VALIDATION_MATRIX_2025: readonly Form210RuleValidation[] =
       'siguiente (Fase B, adenda Sprint 2.4 punto 13).',
   }),
 
-  // === Información complementaria (Fase B0, Sprint 2.4) ===
-  row(138, 'not_implemented', {
-    formulaDescription: 'Número de dependientes económicos (adición 72 UVT, art. 336 ET).',
-    additionalSources: ['et-art-336'],
-    notes: 'Pendiente de la Fase C (motor del beneficio de 72 UVT, separado del art. 387).',
-  }),
-  row(139, 'not_implemented', {
-    formulaDescription:
-      'Adición por dependientes a la casilla 92 (número de dependientes × 72 UVT).',
-    additionalSources: ['et-art-336'],
+  // === Información complementaria (Fase C, Sprint 2.4) ===
+  row(138, 'implemented_unverified', {
+    formulaDescription: 'Número de dependientes económicos confirmados (adición 72 UVT, art. 336 num. 3 ET).',
+    additionalSources: ['et-art-336-num-3'],
     notes:
-      'Pendiente de la Fase C. Por instructivo oficial es un componente de la casilla 92 ' +
-      'y queda fuera del límite conjunto de 40 %/1.340 UVT.',
+      'Cableada informativamente desde `preliminaryLiquidation.dependentsAdditionalDeduction' +
+      '.dependentsAppliedCount` (motor probado en `computeDependentsAdditionalDeduction`). ' +
+      'Refleja el número CONFIRMADO por elegibilidad/coexistencia, no el conteo bruto.',
+  }),
+  row(139, 'implemented_unverified', {
+    formulaDescription:
+      'Adición por dependientes a la casilla 92 = dependientes confirmados × 72 UVT.',
+    additionalSources: ['et-art-336-num-3'],
+    examples: [
+      {
+        description: '1 dependiente confirmado × 72 UVT.',
+        inputs: { box138: 1 },
+        expected: 3_585_528,
+      },
+    ],
+    notes:
+      'Cableada informativamente desde ' +
+      '`preliminaryLiquidation.dependentsAdditionalDeduction.totalCop`. Por instructivo ' +
+      'oficial es un componente de la casilla 92 y queda fuera del límite conjunto de ' +
+      '40 %/1.340 UVT.',
   }),
   row(140, 'not_implemented', {
     formulaDescription: 'Casilla informativa complementaria — pendiente de verificar.',
