@@ -306,13 +306,21 @@ export interface DependentDeclaration {
 }
 
 /**
- * Detalle por dependiente dentro del cálculo, con el aporte al tope mensual.
+ * Detalle por dependiente dentro del cálculo. `monthlyCapContributionCop` es
+ * puramente informativo (cuántos meses declaró este dependiente en
+ * particular) y NO se suma entre dependientes para el tope real: el tope
+ * agregado del contribuyente usa `coveredMonths` (el máximo de meses entre
+ * todos los dependientes), ver `computeDependentsDeduction`.
  */
 export interface DependentDeductionDetail {
   id: string;
   kind: DependentKind;
   monthsClaimed: number;
-  /** Tope mensual del dependiente: `monthsClaimed × 32 UVT` en pesos. */
+  /**
+   * Valor informativo: `monthsClaimed × 32 UVT` en pesos, para este
+   * dependiente aislado. No representa el tope real aplicado (que es
+   * agregado por contribuyente, no por dependiente).
+   */
   monthlyCapContributionCop: number;
 }
 
@@ -321,12 +329,16 @@ export interface DependentDeductionDetail {
  * el patrón "porcentaje + tope UVT + candidato observado": la UI muestra qué
  * candidato limita el beneficio (`percentage`, `monthly_cap`, `annual_cap`).
  *
- * Convenciones:
- * - El motor cuenta hasta cuatro dependientes (`dependentsEligibleCount`); si
- *   se declaran más, los primeros cuatro se toman y el resto genera warning
- *   informativo.
- * - `annualCap` y `monthlyCap` respetan los 32 UVT mensuales y 384 UVT
- *   anuales POR DEPENDIENTE que fija la doctrina DIAN.
+ * Convenciones (corregidas en Sprint 2.4, Fase C tras auditoría normativa):
+ * - El art. 387 ET **no fija un número máximo de dependientes**:
+ *   `dependentsEligibleCount` es siempre igual a `dependentsProvidedCount`
+ *   (a diferencia del beneficio adicional de 72 UVT del art. 336 num. 3 ET,
+ *   que sí limita a cuatro — ver `DependentsAdditionalDeductionComputation`).
+ * - `monthlyCap` y `annualCap` son topes **agregados para el contribuyente**,
+ *   NUNCA multiplicados por el número de dependientes declarados. La regla
+ *   primaria (fuente de verdad) es el tope **mensual** de 32 UVT; el tope
+ *   anual de 384 UVT es la equivalencia matemática derivada de 12 meses
+ *   completos (`MONTHLY_CAP_UVT_TOTAL × 12`), no una regla independiente.
  * - `appliedDeductionCop` nunca es negativo ni excede la suma de los
  *   candidatos.
  */
