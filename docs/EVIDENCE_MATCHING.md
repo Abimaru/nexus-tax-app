@@ -308,3 +308,124 @@ vista por defecto de `organizacion/revision-documental`.
 
 `DOCUMENT_INTELLIGENCE.md`, `MONEY_PARSING.md`, `DOCUMENT_EXTRACTION_REVIEW.md`,
 `PRELIMINARY_RECONCILIATION.md`, `RECONCILIATION.md`, `CASE_TASKS.md`, `DOCUMENT_FACTS.md`.
+
+## Fase F.2 — Safety & Critical Evidence Hardening (defensa semántica)
+
+El benchmark real Documento ↔ Exógena (Fase F/F.1, diagnóstico sobre documentos reales, nunca
+copiados al repositorio) encontró un **false confident match** real: un candidato cuyo propio
+texto describía una **retención** fue clasificado como `financial_income` (ingreso) y obtuvo
+`exact_match` contra un registro exógeno de ingresos — el valor numérico coincidía, pero el
+concepto tributario era otro. También encontró certificados reales de vivienda donde el valor
+fiscalmente importante (intereses pagados) no se extraía, sin que exista ninguna categoría
+exógena equivalente que actúe como red de seguridad.
+
+### Principio: igualdad numérica ≠ equivalencia tributaria
+
+`suggestExogenousMatches` (`packages/document-intelligence/src/matching.ts`) determinaba el
+estado final (`exact_match`/`rounding_match`/…) **únicamente** a partir de la diferencia numérica
+entre el candidato y el registro exógeno; la categoría solo influía en el *score* de selección del
+top-3, nunca en si el resultado final podía tratarse como "confiable". Esto permitía que un
+candidato mal etiquetado (p. ej. una retención etiquetada como ingreso) alcanzara `exact_match` si
+el valor coincidía exactamente con algún registro, sin importar cuán contradictorio fuera el
+concepto.
+
+### Gate semántico (`packages/document-intelligence/src/semanticGate.ts`)
+
+`detectSemanticContradiction` es una función **pura y reusable** (no depende de ningún banco, NIT
+o texto de documento concreto — prohibido por diseño resolver el caso por emisor) que compara
+marcadores léxicos inequívocos del propio texto del candidato (`originalConcept`/
+`normalizedConcept`) contra:
+
+1. la categoría que el adaptador le propuso (autoconsistencia), y
+2. opcionalmente, la categoría del registro exógeno contra el que se está comparando
+   (`referenceCategories`) — defensa en profundidad para el caso cruzado del benchmark, donde el
+   candidato ya viene mal categorizado.
+
+**Tabla de compatibilidad** (marcador → categorías que contradice si aparece en el texto):
+
+| Marcador léxico | Categorías que contradice |
+| --- | --- |
+| `retencion(es)` | `financial_income`, `employment_income`, `other_income`, `dividend_income`, `pension_income` |
+| `base` | `withholding`, `deduction_candidate` |
+| `saldo` | `deduction_candidate`, `housing_interest` |
+
+Reutiliza `TaxCategory` (ya existente en `@nexus-tax/domain`) — **no** crea una segunda taxonomía
+paralela; la tabla es la única representación nueva y es deliberadamente mínima.
+
+### Match gate: nunca `exact_match`/`rounding_match` con contradicción
+
+En `suggestExogenousMatches`, si `detectSemanticContradiction` marca contradicción **y** el estado
+crudo habría sido `exact_match`/`rounding_match`, el estado final se degrada a `possible_match`
+(el máximo permitido según el prompt de Fase F.2 entre `ambiguous`/`possible_match`/
+`contradiction`). Esto garantiza automáticamente `safeForBulkConfirm: false` en
+`buildEvidenceReviewSuggestions` (`apps/web/src/lib/evidenceReview.ts`), sin tocar esa función: el
+gate vive enteramente en la capa de emparejamiento. El candidato **nunca se oculta**: sigue
+visible con razón humana explícita ("El monto coincide, pero el certificado parece describir una
+retención/una base de cálculo/un saldo, no [el concepto reportado]. Revísalo antes de confirmar.")
+— nunca "semantic contradiction detected" ni scores internos. La anomalía también se registra en
+`anomalyCodes: ['semantic_concept_contradiction']` (extensión mínima y compatible del enum
+existente, mismo mecanismo que las anomalías monetarias).
+
+### Corrección de causa raíz (no solo gate)
+
+El caso real del benchmark existía porque la regla `withholding` de `co.financial.consolidated.
+generic` exigía literalmente "fuente"/"renta" después de "retención", y no reconocía "retención
+sobre/de rendimientos financieros". Se amplió esa regla y se agregó una **exclusividad
+retención-domina-sobre-ingreso**: en `extractCandidates` (`adapters.ts`), si una línea contiene el
+marcador léxico de retención, ninguna regla de categoría "ingreso" (`financial_income`,
+`employment_income`, `other_income`, `dividend_income`, `pension_income`) genera candidato para
+esa misma línea, evitando también un candidato duplicado bajo dos reglas. El rebenchmark local
+(§ más abajo) confirma que el caso real ya no produce un candidato mal etiquetado en absoluto —
+el gate queda como red de seguridad general, no como único mecanismo.
+
+### Vivienda: cobertura, document-only y fallback guiado
+
+- **Clasificador** (`classifier.ts`): el catálogo de señales de `housing_interest_certificate` se
+  amplió con vocabulario estructural (préstamo/financiación/crédito de vivienda, intereses
+  pagados/causados/del período, saldo de la obligación) sin exigir la frase literal "crédito
+  hipotecario" — una entidad no bancaria también certifica vivienda. Ninguna señal aislada alcanza
+  confianza alta por sí sola (requiere combinación), evitando que cualquier mención suelta de
+  "vivienda" dispare una clasificación optimista.
+- **Adaptador** (`co.housing-interest.generic`): reglas más flexibles para intereses, sin
+  confundirlos nunca con saldo/corrección monetaria/tasa — nunca se infiere el valor de intereses
+  a partir del saldo ni se calcula por diferencia; solo se extrae evidencia documental explícita.
+- **Document-only sin exógena** (§15): la deducción de intereses de vivienda **no se reporta como
+  información exógena** — nunca hay un `ExpectedTaxEvidence` que la origine. `buildEvidenceReviewSuggestions`
+  y `EvidenceReviewPanel` presentan un candidato `housing_interest` sin match como evidencia propia
+  válida ("Este beneficio normalmente se sustenta con el certificado de la entidad. No
+  necesitamos una coincidencia en exógena para conservarlo como evidencia."), nunca como
+  "No aparece en exógena" (que sonaría a error).
+- **Fallback guiado sin exógena** (§17/§18): `buildCaseTasks` (`taxCaseAnalysis.ts`) reutiliza el
+  `CaseTaskType` existente `evidence_missing_expected` (no crea un segundo sistema de tareas): si
+  un documento se clasifica como `housing_interest_certificate` (vía `DocumentExtractionSession.
+  classification`) y ningún candidato de ese documento tiene `proposedCategory: 'housing_interest'`,
+  se genera una tarea de captura manual guiada, **sin depender de ningún registro exógeno**.
+
+### Rebenchmark local (Fase F.2, §23) — resultados honestos
+
+Se reprocesaron localmente (script temporal, eliminado; nunca se persistieron datos reales) los 5
+casos reales relevantes del benchmark anterior con el motor corregido:
+
+| Caso | Resultado |
+| --- | --- |
+| False confident original | **Corregido en la raíz**: el candidato ahora se etiqueta `withholding` (antes `financial_income`); su `exact_match`, cuando ocurre, no carga `semantic_concept_contradiction` — ya no hay evidencia de falso confiado. |
+| GMF base gravable (caso P1) | Sigue bloqueado (`no_match`/`ambiguous`, nunca `exact_match`) — sin regresión. |
+| Saldo como GMF (caso P2) | Sigue bloqueado (`no_match`) — sin regresión. |
+| Vivienda, caso 1 | **Sin mejora**: 0 candidatos, clasificación sigue en `income_withholding_certificate`/confianza baja. El vocabulario real de este emisor específico elude las señales ampliadas; no se investigó más a fondo por la prohibición de derivar patrones de texto real. |
+| Vivienda, caso 2 | **Mejora parcial**: la clasificación subió de confianza `medium` a `high` (correctamente `housing_interest_certificate` en ambas pasadas); el valor de intereses **sigue sin extraerse** (0 candidatos de esa regla), pero ahora existe el fallback guiado (`evidence_missing_expected`) que antes no existía. |
+
+Ningún caso revalidado produjo un **nuevo** false confident match.
+
+### Fase F.3 pendiente
+
+- **Unificación de los dos scorers** (`suggestExogenousMatches` vs. `suggestReconciliations`):
+  el benchmark de Fase F.1 encontró divergencias reales de umbral (p. ej. `rounding_match` habilita
+  confirmación en bloque mientras la política de conciliación de la matriz siempre exige
+  confirmación humana para el mismo tipo de diferencia). No se resolvió en F.2 por diseño explícito
+  (§20 del prompt); los tests de esta fase están escritos de forma que facilitan esa futura
+  unificación sin necesitar reescribirlos.
+- **Cobertura de vivienda para los 2 casos reales que no mejoraron/mejoraron solo parcialmente**:
+  requeriría más señales de vocabulario derivadas de un corpus más amplio, sin poder citar el texto
+  real observado.
+- El chequeo de ambigüedad documentado en la limitación (5) de la sección anterior sigue pendiente.
+

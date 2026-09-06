@@ -95,3 +95,18 @@ generación existente por candidato (`confirm_candidate`/`identify_product`/
 
 Ver `docs/EVIDENCE_MATCHING.md` para el detalle completo del clasificador,
 el matcher evolucionado y la UI de revisión guiada.
+
+### Fallback guiado de vivienda sin exógena (Sprint 2.4, Fase F.2)
+
+`evidence_missing_expected` se reutiliza (mismo tipo, **no** se creó uno
+nuevo) para un segundo origen que NO depende de ningún registro exógeno: si
+un documento se clasificó como `housing_interest_certificate`
+(`DocumentExtractionSession.classification.proposedKind`) y ningún candidato
+de ese documento tiene `proposedCategory: 'housing_interest'`, se genera la
+tarea `task:housing-interest-missing:<documentId>` con
+`ruleId: 'case-task.housing-interest-missing.v1'`, `documentId` apuntando al
+documento (no a un registro), y el mismo `recommendedAction: 'Capturar
+manualmente desde la revisión guiada'`. La deducción de intereses de vivienda
+nunca se reporta como información exógena (§15 del prompt de Fase F.2), así
+que esta rama es la única forma de que el expediente ofrezca captura guiada
+para ese beneficio cuando la extracción automática no encuentra el valor.
