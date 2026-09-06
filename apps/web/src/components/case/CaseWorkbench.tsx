@@ -616,6 +616,7 @@ export function CaseWorkbench({
             products={workspace.products}
             sessions={workspace.extractionSessions}
             candidates={workspace.documentCandidates}
+            reconciliations={workspace.reconciliations}
             onOpenReconciliations={() => applyDestination('conciliacion', 'conciliaciones')}
           />
         ) : null}

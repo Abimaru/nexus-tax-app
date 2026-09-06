@@ -1854,6 +1854,10 @@ export async function confirmEvidenceMatchesBulk(
 
 export interface CreateGuidedManualCaptureInput {
   expectedEvidenceId: string;
+  /** Registro exógeno de origen de la expectativa (`ExpectedTaxEvidence.sourceId`). */
+  exogenousRecordId: string;
+  /** Valor que la exógena espera; se usa para registrar la conciliación resultante. */
+  expectedValueCop: number | null;
   documentId?: string | null;
   entityId: string | null;
   productId: string | null;
@@ -1877,12 +1881,19 @@ export interface CreateGuidedManualCaptureInput {
  * conserva `expectedEvidenceId` para trazabilidad hacia la expectativa de
  * origen, sin necesidad de volver a pedir categoría/naturaleza/tratamiento
  * en la UI (ya vienen implícitos en la expectativa).
+ *
+ * Sprint 2.4, Fase E.1 (§16-§18): además registra la
+ * `PreliminaryReconciliation` correspondiente (igual que
+ * `confirmEvidenceMatch`), para que la expectativa quede marcada como
+ * resuelta y no vuelva a aparecer como "Falta este dato" en la revisión
+ * guiada, y para que la decisión quede visible en "Conciliación" sin un
+ * mecanismo paralelo.
  */
 export async function createGuidedManualCapture(
   caseId: string,
   input: CreateGuidedManualCaptureInput,
-): Promise<DocumentFact> {
-  return saveDocumentFact(caseId, {
+): Promise<{ fact: DocumentFact; reconciliation: PreliminaryReconciliation | null }> {
+  const fact = await saveDocumentFact(caseId, {
     documentId: input.documentId ?? null,
     entityId: input.entityId,
     productId: input.productId,
@@ -1904,6 +1915,22 @@ export async function createGuidedManualCapture(
     extractionCandidateId: null,
     expectedEvidenceId: input.expectedEvidenceId,
   });
+  if (input.expectedValueCop === null) return { fact, reconciliation: null };
+  const reconciliation = await savePreliminaryReconciliation(caseId, {
+    factIds: [fact.id],
+    exogenousRecordIds: [input.exogenousRecordId],
+    status: 'reconciled',
+    exogenousValue: input.expectedValueCop,
+    documentaryValue: input.value,
+    productId: input.productId,
+    explanation: 'Capturado manualmente desde la revisión guiada (sin candidato documental).',
+    analystDecision: 'Captura manual guiada confirmada por el analista.',
+    suggestionScore: null,
+    suggestionSignals: [],
+    confirmedByHuman: true,
+    suggestionId: null,
+  });
+  return { fact, reconciliation };
 }
 
 export async function restoreDocumentCandidatesBulk(

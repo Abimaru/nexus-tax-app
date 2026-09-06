@@ -91,6 +91,15 @@ export function buildEvidenceReviewSuggestions(input: {
   caseId: string;
   candidates: readonly DocumentFactCandidate[];
   expectedEvidence: readonly ExpectedTaxEvidence[];
+  /**
+   * Ids de registros exógenos que ya tienen una `PreliminaryReconciliation`
+   * registrada (Sprint 2.4, Fase E.1, §18): sus expectativas se excluyen
+   * por completo de la revisión guiada — ni "matched" ni "unresolved" — en
+   * vez de volver a aparecer como pendientes solo porque su candidato ya
+   * fue consumido (`factId`) al confirmarlas. Evita el doble conteo y una
+   * regresión visual ("lo que ya confirmé vuelve a pedirse").
+   */
+  reconciledExogenousRecordIds?: ReadonlySet<string>;
   now?: string;
 }): EvidenceReviewSuggestion[] {
   const createdAt = input.now ?? new Date().toISOString();
@@ -99,6 +108,7 @@ export function buildEvidenceReviewSuggestions(input: {
   const consumedCandidateIds = new Set<string>();
 
   for (const expectation of input.expectedEvidence) {
+    if (input.reconciledExogenousRecordIds?.has(expectation.sourceId)) continue;
     const related = openCandidates
       .flatMap((candidate) =>
         candidate.suggestedExogenousMatches
@@ -162,7 +172,14 @@ export function buildEvidenceReviewSuggestions(input: {
       status === 'matched'
         ? ['confirm', 'correct_value', 'choose_alternative', 'dismiss']
         : status === 'needs_review' && best.match.status === 'ambiguous'
-          ? ['choose_alternative', 'capture_manually', 'dismiss']
+          ? // La ambigüedad se resuelve con el mismo mecanismo de confirmación
+            // (§12/§17 de docs/EVIDENCE_MATCHING.md): al elegir esta
+            // expectativa como la correcta, el candidato queda consumido
+            // (factId) y la otra expectativa en pugna deja de encontrarlo
+            // como candidato abierto en la siguiente recomputación —
+            // volviendo automáticamente a `unresolved` sin un mecanismo
+            // paralelo de "elegir entre alternativas".
+            ['confirm', 'choose_alternative', 'capture_manually', 'dismiss']
           : ['confirm', 'correct_value', 'choose_alternative', 'capture_manually', 'dismiss'];
     suggestions.push({
       id: `evidence-suggestion:expected:${expectation.id}`,

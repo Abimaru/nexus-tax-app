@@ -7,9 +7,11 @@ import type {
   DocumentExtractionSession,
   DocumentFactCandidate,
   EvidenceReviewSuggestion,
+  PreliminaryReconciliation,
   ProcessingResult,
   UploadedDocument,
 } from '@nexus-tax/domain';
+import { describeMatchConfidence } from '@nexus-tax/document-intelligence';
 import { Badge, Button, EmptyState, GlassPanel, formatCurrencyCOP } from '@nexus-tax/ui';
 import { buildEvidenceReviewSuggestions, buildExpectedTaxEvidence } from '@/lib/evidenceReview';
 import { EVIDENCE_SUGGESTION_STATUS_PRESENTATION } from '@/lib/presentationCatalogs';
@@ -36,6 +38,7 @@ export function EvidenceReviewPanel({
   products,
   sessions,
   candidates,
+  reconciliations,
   onOpenReconciliations,
 }: {
   caseId: string;
@@ -44,6 +47,7 @@ export function EvidenceReviewPanel({
   products: CaseProduct[];
   sessions: DocumentExtractionSession[];
   candidates: DocumentFactCandidate[];
+  reconciliations: readonly PreliminaryReconciliation[];
   onOpenReconciliations: () => void;
 }) {
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -52,9 +56,24 @@ export function EvidenceReviewPanel({
     () => buildExpectedTaxEvidence({ caseId, result }),
     [caseId, result],
   );
+  const reconciledExogenousRecordIds = useMemo(
+    () =>
+      new Set(
+        reconciliations
+          .filter((item) => item.status !== 'rejected' && item.status !== 'restored')
+          .flatMap((item) => item.exogenousRecordIds),
+      ),
+    [reconciliations],
+  );
   const suggestions = useMemo(
-    () => buildEvidenceReviewSuggestions({ caseId, candidates, expectedEvidence }),
-    [caseId, candidates, expectedEvidence],
+    () =>
+      buildEvidenceReviewSuggestions({
+        caseId,
+        candidates,
+        expectedEvidence,
+        reconciledExogenousRecordIds,
+      }),
+    [caseId, candidates, expectedEvidence, reconciledExogenousRecordIds],
   );
 
   const matched = suggestions.filter((item) => item.status === 'matched');
@@ -245,6 +264,12 @@ function SuggestionCard({
   const [captureValue, setCaptureValue] = useState('');
   const [showCaptureForm, setShowCaptureForm] = useState(false);
   const presentation = EVIDENCE_SUGGESTION_STATUS_PRESENTATION[suggestion.status];
+  // Sprint 2.4, Fase E.1, §11: la insignia debe distinguir explícitamente
+  // "coincide exactamente" de "coincide por redondeo" — nunca agruparlas
+  // bajo una etiqueta genérica de "coincide" ni mostrar el score crudo.
+  const matchConfidence = suggestion.matchStatus
+    ? describeMatchConfidence(suggestion.matchStatus)
+    : null;
   const expectation = expectedEvidence.find((item) => item.id === suggestion.expectedEvidenceId);
 
   async function confirm() {
@@ -294,6 +319,8 @@ function SuggestionCard({
     try {
       await createGuidedManualCapture(expectation.caseId, {
         expectedEvidenceId: expectation.id,
+        exogenousRecordId: expectation.sourceId,
+        expectedValueCop: expectation.expectedValueCop,
         entityId: expectation.entityId,
         productId: null,
         originalConcept: expectation.conceptLabel,
@@ -319,7 +346,9 @@ function SuggestionCard({
           <p className="text-sm font-medium text-content-strong">
             {expectation?.conceptLabel ?? 'Valor documental sin relación con la exógena'}
           </p>
-          <p className="mt-0.5 text-xs text-content-muted">{presentation.description}</p>
+          <p className="mt-0.5 text-xs text-content-muted">
+            {matchConfidence?.description ?? presentation.description}
+          </p>
         </div>
         <Badge
           tone={
@@ -330,9 +359,16 @@ function SuggestionCard({
                 : 'amber'
           }
         >
-          {presentation.label}
+          {matchConfidence?.label ?? presentation.label}
         </Badge>
       </div>
+      {suggestion.reasons.length ? (
+        <ul className="mt-2 space-y-1 text-xs text-content-muted">
+          {suggestion.reasons.map((reason) => (
+            <li key={reason}>{reason}</li>
+          ))}
+        </ul>
+      ) : null}
 
       <dl className="mt-3 grid gap-3 sm:grid-cols-3">
         {suggestion.expectedValueCop !== null ? (
@@ -364,7 +400,11 @@ function SuggestionCard({
       <div className="mt-3 flex flex-wrap items-center gap-2">
         {suggestion.allowedActions.includes('confirm') && suggestion.candidateId ? (
           <Button variant="secondary" disabled={saving} onClick={confirm}>
-            {saving ? 'Confirmando…' : 'Confirmar'}
+            {saving
+              ? 'Guardando…'
+              : suggestion.matchStatus === 'ambiguous'
+                ? 'Elegir este valor'
+                : 'Confirmar'}
           </Button>
         ) : null}
         {suggestion.allowedActions.includes('mark_new_value') && suggestion.candidateId ? (

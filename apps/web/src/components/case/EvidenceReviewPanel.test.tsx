@@ -146,6 +146,7 @@ describe('EvidenceReviewPanel', () => {
         products={[]}
         sessions={[]}
         candidates={[]}
+        reconciliations={[]}
         onOpenReconciliations={() => undefined}
       />,
     );
@@ -172,6 +173,7 @@ describe('EvidenceReviewPanel', () => {
         products={[]}
         sessions={[session]}
         candidates={[candidate]}
+        reconciliations={[]}
         onOpenReconciliations={() => undefined}
       />,
     );
@@ -195,6 +197,7 @@ describe('EvidenceReviewPanel', () => {
         products={[]}
         sessions={[session]}
         candidates={[]}
+        reconciliations={[]}
         onOpenReconciliations={() => undefined}
       />,
     );
@@ -221,6 +224,7 @@ describe('EvidenceReviewPanel', () => {
         products={[]}
         sessions={[session]}
         candidates={[candidate]}
+        reconciliations={[]}
         onOpenReconciliations={() => undefined}
       />,
     );

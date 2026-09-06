@@ -177,6 +177,56 @@ describe('buildEvidenceReviewSuggestions', () => {
     expect(suggestions[0]?.allowedActions).toContain('choose_alternative');
   });
 
+  it('resuelve una ambigüedad de dos registros para el mismo candidato: elegir uno deja al otro "unresolved" (§12/§17)', () => {
+    const expectationA = buildExpectedTaxEvidence({
+      caseId: 'case:1',
+      result: processingResult(),
+    })[0]!;
+    const expectationB = { ...expectationA, id: 'expected:record:2', sourceId: 'record:2' };
+    const candidate = baseCandidate({
+      suggestedExogenousMatches: [
+        {
+          recordId: 'record:1',
+          status: 'ambiguous',
+          reasons: ['Empate con otro registro.'],
+          exogenousValue: 1_000_000,
+          difference: 0,
+        },
+        {
+          recordId: 'record:2',
+          status: 'ambiguous',
+          reasons: ['Empate con otro registro.'],
+          exogenousValue: 1_000_000,
+          difference: 0,
+        },
+      ],
+    });
+    const suggestions = buildEvidenceReviewSuggestions({
+      caseId: 'case:1',
+      candidates: [candidate],
+      expectedEvidence: [expectationA, expectationB],
+      now: NOW,
+    });
+    expect(suggestions).toHaveLength(2);
+    expect(suggestions.every((item) => item.candidateId === candidate.id)).toBe(true);
+    expect(suggestions.every((item) => item.status === 'needs_review')).toBe(true);
+    expect(suggestions.every((item) => item.allowedActions.includes('confirm'))).toBe(true);
+
+    // Al "consumir" el candidato (factId asignado tras confirmar una de las
+    // dos expectativas), la recomputación ya no lo encuentra abierto para
+    // la otra expectativa: vuelve a "unresolved" sin un mecanismo paralelo
+    // de "elegir entre alternativas".
+    const candidateConsumed = { ...candidate, factId: 'fact:chosen' };
+    const suggestionsAfterChoice = buildEvidenceReviewSuggestions({
+      caseId: 'case:1',
+      candidates: [candidateConsumed],
+      expectedEvidence: [expectationA, expectationB],
+      now: NOW,
+    });
+    expect(suggestionsAfterChoice).toHaveLength(2);
+    expect(suggestionsAfterChoice.every((item) => item.status === 'unresolved')).toBe(true);
+  });
+
   it('marca "new_relevant_value" para un candidato sin ninguna relación con la exógena', () => {
     const candidate = baseCandidate({ suggestedExogenousMatches: [] });
     const suggestions = buildEvidenceReviewSuggestions({
@@ -195,6 +245,21 @@ describe('buildEvidenceReviewSuggestions', () => {
       caseId: 'case:1',
       candidates: [candidate],
       expectedEvidence: [],
+      now: NOW,
+    });
+    expect(suggestions).toHaveLength(0);
+  });
+
+  it('excluye por completo una expectativa ya conciliada, sin volver a mostrarla como "unresolved" (§18)', () => {
+    const expectation = buildExpectedTaxEvidence({ caseId: 'case:1', result: processingResult() })[0]!;
+    // El candidato que confirmó esta expectativa ya quedó consumido
+    // (factId), así que sin la exclusión explícita reaparecería como
+    // "unresolved" pese a estar ya conciliada.
+    const suggestions = buildEvidenceReviewSuggestions({
+      caseId: 'case:1',
+      candidates: [],
+      expectedEvidence: [expectation],
+      reconciledExogenousRecordIds: new Set([expectation.sourceId]),
       now: NOW,
     });
     expect(suggestions).toHaveLength(0);
