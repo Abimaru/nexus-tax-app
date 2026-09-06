@@ -1,11 +1,13 @@
 # Roadmap — NexusTax
 
-> Sprint 2.4 (Fase B0 + Fase B + Fase B1 + Fase C + Fase D + revisión
-> normativa puntual) completado: esqueleto de casillas del F-210,
-> declaraciones anteriores, los dos beneficios de dependientes económicos
-> (art. 387 y art. 336 num. 3 ET), y el reporte DIAN detallado de
+> Sprint 2.4 (Fase B0 + Fase B + Fase B1 + Fase C + Fase D + Fase E +
+> revisiones normativas puntuales) completado: esqueleto de casillas del
+> F-210, declaraciones anteriores, los dos beneficios de dependientes
+> económicos (art. 387 y art. 336 num. 3 ET), el reporte DIAN detallado de
 > facturación electrónica (CUFE, deduplicación, conciliación, motor del 1 %
-> corregido a su casilla oficial correcta: la 28, art. 336 num. 5 ET).
+> en su casilla oficial: la 28, art. 336 num. 5 ET), y Evidence Matching &
+> Guided Reconciliation (clasificador de ruido numérico, redondeo
+> explícito, revisión guiada con pocas decisiones humanas).
 > Pendiente: el resto del Sprint 2.4 (inmuebles, administración de
 > propiedad horizontal, medicina prepagada).
 
@@ -207,6 +209,23 @@ como tarea deep-linkeable (se muestra como error inmediato en la UI, ya que un a
 reconocido nunca se guarda); el reporte no se asocia a la biblioteca documental general. Inmuebles,
 administración de propiedad horizontal y medicina prepagada no se iniciaron: quedan para
 incrementos siguientes con revisión intermedia.
+
+## Sprint 2.4 — Fase E (Evidence Matching & Guided Reconciliation)
+
+Reduce el ruido numérico mostrado al analista tras la extracción documental y evoluciona el
+emparejador candidato↔exógena existente con un estado granular que distingue explícitamente el
+redondeo (`rounding_match`) de una coincidencia meramente probable, y la ambigüedad
+(`ambiguous`) de una contradicción relevante. Nuevo clasificador puro
+(`classifyNumericEvidence`) asigna un rol (dinero o una categoría de ruido: NIT, cuenta,
+resolución, año, referencia legal, etc.) a cada token numérico según su contexto, sin descartar
+nunca la evidencia (queda disponible para inspección en modo avanzado). Nueva UI
+`EvidenceReviewPanel` presenta un resumen en lenguaje simple con confirmación en bloque acotada a
+coincidencias claras y captura manual guiada desde una expectativa (`ExpectedTaxEvidence`) sin
+candidato aceptable — sin reemplazar la revisión detallada existente, que sigue disponible como
+"modo avanzado". Persistencia reutiliza exactamente los mecanismos existentes de confirmación de
+candidato y conciliación preliminar, sin crear un segundo camino de doble conteo. Limitación
+conocida documentada para una futura Fase E2: coexisten dos scorers (candidato↔exógena y
+hecho↔exógena) sin unificar. Detalle completo en `docs/EVIDENCE_MATCHING.md`.
 
 ## Sprint 2.4 — Revisión normativa puntual (cierre de Fase D)
 

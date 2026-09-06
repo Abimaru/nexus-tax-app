@@ -90,8 +90,14 @@ reglas: **Aegis Engine** (`packages/aegis-rules`).
   "no elegible" por datos incompletos, y resolución de coexistencia entre ambos beneficios.
 - **Facturación electrónica** (Sprint 2.4): reporte DIAN detallado (CUFE, notas crédito/débito,
   deduplicación, conciliación contra el Tope 5 de la exógena) que alimenta el motor del 1 % (art.
-  336-1 ET) con una base explicable; la deducción es componente de la casilla 92, nunca de la 39
-  (fuera del límite conjunto de 40 %/1.340 UVT).
+  336 num. 5 ET) con una base explicable; la deducción tiene su propia casilla oficial (la 28,
+  dato informativo previo a patrimonio), nunca R39 ni R92/R140/R141.
+- **Evidence Matching & Guided Review** (Sprint 2.4, Fase E): clasificador puro de evidencia
+  numérica (dinero vs. ruido: NIT, cuentas, resoluciones, años, referencias legales) que nunca
+  descarta un token, solo lo conserva como evidencia inspeccionable; emparejador candidato↔exógena
+  con detección explícita de redondeo y ambigüedad como estados propios; revisión guiada con pocas
+  decisiones humanas (confirmar, elegir, capturar manualmente) sobre la revisión detallada
+  existente, que se conserva íntegra como modo avanzado.
 
 ## Límites de arquitectura (no cruzar)
 

@@ -68,3 +68,19 @@ texto nativo o de OCR de una página. Llega a esta misma revisión con `adapterI
 (identificable como estrategia distinta de los adaptadores automáticos), categoría/naturaleza
 `unclassified` y tratamiento `requires_review` por defecto: pasa por exactamente el mismo flujo de
 confirmar/corregir/rechazar que un candidato automático, nunca alimenta la matriz por sí solo.
+
+## Revisión guiada (Sprint 2.4, Fase E)
+
+Desde Sprint 2.4, Fase E, `organizacion/revision-documental` muestra por defecto
+**`EvidenceReviewPanel`** en vez de esta revisión detallada: un resumen en lenguaje simple
+("Encontramos N valores relevantes. M coinciden con la exógena.") con pocas decisiones humanas
+agrupadas por estado (coinciden / probables / necesitan tu decisión / datos que faltan / posibles
+valores nuevos), confirmación en bloque acotada a coincidencias sin ambigüedad ni anomalías, y
+captura manual guiada cuando la exógena espera un valor sin ningún candidato aceptable.
+
+Esta revisión detallada (`DocumentExtractionReviewPanel`) **no desaparece**: sigue completa,
+sin cambios de comportamiento, detrás del interruptor "Ver otros datos detectados" como "modo
+avanzado". La revisión guiada reutiliza exactamente las mismas funciones de persistencia
+(`reviewDocumentCandidate`, `savePreliminaryReconciliation`) a través de nuevos envoltorios
+(`confirmEvidenceMatch`, `createGuidedManualCapture`): no existe un segundo mecanismo de
+conciliación ni riesgo de doble conteo. Ver `docs/EVIDENCE_MATCHING.md` para el detalle completo.

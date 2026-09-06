@@ -1,6 +1,92 @@
-# Handoff del proyecto — NexusTax (Sprint 2.4, Fase B0 + B + B1 + C + D + revisión puntual)
+# Handoff del proyecto — NexusTax (Sprint 2.4, Fase B0 + B + B1 + C + D + E + revisiones puntuales)
 
 _Última actualización: 2026-09-06._
+
+## Sprint 2.4 — Fase E: Evidence Matching & Guided Reconciliation
+
+Objetivo: reducir el ruido numérico mostrado al analista tras la extracción documental (NIT,
+cuentas, resoluciones, años, etc. malinterpretados como dinero) y presentar una "Revisión guiada"
+con pocas decisiones humanas relevantes en vez de decenas de candidatos en bruto, sin reemplazar
+la revisión detallada existente. Detalle técnico completo en `docs/EVIDENCE_MATCHING.md`.
+
+### Auditoría previa (obligatoria antes de codificar)
+
+Se auditó `packages/document-intelligence/src` completo, el esquema `DocumentFactCandidate`, la
+lógica de `suggestExogenousMatches`, el enum `PreliminaryReconciliationStatus`, la comparación
+nativo/OCR, `DocumentExtractionReviewPanel.tsx`, `CaseTask`/`buildCaseTasks`, la captura manual y
+`ExtractionFeedback`. Hallazgo adicional relevante: existe un **segundo scorer** independiente
+(`suggestReconciliations` en `apps/web/src/lib/taxCaseAnalysis.ts`, a nivel de `DocumentFact` ya
+confirmado) que duplica buena parte de la lógica de `suggestExogenousMatches` (a nivel de
+`DocumentFactCandidate`, antes de confirmar). **Decisión**: no unificarlos en esta fase (blast
+radius demasiado grande); se documenta como limitación conocida para una Fase E2.
+
+### Diseño e implementación
+
+- **Clasificador puro** `classifyNumericEvidence` (`packages/document-intelligence/src/
+  evidenceClassifier.ts`): asigna un rol (`money` o una categoría de ruido: NIT, cédula, cuenta,
+  referencia documental/legal, fecha, año, porcentaje, página) a cada token numérico según su
+  contexto léxico. `classifyDocumentNumericEvidence` (`adapters.ts`) lo aplica a todo un documento;
+  el pipeline (`pipeline.ts`) lo usa para poblar métricas de ruido
+  (`numericEvidenceDetected/monetaryEvidencePromoted/numericNoiseSuppressed`) y
+  `DocumentExtractionSession.suppressedNumericEvidence` (acotado a 200 entradas; nunca se descarta
+  evidencia, solo se excluye de la revisión guiada normal).
+- **Estado granular del emparejador** `CandidateExogenousMatchStatus` (movido a
+  `packages/domain/src/evidenceMatching.ts` para evitar un ciclo de importación): reemplaza el
+  enum anterior (`strong_match/probable_match/multiple_candidates/no_match/
+  possible_contradiction`) por `exact_match | rounding_match | minor_difference | possible_match |
+  ambiguous | contradiction | no_match`, con detección explícita de redondeo
+  (`Math.round(decimalValue) === exogenousValue`). `suggestExogenousMatches`
+  (`packages/document-intelligence/src/matching.ts`) se evolucionó sin cambiar su firma ni su
+  ranking; se agregó `describeMatchConfidence` como único humanizador (nunca expone el score
+  crudo).
+- **Contrato `ExpectedTaxEvidence`**: "el expediente espera encontrar esto", derivado hoy de
+  `NormalizedExogenousRecord` (`buildExpectedTaxEvidence` en `apps/web/src/lib/evidenceReview.ts`).
+- **Guided Review** `buildEvidenceReviewSuggestions` combina expectativas y candidatos en una
+  sugerencia por expectativa (o por candidato sin relación, `new_relevant_value` — nunca se oculta
+  dinero sin decisión humana) con estados `matched | likely_match | needs_review | unresolved |
+  new_relevant_value`.
+- **Persistencia sin doble conteo**: `confirmEvidenceMatch`/`confirmEvidenceMatchesBulk`/
+  `createGuidedManualCapture` (`apps/web/src/lib/repository.ts`) reutilizan exactamente
+  `reviewDocumentCandidate` + `savePreliminaryReconciliation`/`saveDocumentFact`, sin crear un
+  mecanismo paralelo. Nuevo `captureMethod: 'manual_guided'` y campo `expectedEvidenceId` en
+  `DocumentFact` para trazabilidad.
+- **UI** `EvidenceReviewPanel.tsx` reemplaza el render directo de `DocumentExtractionReviewPanel`
+  en `organizacion/revision-documental` (que se conserva íntegro como "modo avanzado" detrás de un
+  interruptor). Resumen en lenguaje simple, confirmación en bloque acotada a coincidencias claras,
+  captura manual guiada.
+- **Tareas**: dos tipos nuevos (`evidence_ambiguous_match`, `evidence_missing_expected`) derivados
+  directamente en `buildCaseTasks` (no en `evidenceReview.ts`, por el mismo motivo de ciclo de
+  importación), sin tocar la generación existente por candidato.
+
+### Tests agregados
+
+`evidenceClassifier.test.ts` (9), `matching.test.ts` (4, incluye redondeo/ambigüedad/diferencia
+menor/humanizador), `evidenceReview.test.ts` (7), `EvidenceReviewPanel.test.tsx` (4),
+`presentationCatalogs.test.ts` (+1), `taxCaseAnalysis.test.ts` (+1, valida ambos tipos de tarea
+nuevos). Se actualizó el test existente de `suggestExogenousMatches` a los nuevos nombres de
+estado (`exact_match`/`contradiction`).
+
+### Verificación ejecutada
+
+- `pnpm check:encoding`: sin mojibake (384 archivos).
+- `pnpm -r typecheck`: limpio en todo el monorepo.
+- `pnpm -r lint`: 0 advertencias.
+- `pnpm -r test`: **592/592** tests (domain 19, aegis-rules 175, document-intelligence 103 [+13],
+  form-210 93, exogenous-parser 77, web 125 [+12] — sin regresiones en los 566 previos).
+- `pnpm build`: exitoso.
+
+### Limitaciones y Fase E2 propuesta
+
+Ver `docs/EVIDENCE_MATCHING.md` §"Limitaciones conocidas": los dos scorers sin unificar, el
+clasificador de ruido como capa de inspección (no suprime candidatos existentes todavía), la
+captura manual guiada sin edición de categoría/naturaleza/tratamiento, y la ausencia de
+paginación/virtualización en `EvidenceReviewPanel` para expedientes muy grandes.
+
+### Estado de Git
+
+Rama `feature/sprint-2.4-evidence-matching`, creada desde `origin/main` (que ya incluye el merge
+de PR #6, `aca5505`). Pendiente de push y de PR — el cierre de esta fase no incluyó publicación
+salvo indicación explícita del usuario.
 
 ## Sprint 2.4 — Revisión normativa puntual (cierre de Fase D)
 
