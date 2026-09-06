@@ -197,6 +197,15 @@ export const CandidateExogenousMatchSchema = z.object({
         'decimal_separator_ambiguous',
         'document_exogenous_amount_mismatch',
         'monetary_parse_low_confidence',
+        /**
+         * Sprint 2.4, Fase F.2 (Safety & Critical Evidence Hardening):
+         * el texto propio del candidato contradice semánticamente la
+         * categoría propuesta (p. ej. describe una retención pero se
+         * clasificó como ingreso). Nunca coexiste con `exact_match`/
+         * `rounding_match` — el gate semántico degrada el estado antes
+         * de que este código pueda aparecer con esos estados.
+         */
+        'semantic_concept_contradiction',
       ]),
     )
     .optional(),

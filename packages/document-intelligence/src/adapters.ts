@@ -15,8 +15,25 @@ import type {
 import { classifyNumericEvidence } from './evidenceClassifier';
 import { comparableText, stableDocumentId } from './normalize';
 import { MONEY_PARSER_VERSION, parseMoneyAmount } from './money';
+import { detectConceptRoleMarkers } from './semanticGate';
 
 const VERSION = '1.2.0';
+
+/**
+ * Categorías de ingreso (Sprint 2.4, Fase F.2, §3/§4 del prompt): una
+ * retención sobre estos conceptos ("Retención sobre rendimientos
+ * financieros") NUNCA debe producir también un candidato de ingreso bajo
+ * otra regla que coincida con la misma línea — la retención domina. Esto
+ * es una regla ESTRUCTURAL, no un parche por emisor: se aplica a
+ * cualquier línea de cualquier documento que combine ambas palabras.
+ */
+const INCOME_LIKE_CATEGORIES = new Set<AdapterRule['category']>([
+  'financial_income',
+  'employment_income',
+  'other_income',
+  'dividend_income',
+  'pension_income',
+]);
 
 function rule(
   id: string,
@@ -170,7 +187,14 @@ export const DOCUMENT_ADAPTERS: readonly DocumentAdapter[] = [
       ),
       rule(
         'withholding',
-        ['retencion(?:es)?.*(?:fuente|renta)'],
+        [
+          'retencion(?:es)?.*(?:fuente|renta)',
+          // Sprint 2.4, Fase F.2: una retención sobre rendimientos/
+          // intereses financieros sigue siendo una retención, no un
+          // ingreso — aunque no mencione literalmente "fuente"/"renta"
+          // (§3/§12 del prompt de Fase F.2, caso real del benchmark).
+          'retencion(?:es)?.*(?:rendimientos|intereses|financiero)',
+        ],
         'withholding',
         'tax_credit',
         'subtract_from_tax',
@@ -268,11 +292,22 @@ export const DOCUMENT_ADAPTERS: readonly DocumentAdapter[] = [
   adapter(
     'co.housing-interest.generic',
     ['housing_interest_certificate'],
-    ['intereses de vivienda|credito hipotecario'],
+    [
+      'intereses de vivienda|credito hipotecario',
+      'prestamo.*vivienda|financiacion.*vivienda|credito.*vivienda',
+    ],
     [
       rule(
         'housing-interest',
-        ['intereses pagados'],
+        [
+          // Sprint 2.4, Fase F.2 (§12/§13): cubre variantes reales de
+          // redacción ("intereses pagados", "intereses causados",
+          // "intereses del período") sin exigir la frase literal
+          // "crédito hipotecario" — una entidad no bancaria (fondo de
+          // empleados, cooperativa) también certifica vivienda.
+          'intereses (?:pagados|causados|del periodo)',
+          'intereses.*(?:credito|prestamo|obligacion).*vivienda',
+        ],
         'housing_interest',
         'deduction',
         'deductible_subject_to_rules',
@@ -288,7 +323,9 @@ export const DOCUMENT_ADAPTERS: readonly DocumentAdapter[] = [
       ),
       rule(
         'loan-balance',
-        ['saldo.*credito'],
+        [
+          'saldo.*(?:credito|obligacion|prestamo|deuda)',
+        ],
         'liability',
         'liability',
         'add_to_liabilities',
@@ -559,6 +596,17 @@ export function extractCandidates(
         const label = currentRule.labels.find((pattern) => pattern.test(normalizedLine));
         if (!label) continue;
         if (isTotalLine(line) && rulesWithDetail.has(currentRule.id)) continue;
+        // Sprint 2.4, Fase F.2 (§3/§4): "Retención sobre rendimientos
+        // financieros" nunca debe generar TAMBIÉN un candidato de ingreso
+        // bajo la regla `interest` (u otra de ingreso) solo porque la
+        // misma línea contiene esas palabras — la retención domina.
+        if (
+          currentRule.category !== 'withholding' &&
+          INCOME_LIKE_CATEGORIES.has(currentRule.category) &&
+          detectConceptRoleMarkers(line).includes('withholding')
+        ) {
+          continue;
+        }
         for (const amount of monetaryMatches(line)) {
           addCandidate({
             line,

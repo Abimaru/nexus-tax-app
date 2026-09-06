@@ -10,6 +10,7 @@ export * from './imagePreprocessing';
 export * from './ocrRecommendation';
 export * from './profileMatching';
 export * from './adapters';
+export * from './semanticGate';
 export * from './matching';
 export * from './reader';
 export * from './structure';
