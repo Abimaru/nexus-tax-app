@@ -36,8 +36,18 @@ const DEFINITIONS: readonly ClassifierDefinition[] = [
     ['gravamen.*movimientos financieros|gmf', 2],
   ]),
   definition('housing_interest_certificate', [
-    ['intereses de vivienda', 5],
-    ['credito hipotecario', 3],
+    ['intereses de vivienda', 4],
+    ['credito hipotecario', 4],
+    // Sprint 2.4, Fase F.2 (§12): vocabulario adicional — una entidad no
+    // bancaria (fondo de empleados, cooperativa) también certifica
+    // vivienda sin decir literalmente "crédito hipotecario". Ninguna
+    // señal aislada basta por sí sola para confianza alta (§16): se
+    // requiere combinación (tipo de crédito + intereses + saldo/período).
+    ['prestamo.*vivienda', 3],
+    ['financiacion.*vivienda', 3],
+    ['credito.*(?:adquisicion|compra).*vivienda', 3],
+    ['intereses (?:pagados|causados|del periodo)', 3],
+    ['saldo.*(?:obligacion|credito|deuda)', 2],
     ['correccion monetaria', 2],
   ]),
   definition('severance_certificate', [

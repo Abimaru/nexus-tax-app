@@ -200,6 +200,7 @@ export function EvidenceReviewPanel({
             title="Posibles valores nuevos"
             items={newRelevant}
             expectedEvidence={expectedEvidence}
+            candidates={candidates}
             tone="violet"
           />
         </div>
@@ -229,11 +230,13 @@ function SuggestionGroup({
   title,
   items,
   expectedEvidence,
+  candidates,
   tone,
 }: {
   title: string;
   items: EvidenceReviewSuggestion[];
   expectedEvidence: ReturnType<typeof buildExpectedTaxEvidence>;
+  candidates?: readonly DocumentFactCandidate[];
   tone: 'emerald' | 'cyan' | 'amber' | 'violet';
 }) {
   if (!items.length) return null;
@@ -245,7 +248,12 @@ function SuggestionGroup({
       </div>
       <ul className="space-y-3">
         {items.map((item) => (
-          <SuggestionCard key={item.id} suggestion={item} expectedEvidence={expectedEvidence} />
+          <SuggestionCard
+            key={item.id}
+            suggestion={item}
+            expectedEvidence={expectedEvidence}
+            candidates={candidates}
+          />
         ))}
       </ul>
     </GlassPanel>
@@ -255,15 +263,23 @@ function SuggestionGroup({
 function SuggestionCard({
   suggestion,
   expectedEvidence,
+  candidates,
 }: {
   suggestion: EvidenceReviewSuggestion;
   expectedEvidence: ReturnType<typeof buildExpectedTaxEvidence>;
+  candidates?: readonly DocumentFactCandidate[];
 }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [captureValue, setCaptureValue] = useState('');
   const [showCaptureForm, setShowCaptureForm] = useState(false);
   const presentation = EVIDENCE_SUGGESTION_STATUS_PRESENTATION[suggestion.status];
+  // Sprint 2.4, Fase F.2, §15: la evidencia de vivienda sin exógena NUNCA
+  // debe presentarse con el título genérico "sin relación con la exógena"
+  // (suena a error). Se identifica por categoría propuesta del candidato,
+  // no por texto/emisor concreto.
+  const relatedCandidate = candidates?.find((item) => item.id === suggestion.candidateId);
+  const isHousingInterestCandidate = relatedCandidate?.proposedCategory === 'housing_interest';
   // Sprint 2.4, Fase E.1, §11: la insignia debe distinguir explícitamente
   // "coincide exactamente" de "coincide por redondeo" — nunca agruparlas
   // bajo una etiqueta genérica de "coincide" ni mostrar el score crudo.
@@ -344,7 +360,10 @@ function SuggestionCard({
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <p className="text-sm font-medium text-content-strong">
-            {expectation?.conceptLabel ?? 'Valor documental sin relación con la exógena'}
+            {expectation?.conceptLabel ??
+              (isHousingInterestCandidate
+                ? 'Certificado de vivienda (evidencia propia)'
+                : 'Valor documental sin relación con la exógena')}
           </p>
           <p className="mt-0.5 text-xs text-content-muted">
             {matchConfidence?.description ?? presentation.description}
