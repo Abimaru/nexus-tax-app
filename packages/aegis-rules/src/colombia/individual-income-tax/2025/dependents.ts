@@ -12,9 +12,13 @@ import { getTaxUnit } from './tax-unit';
  *
  * El artículo permite deducir el 10 % de los ingresos brutos por rentas de
  * trabajo del contribuyente, con un tope **total para el contribuyente**
- * (no por dependiente):
- *   - 32 UVT mensuales (`MONTHLY_CAP_UVT_TOTAL`).
- *   - 384 UVT anuales (`ANNUAL_CAP_UVT_TOTAL`).
+ * (no por dependiente). La **regla primaria** (fuente de verdad) es el
+ * límite **mensual**: 32 UVT (`MONTHLY_CAP_UVT_TOTAL`). El equivalente
+ * **anual** de 384 UVT (`ANNUAL_CAP_UVT_TOTAL`) NO es una constante
+ * normativa independiente: es la equivalencia matemática de acumular el
+ * tope mensual durante los 12 meses completos del año
+ * (`MONTHLY_CAP_UVT_TOTAL × MONTHS_PER_YEAR`), y se deriva así en código a
+ * propósito para que ambos valores nunca puedan divergir.
  *
  * CORRECCIÓN NORMATIVA (Sprint 2.4, Fase C): la implementación anterior
  * multiplicaba estos topes por el número de dependientes elegibles
@@ -31,6 +35,20 @@ import { getTaxUnit } from './tax-unit';
  * compatibilidad de la doctrina histórica del art. 387 (que no fija número
  * máximo), pero el motor ya no lo usa para escalar el tope.
  *
+ * REVISIÓN NORMATIVA PUNTUAL (Sprint 2.4, Fase C — segunda auditoría): se
+ * confirmó que la corrección anterior no reemplazó el bug del escalado por
+ * dependiente por una simplificación incorrecta del cálculo mensual/anual.
+ * El cálculo sigue siendo un agregado ANUAL (no una simulación mes a mes de
+ * retención en la fuente con ingreso variable): el candidato de porcentaje
+ * usa el ingreso bruto ANUAL agregado (casilla 32), no un ingreso mensual.
+ * Esto es consistente con el resto del motor de liquidación preliminar del
+ * F-210 (que siempre opera sobre agregados anuales, no sobre retención
+ * mensual) y con el alcance declarado del proyecto (no liquida retenciones
+ * mensuales). El tope mensual de 32 UVT se usa aquí para determinar cuántos
+ * MESES de cobertura de dependiente están disponibles (`coveredMonths`,
+ * prorrateado cuando el dependiente no calificó los 12 meses), no para
+ * simular ingresos mes a mes.
+ *
  * El tope anual se prorratea por el mes con mayor cobertura entre los
  * dependientes declarados (`coveredMonths`): si el contribuyente tuvo al
  * menos un dependiente calificado durante N meses del año, el tope aplicable
@@ -41,11 +59,22 @@ import { getTaxUnit } from './tax-unit';
  * certificaciones, parentesco) — esa clasificación es del analista y se
  * conserva por trazabilidad. El motor tampoco decide en qué casilla del F-210
  * se alimenta la deducción; eso lo determina el builder de `form-210`.
+ *
+ * Fuentes oficiales: `et-art-387` (Estatuto Tributario, art. 387) y el
+ * catálogo `OFFICIAL_SOURCES_2025` en `official-sources.ts`.
  */
 export const DEPENDENTS_DEDUCTION_SOURCE_ID = 'et-art-387';
 export const DEPENDENTS_INCOME_PERCENTAGE = 0.1;
+/** Regla primaria (fuente de verdad): tope mensual agregado, 32 UVT. */
 export const MONTHLY_CAP_UVT_TOTAL = 32;
-export const ANNUAL_CAP_UVT_TOTAL = 384;
+/** Meses de un año completo, usado únicamente para derivar el tope anual. */
+export const MONTHS_PER_YEAR = 12;
+/**
+ * Equivalencia anual DERIVADA del tope mensual (32 UVT × 12 meses = 384
+ * UVT). No es una constante normativa independiente: si el tope mensual
+ * cambiara, este valor debe seguir derivándose de él, nunca fijarse aparte.
+ */
+export const ANNUAL_CAP_UVT_TOTAL = MONTHLY_CAP_UVT_TOTAL * MONTHS_PER_YEAR;
 
 export interface DependentsDeductionInput {
   taxYear: number;
@@ -60,12 +89,19 @@ export interface DependentsDeductionInput {
 function clampMonths(months: number): number {
   if (!Number.isFinite(months)) return 0;
   if (months < 0) return 0;
-  if (months > 12) return 12;
+  if (months > MONTHS_PER_YEAR) return MONTHS_PER_YEAR;
   return months;
 }
 
 /**
  * Calcula la deducción orientativa por dependientes para el año 2025.
+ *
+ * El cálculo es un AGREGADO ANUAL (no una simulación mes a mes de retención
+ * en la fuente): `grossEmploymentIncomeCop` es el ingreso bruto anual ya
+ * agregado (casilla 32 del F-210), y el candidato de porcentaje se calcula
+ * una sola vez sobre ese agregado — el motor no reparte el ingreso entre
+ * meses ni simula retención mensual variable, lo cual está fuera del
+ * alcance de este proyecto (que no liquida retenciones).
  *
  * El resultado siempre incluye el detalle por dependiente y los tres
  * candidatos (porcentaje, tope mensual, tope anual) para que el analista
@@ -73,7 +109,13 @@ function clampMonths(months: number): number {
  * mínimo entre los tres. El tope mensual/anual es agregado (no se multiplica
  * por dependiente): se calcula sobre `coveredMonths`, el mayor número de
  * meses declarado entre los dependientes (basta con tener al menos uno
- * calificado ese mes para que el tope de ese mes esté disponible).
+ * calificado ese mes para que el tope de ese mes esté disponible). El tope
+ * anual (`annualCapCandidateCop`) es matemáticamente redundante cuando
+ * `coveredMonths = 12` (coincide exactamente con el tope mensual acumulado)
+ * y nunca puede ser más restrictivo que él, porque `coveredMonths` está
+ * acotado a `[0, MONTHS_PER_YEAR]`; se conserva como candidato explícito
+ * por trazabilidad y como salvaguarda defensiva, no porque compita con una
+ * regla distinta.
  */
 export function computeDependentsDeduction(
   input: DependentsDeductionInput,
@@ -123,7 +165,11 @@ export function computeDependentsDeduction(
 
   const appliedDeductionCop = Math.max(0, binding.value);
 
-  const formula = `min(10 % × ingresos_trabajo, ${coveredMonths} meses × 32 UVT, 384 UVT) — art. 387 ET (tope total, no por dependiente)`;
+  const formula =
+    `min(${DEPENDENTS_INCOME_PERCENTAGE * 100} % × ingresos_trabajo, ` +
+    `${coveredMonths} meses × ${MONTHLY_CAP_UVT_TOTAL} UVT, ${ANNUAL_CAP_UVT_TOTAL} UVT) ` +
+    `— art. 387 ET (tope total para el contribuyente, no por dependiente; ` +
+    `${ANNUAL_CAP_UVT_TOTAL} UVT = ${MONTHLY_CAP_UVT_TOTAL} UVT × ${MONTHS_PER_YEAR} meses)`;
 
   return {
     taxYear: input.taxYear,

@@ -147,6 +147,30 @@ export const OFFICIAL_SOURCES_2025: readonly OfficialSourceReference[] = [
     relatedBoxNumbers: [92, 138, 139],
   },
   {
+    id: 'decreto-1625-2016-art-1.2.1.20.3',
+    authority: 'Presidencia',
+    title:
+      'Decreto 1625 de 2016 (DUR Tributario), artículo 1.2.1.20.3, numeral 1.1.2 — Deducciones de la cédula general',
+    url: 'https://normograma.dian.gov.co/dian/compilacion/docs/decreto_1625_2016.htm#1.2.1.20.3',
+    verifiedAt: VERIFIED_AT,
+    taxYear: null,
+    scope:
+      'Regla de coexistencia entre las deducciones por dependientes del art. 336 num. 3 (inciso 2) y del art. 387 ET: "un mismo dependiente solo dará lugar a una de estas dos deducciones, excepto cuando se tenga rentas provenientes de una relación laboral y legal o reglamentaria, caso en el cual se podrá aplicar ambas deducciones por un mismo dependiente." Texto vigente tras la sustitución por el Decreto 2231 de 2023.',
+    relatedBoxNumbers: [39, 92, 138, 139],
+  },
+  {
+    id: 'decreto-2231-2023',
+    authority: 'Presidencia',
+    title:
+      'Decreto 2231 de 2023 — Reglamenta parcialmente los arts. 206, 331, 336 y 383 ET (Ley 2277 de 2022); sustituye el numeral 1.1.2 del art. 1.2.1.20.3 del Decreto 1625 de 2016',
+    url: 'https://normograma.dian.gov.co/dian/compilacion/docs/decreto_2231_2023.htm',
+    verifiedAt: VERIFIED_AT,
+    taxYear: null,
+    scope:
+      'Decreto modificatorio que introdujo la regla de coexistencia entre las deducciones de dependientes del art. 336 num. 3 y del art. 387 ET (evita la concurrencia de beneficios fiscales del art. 23 de la Ley 383 de 1997, salvo para rentas de relación laboral, legal o reglamentaria)',
+    relatedBoxNumbers: [39, 92, 138, 139],
+  },
+  {
     id: 'et-art-261',
     authority: 'Estatuto Tributario',
     title:

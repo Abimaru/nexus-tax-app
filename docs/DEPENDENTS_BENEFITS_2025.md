@@ -199,14 +199,40 @@ posterior.
 
 ## 10. Verificación
 
-- `packages/aegis-rules`: 167/167 tests (incluye 11 de `dependents.ts`
-  corregido, 11 de `dependents-additional-336.ts`, 8 de
-  `dependents-coexistence.ts`, 17 de `dependent-eligibility.ts`).
+- `packages/aegis-rules`: 174/174 tests (incluye 18 de `dependents.ts`
+  corregido — 7 nuevos de la revisión normativa puntual: 384 UVT derivado,
+  1/2/3/4 dependientes explícitos, meses/ingresos variables —, 11 de
+  `dependents-additional-336.ts`, 8 de `dependents-coexistence.ts`
+  (incluye verificación de fuentes oficiales registradas), 17 de
+  `dependent-eligibility.ts`).
 - `packages/form-210`: 89/89 tests (incluye 5 nuevos de R91-93/138/139).
 - `apps/web`: 99/99 unit/component tests (incluye 5 de repository, 4 de
   `DependentsPanel`, 1 de `taxCaseAnalysis`).
 - E2E (`apps/web/tests-e2e/dependents.spec.ts`): 2/2 escenarios —
   alta/evaluación/cupo de 4, y flujo "No tengo dependientes".
+
+### Revisión normativa puntual (segunda auditoría, antes del cierre de Fase C)
+
+Confirmó que la corrección del bug de escalado por dependiente no introdujo
+una simplificación incorrecta. Hallazgos y correcciones adicionales:
+
+- **384 UVT ahora se deriva en código** de `MONTHLY_CAP_UVT_TOTAL × 12`
+  (antes era una constante independiente, numéricamente correcta pero no
+  estructuralmente ligada a la regla primaria mensual).
+- **Comentarios JSDoc obsoletos corregidos** en
+  `packages/aegis-rules/src/types.ts`: describían todavía la doctrina
+  incorrecta ("32 UVT y 384 UVT POR DEPENDIENTE", "cupo de cuatro") — un
+  rastro documental del bug ya corregido en el motor pero nunca actualizado
+  en los tipos.
+- **Fuentes oficiales registradas**: `decreto-1625-2016-art-1.2.1.20.3` y
+  `decreto-2231-2023` no estaban en `OFFICIAL_SOURCES_2025`, a diferencia
+  de `et-art-387`/`et-art-336-num-3`. Ahora registradas y verificadas con
+  el texto literal del Decreto 2231 de 2023 (coincide exactamente con lo
+  ya citado en `dependents-coexistence.ts`; sin discrepancias).
+- **Art. 336 num. 3 ET revisado sin cambios**: confirmado correcto (72 UVT
+  × dependiente, máx. 4, fuera del 40 %/1.340 UVT); no se modificó.
+- Detalle completo en `docs/DEPENDENTS_DEDUCTION_2025.md` §"Revisión
+  normativa puntual".
 
 ## 11. Fuera de alcance de esta fase
 

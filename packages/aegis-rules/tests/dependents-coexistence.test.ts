@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { getOfficialSource } from '../src/colombia/individual-income-tax/2025/official-sources';
 import {
   DEPENDENTS_COEXISTENCE_SOURCE_ID,
   resolveDependentBenefitCoexistence,
@@ -13,8 +14,19 @@ function dependent(
 }
 
 describe('coexistencia de beneficios de dependientes (art. 387 y art. 336) — AG 2025', () => {
-  it('expone el id de fuente normativa', () => {
-    expect(DEPENDENTS_COEXISTENCE_SOURCE_ID).toBeTruthy();
+  it('expone el id de fuente normativa y está registrado en el catálogo oficial', () => {
+    // Revisión normativa puntual (Fase C, segunda auditoría): la fuente de
+    // coexistencia debe existir en OFFICIAL_SOURCES_2025 igual que et-art-387
+    // y et-art-336-num-3 — getOfficialSource lanza si el id no está
+    // registrado, por lo que esta prueba falla si la trazabilidad se rompe.
+    expect(DEPENDENTS_COEXISTENCE_SOURCE_ID).toBe('decreto-1625-2016-art-1.2.1.20.3');
+    const source = getOfficialSource(DEPENDENTS_COEXISTENCE_SOURCE_ID);
+    expect(source.authority).toBe('Presidencia');
+    expect(source.scope).toMatch(/relación laboral/i);
+    // El decreto modificatorio (Decreto 2231 de 2023) también debe estar
+    // registrado por separado, con trazabilidad propia.
+    const amendingDecree = getOfficialSource('decreto-2231-2023');
+    expect(amendingDecree.title).toMatch(/2231 de 2023/);
   });
 
   it('dependiente no base-elegible queda sin candidatos', () => {
