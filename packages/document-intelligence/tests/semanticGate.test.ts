@@ -7,7 +7,7 @@ import {
   extractCandidates,
   suggestExogenousMatches,
 } from '../src';
-import { representation } from './fixtures';
+import { documentFromPages, representation } from './fixtures';
 
 /**
  * Sprint 2.4, Fase F.2 — Safety & Critical Evidence Hardening.
@@ -133,6 +133,102 @@ describe('detectConceptRoleMarkers / detectSemanticContradiction — unidad (Fas
       referenceCategories: ['withholding'],
     });
     expect(result.contradictory).toBe(false);
+  });
+});
+
+describe('Regresión (revisión puntual): "saldo" no contradice housing_interest cuando domina una señal más específica', () => {
+  it('NO marca contradicción cuando "saldo" y "intereses pagados" conviven en el mismo concepto/fila', () => {
+    // Escenario real plausible: una fila reconstruida de una tabla o un
+    // concepto compuesto menciona el saldo de la obligación en el mismo
+    // renglón que los intereses pagados. La frase específica de
+    // intereses (la misma que activa la regla `housing-interest` en
+    // `adapters.ts`) debe dominar sobre la palabra genérica "saldo".
+    const result = detectSemanticContradiction({
+      originalConcept: 'Saldo obligación e intereses pagados durante el año',
+      proposedCategory: 'housing_interest',
+    });
+    expect(result.contradictory).toBe(false);
+  });
+
+  it('SÍ sigue marcando contradicción cuando "saldo" aparece SIN ninguna señal específica de intereses', () => {
+    // El override es narrow: no desactiva la protección por completo,
+    // solo cuando la señal fuerte y específica también está presente.
+    const result = detectSemanticContradiction({
+      originalConcept: 'Saldo de la obligación a diciembre',
+      proposedCategory: 'housing_interest',
+    });
+    expect(result.contradictory).toBe(true);
+    expect(result.marker).toBe('balance');
+  });
+
+  it('extremo a extremo: un candidato real de "housing-interest" con "saldo" en el mismo concepto no se degrada', () => {
+    const candidate = extractCandidates(
+      representation('Saldo obligación e intereses pagados durante el año: $ 450.000'),
+      'housing_interest_certificate',
+      context,
+      DEFAULT_PDF_LIMITS,
+    ).candidates.find((c) => c.ruleId === 'housing-interest');
+    expect(candidate).toBeDefined();
+    expect(candidate!.proposedCategory).toBe('housing_interest');
+    const contradiction = detectSemanticContradiction({
+      originalConcept: candidate!.originalConcept,
+      normalizedConcept: candidate!.normalizedConcept,
+      proposedCategory: candidate!.proposedCategory,
+    });
+    expect(contradiction.contradictory).toBe(false);
+  });
+});
+
+describe('Regresión (revisión puntual): retención domina ingreso solo en su ventana LOCAL, no en toda la línea', () => {
+  it('texto plano: una línea con AMBOS conceptos separa correctamente ingreso y retención sin bloquear el ingreso', () => {
+    const result = extractCandidates(
+      representation('Rendimientos financieros 1.500.000 Retención 60.000'),
+      'income_withholding_certificate',
+      context,
+      DEFAULT_PDF_LIMITS,
+    );
+    expect(result.candidates).toHaveLength(2);
+    const income = result.candidates.find((c) => c.proposedCategory === 'financial_income');
+    const withholding = result.candidates.find((c) => c.proposedCategory === 'withholding');
+    expect(income).toBeDefined();
+    expect(income!.extractedValue).toBe(1_500_000);
+    expect(income!.ruleId).toBe('interest');
+    expect(withholding).toBeDefined();
+    expect(withholding!.extractedValue).toBe(60_000);
+    expect(withholding!.ruleId).toBe('withholding');
+    // Ningún valor debe quedar duplicado bajo la categoría equivocada.
+    expect(result.candidates.filter((c) => c.extractedValue === 1_500_000)).toHaveLength(1);
+    expect(result.candidates.filter((c) => c.extractedValue === 60_000)).toHaveLength(1);
+  });
+
+  it('layout posicionado en dos columnas produce exactamente lo mismo', () => {
+    const document = documentFromPages([
+      {
+        pageNumber: 1,
+        normalizedText: '',
+        errors: [],
+        readConfidence: 'high',
+        blocks: [
+          { text: 'Rendimientos financieros', x: 60, y: 700 },
+          { text: '1.500.000', x: 220, y: 700 },
+          { text: 'Retención', x: 340, y: 700 },
+          { text: '60.000', x: 500, y: 700 },
+        ],
+      },
+    ]);
+    const result = extractCandidates(
+      document,
+      'income_withholding_certificate',
+      context,
+      DEFAULT_PDF_LIMITS,
+    );
+    expect(result.candidates).toHaveLength(2);
+    const income = result.candidates.find((c) => c.proposedCategory === 'financial_income');
+    const withholding = result.candidates.find((c) => c.proposedCategory === 'withholding');
+    expect(income?.extractedValue).toBe(1_500_000);
+    expect(withholding?.extractedValue).toBe(60_000);
+    expect(result.candidates.filter((c) => c.extractedValue === 1_500_000)).toHaveLength(1);
+    expect(result.candidates.filter((c) => c.extractedValue === 60_000)).toHaveLength(1);
   });
 });
 
