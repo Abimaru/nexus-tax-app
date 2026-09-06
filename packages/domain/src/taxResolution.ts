@@ -29,6 +29,8 @@ export const TaxResolutionDecisionTypeSchema = z.enum([
   'confirm_zero',
   'exclude_from_calculation',
   'revert_decision',
+  'decide_electronic_invoice_benefit',
+  'set_no_electronic_invoicing_benefit',
 ]);
 export type TaxResolutionDecisionType = z.infer<typeof TaxResolutionDecisionTypeSchema>;
 
@@ -39,6 +41,8 @@ export const TaxResolutionObjectTypeSchema = z.enum([
   'candidate',
   'requirement',
   'form_box',
+  'electronic_invoice_purchase',
+  'electronic_invoice_report',
 ]);
 export type TaxResolutionObjectType = z.infer<typeof TaxResolutionObjectTypeSchema>;
 
@@ -75,4 +79,4 @@ export const TaxResolutionDecisionSchema = z.object({
 });
 export type TaxResolutionDecision = z.infer<typeof TaxResolutionDecisionSchema>;
 
-export const TAX_RESOLUTION_SCHEMA_VERSION = '2.3.0';
+export const TAX_RESOLUTION_SCHEMA_VERSION = '2.4.0';
