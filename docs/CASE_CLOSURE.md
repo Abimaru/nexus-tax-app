@@ -20,6 +20,16 @@ con deep-link a la tarjeta exacta del dependiente. Si el analista confirmó
 "No tengo dependientes", tampoco se genera ninguna tarea: ese estado cierra
 la sección sin exigir registros.
 
+Desde el Sprint 2.4 (Fase D), Revisión final también reconoce los pendientes
+de **Facturación electrónica** (reporte sin conciliar, CUFE duplicado
+conflictivo, CUFE ausente, medio de pago con error, factura sin decisión
+tributaria, diferencia relevante contra el Tope 5, base susceptible sin
+ninguna decisión revisada) como tareas `source: 'electronic_invoice'` con
+deep-link a la tarjeta exacta de la factura o al reporte. Si el analista
+confirmó "No usaré deducción por facturación electrónica", las tareas de
+nivel de reporte dejan de generarse (la decisión es reversible: revertirla
+las vuelve a mostrar).
+
 `Form210RegressionComparison` es una herramienta exclusiva de tests: compara
 casilla, esperado sintético, calculado, diferencia y estado exacto, redondeo,
 revisión o fallo. No completa datos ni altera reglas productivas. Las

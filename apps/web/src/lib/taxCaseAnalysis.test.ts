@@ -3,6 +3,8 @@ import type {
   DependentEvaluation,
   DocumentExtractionSession,
   DocumentFact,
+  ElectronicInvoicePurchase,
+  ElectronicInvoiceReport,
   ProcessingResult,
   TaxDependent,
   UploadedDocument,
@@ -443,6 +445,199 @@ describe('expediente tributario derivado', () => {
       now: '2026-09-05T00:00:00.000Z',
     });
     expect(noDependentsTasks.some((task) => task.source === 'dependent')).toBe(false);
+  });
+
+  it('deriva tareas de facturación electrónica (Sprint 2.4, Fase D)', () => {
+    function report(overrides: Partial<ElectronicInvoiceReport> = {}): ElectronicInvoiceReport {
+      return {
+        id: 'fe-report-1',
+        caseId: 'case:1',
+        taxYear: 2025,
+        sourceKind: 'dian_electronic_invoice_report',
+        sourceDocumentId: null,
+        fileName: 'facturas.xlsx',
+        detectedTitle: 'CUFE · Valor Facturado',
+        headerRowIndex: 25,
+        headerConfidence: 0.9,
+        importedAt: '2026-09-06T00:00:00.000Z',
+        parserVersion: '1.0.0',
+        rowCount: 1,
+        totals: {
+          rowCount: 1,
+          uniqueInvoiceCount: 1,
+          grossTotalCop: 1_000_000,
+          creditNoteTotalCop: 0,
+          debitNoteTotalCop: 0,
+          netTotalCop: 1_000_000,
+          eligibleBenefitTotalCop: 1_000_000,
+          countByPaymentMethod: { electronic: 1, cash: 0, other: 0, data_error: 0, not_informed: 0 },
+          countEligibleZero: 0,
+          duplicateExactCount: 0,
+          duplicateConflictingCount: 0,
+          missingCufeCount: 0,
+          anomalyCount: 0,
+        },
+        reconciliation: null,
+        processingStatus: 'processed',
+        benefitOptedOut: false,
+        warnings: [],
+        ...overrides,
+      };
+    }
+    function purchase(overrides: Partial<ElectronicInvoicePurchase> = {}): ElectronicInvoicePurchase {
+      const amount = {
+        rawText: '1.000.000',
+        normalizedText: '1000000',
+        parsedValue: 1_000_000,
+        decimalValue: 1_000_000,
+        roundedTaxValue: 1_000_000,
+        detectedLocale: 'es_CO' as const,
+        decimalSeparator: '.' as const,
+        thousandsSeparator: ',' as const,
+        parsingStrategy: 'grouped_integer' as const,
+        confidence: 'high' as const,
+        warnings: [],
+        sourceDocumentId: null,
+        page: null,
+        boundingBox: null,
+        extractionMethod: 'imported' as const,
+        originalEvidence: '1.000.000',
+        parserVersion: '2.0.0',
+      };
+      return {
+        id: 'fe-purchase-1',
+        reportId: 'fe-report-1',
+        caseId: 'case:1',
+        sourceRow: 26,
+        issuerTaxId: '900111222',
+        issuerName: 'Proveedor Sintético SAS',
+        issuedAt: '2025-02-10',
+        invoiceNumber: 'FES-0001',
+        rawCufe: 'a'.repeat(96),
+        normalizedCufe: 'a'.repeat(96),
+        cufeStatus: 'unique',
+        grossValue: amount,
+        creditNoteValue: { ...amount, roundedTaxValue: 0, rawText: '0', parsedValue: 0, decimalValue: 0 },
+        debitNoteValue: { ...amount, roundedTaxValue: 0, rawText: '0', parsedValue: 0, decimalValue: 0 },
+        officialNetValue: amount,
+        computedNetValueCop: 1_000_000,
+        netReconciliationStatus: 'exact',
+        eligibleBenefitValue: amount,
+        paymentMethodRaw: 'Tarjeta débito o crédito',
+        paymentMethodCategory: 'electronic',
+        benefitDecision: 'eligible',
+        benefitDecisionReason: null,
+        createdAt: '2026-09-06T00:00:00.000Z',
+        ...overrides,
+      };
+    }
+
+    const notReconciledTasks = buildCaseTasks({
+      caseId: 'case:1',
+      documents: [],
+      coverages: [],
+      candidates: [],
+      reconciliations: [],
+      vatResponsibility: false,
+      electronicInvoiceReport: report(),
+      electronicInvoicePurchases: [purchase()],
+      now: '2026-09-06T00:00:00.000Z',
+    });
+    expect(
+      notReconciledTasks.some((task) => task.type === 'electronic_invoice_report_not_reconciled'),
+    ).toBe(true);
+    expect(
+      notReconciledTasks.some((task) => task.type === 'electronic_invoice_base_without_decision'),
+    ).toBe(true);
+
+    const conflictingTasks = buildCaseTasks({
+      caseId: 'case:1',
+      documents: [],
+      coverages: [],
+      candidates: [],
+      reconciliations: [],
+      vatResponsibility: false,
+      electronicInvoiceReport: report(),
+      electronicInvoicePurchases: [purchase({ cufeStatus: 'duplicate_conflicting' })],
+      now: '2026-09-06T00:00:00.000Z',
+    });
+    expect(
+      conflictingTasks.some((task) => task.type === 'electronic_invoice_duplicate_conflicting'),
+    ).toBe(true);
+
+    const missingCufeTasks = buildCaseTasks({
+      caseId: 'case:1',
+      documents: [],
+      coverages: [],
+      candidates: [],
+      reconciliations: [],
+      vatResponsibility: false,
+      electronicInvoiceReport: report(),
+      electronicInvoicePurchases: [purchase({ cufeStatus: 'missing_cufe', normalizedCufe: null })],
+      now: '2026-09-06T00:00:00.000Z',
+    });
+    expect(missingCufeTasks.some((task) => task.type === 'electronic_invoice_missing_cufe')).toBe(
+      true,
+    );
+
+    const paymentErrorTasks = buildCaseTasks({
+      caseId: 'case:1',
+      documents: [],
+      coverages: [],
+      candidates: [],
+      reconciliations: [],
+      vatResponsibility: false,
+      electronicInvoiceReport: report(),
+      electronicInvoicePurchases: [purchase({ paymentMethodCategory: 'data_error' })],
+      now: '2026-09-06T00:00:00.000Z',
+    });
+    expect(
+      paymentErrorTasks.some((task) => task.type === 'electronic_invoice_payment_method_error'),
+    ).toBe(true);
+
+    const relevantDifferenceTasks = buildCaseTasks({
+      caseId: 'case:1',
+      documents: [],
+      coverages: [],
+      candidates: [],
+      reconciliations: [],
+      vatResponsibility: false,
+      electronicInvoiceReport: report({
+        reconciliation: {
+          status: 'relevant_difference',
+          invoiceReportNetTotalCop: 1_000_000,
+          exogenousNetTotalCop: 5_000_000,
+          differenceAbsoluteCop: 4_000_000,
+          differencePercentage: 400,
+          roundingUnitCop: 1,
+          explanation: 'Diferencia relevante entre el reporte y la exógena.',
+          requiresHumanConfirmation: true,
+          policyVersion: 'test',
+          evaluatedAt: '2026-09-06T00:00:00.000Z',
+        },
+      }),
+      electronicInvoicePurchases: [purchase()],
+      now: '2026-09-06T00:00:00.000Z',
+    });
+    expect(
+      relevantDifferenceTasks.some((task) => task.type === 'electronic_invoice_relevant_difference'),
+    ).toBe(true);
+
+    // "No usaré deducción" suprime las tareas de nivel de reporte.
+    const optedOutTasks = buildCaseTasks({
+      caseId: 'case:1',
+      documents: [],
+      coverages: [],
+      candidates: [],
+      reconciliations: [],
+      vatResponsibility: false,
+      electronicInvoiceReport: report({ benefitOptedOut: true }),
+      electronicInvoicePurchases: [purchase()],
+      now: '2026-09-06T00:00:00.000Z',
+    });
+    expect(
+      optedOutTasks.some((task) => task.type === 'electronic_invoice_report_not_reconciled'),
+    ).toBe(false);
   });
 
   it('deriva tareas OCR con destino exacto de documento y página', () => {

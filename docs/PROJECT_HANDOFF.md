@@ -1,6 +1,156 @@
-# Handoff del proyecto — NexusTax (Sprint 2.4, Fase B0 + B + B1 + C)
+# Handoff del proyecto — NexusTax (Sprint 2.4, Fase B0 + B + B1 + C + D + revisión puntual)
 
 _Última actualización: 2026-09-06._
+
+## Sprint 2.4 — Revisión normativa puntual (cierre de Fase D)
+
+Revisión exclusiva, previa a publicar `feature/sprint-2.4-electronic-invoices`, de la integración
+normativa del beneficio del 1 % con el Formulario 210. **No se rehizo** parser, UI, Dexie,
+conciliación ni contratos de dominio de facturación electrónica — el ajuste se limitó a
+`packages/form-210`, al `sourceId` del motor puro en `packages/aegis-rules` y a documentación/copy.
+
+### Hallazgo externo verificado
+
+La Fase D había corregido el destino de la casilla 39 (bug real), pero introdujo un **segundo
+error** al asumir: (a) el fundamento legal era el "artículo 336-1 ET"; (b) la casilla oficial era
+la 141 (componente de R92 vía R138/R139, análogo a dependientes), con R140 como base informativa.
+
+Verificado con múltiples fuentes independientes (Estatuto.co, Gerencie, Consultor Contable,
+Connotar, cobertura de prensa específica de la temporada de declaración AG2025/2026 con calendario
+de agosto-octubre de 2026 — coincide exactamente con el contexto del proyecto):
+
+- El fundamento legal correcto es el **numeral 5 del artículo 336 ET** (texto introducido por el
+  art. 7 de la Ley 2277 de 2022, que sustituyó el artículo 336 completo). El **artículo 336-1 ET**
+  (adicionado por el art. 60 de la misma ley) es una norma **completamente distinta**: estimación
+  de costos y gastos deducibles (tope del 60 % de ingresos brutos de rentas de trabajo), cuyo
+  exceso se informa marcando la **casilla 140** — un indicador booleano ("marque X"), nunca un
+  valor monetario.
+- La **casilla 141** corresponde al **impuesto voluntario del art. 244-1 ET**, sin relación alguna
+  con dependientes ni con facturación electrónica.
+- La deducción del 1 % tiene su **propia casilla oficial: la 28** (dato informativo previo a
+  patrimonio), confirmada explícitamente por Connotar ("Nueva casilla 28 del formulario 210 para
+  informar el 1 % de las compras personales") y por prensa del calendario AG2025/2026 ("el valor
+  correspondiente al 1 % debe registrarse en la casilla 28 del formulario").
+
+### Corrección aplicada
+
+- `ELECTRONIC_INVOICING_SOURCE_ID` (`packages/aegis-rules`) cambia de `'et-art-336-1'` a
+  `'et-art-336-num-5'`.
+- `OFFICIAL_SOURCES_2025` registra tres fuentes separadas: `et-art-336-num-5` (deducción, casilla
+  28), `et-art-336-1` (indicador de costos/gastos, casilla 140) y `et-art-244-1` (impuesto
+  voluntario, casilla 141, no modelado).
+- `FORM_210_BOXES_2025` agrega la casilla 28 (`implemented_unverified`, dato informativo previo a
+  patrimonio); la fórmula de R92 revierte a `41 + 65 + 82 + 139` (sin R141); R140/R141 recuperan su
+  significado oficial correcto y quedan `not_implemented` (ninguno recibe valores del motor).
+- `builder.ts` cablea la deducción únicamente a la casilla 28; nunca a R39, R92, R140 ni R141.
+- UI (`ElectronicInvoicingPanel.tsx`, `PreliminaryLiquidationPanel.tsx`): copy corregido de "art.
+  336-1 ET" a "art. 336 num. 5 ET" (sin cambios estructurales de componente).
+
+### Tests de guardarraíl agregados
+
+Bloque `describe('GUARDARRAÍL...')` en `preliminary-liquidation.test.ts` (4 tests) que impide
+permanentemente: R140 tratado como importe COP; R141 usado para la deducción electrónica; el 1 %
+reintroducido en R39; el 1 % sometido accidentalmente al límite del 40 %/1.340 UVT (verificado
+forzando R41 = 0 por agotamiento del tope de deducciones y confirmando que R28 conserva su valor
+íntegro). Más un test en `packages/aegis-rules/tests/electronic-invoicing.test.ts` que verifica el
+catálogo de fuentes oficiales no vuelve a confundir ambos artículos.
+
+### Verificación ejecutada
+
+- `pnpm check:encoding`: sin mojibake.
+- `pnpm -r typecheck`: limpio en todo el monorepo.
+- `pnpm -r lint`: 0 advertencias.
+- `pnpm -r test`: **566/566** tests (aegis-rules 175 [+1], form-210 93 [+4], domain 19,
+  document-intelligence 90, exogenous-parser 77, web 113 — sin regresiones en los 562 previos).
+- `pnpm build`: exitoso.
+
+### Estado de Git
+
+Continúa en la misma rama local `feature/sprint-2.4-electronic-invoices` (sin push, misma
+instrucción explícita de la Fase D).
+
+## Sprint 2.4 — Fase D (reporte DIAN de facturación electrónica)
+
+Trabaja desde `main` actualizado (verificado que contiene el merge del PR #5,
+commit `bb3387d`). Rama de trabajo local `feature/sprint-2.4-electronic-invoices`,
+creada exactamente sobre `origin/main`. **Por instrucción explícita del
+prompt de esta fase: no push, no deploy** — a diferencia de Fases C/C-revisión,
+donde sí se publicó (ver estado de Git de esas fases más abajo), esta fase
+permanece únicamente local a propósito.
+
+Ver detalle completo en
+[`docs/ELECTRONIC_INVOICE_REPORT_2025.md`](./ELECTRONIC_INVOICE_REPORT_2025.md)
+y [`docs/ELECTRONIC_INVOICING_2025.md`](./ELECTRONIC_INVOICING_2025.md).
+
+### Auditoría inicial
+
+- El motor puro del 1 % (`electronic-invoicing.ts`) ya existía y estaba probado, pero:
+  - Estaba cableado a la **casilla 39**, exponiéndolo indirectamente al límite del 40 %/1.340 UVT
+    del que el Decreto 2231 de 2023 lo exime expresamente — el mismo tipo de bug ya corregido para
+    R139 en la Fase C.
+  - `Form210BuildInput.electronicInvoicing` nunca era poblado por `rebuildForm210Draft`: una
+    capacidad huérfana, nunca invocada desde `apps/web`.
+- `analysis.matrix.electronicInvoicing` (Sprint 2.3.2) ya calculaba una estimación preliminar desde
+  la exógena (Tope 5), sin detalle por factura ni CUFE — se conserva y se usa como el lado "exógena"
+  de la conciliación, pero no reemplaza el reporte detallado.
+
+### Implementado
+
+- **Corrección normativa (parcial, ver revisión puntual arriba)**: R141 (1 % de facturación
+  electrónica) se movió de la casilla 39 a ser componente de la casilla 92
+  (`92 = 41 + 65 + 82 + 139 + 141`), con la casilla 140 (base, informativa) y 141 (deducción
+  aplicada) ya reservadas desde la Fase B0. **Esta atribución de casilla resultó incorrecta y fue
+  corregida en la revisión normativa puntual posterior** (casilla real: 28).
+- **Nuevo parser XLSX** (`packages/exogenous-parser/src/electronicInvoiceReport.ts`, "adaptador
+  hermano" de la exógena): detección por señales de contenido (nunca fila fija), lectura completa,
+  extracción por factura, deduplicación por CUFE, validación NC/ND, agregación de totales,
+  normalización de medios de pago.
+- **Parser monetario central reutilizado**: `@nexus-tax/document-intelligence` agregado como
+  dependencia de `exogenous-parser` (sin ciclo); reemplaza `coerceNumber` para columnas monetarias
+  del reporte de facturación electrónica.
+- **Modelo de dominio**: `ElectronicInvoiceReport`, `ElectronicInvoicePurchase`,
+  `ElectronicInvoiceBenefitBase`, `ElectronicInvoiceReconciliation`
+  (`packages/domain/src/electronicInvoice.ts`). `DOMAIN_VERSION` 0.12.0.
+- **Decisiones tributarias por factura** (doble beneficio): reutilizan `TaxResolutionDecision`
+  (`resolutionDecisions`) en vez de una tercera tabla Dexie — decisión de diseño explícita, más
+  compacta y consistente con el Centro de resolución existente.
+- **Dexie v15**: `electronicInvoiceReports`, `electronicInvoicePurchases` (aditivo).
+- **Orquestación web** (`apps/web/src/lib/electronicInvoiceEngine.ts`): parseo, agregador
+  explicable de la base del 1 % (susceptible − duplicados − rechazadas − doble beneficio),
+  conciliación contra Tope 5, construcción del input para `buildForm210Draft`.
+- **8 tipos de tarea nuevos** con `source: 'electronic_invoice'`.
+- **UI** (`ElectronicInvoicingPanel.tsx`, vista `facturacion-electronica`): carga, resumen, tabla
+  con detalle expandible, CUFE enmascarado por defecto, filtros, resolución por factura, "No usaré
+  deducción" reversible.
+
+### Pendiente explícito (no se avanzó, por decisión de alcance)
+
+- `electronic_invoice_file_not_recognized` no se persiste como tarea deep-linkeable (no hay
+  report/purchase que anclar como evidencia cuando el archivo no se reconoce); se muestra como
+  error inmediato en la UI.
+- El reporte no se asocia a la biblioteca documental general (`sourceDocumentId` queda `null`): es
+  una fuente estructurada propia.
+- Inmuebles, administración de propiedad horizontal, medicina prepagada — fuera de alcance.
+
+### Verificación ejecutada
+
+- `pnpm check:encoding`: 375 archivos, sin mojibake.
+- `pnpm -r typecheck`: limpio en todo el monorepo.
+- `pnpm -r lint`: 0 advertencias (incluida `packages/exogenous-parser/tests`, lintada
+  explícitamente aparte del script del paquete).
+- `pnpm -r test`: **562/562** tests (domain 19, aegis-rules 174, document-intelligence 90,
+  exogenous-parser 77 — incluye 29 nuevos de facturación electrónica y regresión de 227 facturas —,
+  form-210 89, web 113 — incluye 7 nuevos de repository, 1 de tareas, 4 de
+  `ElectronicInvoicingPanel`). Ver conteo actualizado tras la revisión normativa puntual arriba.
+- `pnpm build`: exitoso.
+- `pnpm test:e2e`: **10/10** (2 nuevos de `electronic-invoicing.spec.ts`: flujo completo y archivo
+  no reconocido), capturas desktop/móvil verificadas.
+
+### Estado de Git
+
+Rama local `feature/sprint-2.4-electronic-invoices`, creada sobre `origin/main` actualizado (commit
+`bb3387d`). **Sin push, por instrucción explícita del prompt de esta fase** — a diferencia de las
+fases anteriores (ver más abajo), donde se encontró y documentó un método de publicación viable.
 
 ## Sprint 2.4 — Fase C (beneficios de dependientes: art. 387 + art. 336 num. 3 ET)
 

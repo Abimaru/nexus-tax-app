@@ -308,3 +308,58 @@ Ver [`PRIOR_YEAR_RETURNS.md`](./PRIOR_YEAR_RETURNS.md) para el detalle completo.
 
 Dexie v13 agrega `priorYearReturns` y `priorYearCarryForwardCandidates` de forma aditiva; ninguna
 tabla ni dato previo se modifica.
+
+## Cambios 2.4.1 (Fase C — dependientes económicos)
+
+Ver [`DEPENDENTS_BENEFITS_2025.md`](./DEPENDENTS_BENEFITS_2025.md) para el detalle completo.
+Resumen: nuevos contratos `TaxDependent`, `DependentSupport`, `DependentEvaluation`
+(`@nexus-tax/domain`); `CaseTaskType` agrega 8 tipos con `source: 'dependent'` y campo
+`dependentId`. Dexie v14 agrega `taxDependents`, `dependentSupports`, `dependentEvaluations`,
+`dependentsCaseContext` de forma aditiva.
+
+## Cambios 2.4.2 (Fase D — reporte DIAN de facturación electrónica)
+
+Ver [`ELECTRONIC_INVOICE_REPORT_2025.md`](./ELECTRONIC_INVOICE_REPORT_2025.md) para el detalle
+completo. Resumen de modelo:
+
+- Nuevos contratos `ElectronicInvoiceReport`, `ElectronicInvoicePurchase`,
+  `ElectronicInvoiceBenefitBase`, `ElectronicInvoiceReconciliation` (`@nexus-tax/domain`,
+  `packages/domain/src/electronicInvoice.ts`). Cada columna monetaria original de una factura se
+  conserva como `AmountCandidate` (parser central v2.0.0), nunca como número plano.
+- `TaxResolutionDecisionType` agrega `decide_electronic_invoice_benefit` y
+  `set_no_electronic_invoicing_benefit`; `TaxResolutionObjectType` agrega
+  `electronic_invoice_purchase` y `electronic_invoice_report` — las decisiones tributarias por
+  factura reutilizan `resolutionDecisions` en vez de una tabla nueva.
+- `CaseTaskType` agrega 8 tipos con `source: 'electronic_invoice'` y campos
+  `electronicInvoicePurchaseId`/`electronicInvoiceReportId`.
+- `WorkflowViewId` agrega `facturacion-electronica` (etapa Declaración).
+- **Corrección normativa (Fase D)**: la deducción del 1 % se mueve de la casilla 39 a ser
+  componente de la casilla 92, usando las casillas informativas 140 (base) y 141 (deducción
+  aplicada) — **corregido de nuevo** en la revisión normativa puntual posterior (ver más abajo).
+
+Dexie v15 agrega `electronicInvoiceReports` y `electronicInvoicePurchases` de forma aditiva; ninguna
+tabla ni dato previo se modifica.
+
+## Cambios adicionales — revisión normativa puntual (posterior a Fase D)
+
+Revisión exclusiva de la integración del beneficio del 1 % con el Formulario 210, sin cambios en el
+modelo de dominio de facturación electrónica en sí. Hallazgo, verificado con múltiples fuentes
+independientes: el destino "componente de R92 vía casillas 140/141" (Fase D) era incorrecto en dos
+aspectos. El fundamento legal correcto es el **numeral 5 del artículo 336 ET** (no el "artículo
+336-1 ET", que es una norma distinta: estimación de costos y gastos deducibles, indicador
+booleano de la casilla 140) y la casilla oficial es la **28** (dato informativo previo a
+patrimonio, nunca 140/141). La casilla 141 corresponde al impuesto voluntario del art. 244-1 ET.
+
+- `ELECTRONIC_INVOICING_SOURCE_ID` (`@nexus-tax/aegis-rules`) cambia de `'et-art-336-1'` a
+  `'et-art-336-num-5'`.
+- El catálogo `OFFICIAL_SOURCES_2025` registra ahora tres fuentes separadas:
+  `et-art-336-num-5` (deducción del 1 %, casilla 28), `et-art-336-1` (indicador de costos/gastos
+  estimados, casilla 140) y `et-art-244-1` (impuesto voluntario, casilla 141, no modelado).
+- `FORM_210_BOXES_2025` agrega la casilla 28 (nueva, `implemented_unverified`); la fórmula de R92
+  revierte a `41 + 65 + 82 + 139` (sin R141); R140/R141 quedan `not_implemented` con su
+  significado oficial correcto restaurado.
+- Ningún cambio en `ElectronicInvoiceReport`/`ElectronicInvoicePurchase`/Dexie/UI/parser: la
+  corrección se limita a `packages/form-210` y al `sourceId` del motor puro.
+
+Ver [`ELECTRONIC_INVOICING_2025.md`](./ELECTRONIC_INVOICING_2025.md) §"Historial de correcciones
+normativas" para el detalle completo.

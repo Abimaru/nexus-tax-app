@@ -2,13 +2,23 @@ import type { ElectronicInvoicingDeductionComputation } from '../../../types';
 import { getTaxUnit } from './tax-unit';
 
 /**
- * Deducción por facturas electrónicas soportadas con medios de pago
- * electrónicos (art. 336-1 del Estatuto Tributario, incorporado por el
- * art. 61 de la Ley 2277 de 2022).
+ * Deducción especial por compras de bienes y/o servicios soportadas con
+ * factura electrónica y pagadas con medios electrónicos.
  *
- * La persona natural residente puede tomar como **deducción imputable a la
- * cédula general** el 1 % del valor de las adquisiciones de bienes y/o
- * servicios que cumplan simultáneamente los siguientes requisitos:
+ * CORRECCIÓN NORMATIVA (Sprint 2.4, revisión puntual): el fundamento legal
+ * correcto es el **numeral 5 del artículo 336 del Estatuto Tributario**
+ * (texto introducido por el art. 7 de la Ley 2277 de 2022, que sustituyó
+ * el artículo 336 completo) — NO el "artículo 336-1 ET". El artículo 336-1
+ * ET (adicionado por el art. 60 de la misma ley) es una norma DISTINTA:
+ * estimación de costos y gastos deducibles (tope indicativo del 60 % de
+ * los ingresos brutos de rentas de trabajo), ajena a este beneficio.
+ * Verificado con múltiples fuentes independientes (Estatuto.co, Gerencie,
+ * Consultor Contable) — ver `docs/ELECTRONIC_INVOICE_REPORT_2025.md`.
+ *
+ * La persona natural residente que declare ingresos en la cédula general
+ * puede tomar como **deducción** el 1 % del valor de las adquisiciones de
+ * bienes y/o servicios que cumplan simultáneamente los siguientes
+ * requisitos:
  *
  *   1. Están soportadas con **factura electrónica de venta**.
  *   2. Se pagaron con **tarjetas débito, crédito, u otros medios
@@ -16,12 +26,15 @@ import { getTaxUnit } from './tax-unit';
  *   3. La factura contiene el **NIT o número de identificación** del
  *      contribuyente que solicita la deducción.
  *
- * Tope: la deducción no puede exceder de **240 UVT anuales**. Este motor
- * NO verifica los requisitos (soporte de la factura, medio de pago,
- * titularidad): esa clasificación es del analista y se conserva por
- * trazabilidad.
+ * Tope: la deducción no puede exceder de **240 UVT anuales**. El propio
+ * numeral 5 establece que esta deducción **no está sujeta al límite del
+ * 40 %/1.340 UVT** del numeral 3 del mismo artículo (el que gobierna las
+ * casillas 41/65/82), por lo que nunca debe participar de esa fórmula de
+ * consolidación cedular. Este motor NO verifica los requisitos (soporte de
+ * la factura, medio de pago, titularidad): esa clasificación es del
+ * analista y se conserva por trazabilidad.
  */
-export const ELECTRONIC_INVOICING_SOURCE_ID = 'et-art-336-1';
+export const ELECTRONIC_INVOICING_SOURCE_ID = 'et-art-336-num-5';
 export const ELECTRONIC_INVOICING_PERCENTAGE = 0.01;
 export const ELECTRONIC_INVOICING_ANNUAL_CAP_UVT = 240;
 
@@ -54,7 +67,7 @@ export function computeElectronicInvoicingDeduction(
   const appliedDeductionCop = Math.min(percentageCandidateCop, uvtCapCandidateCop);
   const bindingCandidate: ElectronicInvoicingDeductionComputation['bindingCandidate'] =
     percentageCandidateCop <= uvtCapCandidateCop ? 'percentage' : 'uvt_cap';
-  const formula = `min(${(ELECTRONIC_INVOICING_PERCENTAGE * 100).toFixed(0)} % × compras_con_FE, ${ELECTRONIC_INVOICING_ANNUAL_CAP_UVT} UVT) — art. 336-1 ET`;
+  const formula = `min(${(ELECTRONIC_INVOICING_PERCENTAGE * 100).toFixed(0)} % × compras_con_FE, ${ELECTRONIC_INVOICING_ANNUAL_CAP_UVT} UVT) — art. 336 num. 5 ET`;
   return {
     taxYear: input.taxYear,
     purchasesBaseCop: purchasesBase,

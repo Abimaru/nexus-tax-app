@@ -94,6 +94,25 @@ el analista (por defecto solo metadatos). Ningún valor histórico se traslada a
 arrastre (anticipo, saldo a favor) requiere confirmación humana explícita y queda registrado como
 decisión trazable.
 
+## Facturación electrónica (Sprint 2.4, Fase D)
+
+El reporte DIAN de facturación electrónica se lee localmente con el mismo
+lector de workbook (`readWorkbook`) que la exógena; el archivo original nunca
+se envía a un servidor ni se persiste como binario (`sourceDocumentId` queda
+`null`: es una fuente estructurada propia, no un documento de la biblioteca).
+El CUFE completo de cada factura se conserva en IndexedDB local
+(`electronicInvoicePurchases`, Dexie v15) para permitir la detección de
+duplicados y la evidencia trazable, pero **la UI nunca lo muestra completo
+por defecto**: la tabla principal y las tarjetas móviles solo exponen datos
+no sensibles (fecha, emisor, número de factura, valores, estado); el CUFE
+íntegro solo aparece en el detalle expandido de una factura, bajo
+interacción explícita del analista. El export "safe" (`FORM_210_EXPORT_BUNDLE.md`)
+nunca incluye el CUFE completo. Las decisiones tributarias por factura
+(§ art. 336-1 ET) se persisten como eventos append-only reutilizando
+`resolutionDecisions`, con motivo obligatorio y sin modificar jamás la
+evidencia original (valores, CUFE, notas crédito/débito). Ver
+[`ELECTRONIC_INVOICE_REPORT_2025.md`](./ELECTRONIC_INVOICE_REPORT_2025.md).
+
 ## Buenas prácticas para contribuir
 
 - No agregar dependencias que realicen telemetría o llamadas de red implícitas.

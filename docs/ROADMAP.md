@@ -1,11 +1,13 @@
 # Roadmap — NexusTax
 
-> Sprint 2.4 (Fase B0 + Fase B + Fase B1 + Fase C) completado: esqueleto de
-> casillas del F-210, declaraciones anteriores como fuente estructurada con
-> arrastres explícitos y su integración UX completa, y los dos beneficios de
-> dependientes económicos (art. 387 y art. 336 num. 3 ET) con motores
-> independientes, elegibilidad, coexistencia, UI y E2E. Pendiente: el resto
-> del Sprint 2.4 (facturación electrónica, inmuebles, salud).
+> Sprint 2.4 (Fase B0 + Fase B + Fase B1 + Fase C + Fase D + revisión
+> normativa puntual) completado: esqueleto de casillas del F-210,
+> declaraciones anteriores, los dos beneficios de dependientes económicos
+> (art. 387 y art. 336 num. 3 ET), y el reporte DIAN detallado de
+> facturación electrónica (CUFE, deduplicación, conciliación, motor del 1 %
+> corregido a su casilla oficial correcta: la 28, art. 336 num. 5 ET).
+> Pendiente: el resto del Sprint 2.4 (inmuebles, administración de
+> propiedad horizontal, medicina prepagada).
 
 ## Entregado hasta hoy ✅
 
@@ -178,7 +180,45 @@ capturas desktop/móvil. Ver `docs/DEPENDENTS_BENEFITS_2025.md`.
 
 Pendiente explícito de este incremento: adjuntar un documento de la biblioteca como soporte de un
 dependiente desde la UI (campo estructural listo, acción pendiente); el 1 % de facturación
-electrónica como posible componente de R92 (hallazgo señalado, no aplicado); casilla 89 (subcédula
-de honorarios, hallazgo abierto de Fase B0). El resto del Sprint 2.4 (facturación electrónica DIAN,
-inmuebles, administración de propiedad horizontal, medicina prepagada) no se inició: queda para
+electrónica como posible componente de R92 (hallazgo señalado, no aplicado — **resuelto en la Fase
+D**); casilla 89 (subcédula de honorarios, hallazgo abierto de Fase B0). El resto del Sprint 2.4
+(facturación electrónica DIAN, inmuebles, administración de propiedad horizontal, medicina
+prepagada) no se inició en esta fase: facturación electrónica se completó en la Fase D; inmuebles,
+administración de propiedad horizontal y medicina prepagada quedan para incrementos siguientes.
+
+## Sprint 2.4 — Fase D (reporte DIAN de facturación electrónica)
+
+Implementado: cableado del motor del 1 % — inicialmente movido de la casilla 39 a "componente de
+la casilla 92" (casillas 140/141), corrección posteriormente revertida en la revisión normativa
+puntual (ver más abajo); nuevo parser XLSX del reporte DIAN detallado (adaptador hermano de la
+exógena, reutiliza su infraestructura de lectura pero no su semántica); parser monetario central
+(`@nexus-tax/document-intelligence`) reutilizado en vez de duplicar lógica de coerción numérica;
+deduplicación por CUFE (exacto/conflictivo/ausente/malformado); validación de notas crédito/débito
+contra la columna neta oficial; agregador explicable de la base del 1 % (susceptible − duplicados −
+rechazadas − doble beneficio); conciliación contra el Tope 5 de la exógena reutilizando la política
+de tolerancia ya existente (sin excepción especial para diferencias de $1); decisiones tributarias
+por factura reutilizando el historial append-only existente (`resolutionDecisions`, sin tabla
+nueva); Dexie v15; 8 tipos de tarea nuevos; UI `facturacion-electronica` con CUFE enmascarado por
+defecto y "No usaré deducción" reversible; E2E con capturas desktop/móvil; fixture de regresión
+numérica de 227 facturas sintéticas. Ver `docs/ELECTRONIC_INVOICE_REPORT_2025.md`.
+
+Pendiente explícito de este incremento: `electronic_invoice_file_not_recognized` no se persiste
+como tarea deep-linkeable (se muestra como error inmediato en la UI, ya que un archivo no
+reconocido nunca se guarda); el reporte no se asocia a la biblioteca documental general. Inmuebles,
+administración de propiedad horizontal y medicina prepagada no se iniciaron: quedan para
 incrementos siguientes con revisión intermedia.
+
+## Sprint 2.4 — Revisión normativa puntual (cierre de Fase D)
+
+Antes de publicar la Fase D se ejecutó una revisión normativa exclusiva de la integración del
+beneficio del 1 % con el Formulario 210. Hallazgo: la Fase D había corregido el destino de la
+casilla 39 pero introducido un segundo error, asumiendo el fundamento legal "artículo 336-1 ET" y
+las casillas 140/141 como destino. Verificado con múltiples fuentes independientes: el fundamento
+real es el **numeral 5 del art. 336 ET** y la casilla oficial es la **28** (dato informativo previo
+a patrimonio) — el art. 336-1 ET es una norma distinta (indicador de exceso de costos y gastos
+estimados, casilla 140, checkbox no monetario) y la casilla 141 corresponde al impuesto voluntario
+del art. 244-1 ET, sin relación con este beneficio. Se corrigió el cableado (casilla 28 propia,
+fuera de R39/R92), el `sourceId` del motor (`et-art-336-num-5`), el catálogo de fuentes oficiales
+(tres entradas separadas para las tres normas antes confundidas) y se agregó un bloque de 4 tests
+de guardarraíl que impide permanentemente la reintroducción de los cuatro errores encontrados. Ver
+`docs/ELECTRONIC_INVOICING_2025.md` §"Historial de correcciones normativas".

@@ -26,6 +26,7 @@ const TASK_SOURCE: Record<CaseTask['source'], string> = {
   system: 'Sistema',
   prior_year_return: 'Declaración de año anterior',
   dependent: 'Dependiente económico',
+  electronic_invoice: 'Facturación electrónica',
 };
 
 function target(task: CaseTask): { objectType: TaxResolutionObjectType; objectId: string } | null {

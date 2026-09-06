@@ -4,7 +4,7 @@ import { useRef, useState } from 'react';
 import { File, FileSpreadsheet, Loader2, UploadCloud, X } from 'lucide-react';
 import { formatBytes } from '@nexus-tax/ui';
 
-type DropzoneVariant = 'exogenous' | 'document' | 'evidence' | 'optional';
+type DropzoneVariant = 'exogenous' | 'document' | 'evidence' | 'optional' | 'electronic_invoice';
 
 const VARIANT_COPY: Record<DropzoneVariant, { title: string; privacy: string }> = {
   exogenous: {
@@ -22,6 +22,10 @@ const VARIANT_COPY: Record<DropzoneVariant, { title: string; privacy: string }> 
   optional: {
     title: 'Selecciona un archivo opcional',
     privacy: 'Puedes continuar sin adjuntar un archivo.',
+  },
+  electronic_invoice: {
+    title: 'Arrastra el reporte DIAN de facturación electrónica aquí',
+    privacy: 'Se procesa localmente y el archivo original no se conserva.',
   },
 };
 
@@ -73,7 +77,8 @@ export function FileDropzone({
   }
 
   const message = error ?? localError;
-  const SpreadsheetIcon = variant === 'exogenous' ? FileSpreadsheet : File;
+  const SpreadsheetIcon =
+    variant === 'exogenous' || variant === 'electronic_invoice' ? FileSpreadsheet : File;
 
   return (
     <div>

@@ -60,3 +60,19 @@ coexistencia). Se derivan en `buildCaseTasks` recorriendo `taxDependents`,
 `dependentEvaluations` y `dependentsCaseContext` del expediente. Ver
 `docs/DEPENDENTS_BENEFITS_2025.md` para el detalle normativo de cada
 beneficio.
+
+## Facturación electrónica (Sprint 2.4, Fase D)
+
+Ocho tipos nuevos con `source: 'electronic_invoice'`, campos
+`electronicInvoicePurchaseId`/`electronicInvoiceReportId` para trazabilidad y
+destino `declaracion/facturacion-electronica`: reporte no conciliado contra
+el Tope 5 de la exógena, factura con CUFE duplicado y valores conflictivos
+(bloquea la consolidación automática de esa factura), factura sin CUFE,
+medio de pago reportado como "Error en datos", factura pendiente de decisión
+tributaria (posible uso en otro beneficio), diferencia relevante contra el
+Tope 5, base susceptible del 1 % sin ninguna decisión revisada por el
+analista, y archivo no reconocido como reporte DIAN (esta última se muestra
+como error inmediato en la UI, no como tarea persistida, porque no hay
+reporte/factura que anclar como evidencia). Se derivan en `buildCaseTasks`
+recorriendo el reporte y las facturas activas del expediente. Ver
+`docs/ELECTRONIC_INVOICE_REPORT_2025.md` para el detalle normativo completo.

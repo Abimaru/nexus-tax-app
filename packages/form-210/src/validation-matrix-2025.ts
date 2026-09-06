@@ -54,6 +54,28 @@ function row(
  * Cada uno se puede reproducir a mano en menos de un minuto.
  */
 export const FORM_210_VALIDATION_MATRIX_2025: readonly Form210RuleValidation[] = [
+  // === Datos informativos (previos a patrimonio) ===
+  row(28, 'implemented_unverified', {
+    formulaDescription:
+      'Deducción especial por compras con factura electrónica (art. 336 num. 5 ET) = ' +
+      'min(1 % × compras con FE, 240 UVT).',
+    additionalSources: ['et-art-336-num-5'],
+    examples: [
+      {
+        description: '1 % de 49.799.000 (muy por debajo del tope de 240 UVT).',
+        inputs: { purchasesBaseCop: 49_799_000 },
+        expected: 497_990,
+      },
+    ],
+    notes:
+      'Revisión normativa puntual (Sprint 2.4, posterior a Fase D): corrige la ubicación de ' +
+      'esta deducción, antes cableada a las casillas 140/141 por error. Ubicación oficial: ' +
+      'casilla 28 (dato informativo previo a patrimonio), confirmada por múltiples fuentes ' +
+      'independientes. Cableada informativamente desde ' +
+      '`preliminaryLiquidation.electronicInvoicingDeduction.appliedDeductionCop` (motor ya ' +
+      'probado). Nunca entra a la fórmula de R92 ni de R39: el numeral 5 exime expresamente ' +
+      'esta deducción del límite del 40 %/1.340 UVT del numeral 3.',
+  }),
   // === Patrimonio ===
   row(29, 'implemented_unverified', {
     formulaDescription: 'Suma de activos reportados y confirmados al cierre del año.',
@@ -116,7 +138,11 @@ export const FORM_210_VALIDATION_MATRIX_2025: readonly Form210RuleValidation[] =
   }),
   row(39, 'not_implemented', {
     formulaDescription:
-      'Otras deducciones imputables (dependientes, salud prepagada, etc.) con sus topes.',
+      'Otras deducciones imputables (dependientes art. 387, salud prepagada, intereses ' +
+      'de vivienda, etc.) con sus topes. NO incluye la deducción especial por compras con ' +
+      'factura electrónica (art. 336 num. 5 ET, casilla oficial 28): esa deducción tiene su ' +
+      'propia casilla y está expresamente exenta del límite conjunto que sí afecta a esta ' +
+      'casilla vía R40→R41. Corregido en revisión normativa puntual posterior a Fase D.',
   }),
   row(40, 'verified', {
     formulaDescription: 'Total deducciones = 38 + 39.',
@@ -355,8 +381,10 @@ export const FORM_210_VALIDATION_MATRIX_2025: readonly Form210RuleValidation[] =
     notes:
       'Implementado en Fase C (Sprint 2.4): la adición de 72 UVT (art. 336 num. 3) es un ' +
       'componente explícito de esta casilla, no una resta posterior independiente. ' +
-      'Pendiente adicional (fuera de esta fase): confirmar si el 1 % de facturación ' +
-      'electrónica también debería sumarse aquí en vez de fluir por la casilla 39.',
+      'Revisión normativa puntual (Sprint 2.4, posterior a Fase D): se revirtió la inclusión ' +
+      'de la casilla 141 en esta fórmula — esa casilla no corresponde a facturación ' +
+      'electrónica (ver R141) y la deducción del 1 % (art. 336 num. 5 ET) tiene su propia ' +
+      'casilla oficial (28), fuera de esta consolidación cedular.',
   }),
   row(93, 'implemented_unverified', {
     formulaDescription: 'Renta líquida ordinaria de la cédula general = 91 - 92.',
@@ -450,10 +478,25 @@ export const FORM_210_VALIDATION_MATRIX_2025: readonly Form210RuleValidation[] =
       '40 %/1.340 UVT.',
   }),
   row(140, 'not_implemented', {
-    formulaDescription: 'Casilla informativa complementaria — pendiente de verificar.',
+    formulaDescription:
+      'Indicador (checkbox) de exceso del tope de costos y gastos deducibles (art. 336-1 ET) ' +
+      '— NO es una casilla monetaria.',
+    additionalSources: ['et-art-336-1'],
+    notes:
+      'Revisión normativa puntual (Sprint 2.4, posterior a Fase D): esta casilla corresponde ' +
+      'a una norma distinta (estimación de costos y gastos, tope indicativo del 60 %), ' +
+      'confundida por error en las Fases B0/D con la deducción del 1 % de facturación ' +
+      'electrónica (ver casilla 28). NexusTax no modela el tope de costos/gastos estimados ' +
+      'en esta fase; permanece `not_implemented`.',
   }),
   row(141, 'not_implemented', {
-    formulaDescription: 'Casilla informativa complementaria — pendiente de verificar.',
+    formulaDescription: 'Impuesto voluntario (art. 244-1 ET) — sin relación con dependientes ni facturación electrónica.',
+    additionalSources: ['et-art-244-1'],
+    notes:
+      'Revisión normativa puntual (Sprint 2.4, posterior a Fase D): antes usada por error para ' +
+      'la deducción del 1 % de facturación electrónica (ver casilla 28, su ubicación oficial ' +
+      'correcta). NexusTax no modela el impuesto voluntario en esta fase; permanece ' +
+      '`not_implemented`.',
   }),
 ];
 

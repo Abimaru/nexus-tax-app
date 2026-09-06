@@ -126,7 +126,9 @@ Cada componente del resultado expone la fuente que lo respalda:
 - `dependentsAdditionalDeduction.ruleSourceId` → `'et-art-336-num-3'` (Sprint 2.4,
   Fase C — componente de la casilla 92, nunca de la 39/41; ver
   `docs/DEPENDENTS_BENEFITS_2025.md`).
-- `electronicInvoicingDeduction.ruleSourceId` → `'et-art-336-1'`.
+- `electronicInvoicingDeduction.ruleSourceId` → `'et-art-336-num-5'` (numeral 5 del art. 336 ET;
+  corregido en la revisión normativa puntual posterior a Fase D — casilla propia 28, nunca
+  componente de la 39 ni de la 92; ver `docs/ELECTRONIC_INVOICING_2025.md`).
 - `individualDeductionLimits[].ruleSourceIds` → subconjunto de
   `['et-art-126-1', 'et-art-126-4', 'et-art-119', 'et-art-387']`.
 - `priorYearBalance.ruleSourceId` → `'et-art-850'`.

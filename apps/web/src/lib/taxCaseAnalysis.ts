@@ -6,6 +6,8 @@ import type {
   CaseTask,
   DependentEvaluation,
   DocumentFact,
+  ElectronicInvoicePurchase,
+  ElectronicInvoiceReport,
   PreliminaryReconciliation,
   PriorYearCarryForwardCandidate,
   PriorYearTaxReturn,
@@ -256,6 +258,8 @@ export function buildCaseTasks(input: {
   dependents?: readonly TaxDependent[];
   dependentEvaluations?: readonly DependentEvaluation[];
   noDependentsDeclared?: boolean;
+  electronicInvoiceReport?: ElectronicInvoiceReport;
+  electronicInvoicePurchases?: readonly ElectronicInvoicePurchase[];
   now?: string;
 }): CaseTask[] {
   const timestamp = input.now ?? new Date().toISOString();
@@ -1099,6 +1103,198 @@ export function buildCaseTasks(input: {
         createdAt: timestamp,
         updatedAt: timestamp,
       });
+    }
+  }
+
+  // --- Facturación electrónica (Sprint 2.4, Fase D) ---
+  {
+    const report = input.electronicInvoiceReport;
+    const purchases = input.electronicInvoicePurchases ?? [];
+    if (report && !report.benefitOptedOut) {
+      const reconciliation = report.reconciliation;
+      const notReconciledStatuses = ['not_evaluated', 'missing_exogenous', 'missing_invoice_report'];
+      if (!reconciliation || notReconciledStatuses.includes(reconciliation.status)) {
+        tasks.push({
+          id: `task:electronic-invoice-not-reconciled:${report.id}`,
+          caseId: input.caseId,
+          type: 'electronic_invoice_report_not_reconciled',
+          title: 'Facturación electrónica: falta conciliar contra el Tope 5 de la exógena',
+          explanation:
+            reconciliation?.explanation ??
+            'El reporte de facturación electrónica aún no se ha comparado contra el total de compras de la exógena.',
+          source: 'electronic_invoice',
+          stage: 'declaracion',
+          view: 'facturacion-electronica',
+          entityId: null,
+          documentId: null,
+          requirementId: null,
+          candidateId: null,
+          reconciliationId: null,
+          matrixGroupId: null,
+          extractionSessionId: null,
+          profileId: null,
+          page: null,
+          electronicInvoiceReportId: report.id,
+          priority: 'medium',
+          blocking: false,
+          status: 'pending',
+          recommendedAction: 'Revisar la conciliación con la exógena',
+          ruleId: 'case-task.electronic-invoice-not-reconciled.v1',
+          evidence: [],
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        });
+      } else if (reconciliation.status === 'relevant_difference') {
+        tasks.push({
+          id: `task:electronic-invoice-relevant-difference:${report.id}`,
+          caseId: input.caseId,
+          type: 'electronic_invoice_relevant_difference',
+          title: 'Facturación electrónica: diferencia relevante contra el Tope 5',
+          explanation: reconciliation.explanation,
+          source: 'electronic_invoice',
+          stage: 'declaracion',
+          view: 'facturacion-electronica',
+          entityId: null,
+          documentId: null,
+          requirementId: null,
+          candidateId: null,
+          reconciliationId: null,
+          matrixGroupId: null,
+          extractionSessionId: null,
+          profileId: null,
+          page: null,
+          electronicInvoiceReportId: report.id,
+          priority: 'high',
+          blocking: false,
+          status: 'pending',
+          recommendedAction: 'Revisar el origen de la diferencia',
+          ruleId: 'case-task.electronic-invoice-relevant-difference.v1',
+          currentValue: reconciliation.differenceAbsoluteCop,
+          evidence: [
+            `Reporte: ${reconciliation.invoiceReportNetTotalCop?.toLocaleString('es-CO') ?? '—'}`,
+            `Exógena (Tope 5): ${reconciliation.exogenousNetTotalCop?.toLocaleString('es-CO') ?? '—'}`,
+          ],
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        });
+      }
+
+      const hasAnyDecision = (input.resolutionDecisions ?? []).some(
+        (decision) =>
+          decision.objectType === 'electronic_invoice_purchase' &&
+          decision.type === 'decide_electronic_invoice_benefit',
+      );
+      if (!hasAnyDecision && report.totals.eligibleBenefitTotalCop > 0) {
+        tasks.push({
+          id: `task:electronic-invoice-base-without-decision:${report.id}`,
+          caseId: input.caseId,
+          type: 'electronic_invoice_base_without_decision',
+          title: 'Facturación electrónica: base susceptible sin ninguna decisión revisada',
+          explanation:
+            'Hay un valor susceptible de beneficio, pero ninguna factura fue revisada explícitamente por el analista.',
+          source: 'electronic_invoice',
+          stage: 'declaracion',
+          view: 'facturacion-electronica',
+          entityId: null,
+          documentId: null,
+          requirementId: null,
+          candidateId: null,
+          reconciliationId: null,
+          matrixGroupId: null,
+          extractionSessionId: null,
+          profileId: null,
+          page: null,
+          electronicInvoiceReportId: report.id,
+          priority: 'medium',
+          blocking: false,
+          status: 'pending',
+          recommendedAction: 'Revisar al menos una factura del reporte',
+          ruleId: 'case-task.electronic-invoice-base-without-decision.v1',
+          evidence: [],
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        });
+      }
+    }
+
+    const purchaseTaskSpec: {
+      predicate: (purchase: ElectronicInvoicePurchase) => boolean;
+      type:
+        | 'electronic_invoice_duplicate_conflicting'
+        | 'electronic_invoice_missing_cufe'
+        | 'electronic_invoice_payment_method_error'
+        | 'electronic_invoice_requires_benefit_decision';
+      title: (purchase: ElectronicInvoicePurchase) => string;
+      explanation: string;
+      recommendedAction: string;
+      priority: 'high' | 'medium' | 'low';
+    }[] = [
+      {
+        predicate: (p) => p.cufeStatus === 'duplicate_conflicting',
+        type: 'electronic_invoice_duplicate_conflicting',
+        title: (p) => `Factura ${p.invoiceNumber ?? p.sourceRow}: CUFE duplicado con valores distintos`,
+        explanation:
+          'Dos o más facturas comparten el mismo CUFE pero difieren en el valor. No se consolidan automáticamente.',
+        recommendedAction: 'Revisar cuál valor es el correcto',
+        priority: 'high',
+      },
+      {
+        predicate: (p) => p.cufeStatus === 'missing_cufe',
+        type: 'electronic_invoice_missing_cufe',
+        title: (p) => `Factura ${p.invoiceNumber ?? p.sourceRow}: sin CUFE`,
+        explanation: 'Esta factura no trae CUFE en el reporte DIAN.',
+        recommendedAction: 'Verificar el soporte original de la factura',
+        priority: 'medium',
+      },
+      {
+        predicate: (p) => p.paymentMethodCategory === 'data_error',
+        type: 'electronic_invoice_payment_method_error',
+        title: (p) => `Factura ${p.invoiceNumber ?? p.sourceRow}: medio de pago reportado como "Error en datos"`,
+        explanation: 'El reporte DIAN marca el medio de pago de esta factura como inconsistente.',
+        recommendedAction: 'Confirmar el medio de pago real con el soporte original',
+        priority: 'medium',
+      },
+      {
+        predicate: (p) => p.benefitDecision === 'requires_review',
+        type: 'electronic_invoice_requires_benefit_decision',
+        title: (p) => `Factura ${p.invoiceNumber ?? p.sourceRow}: posible uso en otro beneficio`,
+        explanation: 'Esta factura podría haberse usado como costo/gasto u otro beneficio tributario.',
+        recommendedAction: 'Decidir el tratamiento tributario de esta factura',
+        priority: 'medium',
+      },
+    ];
+    for (const spec of purchaseTaskSpec) {
+      for (const purchase of purchases.filter(spec.predicate)) {
+        tasks.push({
+          id: `task:${spec.type.replace(/_/g, '-')}:${purchase.id}`,
+          caseId: input.caseId,
+          type: spec.type,
+          title: spec.title(purchase),
+          explanation: spec.explanation,
+          source: 'electronic_invoice',
+          stage: 'declaracion',
+          view: 'facturacion-electronica',
+          entityId: null,
+          documentId: null,
+          requirementId: null,
+          candidateId: null,
+          reconciliationId: null,
+          matrixGroupId: null,
+          extractionSessionId: null,
+          profileId: null,
+          page: null,
+          electronicInvoicePurchaseId: purchase.id,
+          electronicInvoiceReportId: purchase.reportId,
+          priority: spec.priority,
+          blocking: false,
+          status: 'pending',
+          recommendedAction: spec.recommendedAction,
+          ruleId: `case-task.${spec.type.replace(/_/g, '-')}.v1`,
+          evidence: [],
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        });
+      }
     }
   }
 

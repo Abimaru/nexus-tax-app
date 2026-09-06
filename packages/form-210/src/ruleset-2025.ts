@@ -65,6 +65,27 @@ const structuralBox = (
 });
 
 export const FORM_210_BOXES_2025: readonly Form210BoxDefinition[] = [
+  structuralBox(
+    28,
+    'Deducción especial por compras con factura electrónica (art. 336 num. 5 ET)',
+    'informational',
+    'implemented_unverified',
+    ['et-art-336-num-5'],
+    'Revisión normativa puntual (Sprint 2.4, posterior a Fase D): corrige el hallazgo de que ' +
+      'esta deducción ocupaba las casillas 140/141. Su ubicación oficial es la casilla 28 ' +
+      '(sección de datos informativos, previa a patrimonio), confirmada por al menos tres ' +
+      'fuentes independientes (Connotar: "Nueva casilla 28 del formulario 210 para informar ' +
+      'el 1 % de las compras personales"; cobertura de prensa del calendario AG2025/2026 que ' +
+      'cita explícitamente "el valor correspondiente al 1 % debe registrarse en la casilla 28 ' +
+      'del formulario"). Se fundamenta en el NUMERAL 5 del art. 336 ET (texto introducido por ' +
+      'el art. 7 de la Ley 2277 de 2022 al sustituir el artículo completo) — NO en el ' +
+      '"artículo 336-1 ET", que es una norma distinta (estimación de costos y gastos, casilla ' +
+      '140). Cableada informativamente desde ' +
+      '`preliminaryLiquidation.electronicInvoicingDeduction.appliedDeductionCop` (motor ya ' +
+      'probado). Nunca es componente de R39 ni de R92: el numeral 5 está expresamente exento ' +
+      'del límite del 40 %/1.340 UVT del numeral 3, por lo que no participa de ninguna ' +
+      'fórmula de consolidación cedular. Ver docs/ELECTRONIC_INVOICE_REPORT_2025.md.',
+  ),
   box(29, 'Patrimonio bruto', 'patrimony', 'Suma de activos al cierre', [], true),
   box(30, 'Deudas', 'patrimony', 'Suma de pasivos al cierre', [], true),
   box(31, 'Patrimonio líquido', 'patrimony', '29 - 30', [29, 30], true),
@@ -211,10 +232,13 @@ export const FORM_210_BOXES_2025: readonly Form210BoxDefinition[] = [
     verificationNote:
       'Fase C (Sprint 2.4): R139 (72 UVT por dependiente, art. 336 num. 3 ET) ' +
       'se modela como COMPONENTE EXPLÍCITO de esta casilla, tal como indica el ' +
-      'instructivo (nunca como resta de R39/R41). Pendiente: confirmar si el ' +
-      '1 % de facturación electrónica (art. 336-1 ET) también debería ser ' +
-      'componente de R92 en vez de fluir por R39 (hallazgo de auditoría, ' +
-      'fuera de alcance de la Fase C — ver docs/DEPENDENTS_BENEFITS_2025.md).',
+      'instructivo (nunca como resta de R39/R41). Revisión normativa puntual ' +
+      '(Sprint 2.4, posterior a Fase D): se revirtió la inclusión de R141 como ' +
+      'componente de esta fórmula — esa deducción (1 % de facturación ' +
+      'electrónica) no ocupa la casilla 141 (ver R28) ni participa de ninguna ' +
+      'fórmula de consolidación cedular, precisamente porque el numeral 5 del ' +
+      'art. 336 ET la exime del límite del 40 %/1.340 UVT que gobierna esta ' +
+      'casilla. Ver docs/ELECTRONIC_INVOICE_REPORT_2025.md.',
   },
   {
     number: 93,
@@ -308,15 +332,32 @@ export const FORM_210_BOXES_2025: readonly Form210BoxDefinition[] = [
   ),
   structuralBox(
     140,
-    'Información complementaria — pendiente de verificación',
+    'Indicador: exceso del tope de costos y gastos deducibles (art. 336-1 ET)',
     'informational',
     'not_implemented',
+    ['et-art-336-1'],
+    'Revisión normativa puntual (Sprint 2.4, posterior a Fase D): esta casilla NO es ' +
+      'monetaria — es un indicador/checkbox ("marque X") que se diligencia cuando los costos ' +
+      'y gastos deducibles del contribuyente exceden el tope indicativo del art. 336-1 ET ' +
+      '(60 % de los ingresos brutos de rentas de trabajo, u otros topes que fije la DIAN por ' +
+      'actividad económica). Esta norma es enteramente distinta del numeral 5 del art. 336 ET ' +
+      '(deducción del 1 % por facturación electrónica, casilla 28) — antes se confundían por ' +
+      'error. NexusTax no modela el cálculo del tope de costos/gastos estimados en esta fase; ' +
+      'la casilla permanece `not_implemented` para no inventar un valor booleano sin motor ' +
+      'que lo respalde. Ver docs/ELECTRONIC_INVOICE_REPORT_2025.md.',
   ),
   structuralBox(
     141,
-    'Información complementaria — pendiente de verificación',
+    'Impuesto voluntario (art. 244-1 ET)',
     'informational',
     'not_implemented',
+    ['et-art-244-1'],
+    'Revisión normativa puntual (Sprint 2.4, posterior a Fase D): esta casilla corresponde al ' +
+      'aporte/impuesto voluntario adicional del art. 244-1 ET — una decisión completamente ' +
+      'distinta y sin relación con dependientes ni con facturación electrónica. Antes se usaba ' +
+      'incorrectamente para la deducción del 1 % (art. 336 num. 5 ET, ver casilla 28), un ' +
+      'error de las Fases B0/D corregido en esta revisión. NexusTax no modela el impuesto ' +
+      'voluntario en esta fase; permanece `not_implemented`.',
   ),
 ];
 

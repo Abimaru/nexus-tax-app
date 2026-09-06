@@ -76,6 +76,12 @@ import {
   getDependentEvaluations,
   confirmDependentEvaluation,
   reviewStaleDependentEvaluation,
+  importElectronicInvoiceReport,
+  getElectronicInvoiceReport,
+  getElectronicInvoicePurchases,
+  decideElectronicInvoicePurchaseBenefit,
+  setElectronicInvoicingBenefitOptedOut,
+  removeElectronicInvoiceReport,
 } from './repository';
 import { buildTaxCaseManifest } from './taxCaseAnalysis';
 
@@ -1654,5 +1660,298 @@ describe('dependientes económicos (Sprint 2.4, Fase C)', () => {
     const stored = await getTaxDependents(created.id);
     const archived = stored.find((item) => item.id === dependent.id);
     expect(archived?.status).toBe('archived');
+  });
+});
+
+const FE_HEADER_ROW = [
+  'Identificación Emisor Factura',
+  'Nombre Emisor Factura',
+  'Fecha Emisión',
+  'Num_factura_venta',
+  'Valor Facturado',
+  'Valor Notas Crédito',
+  'Valor Notas Débito',
+  'Valor Factura / Afectada con Notas Débito - Crédito',
+  'Valor Susceptible Beneficio',
+  'Medios De Pago',
+  'CUFE',
+];
+
+function electronicInvoiceFile(rows: (string | number | null)[][]) {
+  const metadata: (string | number | null)[][] = [
+    ['Reporte de facturas electrónicas - MUESTRA SINTÉTICA'],
+    ...Array.from({ length: 20 }, () => []),
+  ];
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet([...metadata, FE_HEADER_ROW, ...rows]);
+  XLSX.utils.book_append_sheet(wb, ws, 'Facturas');
+  const buffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer;
+  return {
+    name: 'facturas-electronicas.xlsx',
+    size: buffer.byteLength,
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    arrayBuffer: async () => buffer,
+  };
+}
+
+const SYNTHETIC_CUFE_1 = 'a'.repeat(96);
+const SYNTHETIC_CUFE_2 = 'b'.repeat(96);
+
+describe('facturación electrónica (Sprint 2.4, Fase D)', () => {
+  it('importa el reporte DIAN, persiste facturas y recalcula el borrador del F-210', async () => {
+    const created = await createCase({ alias: 'Facturación electrónica', taxYear: 2025 });
+    const file = electronicInvoiceFile([
+      [
+        '900111222',
+        'Proveedor Sintético SAS',
+        '2025-02-10',
+        'FES-0001',
+        '1.500.000',
+        '0',
+        '0',
+        '1.500.000',
+        '1.500.000',
+        'Tarjeta débito o crédito',
+        SYNTHETIC_CUFE_1,
+      ],
+      [
+        '900333444',
+        'Proveedor Sintético Dos SAS',
+        '2025-03-05',
+        'FES-0002',
+        '500.000',
+        '0',
+        '0',
+        '500.000',
+        '500.000',
+        'Efectivo',
+        SYNTHETIC_CUFE_2,
+      ],
+    ]);
+    const report = await importElectronicInvoiceReport(created.id, 2025, file);
+    expect(report).not.toBeNull();
+    expect(report!.rowCount).toBe(2);
+    expect(report!.totals.netTotalCop).toBe(2_000_000);
+    expect(report!.totals.eligibleBenefitTotalCop).toBe(2_000_000);
+
+    const purchases = await getElectronicInvoicePurchases(created.id);
+    expect(purchases).toHaveLength(2);
+    expect(purchases.every((purchase) => purchase.benefitDecision === 'eligible')).toBe(true);
+
+    const workspace = await getTaxCaseWorkspace(created.id);
+    const box28 = workspace.form210Draft?.boxes.find((box) => box.number === 28);
+    // 1 % de 2.000.000 = 20.000, muy por debajo del tope de 240 UVT.
+    // Corrección normativa puntual: casilla oficial 28, no 140/141.
+    expect(box28?.suggestedValue).toBe(20_000);
+    // Nunca debe fluir por la casilla 39 (corrección normativa Fase D).
+    const box39 = workspace.form210Draft?.boxes.find((box) => box.number === 39);
+    expect(
+      box39?.sources.some((source) => source.sourceId.includes('electronic-invoicing')),
+    ).toBe(false);
+  });
+
+  it('devuelve null cuando el archivo no se reconoce como reporte DIAN de facturación electrónica', async () => {
+    const created = await createCase({ alias: 'Archivo no reconocido', taxYear: 2025 });
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet([
+      ['Columna A', 'Columna B'],
+      ['dato', 123],
+    ]);
+    XLSX.utils.book_append_sheet(wb, ws, 'Hoja1');
+    const buffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer;
+    const file = {
+      name: 'otro.xlsx',
+      size: buffer.byteLength,
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      arrayBuffer: async () => buffer,
+    };
+    const report = await importElectronicInvoiceReport(created.id, 2025, file);
+    expect(report).toBeNull();
+    expect(await getElectronicInvoiceReport(created.id)).toBeUndefined();
+  });
+
+  it('excluir una factura por doble beneficio recalcula la base y la casilla 28', async () => {
+    const created = await createCase({ alias: 'Doble beneficio', taxYear: 2025 });
+    const file = electronicInvoiceFile([
+      [
+        '900111222',
+        'Proveedor Sintético SAS',
+        '2025-02-10',
+        'FES-0001',
+        '1.000.000',
+        '0',
+        '0',
+        '1.000.000',
+        '1.000.000',
+        'Tarjeta débito o crédito',
+        SYNTHETIC_CUFE_1,
+      ],
+      [
+        '900333444',
+        'Proveedor Sintético Dos SAS',
+        '2025-03-05',
+        'FES-0002',
+        '1.000.000',
+        '0',
+        '0',
+        '1.000.000',
+        '1.000.000',
+        'Efectivo',
+        SYNTHETIC_CUFE_2,
+      ],
+    ]);
+    await importElectronicInvoiceReport(created.id, 2025, file);
+    const [first] = await getElectronicInvoicePurchases(created.id);
+    await decideElectronicInvoicePurchaseBenefit(
+      first!.id,
+      'used_as_cost_or_expense',
+      'Esta factura ya se dedujo como costo en la cédula no laboral.',
+    );
+    const workspace = await getTaxCaseWorkspace(created.id);
+    const box28 = workspace.form210Draft?.boxes.find((box) => box.number === 28);
+    // Solo la segunda factura (1.000.000) queda elegible → 1 % = 10.000.
+    expect(box28?.suggestedValue).toBe(10_000);
+    const decisions = await listTaxResolutionDecisions(created.id);
+    expect(
+      decisions.some((decision) => decision.type === 'decide_electronic_invoice_benefit'),
+    ).toBe(true);
+  });
+
+  it('"No usaré deducción por facturación electrónica" excluye el beneficio sin borrar el reporte (reversible)', async () => {
+    const created = await createCase({ alias: 'Opt-out FE', taxYear: 2025 });
+    const file = electronicInvoiceFile([
+      [
+        '900111222',
+        'Proveedor Sintético SAS',
+        '2025-02-10',
+        'FES-0001',
+        '1.000.000',
+        '0',
+        '0',
+        '1.000.000',
+        '1.000.000',
+        'Tarjeta débito o crédito',
+        SYNTHETIC_CUFE_1,
+      ],
+    ]);
+    await importElectronicInvoiceReport(created.id, 2025, file);
+    await setElectronicInvoicingBenefitOptedOut(created.id, true, 'El analista prefiere no tomar este beneficio.');
+    let report = await getElectronicInvoiceReport(created.id);
+    expect(report?.benefitOptedOut).toBe(true);
+    let workspace = await getTaxCaseWorkspace(created.id);
+    let box28 = workspace.form210Draft?.boxes.find((box) => box.number === 28);
+    expect(box28?.suggestedValue ?? 0).toBe(0);
+    // El reporte y las facturas se conservan (no se borran).
+    expect(await getElectronicInvoicePurchases(created.id)).toHaveLength(1);
+
+    // Reversible.
+    await setElectronicInvoicingBenefitOptedOut(created.id, false, 'El analista reconsideró.');
+    report = await getElectronicInvoiceReport(created.id);
+    expect(report?.benefitOptedOut).toBe(false);
+    workspace = await getTaxCaseWorkspace(created.id);
+    box28 = workspace.form210Draft?.boxes.find((box) => box.number === 28);
+    expect(box28?.suggestedValue).toBe(10_000);
+  });
+
+  it('CUFE duplicado exacto no se suma dos veces en los totales persistidos', async () => {
+    const created = await createCase({ alias: 'Duplicado FE', taxYear: 2025 });
+    const file = electronicInvoiceFile([
+      [
+        '900111222',
+        'Proveedor Sintético SAS',
+        '2025-02-10',
+        'FES-0001',
+        '1.000.000',
+        '0',
+        '0',
+        '1.000.000',
+        '1.000.000',
+        'Tarjeta débito o crédito',
+        SYNTHETIC_CUFE_1,
+      ],
+      [
+        '900111222',
+        'Proveedor Sintético SAS',
+        '2025-02-10',
+        'FES-0001',
+        '1.000.000',
+        '0',
+        '0',
+        '1.000.000',
+        '1.000.000',
+        'Tarjeta débito o crédito',
+        SYNTHETIC_CUFE_1,
+      ],
+    ]);
+    const report = await importElectronicInvoiceReport(created.id, 2025, file);
+    expect(report!.rowCount).toBe(2);
+    expect(report!.totals.duplicateExactCount).toBe(2);
+    expect(report!.totals.netTotalCop).toBe(1_000_000);
+    expect(report!.totals.eligibleBenefitTotalCop).toBe(1_000_000);
+  });
+
+  it('eliminar el reporte también elimina sus facturas y recalcula el borrador', async () => {
+    const created = await createCase({ alias: 'Eliminar FE', taxYear: 2025 });
+    const file = electronicInvoiceFile([
+      [
+        '900111222',
+        'Proveedor Sintético SAS',
+        '2025-02-10',
+        'FES-0001',
+        '1.000.000',
+        '0',
+        '0',
+        '1.000.000',
+        '1.000.000',
+        'Tarjeta débito o crédito',
+        SYNTHETIC_CUFE_1,
+      ],
+    ]);
+    await importElectronicInvoiceReport(created.id, 2025, file);
+    await removeElectronicInvoiceReport(created.id);
+    expect(await getElectronicInvoiceReport(created.id)).toBeUndefined();
+    expect(await getElectronicInvoicePurchases(created.id)).toHaveLength(0);
+    const workspace = await getTaxCaseWorkspace(created.id);
+    const box28 = workspace.form210Draft?.boxes.find((box) => box.number === 28);
+    expect(box28?.suggestedValue ?? 0).toBe(0);
+  });
+
+  it('re-importar el reporte reemplaza el anterior (1 reporte activo por expediente)', async () => {
+    const created = await createCase({ alias: 'Reimportar FE', taxYear: 2025 });
+    const first = electronicInvoiceFile([
+      [
+        '900111222',
+        'Proveedor Sintético SAS',
+        '2025-02-10',
+        'FES-0001',
+        '1.000.000',
+        '0',
+        '0',
+        '1.000.000',
+        '1.000.000',
+        'Tarjeta débito o crédito',
+        SYNTHETIC_CUFE_1,
+      ],
+    ]);
+    await importElectronicInvoiceReport(created.id, 2025, first);
+    const second = electronicInvoiceFile([
+      [
+        '900333444',
+        'Proveedor Sintético Dos SAS',
+        '2025-03-05',
+        'FES-0002',
+        '2.000.000',
+        '0',
+        '0',
+        '2.000.000',
+        '2.000.000',
+        'Efectivo',
+        SYNTHETIC_CUFE_2,
+      ],
+    ]);
+    await importElectronicInvoiceReport(created.id, 2025, second);
+    const purchases = await getElectronicInvoicePurchases(created.id);
+    expect(purchases).toHaveLength(1);
+    expect(purchases[0]!.invoiceNumber).toBe('FES-0002');
   });
 });

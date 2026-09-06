@@ -28,6 +28,9 @@ import type {
   DocumentProfileStatus,
   DocumentProfileZone,
   DocumentStorageMode,
+  ElectronicInvoiceBenefitDecision,
+  ElectronicInvoicePurchase,
+  ElectronicInvoiceReport,
   EmployerInstance,
   EmployerInstanceStatus,
   EmploymentIncomeGroup,
@@ -89,6 +92,14 @@ import {
   computeDependentsCoexistence,
   supportTypesFor,
 } from './dependentsEngine';
+import {
+  applyBenefitDecision,
+  BENEFIT_DECISION_LABEL,
+  buildElectronicInvoicingInput,
+  computeElectronicInvoiceBenefitBase,
+  parseElectronicInvoiceWorkbook,
+  reconcileElectronicInvoiceReport,
+} from './electronicInvoiceEngine';
 
 /**
  * Repositorio de acceso a datos locales. Envuelve Dexie con operaciones de
@@ -2561,6 +2572,8 @@ export async function rebuildForm210Draft(caseId: string): Promise<Form210Draft 
     dependentsCaseContext,
     dependents,
     dependentSupports,
+    electronicInvoiceReport,
+    electronicInvoicePurchases,
   ] = await Promise.all([
     db.cases.get(caseId),
     db.results.get(caseId),
@@ -2572,6 +2585,8 @@ export async function rebuildForm210Draft(caseId: string): Promise<Form210Draft 
     db.dependentsCaseContext.get(caseId),
     db.taxDependents.where('caseId').equals(caseId).toArray(),
     db.dependentSupports.where('caseId').equals(caseId).toArray(),
+    db.electronicInvoiceReports.where('caseId').equals(caseId).first(),
+    db.electronicInvoicePurchases.where('caseId').equals(caseId).toArray(),
   ]);
   if (!taxCase || taxCase.taxYear !== 2025) return undefined;
   const activeDependents = dependents.filter((dependent) => dependent.status === 'active');
@@ -2587,6 +2602,16 @@ export async function rebuildForm210Draft(caseId: string): Promise<Form210Draft 
     activeDependents,
     eligibility,
   );
+  const electronicInvoicingInput = electronicInvoiceReport
+    ? buildElectronicInvoicingInput(
+        computeElectronicInvoiceBenefitBase(
+          electronicInvoiceReport.id,
+          electronicInvoicePurchases,
+          nowIso(),
+        ),
+        electronicInvoiceReport.benefitOptedOut,
+      )
+    : undefined;
   const draft = buildForm210Draft({
     caseId,
     taxYear: taxCase.taxYear,
@@ -2600,6 +2625,7 @@ export async function rebuildForm210Draft(caseId: string): Promise<Form210Draft 
       .map((item) => item.exogenousRecordId),
     dependents: buildArticle387Input(activeDependents, coexistence),
     dependentsAdditional: buildArticle336Input(activeDependents, coexistence),
+    electronicInvoicing: electronicInvoicingInput,
   });
   await db.form210Drafts.put(draft);
   return draft;
@@ -3216,5 +3242,193 @@ export async function reviewStaleDependentEvaluation(
     .equals(dependentId)
     .modify({ confirmedByAnalyst: false, staleDueToRuleChange: false });
   return recalculateDependentEvaluation(dependentId);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Reporte DIAN de facturación electrónica (Sprint 2.4, Fase D)               */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Importa un reporte DIAN de facturación electrónica. Reemplaza cualquier
+ * reporte previo del expediente (un reporte activo por caso, como
+ * `priorYearReturns` con `isCurrentVersion`, pero simplificado a 1:1 dado
+ * que este reporte se re-descarga completo cada vez, no se corrige por
+ * partes). Devuelve `null` cuando el archivo no se reconoce como este tipo
+ * de reporte (tarea "archivo no reconocido", §28).
+ */
+export async function importElectronicInvoiceReport(
+  caseId: string,
+  taxYear: number,
+  file: LocalFileInput,
+): Promise<ElectronicInvoiceReport | null> {
+  const db = getDb();
+  const buffer = await file.arrayBuffer();
+  const parsed = parseElectronicInvoiceWorkbook(buffer, file.name, taxYear, nowIso());
+  if (!parsed) {
+    // Decisión de alcance (Fase D): "archivo no reconocido" se muestra como
+    // error inmediato en la UI (no persistido) porque no hay ningún reporte
+    // ni factura que anclar como evidencia — a diferencia de las demás
+    // tareas de esta sección, que sí se derivan de datos ya persistidos vía
+    // `buildCaseTasks` y sobreviven a `synchronizeCaseTasks`. El tipo
+    // `electronic_invoice_file_not_recognized` queda reservado en el
+    // dominio para una futura persistencia dedicada si se requiere
+    // trazabilidad de intentos fallidos entre sesiones.
+    return null;
+  }
+
+  const previous = await db.electronicInvoiceReports.where('caseId').equals(caseId).toArray();
+  await db.electronicInvoiceReports.bulkDelete(previous.map((item) => item.id));
+  const previousPurchases = await db.electronicInvoicePurchases.where('caseId').equals(caseId).toArray();
+  await db.electronicInvoicePurchases.bulkDelete(previousPurchases.map((item) => item.id));
+
+  const reportId = newId('electronic-invoice-report');
+  const report: ElectronicInvoiceReport = {
+    ...parsed.report,
+    id: reportId,
+    caseId,
+    sourceDocumentId: null,
+    reconciliation: null,
+    benefitOptedOut: false,
+  };
+  const purchases: ElectronicInvoicePurchase[] = parsed.purchases.map((purchase) => ({
+    ...purchase,
+    id: newId('electronic-invoice-purchase'),
+    reportId,
+    caseId,
+    createdAt: nowIso(),
+  }));
+  await db.electronicInvoiceReports.add(report);
+  await db.electronicInvoicePurchases.bulkAdd(purchases);
+  await recalculateElectronicInvoiceReconciliation(caseId);
+  await rebuildForm210Draft(caseId);
+  return report;
+}
+
+export async function getElectronicInvoiceReport(
+  caseId: string,
+): Promise<ElectronicInvoiceReport | undefined> {
+  return getDb().electronicInvoiceReports.where('caseId').equals(caseId).first();
+}
+
+export async function getElectronicInvoicePurchases(
+  caseId: string,
+): Promise<ElectronicInvoicePurchase[]> {
+  return getDb().electronicInvoicePurchases.where('caseId').equals(caseId).toArray();
+}
+
+/** Elimina el reporte y sus facturas (recuperación tras un archivo no reconocido o para volver a cargar). */
+export async function removeElectronicInvoiceReport(caseId: string): Promise<void> {
+  const db = getDb();
+  const reports = await db.electronicInvoiceReports.where('caseId').equals(caseId).toArray();
+  await db.electronicInvoiceReports.bulkDelete(reports.map((item) => item.id));
+  const purchases = await db.electronicInvoicePurchases.where('caseId').equals(caseId).toArray();
+  await db.electronicInvoicePurchases.bulkDelete(purchases.map((item) => item.id));
+  await rebuildForm210Draft(caseId);
+}
+
+/**
+ * Recalcula la conciliación del reporte contra el Tope 5 (Compras) de la
+ * exógena (§16), tomando `analysis.matrix.electronicInvoicing.totalNetInvoiced`
+ * como valor exógeno. Se ejecuta tras importar el reporte y tras cualquier
+ * cambio que pueda afectar la exógena (recalculada por quien reprocesa esa
+ * fuente, no aquí).
+ */
+export async function recalculateElectronicInvoiceReconciliation(
+  caseId: string,
+): Promise<ElectronicInvoiceReport | undefined> {
+  const db = getDb();
+  const [report, analysis] = await Promise.all([
+    db.electronicInvoiceReports.where('caseId').equals(caseId).first(),
+    db.analyses.get(caseId),
+  ]);
+  if (!report) return undefined;
+  const exogenousNetTotalCop = analysis?.matrix.electronicInvoicing
+    ? analysis.matrix.electronicInvoicing.reviewStatus === 'not_available'
+      ? null
+      : analysis.matrix.electronicInvoicing.totalNetInvoiced
+    : null;
+  const reconciliation = reconcileElectronicInvoiceReport(
+    report.totals.netTotalCop,
+    exogenousNetTotalCop,
+    nowIso(),
+  );
+  const updated: ElectronicInvoiceReport = {
+    ...report,
+    reconciliation,
+    processingStatus:
+      reconciliation.status === 'reconciled' || reconciliation.status === 'rounding_difference'
+        ? report.processingStatus === 'requires_review'
+          ? report.processingStatus
+          : 'reconciled'
+        : report.processingStatus,
+  };
+  await db.electronicInvoiceReports.put(updated);
+  return updated;
+}
+
+/**
+ * Decide el tratamiento tributario de una factura (§14, §25): `eligible`
+ * (usar para el 1 %), `used_as_cost_or_expense`, `used_for_other_tax_benefit`,
+ * `not_eligible` o `requires_review`. Persiste la decisión en el historial
+ * append-only existente (`resolutionDecisions`, reutilizado — §19) y
+ * actualiza el estado ACTUAL denormalizado en la factura para consultas
+ * rápidas; la evidencia original (valores, CUFE) nunca se modifica.
+ */
+export async function decideElectronicInvoicePurchaseBenefit(
+  purchaseId: string,
+  decision: ElectronicInvoiceBenefitDecision,
+  reason: string,
+): Promise<void> {
+  const db = getDb();
+  const purchase = await db.electronicInvoicePurchases.get(purchaseId);
+  if (!purchase) throw new Error('No se encontró la factura a decidir.');
+  await saveTaxResolutionDecision(purchase.caseId, {
+    type: 'decide_electronic_invoice_benefit',
+    objectType: 'electronic_invoice_purchase',
+    objectId: purchaseId,
+    previousState: purchase.benefitDecision,
+    finalState: decision,
+    selectedAlternative: BENEFIT_DECISION_LABEL[decision],
+    reason,
+    evidence: [
+      {
+        kind: 'record',
+        referenceId: purchase.invoiceNumber ?? purchase.normalizedCufe,
+        description: `Factura ${purchase.invoiceNumber ?? '(sin número)'} — CUFE ${purchase.normalizedCufe ?? 'ausente'}.`,
+      },
+    ],
+  });
+  const [updated] = applyBenefitDecision([purchase], purchaseId, decision, reason);
+  await db.electronicInvoicePurchases.put(updated!);
+  await rebuildForm210Draft(purchase.caseId);
+}
+
+/**
+ * Registra (o revierte) la decisión "No usaré deducción por facturación
+ * electrónica" (§29): no elimina el reporte ni las facturas, solo excluye
+ * la deducción del borrador del F-210 hasta que se revierta.
+ */
+export async function setElectronicInvoicingBenefitOptedOut(
+  caseId: string,
+  optedOut: boolean,
+  reason: string,
+): Promise<void> {
+  const db = getDb();
+  const report = await db.electronicInvoiceReports.where('caseId').equals(caseId).first();
+  if (!report) return;
+  await saveTaxResolutionDecision(caseId, {
+    type: 'set_no_electronic_invoicing_benefit',
+    objectType: 'electronic_invoice_report',
+    objectId: report.id,
+    previousState: String(report.benefitOptedOut),
+    finalState: String(optedOut),
+    selectedAlternative: optedOut
+      ? 'No usaré deducción por facturación electrónica'
+      : 'Revertir: sí usaré la deducción',
+    reason,
+    evidence: [],
+  });
+  await db.electronicInvoiceReports.put({ ...report, benefitOptedOut: optedOut });
+  await rebuildForm210Draft(caseId);
 }
 

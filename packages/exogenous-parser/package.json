@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@nexus-tax/config": "workspace:*",
+    "@nexus-tax/document-intelligence": "workspace:*",
     "@nexus-tax/domain": "workspace:*",
     "xlsx": "^0.18.5",
     "zod": "^3.23.8"

@@ -36,6 +36,7 @@ export * from './caseTasks';
 export * from './taxResolution';
 export * from './priorYearReturn';
 export * from './taxDependent';
+export * from './electronicInvoice';
 
 /** Versión del contrato de dominio. Se incrementa ante cambios incompatibles. */
-export const DOMAIN_VERSION = '0.11.0';
+export const DOMAIN_VERSION = '0.12.0';

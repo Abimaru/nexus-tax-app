@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { UVT_2025 } from '../src/colombia/individual-income-tax/2025/filing-obligation';
+import { getOfficialSource } from '../src/colombia/individual-income-tax/2025/official-sources';
 import {
   ELECTRONIC_INVOICING_ANNUAL_CAP_UVT,
   ELECTRONIC_INVOICING_PERCENTAGE,
@@ -7,11 +8,25 @@ import {
   computeElectronicInvoicingDeduction,
 } from '../src/colombia/individual-income-tax/2025/electronic-invoicing';
 
-describe('deducción por facturas electrónicas (art. 336-1 ET) — AG 2025', () => {
+describe('deducción especial por compras con factura electrónica (art. 336 num. 5 ET) — AG 2025', () => {
   it('declara constantes normativas', () => {
-    expect(ELECTRONIC_INVOICING_SOURCE_ID).toBe('et-art-336-1');
+    expect(ELECTRONIC_INVOICING_SOURCE_ID).toBe('et-art-336-num-5');
     expect(ELECTRONIC_INVOICING_PERCENTAGE).toBe(0.01);
     expect(ELECTRONIC_INVOICING_ANNUAL_CAP_UVT).toBe(240);
+  });
+
+  it('REVISIÓN NORMATIVA: la fuente es el numeral 5 del art. 336 ET, nunca el "artículo 336-1" (norma distinta)', () => {
+    // Hallazgo de la revisión puntual posterior a Fase D: el art. 336-1 ET
+    // es una norma DISTINTA (estimación de costos y gastos, casilla 140,
+    // indicador booleano) — nunca debe confundirse con esta deducción.
+    const source = getOfficialSource(ELECTRONIC_INVOICING_SOURCE_ID);
+    expect(source.title).toMatch(/numeral 5/i);
+    expect(source.relatedBoxNumbers).toEqual([28]);
+    // El id real del artículo 336-1 (distinto) también debe existir, pero
+    // referenciar la casilla 140 (indicador), nunca la deducción del 1 %.
+    const article336_1 = getOfficialSource('et-art-336-1');
+    expect(article336_1.relatedBoxNumbers).toEqual([140]);
+    expect(article336_1.title).not.toMatch(/factura electrónica/i);
   });
 
   it('sin compras no produce deducción', () => {
@@ -37,7 +52,7 @@ describe('deducción por facturas electrónicas (art. 336-1 ET) — AG 2025', ()
     );
     expect(result.appliedDeductionCop).toBe(500_000);
     expect(result.bindingCandidate).toBe('percentage');
-    expect(result.ruleSourceId).toBe('et-art-336-1');
+    expect(result.ruleSourceId).toBe('et-art-336-num-5');
   });
 
   it('respeta el tope de 240 UVT cuando el 1 % lo excede', () => {
