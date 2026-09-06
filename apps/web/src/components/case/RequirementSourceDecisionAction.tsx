@@ -15,6 +15,7 @@ import {
   MANAGEMENT_CHANNEL_PRESENTATION,
   REQUIREMENT_AVAILABILITY_PRESENTATION,
 } from '@/lib/presentationCatalogs';
+import { sortBySpanishLabel } from '@/lib/alphabeticalSort';
 import { saveRequirementSourceDecision } from '@/lib/repository';
 import { ModalPortal } from '@/components/ModalPortal';
 
@@ -158,7 +159,10 @@ export function RequirementSourceDecisionAction({
                     value={status}
                     onChange={(event) => setStatus(event.target.value as typeof status)}
                   >
-                    {RequirementAvailabilityStatusSchema.options.map((option) => (
+                    {sortBySpanishLabel(
+                      RequirementAvailabilityStatusSchema.options,
+                      (option) => REQUIREMENT_AVAILABILITY_PRESENTATION[option].label,
+                    ).map((option) => (
                       <option className="bg-surface-raised" key={option} value={option}>
                         {REQUIREMENT_AVAILABILITY_PRESENTATION[option].label}
                       </option>
@@ -175,13 +179,14 @@ export function RequirementSourceDecisionAction({
                     <option className="bg-surface-raised" value="">
                       Sin documento asociado
                     </option>
-                    {documents
-                      .filter((item) => item.status === 'active')
-                      .map((item) => (
-                        <option className="bg-surface-raised" key={item.id} value={item.id}>
-                          {item.fileName}
-                        </option>
-                      ))}
+                    {sortBySpanishLabel(
+                      documents.filter((item) => item.status === 'active'),
+                      (item) => item.fileName,
+                    ).map((item) => (
+                      <option className="bg-surface-raised" key={item.id} value={item.id}>
+                        {item.fileName}
+                      </option>
+                    ))}
                   </select>
                 </Field>
                 <Field label="Decisión sobre el valor exógeno">
@@ -193,11 +198,13 @@ export function RequirementSourceDecisionAction({
                     <option className="bg-surface-raised" value="">
                       No usar un valor por ahora
                     </option>
-                    {acceptedSources.map((item) => (
-                      <option className="bg-surface-raised" key={item.id} value={item.id}>
-                        {item.originalConcept} · {item.provisionalValue.toLocaleString('es-CO')}
-                      </option>
-                    ))}
+                    {sortBySpanishLabel(acceptedSources, (item) => item.originalConcept).map(
+                      (item) => (
+                        <option className="bg-surface-raised" key={item.id} value={item.id}>
+                          {item.originalConcept} · {item.provisionalValue.toLocaleString('es-CO')}
+                        </option>
+                      ),
+                    )}
                   </select>
                   <Help>
                     Vincularlo conserva la aceptación como fuente alternativa, no como documento

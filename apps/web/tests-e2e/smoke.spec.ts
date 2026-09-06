@@ -437,6 +437,18 @@ test('flujo guiado completo del expediente', async ({ page }, testInfo) => {
     exact: true,
   });
   await expect(incomeCandidate.locator('dd').filter({ hasText: '48.000.000' })).toBeVisible();
+  const exogenousOptions = await incomeCandidate
+    .getByLabel('Registro exógeno relacionado')
+    .locator('option:not([value=""])')
+    .allTextContents();
+  const expectedExogenousOrder = [...exogenousOptions].sort((left, right) =>
+    left.localeCompare(right, 'es-CO', {
+      sensitivity: 'base',
+      numeric: true,
+      ignorePunctuation: true,
+    }),
+  );
+  expect(exogenousOptions).toEqual(expectedExogenousOrder);
   const suggestedRequirement = incomeCandidate.getByLabel('Requisito sugerido');
   const firstRequirementValue = await suggestedRequirement
     .locator('option')

@@ -118,7 +118,7 @@ export function RecordsPanel({
   const [resolutionFilter, setResolutionFilter] = useState<ResolutionStatus | 'all'>('all');
   const [relationFilter, setRelationFilter] = useState<RecordRelationType | 'all'>('all');
   const [dispositionFilter, setDispositionFilter] = useState<MatrixEntryDisposition | 'all'>('all');
-  const [sortKey, setSortKey] = useState<SortKey>('row');
+  const [sortKey, setSortKey] = useState<SortKey>('entity');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [page, setPage] = useState(0);
   const [expandedId, setExpandedId] = useState<string | null>(null);

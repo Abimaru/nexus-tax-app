@@ -15,6 +15,7 @@ import {
   updateRequirementStatus,
 } from '@/lib/repository';
 import { FileDropzone } from '@/components/FileDropzone';
+import { sortBySpanishLabel } from '@/lib/alphabeticalSort';
 
 const CATEGORY_LABEL: Record<EntityCategory, string> = {
   employer: 'Empleador',
@@ -83,98 +84,101 @@ export function ChecklistPanel({ result, caseId }: { result: ProcessingResult; c
             <Badge tone="neutral">{CATEGORY_LABEL[requirements[0]!.entityCategory]}</Badge>
           </div>
           <ul className="flex flex-col gap-3">
-            {requirements.map((req) => (
-              <li
-                key={req.id}
-                className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-overlay/8 bg-overlay/[0.02] p-3"
-              >
-                <div className="min-w-[220px] flex-1">
-                  <p className="text-sm font-medium text-content-strong">{req.documentName}</p>
-                  <p className="mt-0.5 text-xs text-content-muted">{req.reason}</p>
-                  <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
-                    <Badge tone="violet">{req.documentCategory}</Badge>
-                    <Badge
-                      tone={
-                        req.confidence === 'high'
-                          ? 'emerald'
-                          : req.confidence === 'medium'
-                            ? 'cyan'
-                            : 'neutral'
-                      }
-                    >
-                      {CONFIDENCE_LABEL[req.confidence]}
-                    </Badge>
-                    <span
-                      className="text-content-subtle"
-                      title="Recomendación generada por una regla local versionada."
-                    >
-                      Origen: regla local versionada
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <label className="sr-only" htmlFor={`status-${req.id}`}>
-                    Estado de {req.documentName}
-                  </label>
-                  <select
-                    id={`status-${req.id}`}
-                    value={req.status}
-                    onChange={(e) =>
-                      void updateRequirementStatus(
-                        caseId,
-                        req.id,
-                        e.target.value as RequirementStatus,
-                      )
-                    }
-                    className="rounded-lg border border-overlay/12 bg-overlay/5 px-2 py-1.5 text-xs text-content-strong"
-                  >
-                    {STATUS_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value} className="bg-surface-raised">
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                  {req.attachment ? (
-                    <button
-                      type="button"
-                      onClick={() => void removeRequirementPdf(caseId, req.id)}
-                      className="inline-flex items-center gap-1 rounded-lg border border-rose-500/30 px-2 py-1.5 text-xs text-tone-rose"
-                      aria-label={`Eliminar PDF de ${req.documentName}`}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" aria-hidden /> Eliminar PDF
-                    </button>
-                  ) : (
-                    <div className="w-52">
-                      <FileDropzone
-                        id={`requirement-pdf-${req.id}`}
-                        variant="evidence"
-                        compact
-                        file={null}
-                        accept="application/pdf,.pdf"
-                        allowedExtensions={['pdf']}
-                        maxSizeBytes={10 * 1024 * 1024}
-                        onSelect={(file) => {
-                          setAttachmentError(null);
-                          void attachRequirementPdf(caseId, req.id, file).catch((error: unknown) =>
-                            setAttachmentError(
-                              error instanceof Error
-                                ? error.message
-                                : 'No fue posible asociar el PDF.',
-                            ),
-                          );
-                        }}
-                      />
+            {sortBySpanishLabel(requirements, (req) => `${req.entityName} ${req.documentName}`).map(
+              (req) => (
+                <li
+                  key={req.id}
+                  className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-overlay/8 bg-overlay/[0.02] p-3"
+                >
+                  <div className="min-w-[220px] flex-1">
+                    <p className="text-sm font-medium text-content-strong">{req.documentName}</p>
+                    <p className="mt-0.5 text-xs text-content-muted">{req.reason}</p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
+                      <Badge tone="violet">{req.documentCategory}</Badge>
+                      <Badge
+                        tone={
+                          req.confidence === 'high'
+                            ? 'emerald'
+                            : req.confidence === 'medium'
+                              ? 'cyan'
+                              : 'neutral'
+                        }
+                      >
+                        {CONFIDENCE_LABEL[req.confidence]}
+                      </Badge>
+                      <span
+                        className="text-content-subtle"
+                        title="Recomendación generada por una regla local versionada."
+                      >
+                        Origen: regla local versionada
+                      </span>
                     </div>
-                  )}
-                </div>
-                {req.attachment ? (
-                  <p className="w-full text-right text-[11px] text-content-subtle">
-                    {req.attachment.fileName} · {formatBytes(req.attachment.fileSizeBytes)} · solo
-                    metadatos locales
-                  </p>
-                ) : null}
-              </li>
-            ))}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="sr-only" htmlFor={`status-${req.id}`}>
+                      Estado de {req.documentName}
+                    </label>
+                    <select
+                      id={`status-${req.id}`}
+                      value={req.status}
+                      onChange={(e) =>
+                        void updateRequirementStatus(
+                          caseId,
+                          req.id,
+                          e.target.value as RequirementStatus,
+                        )
+                      }
+                      className="rounded-lg border border-overlay/12 bg-overlay/5 px-2 py-1.5 text-xs text-content-strong"
+                    >
+                      {STATUS_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value} className="bg-surface-raised">
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                    {req.attachment ? (
+                      <button
+                        type="button"
+                        onClick={() => void removeRequirementPdf(caseId, req.id)}
+                        className="inline-flex items-center gap-1 rounded-lg border border-rose-500/30 px-2 py-1.5 text-xs text-tone-rose"
+                        aria-label={`Eliminar PDF de ${req.documentName}`}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" aria-hidden /> Eliminar PDF
+                      </button>
+                    ) : (
+                      <div className="w-52">
+                        <FileDropzone
+                          id={`requirement-pdf-${req.id}`}
+                          variant="evidence"
+                          compact
+                          file={null}
+                          accept="application/pdf,.pdf"
+                          allowedExtensions={['pdf']}
+                          maxSizeBytes={10 * 1024 * 1024}
+                          onSelect={(file) => {
+                            setAttachmentError(null);
+                            void attachRequirementPdf(caseId, req.id, file).catch(
+                              (error: unknown) =>
+                                setAttachmentError(
+                                  error instanceof Error
+                                    ? error.message
+                                    : 'No fue posible asociar el PDF.',
+                                ),
+                            );
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  {req.attachment ? (
+                    <p className="w-full text-right text-[11px] text-content-subtle">
+                      {req.attachment.fileName} · {formatBytes(req.attachment.fileSizeBytes)} · solo
+                      metadatos locales
+                    </p>
+                  ) : null}
+                </li>
+              ),
+            )}
           </ul>
         </GlassPanel>
       ))}

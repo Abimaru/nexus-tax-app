@@ -11,6 +11,7 @@ import {
 } from '@nexus-tax/domain';
 import { Badge, Button, GlassPanel, formatCurrencyCOP } from '@nexus-tax/ui';
 import { CATEGORY_LABEL } from '@/lib/analysisPresentation';
+import { sortBySpanishLabel } from '@/lib/alphabeticalSort';
 import {
   ACCEPTANCE_REASON_PRESENTATION,
   ACCEPTED_SOURCE_STATUS_PRESENTATION,
@@ -49,9 +50,13 @@ export function AcceptedSourceAction({
     const records = (result?.normalizedRecords ?? []).filter(
       (record) => record.reportedValue !== null,
     );
-    if (!requirement) return records;
-    const matching = records.filter((record) => record.entityName === requirement.entityName);
-    return matching.length ? matching : records;
+    const sorted = sortBySpanishLabel(
+      records,
+      (record) => `${record.entityName ?? ''} ${record.conceptLabel ?? record.conceptCode ?? ''}`,
+    );
+    if (!requirement) return sorted;
+    const matching = sorted.filter((record) => record.entityName === requirement.entityName);
+    return matching.length ? matching : sorted;
   }, [result, requirement]);
   const selected = candidates.find((record) => record.id === recordId) ?? candidates[0];
   const entity = result?.entities.find(

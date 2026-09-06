@@ -27,6 +27,7 @@ import {
   RESOLUTION_LABEL,
   TREATMENT_LABEL,
 } from '@/lib/analysisPresentation';
+import { sortBySpanishLabel } from '@/lib/alphabeticalSort';
 
 export function ResolutionDrawer({
   caseId,
@@ -173,7 +174,10 @@ export function ResolutionDrawer({
             <Select
               label="Categoría final"
               value={classification.category}
-              options={TaxCategorySchema.options.map((value) => ({
+              options={sortBySpanishLabel(
+                TaxCategorySchema.options,
+                (value) => CATEGORY_LABEL[value],
+              ).map((value) => ({
                 value,
                 label: CATEGORY_LABEL[value],
               }))}
@@ -187,7 +191,10 @@ export function ResolutionDrawer({
             <Select
               label="Naturaleza final"
               value={classification.nature}
-              options={TaxNatureSchema.options.map((value) => ({
+              options={sortBySpanishLabel(
+                TaxNatureSchema.options,
+                (value) => NATURE_LABEL[value],
+              ).map((value) => ({
                 value,
                 label: NATURE_LABEL[value],
               }))}
@@ -201,7 +208,10 @@ export function ResolutionDrawer({
             <Select
               label="Tratamiento final"
               value={classification.treatment}
-              options={TaxTreatmentSchema.options.map((value) => ({
+              options={sortBySpanishLabel(
+                TaxTreatmentSchema.options,
+                (value) => TREATMENT_LABEL[value],
+              ).map((value) => ({
                 value,
                 label: TREATMENT_LABEL[value],
               }))}
@@ -215,7 +225,10 @@ export function ResolutionDrawer({
             <Select
               label="Confianza final"
               value={classification.confidence}
-              options={TaxConfidenceSchema.options.map((value) => ({
+              options={sortBySpanishLabel(
+                TaxConfidenceSchema.options,
+                (value) => CONFIDENCE_LABEL[value],
+              ).map((value) => ({
                 value,
                 label: CONFIDENCE_LABEL[value],
               }))}
@@ -239,7 +252,7 @@ export function ResolutionDrawer({
           <h3 className="text-sm font-medium text-content-strong">Relaciones</h3>
           {related.length ? (
             <ul className="mt-2 space-y-2 text-xs text-content-muted">
-              {related.map((item) => {
+              {sortBySpanishLabel(related, (item) => RELATION_LABEL[item.type]).map((item) => {
                 const otherId =
                   item.sourceRecordId === recordId ? item.targetRecordId : item.sourceRecordId;
                 const other = result.normalizedRecords.find(

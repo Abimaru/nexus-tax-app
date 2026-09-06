@@ -2,6 +2,19 @@
 
 _Última actualización: 2026-08-08._
 
+## Corrección UX — orden alfabético consistente
+
+Las listas visibles de entidades, conceptos/registros exógenos, candidatos,
+requisitos, productos, documentos, hechos y conciliaciones se ordenan ahora con
+un comparador compartido `es-CO`. El orden ignora diferencias de mayúsculas y
+tildes y usa comparación numérica natural (`Entidad 2` antes de `Entidad 10`).
+
+Las opciones de contexto (`Todos`, `Sin asociar`, `No reemplaza`) permanecen al
+inicio. La clasificación solo afecta la presentación: no reordena ni muta
+`normalizedRecords`, filas de evidencia, relaciones o cálculos del dominio. La
+tabla de registros exógenos abre por defecto ordenada por entidad y permite
+seguir alternando por fila, concepto y valor.
+
 ## Sprint 2.3.2 — exactitud monetaria y cierre guiado
 
 ### Diagnóstico y correcciones
@@ -63,10 +76,10 @@ laboratorio documental al cierre final, sin datos reales ni servicios externos.
 
 - `pnpm typecheck`: verde.
 - `pnpm lint`: verde, cero advertencias.
-- `pnpm test`: 422 pruebas unitarias verdes.
+- `pnpm test`: 424 pruebas unitarias verdes.
 - `pnpm build`: verde.
 - `pnpm test:e2e`: 4/4 Playwright verdes.
-- `pnpm check:encoding`: 343 archivos revisados, sin mojibake.
+- `pnpm check:encoding`: 345 archivos revisados, sin mojibake.
 - Capturas verificadas: `revision-final-1280.png` y
   `revision-final-390.png` en la salida local de Playwright.
 

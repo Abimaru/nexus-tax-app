@@ -25,6 +25,7 @@ import {
 } from '@nexus-tax/domain';
 import { Badge, Button, EmptyState, GlassPanel, formatCurrencyCOP } from '@nexus-tax/ui';
 import { CATEGORY_LABEL } from '@/lib/analysisPresentation';
+import { sortBySpanishLabel } from '@/lib/alphabeticalSort';
 import { DOCUMENT_KIND_LABEL, PRODUCT_LABEL } from '@/lib/dossierPresentation';
 import { processDocumentLocally } from '@/lib/documentProcessor';
 import {
@@ -221,27 +222,33 @@ function ExtractionSessionCard({
   const confirmed = candidates.filter((candidate) => candidate.factId).length;
   const discardedCandidates = candidates.filter((candidate) => isDiscardedStatus(candidate.status));
   const discarded = discardedCandidates.length;
-  const filteredCandidates = candidates.filter((candidate) => {
-    const statusMatches =
-      statusFilter === 'all' ||
-      (statusFilter === 'pending'
-        ? ['pending', 'requires_review'].includes(candidate.status)
-        : statusFilter === 'low_confidence'
-          ? ['low', 'insufficient'].includes(candidate.confidence.level)
-          : candidate.status === statusFilter);
-    return (
-      statusMatches &&
-      (pageFilter === 'all' || candidate.page === Number(pageFilter)) &&
-      (productFilter === 'all' || (candidate.productLabel ?? 'unidentified') === productFilter) &&
-      (categoryFilter === 'all' || candidate.proposedCategory === categoryFilter)
-    );
-  });
+  const filteredCandidates = sortBySpanishLabel(
+    candidates.filter((candidate) => {
+      const statusMatches =
+        statusFilter === 'all' ||
+        (statusFilter === 'pending'
+          ? ['pending', 'requires_review'].includes(candidate.status)
+          : statusFilter === 'low_confidence'
+            ? ['low', 'insufficient'].includes(candidate.confidence.level)
+            : candidate.status === statusFilter);
+      return (
+        statusMatches &&
+        (pageFilter === 'all' || candidate.page === Number(pageFilter)) &&
+        (productFilter === 'all' || (candidate.productLabel ?? 'unidentified') === productFilter) &&
+        (categoryFilter === 'all' || candidate.proposedCategory === categoryFilter)
+      );
+    }),
+    (candidate) => `${candidate.productLabel ?? ''} ${candidate.originalConcept}`,
+  );
   const pageCount = Math.max(1, Math.ceil(filteredCandidates.length / pageSize));
   const safePage = Math.min(currentPage, pageCount);
   const pageCandidates = filteredCandidates.slice((safePage - 1) * pageSize, safePage * pageSize);
-  const detectedProducts = Array.from(
-    new Set(candidates.map((candidate) => candidate.productLabel).filter(Boolean)),
-  ) as string[];
+  const detectedProducts = sortBySpanishLabel(
+    Array.from(
+      new Set(candidates.map((candidate) => candidate.productLabel).filter(Boolean)),
+    ) as string[],
+    (label) => label,
+  );
 
   useEffect(() => setKind(proposedKind), [proposedKind]);
   useEffect(() => {
@@ -346,7 +353,10 @@ function ExtractionSessionCard({
                 value={kind}
                 onChange={(event) => setKind(event.target.value as typeof kind)}
               >
-                {DocumentKindSchema.options.map((option) => (
+                {sortBySpanishLabel(
+                  DocumentKindSchema.options,
+                  (option) => DOCUMENT_KIND_LABEL[option],
+                ).map((option) => (
                   <option className="bg-surface-raised" key={option} value={option}>
                     {DOCUMENT_KIND_LABEL[option]}
                   </option>
@@ -463,14 +473,14 @@ function ExtractionSessionCard({
               onChange={(event) => setStatusFilter(event.target.value)}
             >
               <option value="all">Todos</option>
-              <option value="pending">Pendientes</option>
+              <option value="low_confidence">Baja confianza</option>
               <option value="confirmed">Confirmados</option>
               <option value="corrected">Corregidos</option>
-              <option value="rejected">Rechazados</option>
               <option value="duplicate">Duplicados</option>
               <option value="informational">Informativos</option>
               <option value="obsolete">Obsoletos</option>
-              <option value="low_confidence">Baja confianza</option>
+              <option value="pending">Pendientes</option>
+              <option value="rejected">Rechazados</option>
             </select>
           </Field>
           <Field label="Página PDF">
@@ -511,7 +521,10 @@ function ExtractionSessionCard({
               onChange={(event) => setCategoryFilter(event.target.value)}
             >
               <option value="all">Todas</option>
-              {TaxCategorySchema.options.map((category) => (
+              {sortBySpanishLabel(
+                TaxCategorySchema.options,
+                (category) => CATEGORY_LABEL[category],
+              ).map((category) => (
                 <option key={category} value={category}>
                   {CATEGORY_LABEL[category]}
                 </option>
@@ -614,7 +627,10 @@ function ExtractionSessionCard({
                       setBulkReason(event.target.value as CandidateRejectionReason)
                     }
                   >
-                    {CandidateRejectionReasonSchema.options.map((reason) => (
+                    {sortBySpanishLabel(
+                      CandidateRejectionReasonSchema.options,
+                      (reason) => REJECTION_REASON_LABEL[reason],
+                    ).map((reason) => (
                       <option key={reason} value={reason}>
                         {REJECTION_REASON_LABEL[reason]}
                       </option>
@@ -630,11 +646,13 @@ function ExtractionSessionCard({
                     onChange={(event) => setBulkEntityId(event.target.value)}
                   >
                     <option value="">Sin asociar</option>
-                    {result?.entities.map((entity) => (
-                      <option key={entity.id} value={entity.id}>
-                        {entity.name}
-                      </option>
-                    ))}
+                    {sortBySpanishLabel(result?.entities ?? [], (entity) => entity.name).map(
+                      (entity) => (
+                        <option key={entity.id} value={entity.id}>
+                          {entity.name}
+                        </option>
+                      ),
+                    )}
                   </select>
                 </Field>
               ) : null}
@@ -646,7 +664,7 @@ function ExtractionSessionCard({
                     onChange={(event) => setBulkProductId(event.target.value)}
                   >
                     <option value="">Por identificar</option>
-                    {products.map((product) => (
+                    {sortBySpanishLabel(products, (product) => product.label).map((product) => (
                       <option key={product.id} value={product.id}>
                         {product.label}
                       </option>
@@ -949,7 +967,10 @@ function CandidateReviewCard({
                 onChange={(event) => setCategory(event.target.value as typeof category)}
                 className={inputClass}
               >
-                {TaxCategorySchema.options.map((option) => (
+                {sortBySpanishLabel(
+                  TaxCategorySchema.options,
+                  (option) => CATEGORY_LABEL[option],
+                ).map((option) => (
                   <option className="bg-surface-raised" key={option} value={option}>
                     {CATEGORY_LABEL[option]}
                   </option>
@@ -965,11 +986,13 @@ function CandidateReviewCard({
                 <option className="bg-surface-raised" value="">
                   Sin asociar
                 </option>
-                {result?.entities.map((entity) => (
-                  <option className="bg-surface-raised" key={entity.id} value={entity.id}>
-                    {entity.name}
-                  </option>
-                ))}
+                {sortBySpanishLabel(result?.entities ?? [], (entity) => entity.name).map(
+                  (entity) => (
+                    <option className="bg-surface-raised" key={entity.id} value={entity.id}>
+                      {entity.name}
+                    </option>
+                  ),
+                )}
               </select>
             </Field>
             <Field label="Producto">
@@ -981,7 +1004,7 @@ function CandidateReviewCard({
                 <option className="bg-surface-raised" value="">
                   Por identificar
                 </option>
-                {products.map((product) => (
+                {sortBySpanishLabel(products, (product) => product.label).map((product) => (
                   <option className="bg-surface-raised" key={product.id} value={product.id}>
                     {product.label}
                   </option>
@@ -1003,7 +1026,10 @@ function CandidateReviewCard({
                   <option className="bg-surface-raised" value="">
                     Sin asociar
                   </option>
-                  {result?.requirements.map((requirement) => (
+                  {sortBySpanishLabel(
+                    result?.requirements ?? [],
+                    (requirement) => `${requirement.entityName} ${requirement.documentName}`,
+                  ).map((requirement) => (
                     <option
                       className="bg-surface-raised"
                       key={requirement.id}
@@ -1035,7 +1061,11 @@ function CandidateReviewCard({
                   <option className="bg-surface-raised" value="">
                     Sin asociar
                   </option>
-                  {result?.normalizedRecords.map((record) => (
+                  {sortBySpanishLabel(
+                    result?.normalizedRecords ?? [],
+                    (record) =>
+                      `${record.entityName ?? ''} ${record.conceptLabel ?? record.conceptCode ?? ''}`,
+                  ).map((record) => (
                     <option className="bg-surface-raised" key={record.id} value={record.id}>
                       {record.entityName || 'Entidad sin nombre'} ·{' '}
                       {record.conceptLabel || record.conceptCode || 'Concepto sin etiqueta'} ·{' '}
@@ -1072,7 +1102,10 @@ function CandidateReviewCard({
                 }
                 className={inputClass}
               >
-                {CandidateRejectionReasonSchema.options.map((reason) => (
+                {sortBySpanishLabel(
+                  CandidateRejectionReasonSchema.options,
+                  (reason) => REJECTION_REASON_LABEL[reason],
+                ).map((reason) => (
                   <option className="bg-surface-raised" key={reason} value={reason}>
                     {REJECTION_REASON_LABEL[reason]}
                   </option>
