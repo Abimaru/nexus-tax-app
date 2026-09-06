@@ -3,6 +3,7 @@ import type {
   DependentEvaluation,
   DocumentExtractionSession,
   DocumentFact,
+  DocumentFactCandidate,
   ElectronicInvoicePurchase,
   ElectronicInvoiceReport,
   ProcessingResult,
@@ -732,6 +733,121 @@ describe('expediente tributario derivado', () => {
         page: 2,
         view: 'laboratorio',
       }),
+    );
+  });
+
+  it('deriva tareas de revisión guiada: ambigüedad y expectativa sin resolver (Sprint 2.4, Fase E)', () => {
+    const timestamp = '2026-08-02T00:00:00.000Z';
+    const processed = result();
+    const record = processed.normalizedRecords[0]!;
+    const document: UploadedDocument = {
+      id: 'document:evidence',
+      caseId: 'case:1',
+      kind: 'other',
+      category: 'other',
+      fileName: 'certificado.pdf',
+      extension: '.pdf',
+      fileSizeBytes: 100,
+      mimeType: 'application/pdf',
+      sha256: 'b'.repeat(64),
+      storageMode: 'store_locally',
+      status: 'active',
+      entityIds: [],
+      productIds: [],
+      taxYear: 2025,
+      cutoffDate: null,
+      notes: '',
+      requiresPassword: false,
+      version: 1,
+      replacesDocumentId: null,
+      replacedByDocumentId: null,
+      coveredRequirementIds: [],
+      partialRequirementIds: [],
+      uploadedAt: timestamp,
+      updatedAt: timestamp,
+    };
+    const ambiguousCandidate: DocumentFactCandidate = {
+      id: 'candidate:ambiguous',
+      caseId: 'case:1',
+      documentId: document.id,
+      extractionSessionId: 'session:1',
+      page: 1,
+      proposedEntityId: null,
+      entityName: null,
+      proposedProductId: null,
+      productType: 'unidentified',
+      productLabel: null,
+      originalConcept: 'Saldo al cierre',
+      normalizedConcept: 'saldo al cierre',
+      proposedCategory: 'asset',
+      proposedNature: 'asset',
+      proposedTreatment: 'add_to_assets',
+      correctedCategory: null,
+      correctedNature: null,
+      correctedTreatment: null,
+      extractedValue: 100,
+      correctedValue: null,
+      finalValue: null,
+      currency: 'COP',
+      period: '2025',
+      cutoffDate: null,
+      evidence: {
+        page: 1,
+        excerpt: 'Saldo al cierre: $ 100',
+        detectedLabel: 'Saldo al cierre',
+        detectedValue: '$ 100',
+        location: 'page:1',
+      },
+      adapterId: 'co.balance-certificate',
+      adapterVersion: '1.0.0',
+      ruleId: 'rule:balance',
+      confidence: { level: 'medium', score: 60, reasons: [] },
+      warnings: [],
+      status: 'pending',
+      possibleDuplicateIds: [],
+      suggestedRequirementIds: [],
+      suggestedExogenousMatches: [
+        {
+          recordId: record.id,
+          status: 'ambiguous',
+          reasons: ['Dos registros empatan.'],
+          exogenousValue: record.reportedValue ?? 0,
+          difference: 0,
+        },
+      ],
+      selectedExogenousRecordId: null,
+      observation: '',
+      factId: null,
+      decisions: [],
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    };
+    const withAmbiguousCandidate = buildCaseTasks({
+      caseId: 'case:1',
+      result: processed,
+      documents: [document],
+      coverages: [],
+      candidates: [ambiguousCandidate],
+      reconciliations: [],
+      vatResponsibility: false,
+      now: timestamp,
+    });
+    expect(withAmbiguousCandidate).toContainEqual(
+      expect.objectContaining({ type: 'evidence_ambiguous_match', candidateId: ambiguousCandidate.id }),
+    );
+
+    const withoutAnyCandidate = buildCaseTasks({
+      caseId: 'case:1',
+      result: processed,
+      documents: [document],
+      coverages: [],
+      candidates: [],
+      reconciliations: [],
+      vatResponsibility: false,
+      now: timestamp,
+    });
+    expect(withoutAnyCandidate).toContainEqual(
+      expect.objectContaining({ type: 'evidence_missing_expected' }),
     );
   });
 });

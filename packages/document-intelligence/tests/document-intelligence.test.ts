@@ -238,7 +238,7 @@ describe('clasificación y adaptadores', () => {
     });
   });
 
-  it('sugiere coincidencia fuerte o contradicción sin conciliar', () => {
+  it('sugiere coincidencia exacta o contradicción sin conciliar', () => {
     const candidate = extractCandidates(
       representation('Saldo al cierre: $ 1.000.000'),
       'balance_certificate',
@@ -251,12 +251,12 @@ describe('clasificación y adaptadores', () => {
       reportedValue: 1_000_000,
       entityName: '',
     } as Parameters<typeof suggestExogenousMatches>[1][number];
-    expect(suggestExogenousMatches(candidate, [baseRecord])[0]?.status).toBe('strong_match');
+    expect(suggestExogenousMatches(candidate, [baseRecord])[0]?.status).toBe('exact_match');
     expect(
       suggestExogenousMatches(candidate, [
         { ...baseRecord, id: 'record:2', reportedValue: 2_000_000 },
       ])[0]?.status,
-    ).toBe('possible_contradiction');
+    ).toBe('contradiction');
   });
 
   it('sugiere un producto existente por tipo y etiqueta detectada', () => {

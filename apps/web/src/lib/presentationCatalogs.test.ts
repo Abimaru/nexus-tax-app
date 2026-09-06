@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   FactRequirementRelationSchema,
   AcceptedSourceStatusSchema,
+  EvidenceReviewSuggestionStatusSchema,
   PreliminaryReconciliationStatusSchema,
 } from '@nexus-tax/domain';
 import {
   ACCEPTED_SOURCE_STATUS_PRESENTATION,
+  EVIDENCE_SUGGESTION_STATUS_PRESENTATION,
   PRELIMINARY_RECONCILIATION_PRESENTATION,
   REQUIREMENT_RELATION_PRESENTATION,
   missingPresentationFinding,
@@ -23,6 +25,10 @@ describe('catálogos de presentación', () => {
     }
     for (const value of PreliminaryReconciliationStatusSchema.options) {
       expect(PRELIMINARY_RECONCILIATION_PRESENTATION[value].label).not.toBe(value);
+    }
+    for (const value of EvidenceReviewSuggestionStatusSchema.options) {
+      expect(EVIDENCE_SUGGESTION_STATUS_PRESENTATION[value].label).not.toBe(value);
+      expect(EVIDENCE_SUGGESTION_STATUS_PRESENTATION[value].description.length).toBeGreaterThan(10);
     }
   });
 

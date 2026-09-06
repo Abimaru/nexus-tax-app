@@ -121,6 +121,7 @@ Detalles en `docs/SECURITY_PRIVACY.md`.
 - [Laboratorio documental](docs/DOCUMENT_LAB.md)
 - [Perfiles documentales](docs/DOCUMENT_PROFILES.md)
 - [Feedback de extracción](docs/EXTRACTION_FEEDBACK.md)
+- [Evidence Matching & Guided Review (Sprint 2.4, Fase E)](docs/EVIDENCE_MATCHING.md)
 - [Contrato de enriquecimiento futuro](docs/AI_DOCUMENT_ENRICHMENT_CONTRACT.md)
 - [Fuentes aceptadas](docs/ACCEPTED_SOURCES.md)
 - [Aceptación de valores exógenos](docs/EXOGENOUS_VALUE_ACCEPTANCE.md)

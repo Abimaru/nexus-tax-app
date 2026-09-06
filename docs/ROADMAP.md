@@ -1,11 +1,14 @@
 # Roadmap — NexusTax
 
-> Sprint 2.4 (Fase B0 + Fase B + Fase B1 + Fase C + Fase D + revisión
-> normativa puntual) completado: esqueleto de casillas del F-210,
-> declaraciones anteriores, los dos beneficios de dependientes económicos
-> (art. 387 y art. 336 num. 3 ET), y el reporte DIAN detallado de
+> Sprint 2.4 (Fase B0 + Fase B + Fase B1 + Fase C + Fase D + Fase E + Fase
+> E.1 + revisiones normativas puntuales) completado: esqueleto de casillas
+> del F-210, declaraciones anteriores, los dos beneficios de dependientes
+> económicos (art. 387 y art. 336 num. 3 ET), el reporte DIAN detallado de
 > facturación electrónica (CUFE, deduplicación, conciliación, motor del 1 %
-> corregido a su casilla oficial correcta: la 28, art. 336 num. 5 ET).
+> en su casilla oficial: la 28, art. 336 num. 5 ET), y Evidence Matching &
+> Guided Reconciliation con su promotion gate cerrado (el clasificador de
+> ruido numérico ahora decide qué se promueve a candidato monetario, no
+> solo qué se inspecciona) y cobertura E2E completa.
 > Pendiente: el resto del Sprint 2.4 (inmuebles, administración de
 > propiedad horizontal, medicina prepagada).
 
@@ -207,6 +210,40 @@ como tarea deep-linkeable (se muestra como error inmediato en la UI, ya que un a
 reconocido nunca se guarda); el reporte no se asocia a la biblioteca documental general. Inmuebles,
 administración de propiedad horizontal y medicina prepagada no se iniciaron: quedan para
 incrementos siguientes con revisión intermedia.
+
+## Sprint 2.4 — Fase E (Evidence Matching & Guided Reconciliation)
+
+Reduce el ruido numérico mostrado al analista tras la extracción documental y evoluciona el
+emparejador candidato↔exógena existente con un estado granular que distingue explícitamente el
+redondeo (`rounding_match`) de una coincidencia meramente probable, y la ambigüedad
+(`ambiguous`) de una contradicción relevante. Nuevo clasificador puro
+(`classifyNumericEvidence`) asigna un rol (dinero o una categoría de ruido: NIT, cuenta,
+resolución, año, referencia legal, etc.) a cada token numérico según su contexto, sin descartar
+nunca la evidencia (queda disponible para inspección en modo avanzado). Nueva UI
+`EvidenceReviewPanel` presenta un resumen en lenguaje simple con confirmación en bloque acotada a
+coincidencias claras y captura manual guiada desde una expectativa (`ExpectedTaxEvidence`) sin
+candidato aceptable — sin reemplazar la revisión detallada existente, que sigue disponible como
+"modo avanzado". Persistencia reutiliza exactamente los mecanismos existentes de confirmación de
+candidato y conciliación preliminar, sin crear un segundo camino de doble conteo. Limitación
+conocida documentada para una futura Fase E2: coexisten dos scorers (candidato↔exógena y
+hecho↔exógena) sin unificar. Detalle completo en `docs/EVIDENCE_MATCHING.md`.
+
+## Sprint 2.4 — Fase E.1 (cierre: promotion gate + E2E)
+
+Cierra los dos criterios de aceptación pendientes de la Fase E funcional. El clasificador de
+evidencia numérica ahora **participa en la decisión de promoción**: `monetaryMatches()` solo crea
+un `DocumentFactCandidate` monetario cuando el rol clasificado es `money` (o, de forma
+conservadora, `unknown`, marcado `requires_review`); los roles de ruido (NIT, cédula, cuenta,
+resolución, referencia legal, fecha, año, porcentaje, página) se suprimen — nunca se descartan
+como evidencia, pero dejan de crear candidatos falsos. Se resolvieron casos de contexto explícitos
+(símbolo de moneda pegado al token gana sobre una referencia más atrás en la línea; palabra de
+monto + formato de miles gana sobre "cuenta"/"obligación"; NIT/cédula ganan siempre). Se corrigió
+que "Valor cercano." coexistiera con la razón de redondeo en la misma sugerencia. Se completó el
+cableado de dos acciones ya modeladas pero sin UI: elegir el valor correcto ante una ambigüedad, y
+que la captura manual guiada marque su expectativa como resuelta (antes reaparecía como pendiente).
+Nuevo E2E de Playwright (`evidence-review.spec.ts`) cubre el flujo completo con datos sintéticos:
+promoción/supresión, redondeo, ambigüedad, captura manual, conciliación sin doble conteo,
+persistencia y responsive. Detalle completo en `docs/EVIDENCE_MATCHING.md`.
 
 ## Sprint 2.4 — Revisión normativa puntual (cierre de Fase D)
 

@@ -122,6 +122,15 @@ async function selectView(page: import('@playwright/test').Page, name: string) {
     .click();
 }
 
+/**
+ * Sprint 2.4, Fase E: `organizacion/revision-documental` ahora muestra por
+ * defecto la revisión guiada (`EvidenceReviewPanel`); la revisión detallada
+ * histórica queda detrás del interruptor "Ver otros datos detectados".
+ */
+async function openAdvancedReview(page: import('@playwright/test').Page) {
+  await page.getByRole('button', { name: 'Ver otros datos detectados', exact: true }).click();
+}
+
 test('un PDF sin texto se lee y se diagnostica como escaneado, no se rechaza', async ({ page }) => {
   const samplePath = makeSampleFile();
   const scannedPath = makeScannedLikePdfFile();
@@ -148,6 +157,7 @@ test('un PDF sin texto se lee y se diagnostica como escaneado, no se rechaza', a
   await page.getByRole('button', { name: 'Registrar y analizar' }).click();
 
   await expect(page).toHaveURL(/\/organizacion\/revision-documental$/);
+  await openAdvancedReview(page);
   await expect(
     page.getByRole('heading', { name: 'escaneado-sin-texto-sintetico.pdf' }),
   ).toBeVisible();
@@ -293,6 +303,7 @@ test('el laboratorio documental diagnostica, ejecuta OCR real y crea un candidat
   await page.setViewportSize({ width: 1280, height: 720 });
 
   await selectView(page, 'Revisión de extracción');
+  await openAdvancedReview(page);
   await expect(
     page.getByRole('article', { name: 'Saldo capturado en el laboratorio', exact: true }),
   ).toBeVisible();

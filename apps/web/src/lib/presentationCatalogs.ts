@@ -5,6 +5,7 @@ import type {
   CoverageStatus,
   EntityCategory,
   EmployerInstanceStatus,
+  EvidenceReviewSuggestionStatus,
   ExogenousAcceptanceReason,
   FactCaptureMethod,
   FactRequirementRelation,
@@ -86,6 +87,41 @@ export const CAPTURE_METHOD_PRESENTATION: Record<FactCaptureMethod, Presentation
   automatic: { label: 'Cálculo determinista', description: 'Valor producido por una regla local.' },
   assisted: { label: 'Captura asistida', description: 'Fuente futura que siempre exige revisión.' },
   imported: { label: 'Dato importado', description: 'Valor incorporado desde otra fuente local.' },
+  manual_guided: {
+    label: 'Captura guiada',
+    description: 'Valor digitado a partir de un dato esperado detectado por la revisión guiada.',
+  },
+};
+
+/**
+ * Presentación humana de `EvidenceReviewSuggestionStatus` (Sprint 2.4,
+ * Fase E, §11): nunca se muestra un score crudo, solo esta etiqueta y su
+ * explicación breve.
+ */
+export const EVIDENCE_SUGGESTION_STATUS_PRESENTATION: Record<
+  EvidenceReviewSuggestionStatus,
+  PresentationEntry
+> = {
+  matched: {
+    label: 'Coincide con la exógena',
+    description: 'El valor documental coincide (exacto o por redondeo) con lo reportado.',
+  },
+  likely_match: {
+    label: 'Probable coincidencia',
+    description: 'Los valores son parecidos, pero conviene confirmarlo con una mirada humana.',
+  },
+  needs_review: {
+    label: 'Necesita tu decisión',
+    description: 'Hay varias opciones o una diferencia relevante: elige cuál corresponde.',
+  },
+  new_relevant_value: {
+    label: 'Posible valor nuevo',
+    description: 'Este valor documental no aparece en la exógena; revisa si es información nueva.',
+  },
+  unresolved: {
+    label: 'Falta este dato',
+    description: 'La exógena reporta un valor que aún no encontramos en ningún documento.',
+  },
 };
 
 export const REVIEW_STATUS_PRESENTATION: Record<FactReviewStatus, PresentationEntry> = {

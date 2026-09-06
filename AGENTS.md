@@ -15,11 +15,13 @@ exógena (Excel) → lectura robusta (fullRows) → detección de secciones
 → agregación + matriz de análisis (relaciones, consolidación, conciliación)
 → hallazgos → resolución humana (con historial) → checklist + adjuntos PDF (metadatos)
 → lectura PDF local + diagnóstico de tipo (textual/escaneado/insuficiente/dañado)
-→ candidatos documentales → laboratorio documental (OCR local bajo demanda,
-comparación nativo/OCR, candidatos manuales, perfiles reutilizables) → revisión
-humana → centro de resolución → obligación de declarar orientativa (Aegis, AG 2025)
+→ candidatos documentales → clasificación de evidencia numérica (dinero vs.
+ruido) → laboratorio documental (OCR local bajo demanda, comparación
+nativo/OCR, candidatos manuales, perfiles reutilizables) → revisión guiada
+(pocas decisiones humanas) / revisión detallada (modo avanzado) → centro de
+resolución → obligación de declarar orientativa (Aegis, AG 2025)
 → declaraciones anteriores + beneficios de dependientes (art. 387/336 ET) +
-facturación electrónica (reporte DIAN detallado, motor 1% del art. 336-1 ET)
+facturación electrónica (reporte DIAN detallado, motor 1% del art. 336 num. 5 ET)
 → borrador trazable del Formulario 210 → IndexedDB → export JSON
 ```
 

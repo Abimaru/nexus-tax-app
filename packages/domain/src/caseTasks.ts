@@ -66,6 +66,10 @@ export const CaseTaskTypeSchema = z.enum([
   'electronic_invoice_base_without_decision',
   /** El archivo cargado no se reconoció como reporte DIAN de facturación electrónica. */
   'electronic_invoice_file_not_recognized',
+  /** Un candidato quedó en estado `ambiguous`: dos o más registros exógenos empatan y requieren elección humana (Sprint 2.4, Fase E). */
+  'evidence_ambiguous_match',
+  /** Existe una expectativa de evidencia (`ExpectedTaxEvidence`) sin ningún candidato documental que la resuelva; requiere captura manual guiada. */
+  'evidence_missing_expected',
 ]);
 export type CaseTaskType = z.infer<typeof CaseTaskTypeSchema>;
 
@@ -154,4 +158,4 @@ export const CaseTaskSchema = z.object({
 });
 export type CaseTask = z.infer<typeof CaseTaskSchema>;
 
-export const CASE_TASK_SCHEMA_VERSION = '2.4.2';
+export const CASE_TASK_SCHEMA_VERSION = '2.5.0';

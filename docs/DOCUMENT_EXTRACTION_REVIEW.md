@@ -68,3 +68,27 @@ texto nativo o de OCR de una página. Llega a esta misma revisión con `adapterI
 (identificable como estrategia distinta de los adaptadores automáticos), categoría/naturaleza
 `unclassified` y tratamiento `requires_review` por defecto: pasa por exactamente el mismo flujo de
 confirmar/corregir/rechazar que un candidato automático, nunca alimenta la matriz por sí solo.
+
+## Revisión guiada (Sprint 2.4, Fase E + E.1)
+
+Desde Sprint 2.4, Fase E, `organizacion/revision-documental` muestra por defecto
+**`EvidenceReviewPanel`** en vez de esta revisión detallada: un resumen en lenguaje simple
+("Encontramos N valores relevantes. M coinciden con la exógena.") con pocas decisiones humanas
+agrupadas por estado (coinciden / probables / necesitan tu decisión / datos que faltan / posibles
+valores nuevos), confirmación en bloque acotada a coincidencias sin ambigüedad ni anomalías,
+resolución de ambigüedad eligiendo el valor correcto, y captura manual guiada cuando la exógena
+espera un valor sin ningún candidato aceptable.
+
+Esta revisión detallada (`DocumentExtractionReviewPanel`) **no desaparece**: sigue completa,
+sin cambios de comportamiento, detrás del interruptor "Ver otros datos detectados" como "modo
+avanzado". La revisión guiada reutiliza exactamente las mismas funciones de persistencia
+(`reviewDocumentCandidate`, `savePreliminaryReconciliation`) a través de nuevos envoltorios
+(`confirmEvidenceMatch`, `createGuidedManualCapture`): no existe un segundo mecanismo de
+conciliación ni riesgo de doble conteo.
+
+**Cierre de Fase E.1**: desde este cierre, el clasificador de evidencia numérica también decide
+qué candidatos se crean en primer lugar (no solo qué se muestra en la revisión guiada): un NIT,
+número de cuenta, resolución, año o porcentaje ya no aparece como candidato monetario en NINGUNA
+de las dos vistas (guiada o avanzada), aunque su formato numérico se pareciera a un monto. Sigue
+disponible como evidencia inspeccionable (metadatos de la sesión), pero nunca como candidato falso
+en la revisión. Ver `docs/EVIDENCE_MATCHING.md` para el detalle completo.

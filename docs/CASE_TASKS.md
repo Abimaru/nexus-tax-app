@@ -76,3 +76,22 @@ como error inmediato en la UI, no como tarea persistida, porque no hay
 reporte/factura que anclar como evidencia). Se derivan en `buildCaseTasks`
 recorriendo el reporte y las facturas activas del expediente. Ver
 `docs/ELECTRONIC_INVOICE_REPORT_2025.md` para el detalle normativo completo.
+
+## Evidence Matching & Guided Review (Sprint 2.4, Fase E)
+
+Dos tipos nuevos con `source: 'candidate'`, derivados directamente en
+`buildCaseTasks` (no en la capa de orquestación `evidenceReview.ts`, para
+evitar un ciclo de importación con `entityForRecord`), sin tocar la
+generación existente por candidato (`confirm_candidate`/`identify_product`/
+`associate_entity`):
+
+- `evidence_ambiguous_match`: un candidato abierto tiene al menos una
+  sugerencia de emparejamiento en estado `ambiguous` (dos o más registros
+  exógenos empatan); apunta a `organizacion/revision-documental`.
+- `evidence_missing_expected`: un registro exógeno con valor reportado no
+  está cubierto por ningún candidato con relación útil ni por ninguna
+  conciliación preliminar existente; recomienda capturar manualmente desde
+  la revisión guiada.
+
+Ver `docs/EVIDENCE_MATCHING.md` para el detalle completo del clasificador,
+el matcher evolucionado y la UI de revisión guiada.

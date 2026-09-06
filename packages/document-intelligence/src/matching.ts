@@ -131,41 +131,107 @@ export function suggestExogenousMatches(
     .filter((item) => item.score >= 35)
     .sort((a, b) => b.score - a.score || a.record.id.localeCompare(b.record.id));
   const top = ranked.slice(0, 3);
-  return top.map((item) => ({
-    recordId: item.record.id,
-    status:
-      top.length > 1 && top[0]!.score === top[1]!.score
-        ? 'multiple_candidates'
-        : item.score >= 65
-          ? 'strong_match'
-          : item.score >= 50
-            ? 'probable_match'
-            : item.difference > 0
-              ? 'possible_contradiction'
-              : 'no_match',
-    reasons: item.reasons,
-    exogenousValue: item.record.reportedValue ?? 0,
-    documentDecimalValue: candidate.amount?.decimalValue ?? candidate.extractedValue,
-    roundedTaxValue: candidate.amount?.roundedTaxValue ?? Math.round(candidate.extractedValue),
-    difference: item.difference,
-    differencePercentage:
-      item.record.reportedValue === 0
-        ? null
-        : (item.difference / Math.abs(item.record.reportedValue ?? 0)) * 100,
-    possibleScaleFactor:
-      item.anomalies.find((anomaly) => anomaly.possibleScaleFactor)?.possibleScaleFactor ?? null,
-    recommendedSource: item.anomalies.length
-      ? ('human_review' as const)
-      : item.difference <= 1
-        ? ('both' as const)
-        : candidate.amount?.confidence === 'high'
-          ? ('document' as const)
-          : ('human_review' as const),
-    recommendationReason: item.anomalies.length
-      ? 'La diferencia puede provenir de la interpretación monetaria; confirma el texto original.'
-      : item.difference <= 1
-        ? 'Las fuentes coinciden después de considerar centavos y redondeo al peso.'
-        : 'La fuente documental conserva evidencia directa, pero requiere revisión humana.',
-    anomalyCodes: item.anomalies.map((anomaly) => anomaly.code),
-  }));
+  const isAmbiguous = top.length > 1 && top[0]!.score === top[1]!.score;
+  return top.map((item) => {
+    const documentDecimalValue = candidate.amount?.decimalValue ?? candidate.extractedValue;
+    const exogenousValue = item.record.reportedValue ?? 0;
+    const roundedDocumentValue = Math.round(documentDecimalValue);
+    // Redondeo explícito (§9/§10 de docs/EVIDENCE_MATCHING.md): el valor
+    // decimal del documento (con centavos) redondea EXACTAMENTE al entero
+    // reportado en la exógena, aunque los valores crudos difieran.
+    const isRoundingMatch =
+      item.difference !== 0 && roundedDocumentValue === exogenousValue;
+    const status: DocumentFactCandidate['suggestedExogenousMatches'][number]['status'] =
+      isAmbiguous
+        ? 'ambiguous'
+        : item.difference === 0
+          ? 'exact_match'
+          : isRoundingMatch
+            ? 'rounding_match'
+            : item.difference <= 1
+              ? 'minor_difference'
+              : item.score >= 50
+                ? 'possible_match'
+                : item.difference > 0
+                  ? 'contradiction'
+                  : 'no_match';
+    const reasons = isRoundingMatch
+      ? [
+          ...item.reasons.filter((reason) => reason !== 'Valor cercano.'),
+          'El valor documental redondea exactamente al valor de la exógena.',
+        ]
+      : item.reasons;
+    return {
+      recordId: item.record.id,
+      status,
+      reasons,
+      exogenousValue,
+      documentDecimalValue: candidate.amount?.decimalValue ?? candidate.extractedValue,
+      roundedTaxValue: candidate.amount?.roundedTaxValue ?? Math.round(candidate.extractedValue),
+      difference: item.difference,
+      differencePercentage:
+        item.record.reportedValue === 0
+          ? null
+          : (item.difference / Math.abs(item.record.reportedValue ?? 0)) * 100,
+      possibleScaleFactor:
+        item.anomalies.find((anomaly) => anomaly.possibleScaleFactor)?.possibleScaleFactor ?? null,
+      recommendedSource: item.anomalies.length
+        ? ('human_review' as const)
+        : item.difference <= 1
+          ? ('both' as const)
+          : candidate.amount?.confidence === 'high'
+            ? ('document' as const)
+            : ('human_review' as const),
+      recommendationReason: item.anomalies.length
+        ? 'La diferencia puede provenir de la interpretación monetaria; confirma el texto original.'
+        : item.difference <= 1
+          ? 'Las fuentes coinciden después de considerar centavos y redondeo al peso.'
+          : 'La fuente documental conserva evidencia directa, pero requiere revisión humana.',
+      anomalyCodes: item.anomalies.map((anomaly) => anomaly.code),
+    };
+  });
+}
+
+/**
+ * Traduce un `CandidateExogenousMatchStatus` a un mensaje humano SIN
+ * exponer scores crudos (§11 de docs/EVIDENCE_MATCHING.md). Es la única
+ * superficie que la Guided Review debe usar para describir una
+ * coincidencia; el score interno de `suggestExogenousMatches` nunca debe
+ * llegar a la UI.
+ */
+export function describeMatchConfidence(
+  status: DocumentFactCandidate['suggestedExogenousMatches'][number]['status'],
+): { label: string; description: string } {
+  switch (status) {
+    case 'exact_match':
+      return { label: 'Coincide exactamente', description: 'El valor documental es idéntico al reportado en la exógena.' };
+    case 'rounding_match':
+      return {
+        label: 'Coincide por redondeo al peso',
+        description: 'El valor documental (con centavos) redondea exactamente al valor reportado en la exógena.',
+      };
+    case 'minor_difference':
+      return {
+        label: 'Diferencia menor',
+        description: 'Los valores difieren por menos de un peso; probablemente sea la misma fuente.',
+      };
+    case 'possible_match':
+      return {
+        label: 'Posible coincidencia',
+        description: 'Varias señales coinciden, pero el monto no permite confirmar automáticamente.',
+      };
+    case 'ambiguous':
+      return {
+        label: 'Ambiguo: requiere elegir',
+        description: 'Dos o más registros de la exógena empatan; una persona debe elegir cuál corresponde.',
+      };
+    case 'contradiction':
+      return {
+        label: 'Contradicción',
+        description: 'La diferencia es relevante y contradice el dato documental.',
+      };
+    case 'no_match':
+    default:
+      return { label: 'Sin relación suficiente', description: 'No hay evidencia suficiente para relacionar este valor con la exógena.' };
+  }
 }

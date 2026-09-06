@@ -210,6 +210,19 @@ async function selectView(page: import('@playwright/test').Page, name: string) {
     .click();
 }
 
+/**
+ * Sprint 2.4, Fase E: `organizacion/revision-documental` ahora muestra por
+ * defecto la revisión guiada (`EvidenceReviewPanel`); la revisión detallada
+ * histórica (`DocumentExtractionReviewPanel`, con artículos por candidato,
+ * filtros por estado, paginación y acciones masivas) queda detrás del
+ * interruptor "Ver otros datos detectados". Como el componente se
+ * desmonta al cambiar de vista, hay que reabrirlo cada vez que se regresa
+ * a esta pantalla.
+ */
+async function openAdvancedReview(page: import('@playwright/test').Page) {
+  await page.getByRole('button', { name: 'Ver otros datos detectados', exact: true }).click();
+}
+
 test('flujo guiado completo del expediente', async ({ page }, testInfo) => {
   const samplePath = makeSampleFile();
   const supportPath = makeSupportFile();
@@ -429,6 +442,7 @@ test('flujo guiado completo del expediente', async ({ page }, testInfo) => {
 
   // La lectura PDF local propone candidatos, pero solo la revisión humana crea hechos.
   await expect(page).toHaveURL(/\/organizacion\/revision-documental$/);
+  await openAdvancedReview(page);
   await expect(page.getByRole('heading', { name: 'Revisión de extracción' })).toBeVisible();
   await expect(page.getByLabel('Tipo documental propuesto')).toHaveValue('form_220');
   expect(offOriginRequests).toBe(0);
@@ -556,6 +570,7 @@ test('flujo guiado completo del expediente', async ({ page }, testInfo) => {
   await selectView(page, 'Documentos');
   await page.getByRole('button', { name: 'Archivar para auditoría' }).click();
   await selectView(page, 'Revisión de extracción');
+  await openAdvancedReview(page);
   await page.getByLabel('Estado').first().selectOption('obsolete');
   await expect(
     page
@@ -571,6 +586,7 @@ test('flujo guiado completo del expediente', async ({ page }, testInfo) => {
   await page.getByLabel(/C.mo conservar el documento/).selectOption('store_locally');
   await page.getByRole('button', { name: 'Registrar y analizar' }).click();
   await expect(page).toHaveURL(/\/organizacion\/revision-documental$/);
+  await openAdvancedReview(page);
   await expect(page.getByRole('heading', { name: 'saldos-sinteticos.pdf' })).toBeVisible();
   const balanceCandidate = page.getByRole('article', {
     name: 'Saldo al 31 de diciembre',
@@ -584,6 +600,7 @@ test('flujo guiado completo del expediente', async ({ page }, testInfo) => {
     .getByRole('button', { name: 'Archivar para auditoría' })
     .click();
   await selectView(page, 'Revisión de extracción');
+  await openAdvancedReview(page);
   for (const filter of await page.getByLabel('Estado').all()) await filter.selectOption('obsolete');
   await expect(
     page
@@ -598,6 +615,8 @@ test('flujo guiado completo del expediente', async ({ page }, testInfo) => {
   await page.getByLabel('Tipo documental').selectOption('balance_certificate');
   await page.getByLabel(/C.mo conservar el documento/).selectOption('store_locally');
   await page.getByRole('button', { name: 'Registrar y analizar' }).click();
+  await expect(page).toHaveURL(/\/organizacion\/revision-documental$/);
+  await openAdvancedReview(page);
   await expect(page.getByText('Detectados 55')).toBeVisible({ timeout: 20_000 });
   await expect(page.getByText(/Pagina 1 de 3/)).toBeVisible();
   await page.getByRole('button', { name: 'Siguiente', exact: true }).click();
@@ -627,6 +646,7 @@ test('flujo guiado completo del expediente', async ({ page }, testInfo) => {
   await passwordToggle.press('Space');
   await page.getByRole('button', { name: 'Registrar y analizar' }).click();
   await expect(page).toHaveURL(/\/organizacion\/revision-documental$/);
+  await openAdvancedReview(page);
   await expect(
     page.getByRole('heading', { name: 'escaneado-sin-texto-sintetico.pdf' }),
   ).toBeVisible();

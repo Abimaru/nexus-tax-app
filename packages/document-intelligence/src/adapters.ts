@@ -1,4 +1,9 @@
-import type { AmountCandidate, DocumentFactCandidate, DocumentKind } from '@nexus-tax/domain';
+import type {
+  AmountCandidate,
+  DocumentFactCandidate,
+  DocumentKind,
+  NumericEvidenceClassification,
+} from '@nexus-tax/domain';
 import type {
   AdapterRule,
   CandidateBuildContext,
@@ -7,6 +12,7 @@ import type {
   ExtractionResult,
   PdfReadLimits,
 } from './contracts';
+import { classifyNumericEvidence } from './evidenceClassifier';
 import { comparableText, stableDocumentId } from './normalize';
 import { MONEY_PARSER_VERSION, parseMoneyAmount } from './money';
 
@@ -378,6 +384,13 @@ interface MonetaryMatch {
   value: number;
   amount: AmountCandidate;
   index: number;
+  /**
+   * `true` cuando el clasificador de evidencia numérica no pudo confirmar
+   * con alta confianza que este valor sea un monto (rol `unknown`, §3 de
+   * `docs/EVIDENCE_MATCHING.md`). Se promueve de forma conservadora, pero
+   * `addCandidate` fuerza `status: 'requires_review'` para este caso.
+   */
+  requiresReview: boolean;
 }
 
 interface CandidateSeed {
@@ -497,7 +510,12 @@ export function extractCandidates(
         adapterVersion: selected.version,
         ruleId: seed.rule.id,
         confidence: {
-          level: selected === GENERIC_DOCUMENT_ADAPTER ? 'low' : 'medium',
+          level:
+            seed.amount.requiresReview
+              ? 'low'
+              : selected === GENERIC_DOCUMENT_ADAPTER
+                ? 'low'
+                : 'medium',
           score,
           reasons: [
             selected === GENERIC_DOCUMENT_ADAPTER
@@ -507,8 +525,19 @@ export function extractCandidates(
                 : `Regla ${seed.rule.id} del adaptador ${selected.id}.`,
           ],
         },
-        warnings: [...selected.limitations, ...amount.warnings],
-        status: selected === GENERIC_DOCUMENT_ADAPTER ? 'requires_review' : 'pending',
+        warnings: [
+          ...selected.limitations,
+          ...amount.warnings,
+          ...(seed.amount.requiresReview
+            ? [
+                'El clasificador de evidencia numérica no pudo confirmar con alta confianza que este valor sea un monto: revísalo antes de confirmarlo.',
+              ]
+            : []),
+        ],
+        status:
+          seed.amount.requiresReview || selected === GENERIC_DOCUMENT_ADAPTER
+            ? 'requires_review'
+            : 'pending',
         possibleDuplicateIds: [],
         suggestedRequirementIds: [...(context.requirementIds ?? [])],
         suggestedExogenousMatches: [],
@@ -607,7 +636,18 @@ function monetaryMatches(line: string): MonetaryMatch[] {
     const formatted = /[.,]/.test(raw);
     const terminalZero = value === 0 && line.slice(index + raw.length).trim() === '';
     if (!explicitCurrency && !formatted && Math.abs(value) < 10_000 && !terminalZero) return [];
-    return [{ raw, value, amount, index }];
+    // Sprint 2.4, Fase E.1 — promotion gate (§2-§6 de
+    // docs/EVIDENCE_MATCHING.md): un token que "parece" un monto por
+    // formato/magnitud solo se promueve a candidato monetario si el
+    // clasificador de evidencia numérica —que SÍ usa contexto léxico
+    // (NIT/cuenta/resolución/año/etc.)— confirma el rol `money`. `unknown`
+    // se promueve de forma conservadora, marcado `requiresReview`;
+    // cualquier otro rol se suprime aquí (permanece como evidencia
+    // inspeccionable vía `classifyDocumentNumericEvidence`, nunca se
+    // descarta, pero no contamina la revisión tributaria principal).
+    const classification = classifyNumericEvidence(raw, { line, index, page: null });
+    if (classification.role !== 'money' && classification.role !== 'unknown') return [];
+    return [{ raw, value, amount, index, requiresReview: classification.role === 'unknown' }];
   });
 }
 
@@ -622,6 +662,35 @@ function isExplanatoryLine(normalizedLine: string, originalLine: string): boolea
     /(?:solo el\s+\d+\s*%|es deducible|4x1000)/.test(normalizedLine) &&
     !/(?:\$|cop)/i.test(originalLine)
   );
+}
+
+/**
+ * Clasifica TODA la evidencia numérica de un documento (Sprint 2.4, Fase
+ * E, §3-§6). A diferencia de `monetaryMatches` (que decide si un token se
+ * convierte en `DocumentFactCandidate`), esta función nunca descarta un
+ * token: cada uno recibe un rol (`money` o una categoría de ruido) y se
+ * conserva como evidencia inspeccionable. El pipeline (`pipeline.ts`) usa
+ * el resultado para poblar `suppressedNumericEvidence` (acotado) y las
+ * métricas de ruido de `DocumentExtractionMetrics`.
+ */
+export function classifyDocumentNumericEvidence(
+  document: DocumentRepresentation,
+): NumericEvidenceClassification[] {
+  const results: NumericEvidenceClassification[] = [];
+  for (const page of document.pages) {
+    const lines = buildExtractionLines(page);
+    for (const line of lines) {
+      const normalized = comparableText(line);
+      if (isExplanatoryLine(normalized, line)) continue;
+      for (const match of line.matchAll(VALUE_PATTERN)) {
+        const raw = match[0];
+        const index = match.index ?? 0;
+        if (isOutlineNumber(line, raw, index)) continue;
+        results.push(classifyNumericEvidence(raw, { line, index, page: page.pageNumber }));
+      }
+    }
+  }
+  return results;
 }
 
 function isTotalLine(line: string): boolean {

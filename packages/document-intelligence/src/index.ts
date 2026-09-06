@@ -2,6 +2,7 @@ export * from './contracts';
 export * from './normalize';
 export * from './money';
 export * from './classifier';
+export * from './evidenceClassifier';
 export * from './diagnosis';
 export * from './unifiedTokens';
 export * from './comparison';
