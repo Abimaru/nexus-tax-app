@@ -2,6 +2,7 @@ import type {
   AcceptedExogenousValue,
   AcceptedSourceStatus,
   CaseAnalysis,
+  CandidateExogenousMatchStatus,
   CandidateRejectionReason,
   CaseTask,
   CaseNavigationState,
@@ -42,6 +43,7 @@ import type {
   PdfDocumentDiagnosis,
   OcrPageOutcome,
   PreliminaryReconciliation,
+  PreliminaryReconciliationStatus,
   PriorYearCarryForwardCandidate,
   PriorYearTaxReturn,
   ProcessingResult,
@@ -1773,6 +1775,135 @@ export async function reviewDocumentCandidatesBulk(
   for (const candidateId of [...new Set(candidateIds)]) {
     await reviewDocumentCandidate(candidateId, input);
   }
+}
+
+export interface ConfirmEvidenceMatchInput {
+  exogenousRecordId: string;
+  matchStatus: CandidateExogenousMatchStatus;
+  exogenousValue: number;
+  documentaryValue: number;
+  author?: string;
+  observation?: string;
+}
+
+/**
+ * Confirma una sugerencia de Guided Review (Sprint 2.4, Fase E) SIN crear
+ * un mecanismo paralelo de conciliación: envuelve, en orden, las dos
+ * llamadas que ya evitan el doble conteo —
+ * `reviewDocumentCandidate({ action: 'confirm', ... })` (crea el
+ * `DocumentFact` y marca el candidato) y `savePreliminaryReconciliation`
+ * (marca la fuente exógena aceptada como respaldada/contradicha por
+ * documento). El estado de conciliación se deriva del estado granular del
+ * matcher para no duplicar la política de redondeo/tolerancia en dos
+ * lugares (§9-§10 de docs/EVIDENCE_MATCHING.md).
+ */
+export async function confirmEvidenceMatch(
+  candidateId: string,
+  input: ConfirmEvidenceMatchInput,
+): Promise<{ fact: DocumentFact; reconciliation: PreliminaryReconciliation }> {
+  const db = getDb();
+  const candidateBefore = await db.documentCandidates.get(candidateId);
+  if (!candidateBefore) throw new Error('El candidato ya no existe.');
+  const fact = await reviewDocumentCandidate(candidateId, {
+    action: 'confirm',
+    exogenousRecordId: input.exogenousRecordId,
+    author: input.author,
+    observation: input.observation,
+  });
+  if (!fact) throw new Error('No fue posible confirmar el hecho documental.');
+  const reconciliationStatus: PreliminaryReconciliationStatus =
+    input.matchStatus === 'exact_match' || input.matchStatus === 'rounding_match'
+      ? 'reconciled'
+      : input.matchStatus === 'minor_difference'
+        ? 'minor_difference'
+        : input.matchStatus === 'contradiction'
+          ? 'relevant_difference'
+          : 'suggested';
+  const reconciliation = await savePreliminaryReconciliation(candidateBefore.caseId, {
+    factIds: [fact.id],
+    exogenousRecordIds: [input.exogenousRecordId],
+    status: reconciliationStatus,
+    exogenousValue: input.exogenousValue,
+    documentaryValue: input.documentaryValue,
+    productId: candidateBefore.proposedProductId,
+    explanation: `Confirmado desde la revisión guiada (estado: ${input.matchStatus}).`,
+    analystDecision: input.observation || 'Confirmado desde la revisión guiada.',
+    suggestionScore: null,
+    suggestionSignals: [],
+    confirmedByHuman: true,
+    suggestionId: null,
+  });
+  return { fact, reconciliation };
+}
+
+/**
+ * Confirma en bloque solo las sugerencias marcadas como `safeForBulkConfirm`
+ * (exact_match/rounding_match sin anomalías, §27). Cada elemento sigue
+ * pasando por `confirmEvidenceMatch`, así que conserva la misma
+ * trazabilidad y la misma prevención de doble conteo que una confirmación
+ * individual: "en bloque" solo agrupa la interacción humana, nunca omite
+ * la creación del hecho ni de la conciliación.
+ */
+export async function confirmEvidenceMatchesBulk(
+  items: readonly { candidateId: string; input: ConfirmEvidenceMatchInput }[],
+): Promise<void> {
+  for (const item of items) {
+    await confirmEvidenceMatch(item.candidateId, item.input);
+  }
+}
+
+export interface CreateGuidedManualCaptureInput {
+  expectedEvidenceId: string;
+  documentId?: string | null;
+  entityId: string | null;
+  productId: string | null;
+  originalConcept: string;
+  category: TaxCategory;
+  nature: TaxNature;
+  treatment: TaxTreatment;
+  value: number;
+  currency?: string;
+  period: string;
+  pageOrSection?: string;
+  evidence: string;
+  author?: string;
+}
+
+/**
+ * Captura manual guiada (Sprint 2.4, Fase E, §19-20): variante simplificada
+ * de la captura manual existente, disparada desde una `ExpectedTaxEvidence`
+ * sin candidato aceptable. Reutiliza `saveDocumentFact` (mismo mecanismo
+ * que cualquier otro hecho) con `captureMethod: 'manual_guided'` y
+ * conserva `expectedEvidenceId` para trazabilidad hacia la expectativa de
+ * origen, sin necesidad de volver a pedir categoría/naturaleza/tratamiento
+ * en la UI (ya vienen implícitos en la expectativa).
+ */
+export async function createGuidedManualCapture(
+  caseId: string,
+  input: CreateGuidedManualCaptureInput,
+): Promise<DocumentFact> {
+  return saveDocumentFact(caseId, {
+    documentId: input.documentId ?? null,
+    entityId: input.entityId,
+    productId: input.productId,
+    originalConcept: input.originalConcept,
+    category: input.category,
+    nature: input.nature,
+    treatment: input.treatment,
+    value: input.value,
+    currency: input.currency ?? 'COP',
+    cutoffDate: null,
+    period: input.period,
+    pageOrSection: input.pageOrSection ?? 'Captura guiada',
+    evidence: input.evidence,
+    captureMethod: 'manual_guided',
+    confidence: 'medium',
+    reviewStatus: 'confirmed',
+    requirementIds: [],
+    author: input.author?.trim() || 'Analista local',
+    extractionCandidateId: null,
+    expectedEvidenceId: input.expectedEvidenceId,
+  });
 }
 
 export async function restoreDocumentCandidatesBulk(

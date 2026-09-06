@@ -459,6 +459,90 @@ export function buildCaseTasks(input: {
       updatedAt: timestamp,
     });
   }
+  // Sprint 2.4, Fase E — Guided Review: candidatos ambiguos y expectativas
+  // sin resolver. Se derivan aquí directamente (no en evidenceReview.ts)
+  // para evitar un ciclo de importación con `entityForRecord`.
+  for (const candidate of input.candidates) {
+    if (!activeDocumentIds.has(candidate.documentId)) continue;
+    if (candidate.factId) continue;
+    if (!['pending', 'requires_review'].includes(candidate.status)) continue;
+    const ambiguousMatch = candidate.suggestedExogenousMatches.find(
+      (match) => match.status === 'ambiguous',
+    );
+    if (!ambiguousMatch) continue;
+    tasks.push({
+      id: `task:evidence-ambiguous:${candidate.id}`,
+      caseId: input.caseId,
+      type: 'evidence_ambiguous_match',
+      title: `Elegir coincidencia para ${candidate.originalConcept}`,
+      explanation:
+        'Dos o más registros de la exógena podrían corresponder a este valor documental; elige cuál es en la revisión guiada.',
+      source: 'candidate',
+      stage: 'organizacion',
+      view: 'revision-documental',
+      entityId: candidate.proposedEntityId,
+      documentId: candidate.documentId,
+      requirementId: null,
+      candidateId: candidate.id,
+      reconciliationId: null,
+      matrixGroupId: null,
+      extractionSessionId: candidate.extractionSessionId,
+      profileId: null,
+      page: candidate.page,
+      priority: 'medium',
+      blocking: false,
+      status: 'pending',
+      recommendedAction: 'Elegir el registro correcto en la revisión guiada',
+      ruleId: 'case-task.evidence-ambiguous-match.v1',
+      evidence: ambiguousMatch.reasons,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+  }
+  const coveredExogenousRecordIds = new Set(
+    input.reconciliations.flatMap((item) => item.exogenousRecordIds),
+  );
+  const candidateRecordCoverage = new Set(
+    input.candidates.flatMap((candidate) =>
+      candidate.suggestedExogenousMatches
+        .filter((match) => match.status !== 'no_match' && match.status !== 'contradiction')
+        .map((match) => match.recordId),
+    ),
+  );
+  for (const record of input.result?.normalizedRecords ?? []) {
+    if (record.reportedValue === null) continue;
+    if (coveredExogenousRecordIds.has(record.id)) continue;
+    if (candidateRecordCoverage.has(record.id)) continue;
+    const entity = entityForRecord(record, input.result!.entities);
+    tasks.push({
+      id: `task:evidence-missing:${record.id}`,
+      caseId: input.caseId,
+      type: 'evidence_missing_expected',
+      title: `Registrar soporte de ${record.conceptLabel ?? 'un concepto reportado'}`,
+      explanation:
+        'La exógena reporta este valor, pero ningún documento cargado lo respalda todavía.',
+      source: 'candidate',
+      stage: 'organizacion',
+      view: 'revision-documental',
+      entityId: entity?.id ?? null,
+      documentId: null,
+      requirementId: null,
+      candidateId: null,
+      reconciliationId: null,
+      matrixGroupId: null,
+      extractionSessionId: null,
+      profileId: null,
+      page: null,
+      priority: 'low',
+      blocking: false,
+      status: 'pending',
+      recommendedAction: 'Capturar manualmente desde la revisión guiada',
+      ruleId: 'case-task.evidence-missing-expected.v1',
+      evidence: [`Valor esperado: ${record.reportedValue.toLocaleString('es-CO')} COP`],
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+  }
   for (const requirement of input.result?.requirements ?? []) {
     if (
       input.requirementSourceDecisions?.some(
@@ -1335,7 +1419,7 @@ function normalize(value: string): string {
     .toLowerCase();
 }
 
-function entityForRecord(
+export function entityForRecord(
   record: ProcessingResult['normalizedRecords'][number],
   entities: ReportingEntity[],
 ) {
