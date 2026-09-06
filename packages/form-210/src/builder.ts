@@ -178,8 +178,8 @@ function computeFormula(number: number, get: (box: number) => number | null): nu
         ? (get(34) ?? 0) + (get(61) ?? 0) + (get(78) ?? 0)
         : null,
     92: () =>
-      get(41) !== null || get(65) !== null || get(82) !== null || get(139) !== null
-        ? (get(41) ?? 0) + (get(65) ?? 0) + (get(82) ?? 0) + (get(139) ?? 0)
+      get(41) !== null || get(65) !== null || get(82) !== null || get(139) !== null || get(141) !== null
+        ? (get(41) ?? 0) + (get(65) ?? 0) + (get(82) ?? 0) + (get(139) ?? 0) + (get(141) ?? 0)
         : null,
     93: () =>
       get(91) !== null && get(92) !== null ? safeSubtract([get(91) ?? 0, get(92) ?? 0]) : null,
@@ -861,7 +861,21 @@ export function buildForm210Draft(input: Form210BuildInput): Form210Draft {
 
   // Deducción por facturas electrónicas (art. 336-1 ET). El motor recibe la
   // base de compras calificadas que aporta el analista y aplica 1 % con
-  // tope de 240 UVT. Se cablea a la casilla 39 como una fuente adicional.
+  // tope de 240 UVT.
+  //
+  // CORRECCIÓN NORMATIVA (Sprint 2.4, Fase D): el Decreto 2231 de 2023
+  // (que sustituye el numeral 5 del art. 336 ET) establece textualmente que
+  // "la deducción de que trata el presente numeral NO SE ENCUENTRA SUJETA
+  // AL LÍMITE previsto en el numeral 3 del presente artículo" — el mismo
+  // límite del 40 %/1.340 UVT que gobierna las casillas 41/65/82. La
+  // implementación anterior (Fase B0) cableaba esta deducción a la casilla
+  // 39 (componente de 37+40), que SÍ entra al candidato "componente" del
+  // límite conjunto en la casilla 41 — violando esa exención igual que el
+  // bug ya corregido para R139 (72 UVT por dependiente) en la Fase C. Se
+  // cablea ahora, análogamente a R138/R139, como componente de R92 (fuera
+  // del límite): R140 = base de compras calificadas (informativo), R141 =
+  // deducción aplicada (componente de la fórmula 92 = 41+65+82+139+141 en
+  // `computeFormula`). R141 NUNCA se agrega a la casilla 39.
   const electronicInvoicingInput = input.electronicInvoicing;
   const electronicInvoicingDeduction =
     electronicInvoicingInput && electronicInvoicingInput.purchasesWithElectronicInvoiceCop > 0
@@ -871,18 +885,33 @@ export function buildForm210Draft(input: Form210BuildInput): Form210Draft {
             electronicInvoicingInput.purchasesWithElectronicInvoiceCop,
         })
       : null;
-  if (electronicInvoicingDeduction && electronicInvoicingDeduction.appliedDeductionCop > 0) {
-    const electronicInvoicingTrace: Form210SourceTrace = {
-      type: 'calculation',
-      sourceId: 'calc:electronic-invoicing-336-1',
-      recordId: null,
-      documentId: null,
-      factId: null,
-      label: 'Deducción por facturas electrónicas (art. 336-1 ET)',
-      value: electronicInvoicingDeduction.appliedDeductionCop,
-      evidence: electronicInvoicingDeduction.formula,
-    };
-    sourcesByBox.set(39, [...(sourcesByBox.get(39) ?? []), electronicInvoicingTrace]);
+  if (electronicInvoicingDeduction) {
+    sourcesByBox.set(140, [
+      {
+        type: 'calculation',
+        sourceId: 'calc:electronic-invoicing-336-1-base',
+        recordId: null,
+        documentId: null,
+        factId: null,
+        label: 'Valor de compras con derecho a la deducción por facturación electrónica',
+        value: electronicInvoicingDeduction.purchasesBaseCop,
+        evidence: `Base declarada por el analista (art. 336-1 ET): ${electronicInvoicingDeduction.purchasesBaseCop.toLocaleString('es-CO')} pesos.`,
+      },
+    ]);
+    if (electronicInvoicingDeduction.appliedDeductionCop > 0) {
+      sourcesByBox.set(141, [
+        {
+          type: 'calculation',
+          sourceId: 'calc:electronic-invoicing-336-1',
+          recordId: null,
+          documentId: null,
+          factId: null,
+          label: 'Deducción por facturas electrónicas (art. 336-1 ET)',
+          value: electronicInvoicingDeduction.appliedDeductionCop,
+          evidence: electronicInvoicingDeduction.formula,
+        },
+      ]);
+    }
   }
 
   // Límites individuales declarativos (Fase E): AFC/AVC/FVP (art. 126-1/126-4),

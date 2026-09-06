@@ -116,7 +116,11 @@ export const FORM_210_VALIDATION_MATRIX_2025: readonly Form210RuleValidation[] =
   }),
   row(39, 'not_implemented', {
     formulaDescription:
-      'Otras deducciones imputables (dependientes, salud prepagada, etc.) con sus topes.',
+      'Otras deducciones imputables (dependientes art. 387, salud prepagada, intereses ' +
+      'de vivienda, etc.) con sus topes. NO incluye la deducción de facturación ' +
+      'electrónica (art. 336-1 ET, casilla 141): corregido en Fase D (Sprint 2.4) porque ' +
+      'esa deducción está expresamente exenta del límite conjunto que sí afecta a esta ' +
+      'casilla vía R40→R41.',
   }),
   row(40, 'verified', {
     formulaDescription: 'Total deducciones = 38 + 39.',
@@ -342,21 +346,31 @@ export const FORM_210_VALIDATION_MATRIX_2025: readonly Form210RuleValidation[] =
   }),
   row(92, 'implemented_unverified', {
     formulaDescription:
-      'Rentas exentas y deducciones limitadas de la cédula general = 41 + 65 + 82 + 139, ' +
-      'incluida la adición por dependientes de 72 UVT (casilla 139) como componente explícito.',
-    additionalSources: ['et-art-336', 'et-art-336-num-3'],
+      'Rentas exentas y deducciones limitadas de la cédula general = 41 + 65 + 82 + 139 + 141, ' +
+      'incluida la adición por dependientes de 72 UVT (casilla 139) y la deducción por ' +
+      'facturación electrónica (casilla 141) como componentes explícitos.',
+    additionalSources: ['et-art-336', 'et-art-336-num-3', 'et-art-336-1'],
     examples: [
       {
-        description: 'Limitadas 41=10M, 65=2M, 82=3M; adición dependientes 139=3.585.528 (1 dependiente).',
-        inputs: { box41: 10_000_000, box65: 2_000_000, box82: 3_000_000, box139: 3_585_528 },
-        expected: 18_585_528,
+        description:
+          'Limitadas 41=10M, 65=2M, 82=3M; adición dependientes 139=3.585.528 (1 dependiente); ' +
+          'facturación electrónica 141=497.990 (1 % de 49.799.000, tope 240 UVT).',
+        inputs: {
+          box41: 10_000_000,
+          box65: 2_000_000,
+          box82: 3_000_000,
+          box139: 3_585_528,
+          box141: 497_990,
+        },
+        expected: 19_083_518,
       },
     ],
     notes:
       'Implementado en Fase C (Sprint 2.4): la adición de 72 UVT (art. 336 num. 3) es un ' +
       'componente explícito de esta casilla, no una resta posterior independiente. ' +
-      'Pendiente adicional (fuera de esta fase): confirmar si el 1 % de facturación ' +
-      'electrónica también debería sumarse aquí en vez de fluir por la casilla 39.',
+      'Corregido en Fase D (Sprint 2.4): el 1 % de facturación electrónica (art. 336-1 ET, ' +
+      'casilla 141) se mueve aquí desde la casilla 39 — el Decreto 2231 de 2023 lo exime ' +
+      'expresamente del límite del 40 %/1.340 UVT que sí gobierna la casilla 39 vía R40→R41.',
   }),
   row(93, 'implemented_unverified', {
     formulaDescription: 'Renta líquida ordinaria de la cédula general = 91 - 92.',
@@ -449,11 +463,32 @@ export const FORM_210_VALIDATION_MATRIX_2025: readonly Form210RuleValidation[] =
       'oficial es un componente de la casilla 92 y queda fuera del límite conjunto de ' +
       '40 %/1.340 UVT.',
   }),
-  row(140, 'not_implemented', {
-    formulaDescription: 'Casilla informativa complementaria — pendiente de verificar.',
+  row(140, 'implemented_unverified', {
+    formulaDescription:
+      'Valor de compras con derecho a la deducción por facturación electrónica (art. 336-1 ET).',
+    additionalSources: ['et-art-336-1'],
+    notes:
+      'Fase D (Sprint 2.4). Cableada informativamente desde ' +
+      '`preliminaryLiquidation.electronicInvoicingDeduction.purchasesBaseCop` (motor probado ' +
+      'en `computeElectronicInvoicingDeduction`). Es la base declarada, previa a aplicar el ' +
+      '1 % y el tope de 240 UVT.',
   }),
-  row(141, 'not_implemented', {
-    formulaDescription: 'Casilla informativa complementaria — pendiente de verificar.',
+  row(141, 'implemented_unverified', {
+    formulaDescription: 'min(1 % × compras con FE, 240 UVT) — componente de la casilla 92.',
+    additionalSources: ['et-art-336-1'],
+    examples: [
+      {
+        description: '1 % de 49.799.000 (muy por debajo del tope de 240 UVT).',
+        inputs: { box140: 49_799_000 },
+        expected: 497_990,
+      },
+    ],
+    notes:
+      'Fase D (Sprint 2.4), corrección normativa: antes cableada a la casilla 39 (Fase B0). ' +
+      'El Decreto 2231 de 2023 exime expresamente esta deducción del límite del ' +
+      '40 %/1.340 UVT, por lo que se modela como componente de R92 (análogo a R139), ' +
+      'nunca como sumando de R39/R40. Cableada informativamente desde ' +
+      '`preliminaryLiquidation.electronicInvoicingDeduction.appliedDeductionCop`.',
   }),
 ];
 

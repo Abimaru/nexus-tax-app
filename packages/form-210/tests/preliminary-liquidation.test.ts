@@ -409,7 +409,11 @@ describe('liquidación privada preliminar (Fase K)', () => {
     expect(liq.warnings.some((warning) => warning.includes('primeros'))).toBe(false);
   });
 
-  it('cablea la deducción por facturas electrónicas a la casilla 39 y a la liquidación', () => {
+  it('cablea la deducción por facturas electrónicas a las casillas 140/141 (componente de R92, Fase D)', () => {
+    // CORRECCIÓN NORMATIVA (Fase D): antes cableada a la casilla 39; el
+    // Decreto 2231 de 2023 exime esta deducción del límite del 40 %/1.340
+    // UVT que sí gobierna la casilla 39 (vía R40→R41), por lo que se mueve a
+    // ser componente de R92 (análogo a R139), nunca de R39.
     // Compras 50M → 1 % = 500.000, muy por debajo del tope 240 UVT ≈ 11.95M.
     const draft = buildForm210Draft({
       caseId: 'case-fe',
@@ -419,10 +423,18 @@ describe('liquidación privada preliminar (Fase K)', () => {
       electronicInvoicing: { purchasesWithElectronicInvoiceCop: 50_000_000 },
     });
     const box39 = draft.boxes.find((box) => box.number === 39)!;
-    expect(box39.suggestedValue).toBe(500_000);
     expect(
       box39.sources.some((source) => source.sourceId === 'calc:electronic-invoicing-336-1'),
+    ).toBe(false);
+    const box140 = draft.boxes.find((box) => box.number === 140)!;
+    expect(box140.suggestedValue).toBe(50_000_000);
+    const box141 = draft.boxes.find((box) => box.number === 141)!;
+    expect(box141.suggestedValue).toBe(500_000);
+    expect(
+      box141.sources.some((source) => source.sourceId === 'calc:electronic-invoicing-336-1'),
     ).toBe(true);
+    const box92 = draft.boxes.find((box) => box.number === 92)!;
+    expect(box92.suggestedValue).toBe(500_000);
     const liq = draft.preliminaryLiquidation!;
     expect(liq.electronicInvoicingDeduction).not.toBeNull();
     expect(liq.electronicInvoicingDeduction!.appliedDeductionCop).toBe(500_000);
@@ -443,11 +455,12 @@ describe('liquidación privada preliminar (Fase K)', () => {
     const expectedCap = Math.round(ELECTRONIC_INVOICING_ANNUAL_CAP_UVT * UVT_2025);
     expect(liq.electronicInvoicingDeduction!.appliedDeductionCop).toBe(expectedCap);
     expect(liq.electronicInvoicingDeduction!.bindingCandidate).toBe('uvt_cap');
+    const box141 = draft.boxes.find((box) => box.number === 141)!;
+    expect(box141.suggestedValue).toBe(expectedCap);
   });
 
-  it('acumula dependientes y facturas electrónicas en la casilla 39', () => {
-    // Dependiente 10 % × 60M = 6M ; compras 50M × 1 % = 500.000.
-    // Casilla 39 debería sumar ambas: 6.500.000.
+  it('dependientes (R39/R92 vía R139) y facturas electrónicas (R92 vía R141) nunca se mezclan en R39', () => {
+    // Dependiente 10 % × 60M = 6M (casilla 39) ; compras 50M × 1 % = 500.000 (casilla 141, componente de R92).
     const draft = buildForm210Draft({
       caseId: 'case-combo',
       taxYear: 2025,
@@ -457,8 +470,10 @@ describe('liquidación privada preliminar (Fase K)', () => {
       electronicInvoicing: { purchasesWithElectronicInvoiceCop: 50_000_000 },
     });
     const box39 = draft.boxes.find((box) => box.number === 39)!;
-    expect(box39.suggestedValue).toBe(6_500_000);
-    expect(box39.sources).toHaveLength(2);
+    expect(box39.suggestedValue).toBe(6_000_000);
+    expect(box39.sources).toHaveLength(1);
+    const box141 = draft.boxes.find((box) => box.number === 141)!;
+    expect(box141.suggestedValue).toBe(500_000);
   });
 
   it('aplica límites individuales declarativos (AFC, vivienda, medicina) y advierte excesos', () => {

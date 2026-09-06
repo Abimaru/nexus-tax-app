@@ -201,20 +201,24 @@ export const FORM_210_BOXES_2025: readonly Form210BoxDefinition[] = [
   },
   {
     number: 92,
-    name: 'Rentas exentas y deducciones limitadas de la cédula general (incluye adición por dependientes)',
+    name: 'Rentas exentas y deducciones limitadas de la cédula general (incluye adición por dependientes y facturación electrónica)',
     section: 'general_income_consolidation',
-    formula: '41 + 65 + 82 + 139',
-    dependencies: [41, 65, 82, 139],
+    formula: '41 + 65 + 82 + 139 + 141',
+    dependencies: [41, 65, 82, 139, 141],
     ruleComplete: true,
     implementationStatus: 'implemented_unverified',
-    legalBasisSourceIds: ['et-art-336', 'et-art-336-num-3'],
+    legalBasisSourceIds: ['et-art-336', 'et-art-336-num-3', 'et-art-336-1'],
     verificationNote:
       'Fase C (Sprint 2.4): R139 (72 UVT por dependiente, art. 336 num. 3 ET) ' +
       'se modela como COMPONENTE EXPLÍCITO de esta casilla, tal como indica el ' +
-      'instructivo (nunca como resta de R39/R41). Pendiente: confirmar si el ' +
-      '1 % de facturación electrónica (art. 336-1 ET) también debería ser ' +
-      'componente de R92 en vez de fluir por R39 (hallazgo de auditoría, ' +
-      'fuera de alcance de la Fase C — ver docs/DEPENDENTS_BENEFITS_2025.md).',
+      'instructivo (nunca como resta de R39/R41). Fase D (Sprint 2.4): R141 ' +
+      '(1 % de facturación electrónica, art. 336-1 ET) se corrige de la misma ' +
+      'forma — el Decreto 2231 de 2023 establece textualmente que esta ' +
+      'deducción "no se encuentra sujeta al límite previsto en el numeral 3" ' +
+      '(el 40 %/1.340 UVT que gobierna R41/R65/R82), por lo que NO puede ser ' +
+      'un componente de R39 (que sí entra a ese límite vía R40). Se mueve a ' +
+      'R92 como componente independiente, análogo a R139. Ver ' +
+      'docs/ELECTRONIC_INVOICE_REPORT_2025.md.',
   },
   {
     number: 93,
@@ -308,15 +312,29 @@ export const FORM_210_BOXES_2025: readonly Form210BoxDefinition[] = [
   ),
   structuralBox(
     140,
-    'Información complementaria — pendiente de verificación',
+    'Valor de compras con derecho a la deducción por facturación electrónica (art. 336-1 ET)',
     'informational',
-    'not_implemented',
+    'implemented_unverified',
+    ['et-art-336-1'],
+    'Fase D (Sprint 2.4): cableada informativamente desde ' +
+      '`preliminaryLiquidation.electronicInvoicingDeduction.purchasesBaseCop` ' +
+      '(motor probado). Es la base declarada por el analista, previa a ' +
+      'aplicar el 1 % y el tope de 240 UVT.',
   ),
   structuralBox(
     141,
-    'Información complementaria — pendiente de verificación',
+    'Deducción por facturación electrónica (1 %, art. 336-1 ET) — componente de la casilla 92',
     'informational',
-    'not_implemented',
+    'implemented_unverified',
+    ['et-art-336-1'],
+    'Fase D (Sprint 2.4), corrección normativa: antes cableada a la casilla ' +
+      '39 (Fase B0); el Decreto 2231 de 2023 (num. 5 del art. 336 ET) exime ' +
+      'expresamente esta deducción del límite del 40 %/1.340 UVT ("no se ' +
+      'encuentra sujeta al límite previsto en el numeral 3"). Se modela ahora ' +
+      'como componente de R92 (fórmula 92 = 41+65+82+139+141), análogo a R139 ' +
+      '(72 UVT por dependiente). Cableada informativamente desde ' +
+      '`preliminaryLiquidation.electronicInvoicingDeduction.appliedDeductionCop`. ' +
+      'Ver docs/ELECTRONIC_INVOICE_REPORT_2025.md.',
   ),
 ];
 
