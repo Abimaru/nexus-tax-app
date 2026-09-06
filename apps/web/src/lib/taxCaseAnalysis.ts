@@ -4,6 +4,7 @@ import type {
   CaseEntitySummary,
   CaseProgress,
   CaseTask,
+  DependentEvaluation,
   DocumentFact,
   PreliminaryReconciliation,
   PriorYearCarryForwardCandidate,
@@ -14,6 +15,7 @@ import type {
   RequirementCoverage,
   RequirementSourceDecision,
   TaxCase,
+  TaxDependent,
   UploadedDocument,
   CaseProduct,
   CaseNavigationState,
@@ -251,6 +253,9 @@ export function buildCaseTasks(input: {
   vatResponsibility: boolean | null;
   priorYearReturns?: readonly PriorYearTaxReturn[];
   carryForwardCandidates?: readonly PriorYearCarryForwardCandidate[];
+  dependents?: readonly TaxDependent[];
+  dependentEvaluations?: readonly DependentEvaluation[];
+  noDependentsDeclared?: boolean;
   now?: string;
 }): CaseTask[] {
   const timestamp = input.now ?? new Date().toISOString();
@@ -823,6 +828,277 @@ export function buildCaseTasks(input: {
           updatedAt: timestamp,
         });
       }
+    }
+  }
+
+  // --- Dependientes económicos (Sprint 2.4, Fase C) ---
+  if (!input.noDependentsDeclared) {
+    const activeDependents = (input.dependents ?? []).filter(
+      (dependent) => dependent.status === 'active',
+    );
+    const evaluationByDependent = new Map(
+      (input.dependentEvaluations ?? []).map((item) => [item.dependentId, item]),
+    );
+    for (const dependent of activeDependents) {
+      const evaluation = evaluationByDependent.get(dependent.id);
+      if (!dependent.documentNumber) {
+        tasks.push({
+          id: `task:dependent-missing-document:${dependent.id}`,
+          caseId: input.caseId,
+          type: 'dependent_missing_document',
+          title: `${dependent.fullName || 'Dependiente'}: falta el documento de identidad`,
+          explanation: 'Registra el tipo y número de documento para poder evaluar la elegibilidad.',
+          source: 'dependent',
+          stage: 'declaracion',
+          view: 'beneficios-dependientes',
+          entityId: null,
+          documentId: null,
+          requirementId: null,
+          candidateId: null,
+          reconciliationId: null,
+          matrixGroupId: null,
+          extractionSessionId: null,
+          profileId: null,
+          page: null,
+          dependentId: dependent.id,
+          priority: 'medium',
+          blocking: false,
+          status: 'pending',
+          recommendedAction: 'Completar el documento de identidad',
+          ruleId: 'case-task.dependent-missing-document.v1',
+          evidence: [],
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        });
+      }
+      if (!evaluation) continue;
+      if (
+        evaluation.status === 'requires_support' &&
+        evaluation.missingSupportTypes.includes('education_certificate')
+      ) {
+        tasks.push({
+          id: `task:dependent-missing-education:${dependent.id}`,
+          caseId: input.caseId,
+          type: 'dependent_missing_education_certificate',
+          title: `${dependent.fullName || 'Dependiente'}: falta certificado de estudios`,
+          explanation: evaluation.reasons[0] ?? 'Falta el certificado de estudios para confirmar la elegibilidad.',
+          source: 'dependent',
+          stage: 'declaracion',
+          view: 'beneficios-dependientes',
+          entityId: null,
+          documentId: null,
+          requirementId: null,
+          candidateId: null,
+          reconciliationId: null,
+          matrixGroupId: null,
+          extractionSessionId: null,
+          profileId: null,
+          page: null,
+          dependentId: dependent.id,
+          priority: 'medium',
+          blocking: false,
+          status: 'pending',
+          recommendedAction: 'Adjuntar el certificado de estudios',
+          ruleId: 'case-task.dependent-missing-education.v1',
+          evidence: [],
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        });
+      }
+      if (
+        evaluation.status === 'pending_review' &&
+        dependent.annualIncomeCop === null &&
+        dependent.disabilityOrDependencyCondition === null
+      ) {
+        tasks.push({
+          id: `task:dependent-missing-income:${dependent.id}`,
+          caseId: input.caseId,
+          type: 'dependent_missing_income_info',
+          title: `${dependent.fullName || 'Dependiente'}: falta definir ingresos o condición`,
+          explanation: evaluation.reasons[0] ?? 'Falta información para evaluar la elegibilidad.',
+          source: 'dependent',
+          stage: 'declaracion',
+          view: 'beneficios-dependientes',
+          entityId: null,
+          documentId: null,
+          requirementId: null,
+          candidateId: null,
+          reconciliationId: null,
+          matrixGroupId: null,
+          extractionSessionId: null,
+          profileId: null,
+          page: null,
+          dependentId: dependent.id,
+          priority: 'medium',
+          blocking: false,
+          status: 'pending',
+          recommendedAction: 'Indicar ingresos anuales o condición certificada',
+          ruleId: 'case-task.dependent-missing-income.v1',
+          evidence: [],
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        });
+      }
+      if (
+        evaluation.status === 'requires_support' &&
+        evaluation.missingSupportTypes.some((type) =>
+          ['medical_certificate', 'accountant_certificate', 'civil_registry'].includes(type),
+        )
+      ) {
+        tasks.push({
+          id: `task:dependent-missing-dependency-support:${dependent.id}`,
+          caseId: input.caseId,
+          type: 'dependent_missing_dependency_support',
+          title: `${dependent.fullName || 'Dependiente'}: falta soporte de dependencia`,
+          explanation: `Soportes faltantes: ${evaluation.missingSupportTypes.join(', ')}.`,
+          source: 'dependent',
+          stage: 'declaracion',
+          view: 'beneficios-dependientes',
+          entityId: null,
+          documentId: null,
+          requirementId: null,
+          candidateId: null,
+          reconciliationId: null,
+          matrixGroupId: null,
+          extractionSessionId: null,
+          profileId: null,
+          page: null,
+          dependentId: dependent.id,
+          priority: 'medium',
+          blocking: false,
+          status: 'pending',
+          recommendedAction: 'Adjuntar el soporte faltante',
+          ruleId: 'case-task.dependent-missing-dependency-support.v1',
+          evidence: [],
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        });
+      }
+      if (evaluation.status === 'not_eligible') {
+        tasks.push({
+          id: `task:dependent-not-eligible:${dependent.id}`,
+          caseId: input.caseId,
+          type: 'dependent_possibly_not_eligible',
+          title: `${dependent.fullName || 'Dependiente'}: posiblemente no elegible`,
+          explanation: evaluation.reasons[0] ?? 'La evaluación sugiere que este dependiente no cumple los requisitos.',
+          source: 'dependent',
+          stage: 'declaracion',
+          view: 'beneficios-dependientes',
+          entityId: null,
+          documentId: null,
+          requirementId: null,
+          candidateId: null,
+          reconciliationId: null,
+          matrixGroupId: null,
+          extractionSessionId: null,
+          profileId: null,
+          page: null,
+          dependentId: dependent.id,
+          priority: 'low',
+          blocking: false,
+          status: 'pending',
+          recommendedAction: 'Revisar la elegibilidad de este dependiente',
+          ruleId: 'case-task.dependent-not-eligible.v1',
+          evidence: [],
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        });
+      }
+      if (evaluation.requiresCoexistenceChoice) {
+        tasks.push({
+          id: `task:dependent-coexistence-choice:${dependent.id}`,
+          caseId: input.caseId,
+          type: 'dependent_requires_coexistence_choice',
+          title: `${dependent.fullName || 'Dependiente'}: falta elegir un beneficio`,
+          explanation: evaluation.reasons[0] ?? 'El contribuyente es independiente: elige un único beneficio para este dependiente.',
+          source: 'dependent',
+          stage: 'declaracion',
+          view: 'beneficios-dependientes',
+          entityId: null,
+          documentId: null,
+          requirementId: null,
+          candidateId: null,
+          reconciliationId: null,
+          matrixGroupId: null,
+          extractionSessionId: null,
+          profileId: null,
+          page: null,
+          dependentId: dependent.id,
+          priority: 'medium',
+          blocking: false,
+          status: 'pending',
+          recommendedAction: 'Elegir el beneficio aplicable para este dependiente',
+          ruleId: 'case-task.dependent-coexistence-choice.v1',
+          evidence: [],
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        });
+      }
+      if (evaluation.staleDueToRuleChange) {
+        tasks.push({
+          id: `task:dependent-stale-rule:${dependent.id}`,
+          caseId: input.caseId,
+          type: 'dependent_stale_rule_change',
+          title: `${dependent.fullName || 'Dependiente'}: revisar por cambio de reglas`,
+          explanation:
+            'Esta decisión fue tomada con una versión anterior de las reglas y requiere revisión.',
+          source: 'dependent',
+          stage: 'declaracion',
+          view: 'beneficios-dependientes',
+          entityId: null,
+          documentId: null,
+          requirementId: null,
+          candidateId: null,
+          reconciliationId: null,
+          matrixGroupId: null,
+          extractionSessionId: null,
+          profileId: null,
+          page: null,
+          dependentId: dependent.id,
+          priority: 'high',
+          blocking: false,
+          status: 'pending',
+          recommendedAction: 'Revisar nuevamente con las reglas vigentes',
+          ruleId: 'case-task.dependent-stale-rule.v1',
+          evidence: [],
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        });
+      }
+    }
+    const eligibleForAdditional = activeDependents.filter(
+      (dependent) => evaluationByDependent.get(dependent.id)?.candidateBenefits.includes('article_336'),
+    );
+    for (const dependent of eligibleForAdditional.slice(4)) {
+      tasks.push({
+        id: `task:dependent-exceeds-max:${dependent.id}`,
+        caseId: input.caseId,
+        type: 'dependent_exceeds_additional_max',
+        title: `${dependent.fullName || 'Dependiente'}: fuera del límite de 4 para la adición de 72 UVT`,
+        explanation:
+          'Máximo cuatro dependientes para esta adición. Se conserva el dependiente, pero no genera este beneficio adicional.',
+        source: 'dependent',
+        stage: 'declaracion',
+        view: 'beneficios-dependientes',
+        entityId: null,
+        documentId: null,
+        requirementId: null,
+        candidateId: null,
+        reconciliationId: null,
+        matrixGroupId: null,
+        extractionSessionId: null,
+        profileId: null,
+        page: null,
+        dependentId: dependent.id,
+        priority: 'low',
+        blocking: false,
+        status: 'pending',
+        recommendedAction: 'Revisar cuál dependiente conviene priorizar para este beneficio',
+        ruleId: 'case-task.dependent-exceeds-max.v1',
+        evidence: [],
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      });
     }
   }
 

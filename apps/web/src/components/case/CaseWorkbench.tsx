@@ -17,9 +17,13 @@ import { Badge } from '@nexus-tax/ui';
 import {
   deleteCase,
   enableManualCase,
+  getDependentEvaluations,
+  getDependentsCaseContext,
+  getDependentSupports,
   getPriorYearCarryForwardCandidates,
   getPriorYearReturns,
   getTaxCaseWorkspace,
+  getTaxDependents,
   markWorkflowViewCompleted,
   removeExogenousSource,
   saveCaseNavigation,
@@ -71,6 +75,7 @@ import { PreliminaryLiquidationPanel } from './PreliminaryLiquidationPanel';
 import { FilingStatesPanel } from './FilingStatesPanel';
 import { FinalReviewPanel } from './FinalReviewPanel';
 import { PriorYearReturnsPanel } from './PriorYearReturnsPanel';
+import { DependentsPanel } from './DependentsPanel';
 import { ContextualNavigation, WorkflowStepper } from './WorkflowNavigation';
 import {
   BasicCaseDataPanel,
@@ -99,6 +104,11 @@ export function CaseWorkbench({
     () => getPriorYearCarryForwardCandidates(caseId),
     [caseId],
   );
+  const taxDependents = useLiveQuery(() => getTaxDependents(caseId), [caseId]);
+  const dependentSupports = useLiveQuery(() => getDependentSupports(caseId), [caseId]);
+  const dependentEvaluations = useLiveQuery(() => getDependentEvaluations(caseId), [caseId]);
+  const dependentsCaseContext = useLiveQuery(() => getDependentsCaseContext(caseId), [caseId]);
+  const [advancedDependents, setAdvancedDependents] = useState(false);
   const taxCase = workspace?.taxCase;
   const result = workspace?.result;
   const analysis = workspace?.analysis;
@@ -169,9 +179,23 @@ export function CaseWorkbench({
         vatResponsibility: workspace?.filingInputs?.isVatResponsibleAtYearEnd ?? null,
         priorYearReturns,
         carryForwardCandidates,
+        dependents: taxDependents,
+        dependentEvaluations,
+        noDependentsDeclared: dependentsCaseContext?.noDependentsDeclared ?? false,
         now: taskTimestamp,
       }),
-    [caseId, result, analysis, workspace, priorYearReturns, carryForwardCandidates, taskTimestamp],
+    [
+      caseId,
+      result,
+      analysis,
+      workspace,
+      priorYearReturns,
+      carryForwardCandidates,
+      taxDependents,
+      dependentEvaluations,
+      dependentsCaseContext,
+      taskTimestamp,
+    ],
   );
   useEffect(() => {
     if (!workspace) return;
@@ -691,6 +715,21 @@ export function CaseWorkbench({
             carryForwardCandidates={carryForwardCandidates ?? []}
             tasks={tasks}
             focusTaskId={activeTaskId}
+          />
+        ) : null}
+        {stage === 'declaracion' && view === 'beneficios-dependientes' ? (
+          <DependentsPanel
+            caseId={caseId}
+            taxYear={taxCase.taxYear}
+            dependents={taxDependents ?? []}
+            supports={dependentSupports ?? []}
+            evaluations={dependentEvaluations ?? []}
+            caseContext={dependentsCaseContext}
+            priorYearReturns={priorYearReturns ?? []}
+            form210Draft={workspace.form210Draft}
+            tasks={tasks}
+            advanced={advancedDependents}
+            onToggleAdvanced={() => setAdvancedDependents((value) => !value)}
           />
         ) : null}
         {stage === 'declaracion' && view === 'liquidacion-preliminar' ? (
