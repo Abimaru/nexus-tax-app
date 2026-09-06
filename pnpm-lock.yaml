@@ -207,6 +207,9 @@ importers:
       '@nexus-tax/config':
         specifier: workspace:*
         version: link:../config
+      '@nexus-tax/document-intelligence':
+        specifier: workspace:*
+        version: link:../document-intelligence
       '@nexus-tax/domain':
         specifier: workspace:*
         version: link:../domain

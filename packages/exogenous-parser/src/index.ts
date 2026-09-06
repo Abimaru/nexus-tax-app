@@ -80,3 +80,16 @@ export {
   type ProcessOptions,
 } from './pipeline';
 export { toNormalizedExport, toNormalizedJson, type NormalizedExport } from './export';
+
+// Reporte DIAN de facturación electrónica (Sprint 2.4, Fase D)
+export {
+  ELECTRONIC_INVOICE_PARSER_VERSION,
+  computeElectronicInvoiceTotals,
+  detectElectronicInvoiceReport,
+  extractElectronicInvoicePurchases,
+  normalizePaymentMethod,
+  parseInvoiceAmountCell,
+  resolveCufeDuplicates,
+  type ElectronicInvoiceReportDetection,
+  type ParsedElectronicInvoiceRow,
+} from './electronicInvoiceReport';
