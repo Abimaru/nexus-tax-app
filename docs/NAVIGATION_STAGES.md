@@ -8,7 +8,7 @@
 | `extraccion`   | `inspeccion`, `estructura`, `calidad`                        |
 | `organizacion` | `resumen`, `registros`, `requisitos`, `documentos`, `hechos` |
 | `conciliacion` | `matriz`, `hallazgos`, `conciliaciones`                      |
-| `declaracion`  | `obligacion`, `calendario`, `formulario-210`, `declaraciones-anteriores`, `liquidacion-preliminar`, `estados`, `revision-final` |
+| `declaracion`  | `obligacion`, `calendario`, `formulario-210`, `declaraciones-anteriores`, `beneficios-dependientes`, `facturacion-electronica`, `liquidacion-preliminar`, `estados`, `revision-final` |
 | `exportacion`  | `estado`, `manifiesto`, `historial`                          |
 
 `WorkflowStageId`, `WorkflowViewId` y `CaseNavigationState` pertenecen a

@@ -1,24 +1,61 @@
-# Deducción por facturas electrónicas (AG 2025)
+# Deducción por facturas electrónicas — motor del 1 % (AG 2025)
 
-_Última actualización: 2026-08-07 — Fase G del Sprint 2.3.1._
+_Última actualización: 2026-09-06 — Sprint 2.4, Fase D (corrección normativa)._
+
+> Este documento cubre únicamente el motor puro del 1 % (art. 336-1 ET). El
+> reporte DIAN detallado (CUFE, notas crédito/débito, deduplicación,
+> conciliación contra Tope 5, decisiones por factura, UI) se documenta en
+> [`ELECTRONIC_INVOICE_REPORT_2025.md`](./ELECTRONIC_INVOICE_REPORT_2025.md).
 
 ## 1. Alcance
 
 `packages/aegis-rules` modela la deducción imputable a la cédula general por
 facturas electrónicas soportadas con medios de pago electrónicos, según el
 art. 336-1 del Estatuto Tributario (incorporado por el art. 61 de la
-Ley 2277 de 2022). `packages/form-210` la consume desde el builder: cablea
-la deducción calculada a la casilla 39 y la conserva en
-`preliminaryLiquidation.electronicInvoicingDeduction` con los dos candidatos
-limitantes para trazabilidad.
+Ley 2277 de 2022). `packages/form-210` la consume desde el builder.
 
 Todo es orientativo. NexusTax no verifica los requisitos legales de la
 factura (soporte electrónico, medio de pago, titularidad): esa clasificación
-la aporta el analista.
+la aporta el analista o, desde la Fase D, el reporte DIAN detallado más las
+decisiones tributarias por factura.
+
+## ⚠️ Corrección normativa (Sprint 2.4, Fase D)
+
+La implementación anterior (Fase B0/G del Sprint 2.3.1) cableaba esta
+deducción a la **casilla 39** ("Otras deducciones imputables"), que
+alimenta la casilla 40 y, de ahí, entra al candidato "componente" del
+límite conjunto del 40 %/1.340 UVT en la casilla 41 (`min(40 % × 34,
+1.340 UVT, 37 + 40)`).
+
+Esto era normativamente incorrecto. El Decreto 2231 de 2023 (que sustituye
+el numeral 5 del art. 336 ET) establece textualmente:
+
+> *"La deducción de que trata el presente numeral **no se encuentra
+> sujeta al límite previsto en el numeral 3 del presente artículo** y no
+> se tendrá en cuenta para el cálculo de la retención en la fuente, ni
+> podrá dar lugar a pérdidas."*
+
+El numeral 3 es exactamente el límite del 40 %/1.340 UVT que gobierna las
+casillas 41/65/82. Cablear la deducción a la casilla 39 la exponía a ese
+límite indirectamente (si el total de deducciones declaradas superaba el
+tope, el candidato "componente" ya no era el limitante y el 1 % podía verse
+recortado) — el mismo tipo de error ya corregido para R139 (72 UVT por
+dependiente) en la Fase C.
+
+**Corrección**: la deducción se mueve a ser **componente de la casilla 92**
+(rentas exentas y deducciones limitadas de la cédula general), análogo a
+R139, usando dos casillas informativas nuevas:
+
+- **Casilla 140**: valor de compras con derecho a la deducción (base
+  declarada, informativa).
+- **Casilla 141**: deducción aplicada (1 % con tope de 240 UVT) —
+  componente de la fórmula `92 = 41 + 65 + 82 + 139 + 141`. **Nunca** se
+  suma a la casilla 39.
 
 ## 2. Regla
 
-El art. 336-1 ET permite tomar como deducción imputable a la cédula general:
+El art. 336-1 ET permite tomar como deducción, **fuera del límite conjunto
+del 40 %/1.340 UVT**:
 
 ```
 appliedDeductionCop = min(
@@ -27,7 +64,8 @@ appliedDeductionCop = min(
 )
 ```
 
-Requisitos (validados por el analista, no por el motor):
+Requisitos (validados por el analista o por decisión tributaria por
+factura, no automáticamente por el motor):
 
 - Las compras cuentan con **factura electrónica de venta** vigente.
 - Se pagaron con **tarjeta débito, crédito o cualquier otro medio de pago
@@ -39,7 +77,9 @@ Para 2025 el tope absoluto son `240 × 49.799 = 11.951.760` pesos.
 
 ## 3. Contrato del motor
 
-`packages/aegis-rules/src/colombia/individual-income-tax/2025/electronic-invoicing.ts`:
+`packages/aegis-rules/src/colombia/individual-income-tax/2025/electronic-invoicing.ts`
+(sin cambios de Fase D — el motor de cálculo puro ya era correcto; solo su
+cableado en `form-210` estaba mal):
 
 ```ts
 export const ELECTRONIC_INVOICING_SOURCE_ID = 'et-art-336-1';
@@ -61,7 +101,7 @@ o `uvt_cap`), `formula` y `ruleSourceId`.
 Bases negativas se tratan como cero. El resultado se redondea al peso más
 cercano por candidato.
 
-## 4. Integración en el borrador del F-210
+## 4. Integración en el borrador del F-210 (corregida)
 
 `Form210BuildInput` acepta un campo opcional:
 
@@ -77,17 +117,25 @@ buildForm210Draft({
 });
 ```
 
+Desde la Fase D, `apps/web` nunca declara este valor manualmente: lo deriva
+`buildElectronicInvoicingInput` (`apps/web/src/lib/electronicInvoiceEngine.ts`)
+a partir de la base explicable del reporte DIAN
+(`ElectronicInvoiceBenefitBase.baseConsideredCop`) — ver
+`docs/ELECTRONIC_INVOICE_REPORT_2025.md` §6-7.
+
 Cuando `purchasesWithElectronicInvoiceCop > 0`, el builder ejecuta
-`computeElectronicInvoicingDeduction` y agrega una fuente de tipo
-`calculation` con `sourceId = 'calc:electronic-invoicing-336-1'` a la
-casilla 39. La deducción se suma con la de dependientes (art. 387) y con
-otras `possible_deduction` que ya alimentaran la casilla. La computación
-queda en `preliminaryLiquidation.electronicInvoicingDeduction`.
+`computeElectronicInvoicingDeduction` y cablea:
+
+- Casilla **140** ← `purchasesBaseCop` (siempre, informativa).
+- Casilla **141** ← `appliedDeductionCop` (solo si > 0; componente de R92).
+
+**Nunca** se agrega a la casilla 39. La computación completa queda en
+`preliminaryLiquidation.electronicInvoicingDeduction`.
 
 ## 5. Verificación
 
 Motor puro — `packages/aegis-rules/tests/electronic-invoicing.test.ts` (7
-fixtures):
+fixtures, sin cambios en Fase D — el motor ya era correcto):
 
 - Constantes normativas verificadas.
 - Sin compras ⇒ deducción 0.
@@ -99,32 +147,30 @@ fixtures):
 - Año no modelado ⇒ excepción.
 
 Integración F-210 — `packages/form-210/tests/preliminary-liquidation.test.ts`
-(3 fixtures nuevos):
+(reescritos en Fase D):
 
-- Cablea 1 % a la casilla 39 y a
+- Cablea 1 % a las casillas **140/141** (nunca 39) y a
   `preliminaryLiquidation.electronicInvoicingDeduction` con
   `ruleSourceId = 'et-art-336-1'`.
 - Tope 240 UVT respetado cuando el 1 % lo excede
-  (`bindingCandidate = 'uvt_cap'`).
-- Coexistencia con dependientes: casilla 39 acumula ambas deducciones
-  (2 fuentes).
+  (`bindingCandidate = 'uvt_cap'`), reflejado en la casilla 141.
+- Dependientes (art. 387, casilla 39) y facturación electrónica (casilla 92
+  vía 141) nunca se mezclan en la misma casilla.
 
-Sweep local: `pnpm -r typecheck` verde; `pnpm -r test` = 331 tests OK
-(aegis 91, form-210 31, resto sin regresiones).
+Sweep local (Fase D): `pnpm -r typecheck` verde; `pnpm -r test` = 562 tests
+OK en todo el monorepo (aegis-rules 174, form-210 89, domain 19,
+document-intelligence 90, exogenous-parser 77, web 113).
 
-## 6. Fuera de alcance
+## 6. Fuera de alcance de este documento
 
+- **El reporte DIAN detallado** (CUFE, notas crédito/débito, deduplicación,
+  conciliación contra Tope 5, decisiones por factura, doble beneficio, UI,
+  tareas) — ver `docs/ELECTRONIC_INVOICE_REPORT_2025.md`.
 - **Verificación de requisitos legales** (factura vigente, medio de pago
-  electrónico, NIT del contribuyente en la factura). La base la aporta el
-  analista ya filtrada.
-- **Cruce con la exógena** para inferir la base automáticamente. Las
-  categorías `electronic_invoicing_total` y
-  `electronic_invoicing_benefit_base` ya existen en el dominio; su
-  integración con este motor queda para una fase posterior.
+  electrónico, NIT del contribuyente en la factura) más allá de lo que el
+  reporte DIAN y las decisiones del analista ya aportan.
 - **Distribución entre cédulas** de trabajo, capital y no laboral. El
-  motor asume que la deducción se aplica a la cédula general vía casilla
-  39 (rentas de trabajo). Si el contribuyente distribuye la base entre
-  cédulas, debe recomputar manualmente.
-- **Interacción con el límite del art. 336 ET**. La deducción entra a la
-  casilla 39 → 40 y se somete al tope conjunto de rentas exentas y
-  deducciones (40 % + 1.340 UVT) ya modelado en la Fase D.
+  motor asume que la deducción se aplica a la cédula general (rentas de
+  trabajo). Si el contribuyente distribuye la base entre cédulas, debe
+  recomputar manualmente.
+

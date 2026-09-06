@@ -1,6 +1,87 @@
-# Handoff del proyecto — NexusTax (Sprint 2.4, Fase B0 + B + B1 + C)
+# Handoff del proyecto — NexusTax (Sprint 2.4, Fase B0 + B + B1 + C + D)
 
 _Última actualización: 2026-09-06._
+
+## Sprint 2.4 — Fase D (reporte DIAN de facturación electrónica)
+
+Trabaja desde `main` actualizado (verificado que contiene el merge del PR #5,
+commit `bb3387d`). Rama de trabajo local `feature/sprint-2.4-electronic-invoices`,
+creada exactamente sobre `origin/main`. **Por instrucción explícita del
+prompt de esta fase: no push, no deploy** — a diferencia de Fases C/C-revisión,
+donde sí se publicó (ver estado de Git de esas fases más abajo), esta fase
+permanece únicamente local a propósito.
+
+Ver detalle completo en
+[`docs/ELECTRONIC_INVOICE_REPORT_2025.md`](./ELECTRONIC_INVOICE_REPORT_2025.md)
+y [`docs/ELECTRONIC_INVOICING_2025.md`](./ELECTRONIC_INVOICING_2025.md).
+
+### Auditoría inicial
+
+- El motor puro del 1 % (`electronic-invoicing.ts`) ya existía y estaba probado, pero:
+  - Estaba cableado a la **casilla 39**, exponiéndolo indirectamente al límite del 40 %/1.340 UVT
+    del que el Decreto 2231 de 2023 lo exime expresamente — el mismo tipo de bug ya corregido para
+    R139 en la Fase C.
+  - `Form210BuildInput.electronicInvoicing` nunca era poblado por `rebuildForm210Draft`: una
+    capacidad huérfana, nunca invocada desde `apps/web`.
+- `analysis.matrix.electronicInvoicing` (Sprint 2.3.2) ya calculaba una estimación preliminar desde
+  la exógena (Tope 5), sin detalle por factura ni CUFE — se conserva y se usa como el lado "exógena"
+  de la conciliación, pero no reemplaza el reporte detallado.
+
+### Implementado
+
+- **Corrección normativa**: R141 (1 % de facturación electrónica) se mueve de la casilla 39 a ser
+  componente de la casilla 92 (`92 = 41 + 65 + 82 + 139 + 141`), con la casilla 140 (base,
+  informativa) y 141 (deducción aplicada) ya reservadas desde la Fase B0.
+- **Nuevo parser XLSX** (`packages/exogenous-parser/src/electronicInvoiceReport.ts`, "adaptador
+  hermano" de la exógena): detección por señales de contenido (nunca fila fija), lectura completa,
+  extracción por factura, deduplicación por CUFE, validación NC/ND, agregación de totales,
+  normalización de medios de pago.
+- **Parser monetario central reutilizado**: `@nexus-tax/document-intelligence` agregado como
+  dependencia de `exogenous-parser` (sin ciclo); reemplaza `coerceNumber` para columnas monetarias
+  del reporte de facturación electrónica.
+- **Modelo de dominio**: `ElectronicInvoiceReport`, `ElectronicInvoicePurchase`,
+  `ElectronicInvoiceBenefitBase`, `ElectronicInvoiceReconciliation`
+  (`packages/domain/src/electronicInvoice.ts`). `DOMAIN_VERSION` 0.12.0.
+- **Decisiones tributarias por factura** (doble beneficio): reutilizan `TaxResolutionDecision`
+  (`resolutionDecisions`) en vez de una tercera tabla Dexie — decisión de diseño explícita, más
+  compacta y consistente con el Centro de resolución existente.
+- **Dexie v15**: `electronicInvoiceReports`, `electronicInvoicePurchases` (aditivo).
+- **Orquestación web** (`apps/web/src/lib/electronicInvoiceEngine.ts`): parseo, agregador
+  explicable de la base del 1 % (susceptible − duplicados − rechazadas − doble beneficio),
+  conciliación contra Tope 5, construcción del input para `buildForm210Draft`.
+- **8 tipos de tarea nuevos** con `source: 'electronic_invoice'`.
+- **UI** (`ElectronicInvoicingPanel.tsx`, vista `facturacion-electronica`): carga, resumen, tabla
+  con detalle expandible, CUFE enmascarado por defecto, filtros, resolución por factura, "No usaré
+  deducción" reversible.
+
+### Pendiente explícito (no se avanzó, por decisión de alcance)
+
+- `electronic_invoice_file_not_recognized` no se persiste como tarea deep-linkeable (no hay
+  report/purchase que anclar como evidencia cuando el archivo no se reconoce); se muestra como
+  error inmediato en la UI.
+- El reporte no se asocia a la biblioteca documental general (`sourceDocumentId` queda `null`): es
+  una fuente estructurada propia.
+- Inmuebles, administración de propiedad horizontal, medicina prepagada — fuera de alcance.
+
+### Verificación ejecutada
+
+- `pnpm check:encoding`: 375 archivos, sin mojibake.
+- `pnpm -r typecheck`: limpio en todo el monorepo.
+- `pnpm -r lint`: 0 advertencias (incluida `packages/exogenous-parser/tests`, lintada
+  explícitamente aparte del script del paquete).
+- `pnpm -r test`: **562/562** tests (domain 19, aegis-rules 174, document-intelligence 90,
+  exogenous-parser 77 — incluye 29 nuevos de facturación electrónica y regresión de 227 facturas —,
+  form-210 89, web 113 — incluye 7 nuevos de repository, 1 de tareas, 4 de
+  `ElectronicInvoicingPanel`).
+- `pnpm build`: exitoso.
+- `pnpm test:e2e`: **10/10** (2 nuevos de `electronic-invoicing.spec.ts`: flujo completo y archivo
+  no reconocido), capturas desktop/móvil verificadas.
+
+### Estado de Git
+
+Rama local `feature/sprint-2.4-electronic-invoices`, creada sobre `origin/main` actualizado (commit
+`bb3387d`). **Sin push, por instrucción explícita del prompt de esta fase** — a diferencia de las
+fases anteriores (ver más abajo), donde se encontró y documentó un método de publicación viable.
 
 ## Sprint 2.4 — Fase C (beneficios de dependientes: art. 387 + art. 336 num. 3 ET)
 

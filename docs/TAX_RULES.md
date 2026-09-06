@@ -19,6 +19,15 @@ tope. Su base susceptible es una posible deduccion y subconjunto del total; el
 uno por ciento mostrado es orientativo y no confirma procedencia ni limites
 legales definitivos.
 
+Desde el Sprint 2.4 (Fase D), el reporte DIAN detallado de facturación
+electrónica (CUFE, notas crédito/débito, conciliación contra el Tope 5,
+decisiones por factura) alimenta el motor real del 1 % (art. 336-1 ET). Este
+motor es **independiente del límite conjunto del 40 %/1.340 UVT** (art. 336 ET
+numeral 3): la deducción se cablea como componente de la casilla 92, nunca de
+la casilla 39. Ver
+[`ELECTRONIC_INVOICE_REPORT_2025.md`](./ELECTRONIC_INVOICE_REPORT_2025.md) y
+[`ELECTRONIC_INVOICING_2025.md`](./ELECTRONIC_INVOICING_2025.md).
+
 Las cuentas por pagar, deudas y saldos de tarjeta son pasivos aun si la magnitud
 es positiva. Cuentas por cobrar, saldos bancarios e inversiones al cierre son
 activos. CDT/inversion efectuada y consignaciones son movimientos. Promedios

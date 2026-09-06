@@ -13,7 +13,7 @@ Solo se ejecutan fórmulas marcadas como completas: 31 = 29 − 30; 34 = 32 − 
 103 = 101 − 102; 115 = 112 − 113 − 114. Las reglas parciales se muestran como incompletas y no
 se inventan límites, rentas exentas, deducciones ni impuesto.
 
-## Casillas agregadas en Sprint 2.4 (Fase B0 + Fase C)
+## Casillas agregadas en Sprint 2.4 (Fase B0 + Fase C + Fase D)
 
 Marcadas `implementedUnverified` (no `verified`): la numeración se deriva algebraicamente de una
 fuente secundaria (Gerencie, guía de renta), no de una cita literal del instructivo DIAN.
@@ -22,7 +22,7 @@ fuente secundaria (Gerencie, guía de renta), no de una cita literal del instruc
 | ------- | ------------------------------------- | -------------------------------- |
 | 89      | Sin calcular (`requires_review`)      | `et-art-336` — hallazgo abierto: posible subcédula de honorarios no modelada |
 | 91      | 34 + 61 + 78                          | `et-art-336`                     |
-| 92      | 41 + 65 + 82 + **139**                | `et-art-336`, `et-art-336-num-3` |
+| 92      | 41 + 65 + 82 + **139** + **141**      | `et-art-336`, `et-art-336-num-3`, `et-art-336-1` |
 | 93      | 91 − 92                               | `et-art-336`                     |
 | 126     | Cableada desde `incomeTax` (art. 241) | `et-art-241`                     |
 | 127     | Cableada desde `occasionalGainsTax`   | `et-art-314`, `et-art-317`       |
@@ -31,11 +31,19 @@ fuente secundaria (Gerencie, guía de renta), no de una cita literal del instruc
 | 137     | Cableada desde `netBalanceCop` (cuando es negativo) | —                  |
 | 138     | Dependientes confirmados para la adición de 72 UVT (art. 336 num. 3 ET) | `et-art-336-num-3` |
 | 139     | 138 × 72 UVT — **componente de R92**, nunca de R39/R41 | `et-art-336-num-3` |
+| 140     | Base de compras con derecho a la deducción de facturación electrónica (informativa) | `et-art-336-1` |
+| 141     | min(1 % × 140, 240 UVT) — **componente de R92**, nunca de R39 | `et-art-336-1` |
 
 **Importante (Fase C):** R139 (72 UVT por dependiente) se modela explícitamente como componente de
 R92. Nunca se suma a R39 (deducciones imputables de trabajo) ni se resta directamente de la renta
 líquida gravable: eso mezclaría el beneficio del art. 336 num. 3 con el límite conjunto de 40 %/
 1.340 UVT del que está expresamente excluido.
+
+**Corrección normativa (Fase D):** R141 (1 % de facturación electrónica, art. 336-1 ET) estaba
+cableada a la casilla 39 desde la Fase B0. El Decreto 2231 de 2023 (numeral 5 del art. 336 ET)
+exime expresamente esta deducción del límite del 40 %/1.340 UVT que sí gobierna la casilla 39 (vía
+R40→R41) — el mismo tipo de error ya corregido para R139. Se corrige moviéndola a ser componente de
+R92, análogo a R139. Ver `docs/ELECTRONIC_INVOICE_REPORT_2025.md` y `docs/ELECTRONIC_INVOICING_2025.md`.
 
 Fuentes oficiales versionadas:
 

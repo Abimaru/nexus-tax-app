@@ -82,6 +82,16 @@ reglas: **Aegis Engine** (`packages/aegis-rules`).
 - **Borrador Formulario 210 AG 2025**: `packages/form-210` compone casillas,
   procedencia, fórmulas seguras, validaciones y una liquidación privada preliminar orientativa con
   estados separados, simulación y bundle trazable. No firma ni presenta ante la DIAN.
+- **Declaraciones anteriores** (Sprint 2.4): carga local del Formulario 210 de un año anterior,
+  verificación de identidad, comparación de evolución tributaria y arrastre de anticipo/saldo a
+  favor con confirmación humana explícita.
+- **Beneficios de dependientes económicos** (Sprint 2.4): dos motores independientes (art. 387 ET
+  y adición de 72 UVT del art. 336 num. 3 ET), evaluación de elegibilidad que nunca asume un falso
+  "no elegible" por datos incompletos, y resolución de coexistencia entre ambos beneficios.
+- **Facturación electrónica** (Sprint 2.4): reporte DIAN detallado (CUFE, notas crédito/débito,
+  deduplicación, conciliación contra el Tope 5 de la exógena) que alimenta el motor del 1 % (art.
+  336-1 ET) con una base explicable; la deducción es componente de la casilla 92, nunca de la 39
+  (fuera del límite conjunto de 40 %/1.340 UVT).
 
 ## Límites de arquitectura (no cruzar)
 
@@ -164,6 +174,9 @@ pnpm install · pnpm dev · pnpm build · pnpm lint · pnpm typecheck · pnpm te
 `EXTRACTION_FEEDBACK.md`,
 `RESOLUTION_CENTER.md`, `FORM_210_MODEL.md`, `FORM_210_RULESET_2025.md`,
 `FORM_210_TRACEABILITY.md`, `FORM_210_VALIDATION.md`,
+`PRIOR_YEAR_RETURNS.md`, `DEPENDENTS_BENEFITS_2025.md`,
+`DEPENDENTS_DEDUCTION_2025.md`, `ELECTRONIC_INVOICE_REPORT_2025.md`,
+`ELECTRONIC_INVOICING_2025.md`,
 `PROJECT_HANDOFF.md`.
 Convenciones de cambios: `COMMIT_CONVENTIONS.md`. Validacion reproducible:
 `SPRINT_2_VALIDATION.md`.

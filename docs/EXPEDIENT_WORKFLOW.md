@@ -12,7 +12,7 @@ sugerencia en una obligación legal.
 | Extracción   | Inspeccionar la hoja y confirmar su estructura | Inspección, Estructura, Calidad                    |
 | Organización | Ordenar resultados, requisitos y evidencia     | Resumen, Registros, Requisitos, Documentos, Hechos |
 | Conciliación | Contrastar topes, clasificación y soportes     | Matriz, Hallazgos, Conciliaciones                  |
-| Declaración  | Explicar obligación y preparar hoja de trabajo | Obligación, Calendario, Borrador Formulario 210, Declaraciones anteriores, Liquidación preliminar, Estados, Revisión final |
+| Declaración  | Explicar obligación y preparar hoja de trabajo | Obligación, Calendario, Borrador Formulario 210, Declaraciones anteriores, Beneficios y deducciones, Facturación electrónica, Liquidación preliminar, Estados, Revisión final |
 | Exportación  | Revisar integridad y generar el manifiesto     | Estado, Manifiesto, Historial (futuro)             |
 
 ## Progresión

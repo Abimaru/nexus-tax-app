@@ -137,6 +137,8 @@ Detalles en `docs/SECURITY_PRIVACY.md`.
 - [Declaraciones anteriores (Sprint 2.4)](docs/PRIOR_YEAR_RETURNS.md)
 - [Beneficios de dependientes: art. 387 + art. 336 num. 3 ET (Sprint 2.4, Fase C)](docs/DEPENDENTS_BENEFITS_2025.md)
 - [Deducción por dependientes — art. 387 ET](docs/DEPENDENTS_DEDUCTION_2025.md)
+- [Facturación electrónica: reporte DIAN detallado (Sprint 2.4, Fase D)](docs/ELECTRONIC_INVOICE_REPORT_2025.md)
+- [Facturación electrónica: motor del 1 % (art. 336-1 ET)](docs/ELECTRONIC_INVOICING_2025.md)
 - [Plan y cierre del Sprint 2.3.1](docs/PLAN_SPRINT_2.3.1.md)
 - [Quality gate visual](docs/UX_QUALITY_GATE.md)
 - [Guía de microcopy](docs/MICROCOPY_GUIDE.md)

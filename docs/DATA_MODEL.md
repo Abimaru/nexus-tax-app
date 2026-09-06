@@ -308,3 +308,34 @@ Ver [`PRIOR_YEAR_RETURNS.md`](./PRIOR_YEAR_RETURNS.md) para el detalle completo.
 
 Dexie v13 agrega `priorYearReturns` y `priorYearCarryForwardCandidates` de forma aditiva; ninguna
 tabla ni dato previo se modifica.
+
+## Cambios 2.4.1 (Fase C — dependientes económicos)
+
+Ver [`DEPENDENTS_BENEFITS_2025.md`](./DEPENDENTS_BENEFITS_2025.md) para el detalle completo.
+Resumen: nuevos contratos `TaxDependent`, `DependentSupport`, `DependentEvaluation`
+(`@nexus-tax/domain`); `CaseTaskType` agrega 8 tipos con `source: 'dependent'` y campo
+`dependentId`. Dexie v14 agrega `taxDependents`, `dependentSupports`, `dependentEvaluations`,
+`dependentsCaseContext` de forma aditiva.
+
+## Cambios 2.4.2 (Fase D — reporte DIAN de facturación electrónica)
+
+Ver [`ELECTRONIC_INVOICE_REPORT_2025.md`](./ELECTRONIC_INVOICE_REPORT_2025.md) para el detalle
+completo. Resumen de modelo:
+
+- Nuevos contratos `ElectronicInvoiceReport`, `ElectronicInvoicePurchase`,
+  `ElectronicInvoiceBenefitBase`, `ElectronicInvoiceReconciliation` (`@nexus-tax/domain`,
+  `packages/domain/src/electronicInvoice.ts`). Cada columna monetaria original de una factura se
+  conserva como `AmountCandidate` (parser central v2.0.0), nunca como número plano.
+- `TaxResolutionDecisionType` agrega `decide_electronic_invoice_benefit` y
+  `set_no_electronic_invoicing_benefit`; `TaxResolutionObjectType` agrega
+  `electronic_invoice_purchase` y `electronic_invoice_report` — las decisiones tributarias por
+  factura reutilizan `resolutionDecisions` en vez de una tabla nueva.
+- `CaseTaskType` agrega 8 tipos con `source: 'electronic_invoice'` y campos
+  `electronicInvoicePurchaseId`/`electronicInvoiceReportId`.
+- `WorkflowViewId` agrega `facturacion-electronica` (etapa Declaración).
+- **Corrección normativa**: la deducción del 1 % (art. 336-1 ET) se mueve de la casilla 39 a ser
+  componente de la casilla 92 (fórmula `92 = 41 + 65 + 82 + 139 + 141`), usando las casillas
+  informativas 140 (base) y 141 (deducción aplicada) ya reservadas desde la Fase B0.
+
+Dexie v15 agrega `electronicInvoiceReports` y `electronicInvoicePurchases` de forma aditiva; ninguna
+tabla ni dato previo se modifica.
