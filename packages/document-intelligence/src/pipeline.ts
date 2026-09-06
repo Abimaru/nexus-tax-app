@@ -6,6 +6,7 @@ import type {
   DocumentExtractionMetrics,
   DocumentaryRequirement,
   NormalizedExogenousRecord,
+  NumericEvidenceClassification,
   ReportingEntity,
 } from '@nexus-tax/domain';
 import type {
@@ -17,7 +18,7 @@ import type {
 import { DEFAULT_PDF_LIMITS } from './contracts';
 import { classifyDocument } from './classifier';
 import { diagnosePdfDocument } from './diagnosis';
-import { extractCandidates } from './adapters';
+import { classifyDocumentNumericEvidence, extractCandidates } from './adapters';
 import {
   suggestEntity,
   suggestExogenousMatches,
@@ -25,6 +26,9 @@ import {
   suggestRequirements,
 } from './matching';
 import { PdfReadError, readPdfText } from './reader';
+
+/** Evidencia numérica de ruido conservada por sesión, acotada (Sprint 2.4, Fase E, §6). */
+const MAX_SUPPRESSED_EVIDENCE = 200;
 
 export interface AnalyzePdfInput extends CandidateBuildContext {
   bytes: ArrayBuffer | Uint8Array;
@@ -97,11 +101,16 @@ export async function analyzePdfDocument(input: AnalyzePdfInput) {
     candidates,
     extraction.warnings,
   );
+  const numericEvidence = classifyDocumentNumericEvidence(representation);
+  const suppressedNumericEvidence = numericEvidence
+    .filter((item) => item.role !== 'money')
+    .slice(0, MAX_SUPPRESSED_EVIDENCE);
   const metrics = buildExtractionMetrics(
     representation,
     candidates,
     extraction.generatedCandidateCount,
     extraction.pendingCandidateCount,
+    numericEvidence,
   );
   return {
     representation,
@@ -111,6 +120,7 @@ export async function analyzePdfDocument(input: AnalyzePdfInput) {
     candidates,
     findings,
     metrics,
+    suppressedNumericEvidence,
   };
 }
 
@@ -119,11 +129,13 @@ function buildExtractionMetrics(
   candidates: readonly DocumentFactCandidate[],
   generated: number,
   pendingGeneration: number,
+  numericEvidence: readonly NumericEvidenceClassification[],
 ): DocumentExtractionMetrics {
   const candidatePages = new Set(candidates.map((candidate) => candidate.page));
   const sections = new Set(
     representation.pages.flatMap((page) => page.sections?.map((section) => section.label) ?? []),
   );
+  const monetaryEvidencePromoted = numericEvidence.filter((item) => item.role === 'money').length;
   return {
     pagesTotal: representation.pageCount,
     pagesProcessed: representation.pages.length,
@@ -151,6 +163,9 @@ function buildExtractionMetrics(
       page: page.pageNumber,
       count: candidates.filter((candidate) => candidate.page === page.pageNumber).length,
     })),
+    numericEvidenceDetected: numericEvidence.length,
+    monetaryEvidencePromoted,
+    numericNoiseSuppressed: numericEvidence.length - monetaryEvidencePromoted,
   };
 }
 
