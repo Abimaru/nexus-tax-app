@@ -34,6 +34,22 @@ export const CaseTaskTypeSchema = z.enum([
   'resolve_prior_year_conflict',
   /** El parser no pudo identificar una casilla requerida en la declaración anterior. */
   'resolve_prior_year_extraction_gap',
+  /** Dependiente sin documento de identidad registrado (Sprint 2.4, Fase C). */
+  'dependent_missing_document',
+  /** Falta certificado de estudios para un dependiente hijo estudiante. */
+  'dependent_missing_education_certificate',
+  /** Falta definir los ingresos anuales del dependiente para evaluar elegibilidad. */
+  'dependent_missing_income_info',
+  /** Falta soporte de dependencia económica/condición física o psicológica. */
+  'dependent_missing_dependency_support',
+  /** Un dependiente aparenta no ser elegible según la evaluación puro. */
+  'dependent_possibly_not_eligible',
+  /** El quinto dependiente (o siguiente) queda fuera del límite de la adición de 72 UVT. */
+  'dependent_exceeds_additional_max',
+  /** La elegibilidad de un dependiente quedó `stale_due_to_rule_change` tras actualizar el motor. */
+  'dependent_stale_rule_change',
+  /** El contribuyente es independiente y debe elegir un único beneficio para este dependiente. */
+  'dependent_requires_coexistence_choice',
 ]);
 export type CaseTaskType = z.infer<typeof CaseTaskTypeSchema>;
 
@@ -62,6 +78,7 @@ export const CaseTaskSchema = z.object({
     'profile',
     'system',
     'prior_year_return',
+    'dependent',
   ]),
   stage: WorkflowStageIdSchema,
   view: WorkflowViewIdSchema,
@@ -76,6 +93,8 @@ export const CaseTaskSchema = z.object({
   page: z.number().int().positive().nullable(),
   formBoxNumber: z.number().int().positive().nullable().optional(),
   resolutionDecisionId: z.string().nullable().optional(),
+  /** Dependiente concreto al que deep-linkea la tarea (Sprint 2.4, Fase C). */
+  dependentId: z.string().nullable().optional(),
   priority: z.enum(['high', 'medium', 'low']),
   blocking: z.boolean(),
   status: CaseTaskStatusSchema,
@@ -114,4 +133,4 @@ export const CaseTaskSchema = z.object({
 });
 export type CaseTask = z.infer<typeof CaseTaskSchema>;
 
-export const CASE_TASK_SCHEMA_VERSION = '2.4.0';
+export const CASE_TASK_SCHEMA_VERSION = '2.4.1';

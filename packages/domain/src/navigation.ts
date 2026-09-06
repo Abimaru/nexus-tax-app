@@ -48,6 +48,7 @@ export const WorkflowViewIdSchema = z.enum([
   'calendario',
   'formulario-210',
   'declaraciones-anteriores',
+  'beneficios-dependientes',
   'liquidacion-preliminar',
   'estados',
   'revision-final',

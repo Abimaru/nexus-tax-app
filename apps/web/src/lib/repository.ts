@@ -8,6 +8,11 @@ import type {
   CaseProduct,
   ClassificationSnapshot,
   CreateTaxCaseInput,
+  DependentEvaluation,
+  DependentPreferredBenefit,
+  DependentRelationship,
+  DependentSupport,
+  DependentSupportType,
   DocumentCapturedField,
   DocumentConfidenceLevel,
   DocumentFact,
@@ -45,6 +50,7 @@ import type {
   TaxCase,
   TaxCaseStatus,
   TaxCategory,
+  TaxDependent,
   TaxNature,
   TaxTreatment,
   TaxResolutionDecision,
@@ -72,9 +78,17 @@ import {
   automaticClassificationSnapshot,
   buildTaxMatrix,
 } from '@nexus-tax/exogenous-parser';
-import { getDb, type StoredResult } from './db';
+import { getDb, type StoredResult, type DependentsCaseContext } from './db';
 import { newId, nowIso } from './id';
 import { buildEmploymentIncomeGroup, calculateEmploymentGroupCoverage } from './taxCaseAnalysis';
+import {
+  DEPENDENTS_ENGINE_VERSION,
+  buildArticle336Input,
+  buildArticle387Input,
+  computeDependentEligibility,
+  computeDependentsCoexistence,
+  supportTypesFor,
+} from './dependentsEngine';
 
 /**
  * Repositorio de acceso a datos locales. Envuelve Dexie con operaciones de
@@ -2536,17 +2550,43 @@ function form210RecordStates(analysis?: CaseAnalysis) {
 
 export async function rebuildForm210Draft(caseId: string): Promise<Form210Draft | undefined> {
   const db = getDb();
-  const [taxCase, stored, analysis, facts, resolutions, acceptedSources, reconciliations] =
-    await Promise.all([
-      db.cases.get(caseId),
-      db.results.get(caseId),
-      db.analyses.get(caseId),
-      db.facts.where('caseId').equals(caseId).toArray(),
-      db.resolutionDecisions.where('caseId').equals(caseId).sortBy('decidedAt'),
-      db.acceptedSources.where('caseId').equals(caseId).toArray(),
-      db.reconciliations.where('caseId').equals(caseId).toArray(),
-    ]);
+  const [
+    taxCase,
+    stored,
+    analysis,
+    facts,
+    resolutions,
+    acceptedSources,
+    reconciliations,
+    dependentsCaseContext,
+    dependents,
+    dependentSupports,
+  ] = await Promise.all([
+    db.cases.get(caseId),
+    db.results.get(caseId),
+    db.analyses.get(caseId),
+    db.facts.where('caseId').equals(caseId).toArray(),
+    db.resolutionDecisions.where('caseId').equals(caseId).sortBy('decidedAt'),
+    db.acceptedSources.where('caseId').equals(caseId).toArray(),
+    db.reconciliations.where('caseId').equals(caseId).toArray(),
+    db.dependentsCaseContext.get(caseId),
+    db.taxDependents.where('caseId').equals(caseId).toArray(),
+    db.dependentSupports.where('caseId').equals(caseId).toArray(),
+  ]);
   if (!taxCase || taxCase.taxYear !== 2025) return undefined;
+  const activeDependents = dependents.filter((dependent) => dependent.status === 'active');
+  const eligibility = activeDependents.map((dependent) =>
+    computeDependentEligibility(
+      taxCase.taxYear,
+      dependent,
+      supportTypesFor(dependent.id, dependentSupports),
+    ),
+  );
+  const coexistence = computeDependentsCoexistence(
+    dependentsCaseContext?.employmentIncomeNature ?? 'unknown',
+    activeDependents,
+    eligibility,
+  );
   const draft = buildForm210Draft({
     caseId,
     taxYear: taxCase.taxYear,
@@ -2558,6 +2598,8 @@ export async function rebuildForm210Draft(caseId: string): Promise<Form210Draft 
     provisionalRecordIds: acceptedSources
       .filter((item) => ['provisionally_accepted', 'pending_support'].includes(item.status))
       .map((item) => item.exogenousRecordId),
+    dependents: buildArticle387Input(activeDependents, coexistence),
+    dependentsAdditional: buildArticle336Input(activeDependents, coexistence),
   });
   await db.form210Drafts.put(draft);
   return draft;
@@ -2919,3 +2961,260 @@ export async function getTaxEvolutionComparison(
   }
   return compareTaxEvolution(priorReturn ?? null, currentBoxValues);
 }
+
+// --- Dependientes económicos (Sprint 2.4, Fase C) ---
+//
+// `TaxDependent` conserva el dato completo; la UI aplica masking. El
+// expediente puede almacenar más de cuatro: el límite de 4 solo aplica al
+// beneficio adicional de 72 UVT dentro del motor puro, nunca aquí.
+
+export async function getTaxDependents(caseId: string): Promise<TaxDependent[]> {
+  return getDb().taxDependents.where('caseId').equals(caseId).toArray();
+}
+
+export async function getDependentSupports(caseId: string): Promise<DependentSupport[]> {
+  return getDb().dependentSupports.where('caseId').equals(caseId).toArray();
+}
+
+export async function getDependentsCaseContext(
+  caseId: string,
+): Promise<DependentsCaseContext | undefined> {
+  return getDb().dependentsCaseContext.get(caseId);
+}
+
+export async function saveDependentsCaseContext(
+  caseId: string,
+  input: {
+    employmentIncomeNature: DependentsCaseContext['employmentIncomeNature'];
+    noDependentsDeclared?: boolean;
+  },
+): Promise<DependentsCaseContext> {
+  const db = getDb();
+  const existing = await db.dependentsCaseContext.get(caseId);
+  const context: DependentsCaseContext = {
+    caseId,
+    employmentIncomeNature: input.employmentIncomeNature,
+    noDependentsDeclared: input.noDependentsDeclared ?? existing?.noDependentsDeclared ?? false,
+    updatedAt: nowIso(),
+  };
+  await db.dependentsCaseContext.put(context);
+  await rebuildForm210Draft(caseId);
+  return context;
+}
+
+/**
+ * Marca "No tengo dependientes" a nivel de expediente (Sección 29). Nunca
+ * crea dependientes ficticios; solo persiste la decisión y recalcula. Se
+ * puede revertir con `setNoDependentsDeclared(caseId, false)`.
+ */
+export async function setNoDependentsDeclared(caseId: string, value: boolean): Promise<void> {
+  const db = getDb();
+  const existing = await db.dependentsCaseContext.get(caseId);
+  await db.dependentsCaseContext.put({
+    caseId,
+    employmentIncomeNature: existing?.employmentIncomeNature ?? 'unknown',
+    noDependentsDeclared: value,
+    updatedAt: nowIso(),
+  });
+  await rebuildForm210Draft(caseId);
+}
+
+export interface SaveTaxDependentInput {
+  fullName: string;
+  documentType: TaxDependent['documentType'];
+  documentNumber: string | null;
+  relationship: DependentRelationship;
+  dateOfBirth?: string | null;
+  dependencyType: TaxDependent['dependencyType'];
+  annualIncomeCop?: number | null;
+  studentStatus: TaxDependent['studentStatus'];
+  educationalInstitution?: string | null;
+  disabilityOrDependencyCondition?: boolean | null;
+  monthsClaimed: number;
+  preferredBenefit?: DependentPreferredBenefit | null;
+  notes?: string;
+}
+
+/** Crea un dependiente. No limita el expediente a cuatro (Sección 6): el límite vive en el motor de 72 UVT. */
+export async function createTaxDependent(
+  caseId: string,
+  input: SaveTaxDependentInput,
+): Promise<TaxDependent> {
+  const db = getDb();
+  const timestamp = nowIso();
+  const dependent: TaxDependent = {
+    id: newId('dependent'),
+    caseId,
+    fullName: input.fullName.trim(),
+    documentType: input.documentType,
+    documentNumber: input.documentNumber,
+    relationship: input.relationship,
+    dateOfBirth: input.dateOfBirth ?? null,
+    dependencyType: input.dependencyType,
+    annualIncomeCop: input.annualIncomeCop ?? null,
+    studentStatus: input.studentStatus,
+    educationalInstitution: input.educationalInstitution ?? null,
+    disabilityOrDependencyCondition: input.disabilityOrDependencyCondition ?? null,
+    monthsClaimed: Math.max(0, Math.min(12, input.monthsClaimed)),
+    preferredBenefit: input.preferredBenefit ?? null,
+    notes: input.notes,
+    status: 'active',
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+  await db.taxDependents.add(dependent);
+  await recalculateDependentEvaluation(dependent.id);
+  await rebuildForm210Draft(caseId);
+  return dependent;
+}
+
+/** Edita un dependiente y recalcula en cascada (Sección 26): evaluación → art. 387/336 → R138/R139 → R92 → liquidación → tareas. */
+export async function updateTaxDependent(
+  dependentId: string,
+  changes: Partial<SaveTaxDependentInput>,
+): Promise<TaxDependent | undefined> {
+  const db = getDb();
+  const existing = await db.taxDependents.get(dependentId);
+  if (!existing) return undefined;
+  const updated: TaxDependent = {
+    ...existing,
+    ...changes,
+    monthsClaimed:
+      changes.monthsClaimed !== undefined
+        ? Math.max(0, Math.min(12, changes.monthsClaimed))
+        : existing.monthsClaimed,
+    updatedAt: nowIso(),
+  };
+  await db.taxDependents.put(updated);
+  await recalculateDependentEvaluation(dependentId);
+  await rebuildForm210Draft(existing.caseId);
+  return updated;
+}
+
+/** Archiva un dependiente (no lo elimina: conserva trazabilidad) y recalcula. */
+export async function archiveTaxDependent(dependentId: string): Promise<void> {
+  const db = getDb();
+  const existing = await db.taxDependents.get(dependentId);
+  if (!existing) return;
+  await db.taxDependents.put({ ...existing, status: 'archived', updatedAt: nowIso() });
+  await rebuildForm210Draft(existing.caseId);
+}
+
+export async function addDependentSupport(
+  dependentId: string,
+  caseId: string,
+  type: DependentSupportType,
+  documentId: string | null,
+  notes?: string,
+): Promise<DependentSupport> {
+  const db = getDb();
+  const support: DependentSupport = {
+    id: newId('dependent-support'),
+    dependentId,
+    caseId,
+    type,
+    documentId,
+    notes,
+    createdAt: nowIso(),
+  };
+  await db.dependentSupports.add(support);
+  await recalculateDependentEvaluation(dependentId);
+  await rebuildForm210Draft(caseId);
+  return support;
+}
+
+export async function removeDependentSupport(supportId: string): Promise<void> {
+  const db = getDb();
+  const support = await db.dependentSupports.get(supportId);
+  if (!support) return;
+  await db.dependentSupports.delete(supportId);
+  await recalculateDependentEvaluation(support.dependentId);
+  await rebuildForm210Draft(support.caseId);
+}
+
+/**
+ * Recalcula la evaluación de un dependiente (elegibilidad + candidatos de
+ * coexistencia) y la persiste. Si ya existía una evaluación CONFIRMADA por
+ * el analista con una versión de regla distinta, se marca
+ * `staleDueToRuleChange` en lugar de sobrescribirla silenciosamente
+ * (Sección 24): la evaluación anterior se conserva en un registro separado
+ * implícito vía `previousRuleVersion`, y el estado deja de aplicarse hasta
+ * que el analista la revise de nuevo.
+ */
+export async function recalculateDependentEvaluation(
+  dependentId: string,
+): Promise<DependentEvaluation | undefined> {
+  const db = getDb();
+  const dependent = await db.taxDependents.get(dependentId);
+  if (!dependent) return undefined;
+  const [supports, context, existing] = await Promise.all([
+    db.dependentSupports.where('dependentId').equals(dependentId).toArray(),
+    db.dependentsCaseContext.get(dependent.caseId),
+    db.dependentEvaluations.where('dependentId').equals(dependentId).first(),
+  ]);
+  const taxCase = await db.cases.get(dependent.caseId);
+  const taxYear = taxCase?.taxYear ?? 2025;
+  const eligibility = computeDependentEligibility(
+    taxYear,
+    dependent,
+    supportTypesFor(dependentId, supports),
+  );
+  const coexistence = computeDependentsCoexistence(
+    context?.employmentIncomeNature ?? 'unknown',
+    [dependent],
+    [eligibility],
+  )[0]!;
+  const timestamp = nowIso();
+  const wasConfirmed = existing?.confirmedByAnalyst ?? false;
+  const ruleChanged = existing ? existing.ruleVersion !== DEPENDENTS_ENGINE_VERSION : false;
+  const staleDueToRuleChange = wasConfirmed && ruleChanged;
+  const evaluation: DependentEvaluation = {
+    id: existing?.id ?? newId('dependent-evaluation'),
+    dependentId,
+    caseId: dependent.caseId,
+    status: staleDueToRuleChange ? existing!.status : eligibility.status,
+    reasons: staleDueToRuleChange ? [...existing!.reasons] : [...eligibility.reasons],
+    missingSupportTypes: staleDueToRuleChange
+      ? [...existing!.missingSupportTypes]
+      : [...eligibility.missingSupportTypes],
+    candidateBenefits: staleDueToRuleChange
+      ? [...existing!.candidateBenefits]
+      : [...coexistence.candidateBenefits],
+    requiresCoexistenceChoice: staleDueToRuleChange
+      ? existing!.requiresCoexistenceChoice
+      : coexistence.requiresChoice,
+    ruleVersion: staleDueToRuleChange ? existing!.ruleVersion : DEPENDENTS_ENGINE_VERSION,
+    confirmedByAnalyst: staleDueToRuleChange ? false : wasConfirmed,
+    staleDueToRuleChange,
+    previousRuleVersion: staleDueToRuleChange ? existing!.ruleVersion : (existing?.previousRuleVersion ?? null),
+    evaluatedAt: existing?.evaluatedAt ?? timestamp,
+    updatedAt: timestamp,
+  };
+  await db.dependentEvaluations.put(evaluation);
+  return evaluation;
+}
+
+export async function getDependentEvaluations(caseId: string): Promise<DependentEvaluation[]> {
+  return getDb().dependentEvaluations.where('caseId').equals(caseId).toArray();
+}
+
+/** El analista confirma la evaluación actual como decisión (deja de recalcularse silenciosamente si la regla cambia). */
+export async function confirmDependentEvaluation(dependentId: string): Promise<void> {
+  const db = getDb();
+  const evaluation = await db.dependentEvaluations.where('dependentId').equals(dependentId).first();
+  if (!evaluation) return;
+  await db.dependentEvaluations.put({ ...evaluation, confirmedByAnalyst: true, staleDueToRuleChange: false });
+}
+
+/** Revisa nuevamente una evaluación marcada `stale_due_to_rule_change`: recalcula con la versión vigente. */
+export async function reviewStaleDependentEvaluation(
+  dependentId: string,
+): Promise<DependentEvaluation | undefined> {
+  const db = getDb();
+  await db.dependentEvaluations
+    .where('dependentId')
+    .equals(dependentId)
+    .modify({ confirmedByAnalyst: false, staleDueToRuleChange: false });
+  return recalculateDependentEvaluation(dependentId);
+}
+
