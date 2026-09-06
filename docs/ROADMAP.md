@@ -1,7 +1,11 @@
 # Roadmap — NexusTax
 
-> Después de Sprint 2.3.2: ampliar corpus de regresión F-210, modelar fuentes
-> verificadas pendientes de R35–R42 y formalizar el comparativo del año anterior.
+> Sprint 2.4 (Fase B0 + Fase B + Fase B1 + Fase C) completado: esqueleto de
+> casillas del F-210, declaraciones anteriores como fuente estructurada con
+> arrastres explícitos y su integración UX completa, y los dos beneficios de
+> dependientes económicos (art. 387 y art. 336 num. 3 ET) con motores
+> independientes, elegibilidad, coexistencia, UI y E2E. Pendiente: el resto
+> del Sprint 2.4 (facturación electrónica, inmuebles, salud).
 
 ## Entregado hasta hoy ✅
 
@@ -140,3 +144,41 @@ Siguiente evolución segura: revisión normativa independiente de las reglas tod
 `implemented_unverified`, ampliación del corpus sintético y definición versionada de un año
 gravable adicional. Firma, presentación DIAN/MUISCA, sanciones automáticas, backend obligatorio e
 IA externa siguen fuera de alcance.
+
+## Sprint 2.4 — Fase B0 (esqueleto F-210) + Fase B (declaraciones anteriores) + Fase B1 (UX)
+
+Implementado: catálogo de casillas del F-210 completado estructuralmente (89, 91-93, 111, 126,
+127, 129, 133, 137-141) con estado explícito de verificación normativa; corrección documentada de
+la conclusión de Fase A sobre la casilla 92/139; nueva fuente estructurada `PriorYearTaxReturn` con
+parser de PDF que detecta el formulario, año, identidad y estado, y extrae casillas por patrón
+(verificado contra un oráculo AG2024 anonimizado); motor de arrastres de anticipo y saldo a favor
+con confirmación humana obligatoria; comparación de evolución tributaria y detector de anomalías
+de escala histórica (reutiliza el motor monetario de Sprint 2.3.2); Dexie v13. Fase B1 completa la
+integración UX: sección "Declaraciones anteriores" dentro del expediente, carga con estados
+humanos, drawer de detalle con procedencia, tarjetas de arrastre aplicables desde la UI, evolución
+tributaria con hallazgos descartables, tareas con deep-link desde Revisión final, y E2E con
+capturas desktop/móvil.
+
+Pendiente explícito de este incremento: conectar de forma nativa el input `priorYearBalance` del
+motor puro (hoy el arrastre se aplica vía ajuste genérico de casilla, una simplificación
+documentada). Ver `docs/PRIOR_YEAR_RETURNS.md`.
+
+## Sprint 2.4 — Fase C (dependientes económicos: art. 387 + art. 336 num. 3 ET)
+
+Implementado: corrección de un bug real en el motor del art. 387 ET (el tope de 384 UVT/año era
+agregado para el contribuyente, no se multiplica por dependiente); nuevo motor independiente para
+la adición de 72 UVT por dependiente del art. 336 num. 3 ET (máx. 4, nunca sujeto al tope 40 %/
+1.340 UVT); evaluador de elegibilidad por categoría de parentesco que nunca fuerza un falso
+`not_eligible` con datos incompletos; resolutor de coexistencia (Decreto 1625/2231-2023) que
+decide si ambos beneficios aplican simultáneamente según la naturaleza del ingreso laboral;
+casillas 91-93 y 138-139 del F-210 cableadas (`implemented_unverified`); dominio `TaxDependent`/
+`DependentSupport`/`DependentEvaluation`; Dexie v14; 8 tipos de tarea nuevos; UI
+`beneficios-dependientes` con selector de naturaleza de ingresos y tarjetas de dependiente; E2E con
+capturas desktop/móvil. Ver `docs/DEPENDENTS_BENEFITS_2025.md`.
+
+Pendiente explícito de este incremento: adjuntar un documento de la biblioteca como soporte de un
+dependiente desde la UI (campo estructural listo, acción pendiente); el 1 % de facturación
+electrónica como posible componente de R92 (hallazgo señalado, no aplicado); casilla 89 (subcédula
+de honorarios, hallazgo abierto de Fase B0). El resto del Sprint 2.4 (facturación electrónica DIAN,
+inmuebles, administración de propiedad horizontal, medicina prepagada) no se inició: queda para
+incrementos siguientes con revisión intermedia.

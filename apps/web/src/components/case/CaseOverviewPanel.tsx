@@ -18,6 +18,7 @@ export function CaseOverviewPanel({
   analysis,
   progress,
   vatResponsibility,
+  priorYearReturns,
   onNavigate,
   onExport,
   onDelete,
@@ -28,6 +29,7 @@ export function CaseOverviewPanel({
   analysis?: CaseAnalysis;
   progress: CaseProgress;
   vatResponsibility: boolean | null;
+  priorYearReturns?: readonly { taxYear: number; isCurrentVersion: boolean }[];
   onNavigate: (section: 'documentos' | 'hechos' | 'requisitos' | 'matriz' | 'hallazgos') => void;
   onExport: () => void;
   onDelete: () => void;
@@ -91,6 +93,14 @@ export function CaseOverviewPanel({
           />
           <OverviewStat label="Documentos" value={progress.documentCount} />
           <OverviewStat label="Hallazgos abiertos" value={progress.openFindings} />
+          <OverviewStat
+            label="Declaración anterior"
+            value={
+              priorYearReturns?.some((item) => item.isCurrentVersion)
+                ? `AG ${Math.max(...priorYearReturns.filter((item) => item.isCurrentVersion).map((item) => item.taxYear))} ✓`
+                : 'No cargada'
+            }
+          />
         </div>
       </GlassPanel>
 

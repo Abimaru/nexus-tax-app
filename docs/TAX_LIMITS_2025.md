@@ -65,6 +65,19 @@ const result = applyLimitRule(rule, { 34: 60_000_000, 37: 20_000_000, 40: 10_000
 // }
 ```
 
+## Topes relacionados con dependientes (Sprint 2.4, Fase C)
+
+Estos topes viven en motores separados (`dependents.ts` y
+`dependents-additional-336.ts`, no en `tax-limits.ts`) porque cada uno tiene
+mecánica propia; se listan aquí para tener el panorama completo de límites
+del año gravable 2025. Ver `docs/DEPENDENTS_BENEFITS_2025.md` para el detalle.
+
+| Id                     | Artículo            | Tope                                   | ¿Sujeto al 40 %/1.340 UVT? |
+| ----------------------- | -------------------- | --------------------------------------- | --------------------------- |
+| `et-art-387`            | Art. 387 ET          | 10 % ingresos, **384 UVT/año total** (no por dependiente, corregido en Fase C) | Sí (vía casilla 39→41) |
+| `et-art-336-num-3`      | Art. 336 num. 3 ET   | **72 UVT × dependiente**, máx. 4        | **No** — expresamente excluido |
+| Umbral de ingreso bajo  | Art. 387 par. 2 ET   | < **260 UVT anuales** (cónyuge/padres/hermanos) | — (elegibilidad, no deducción) |
+
 ## Reglas para actualizar
 
 1. El porcentaje (40 %) y el tope (1.340 UVT) se toman literalmente del art.

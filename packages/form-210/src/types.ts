@@ -8,6 +8,8 @@ import type {
 import type {
   AdvancePaymentComputation,
   DependentDeclaration,
+  DependentsAdditionalDeductionCandidate,
+  DependentsAdditionalDeductionComputation,
   DependentsDeductionComputation,
   ElectronicInvoicingDeductionComputation,
   IndividualDeductionLimitComputation,
@@ -27,7 +29,28 @@ export type Form210Section =
   | 'pensions'
   | 'dividends'
   | 'occasional_gains'
-  | 'private_settlement';
+  | 'private_settlement'
+  /**
+   * Consolidación entre subcédulas de la cédula general (casillas 89, 91-93)
+   * y base conjunta del art. 241 ET (casilla 111). Se separa de
+   * `employment_income`/`capital_income`/`non_labor_income` porque estas
+   * casillas combinan las tres subcédulas y no pertenecen a ninguna en
+   * particular (Fase B0, Sprint 2.4).
+   */
+  | 'general_income_consolidation'
+  /**
+   * Liquidación del impuesto propiamente dicho (impuesto de renta,
+   * impuesto de ganancias ocasionales y total a cargo). Se distingue de
+   * `private_settlement` (anticipo/saldo/retenciones, que son créditos
+   * contra el impuesto) porque estas casillas SON el impuesto (Fase B0).
+   */
+  | 'tax_settlement'
+  /**
+   * Casillas informativas que no participan directamente de la
+   * liquidación (p. ej. número de dependientes) o cuyo rol normativo
+   * todavía no se ha verificado contra el instructivo oficial (Fase B0).
+   */
+  | 'informational';
 
 export type Form210BoxStatus =
   | 'no_data'
@@ -89,6 +112,21 @@ export interface Form210BoxDefinition {
   formula: string | null;
   dependencies: number[];
   ruleComplete: boolean;
+  /**
+   * Estado de verificación normativa de la casilla (Fase B0, Sprint 2.4).
+   * Opcional y retrocompatible: las casillas históricas no lo declaran
+   * explícitamente y se derivan de `ruleComplete` (`verified` si
+   * `ruleComplete`, `implemented_unverified` en otro caso) por
+   * `deriveBoxImplementationStatus` en `ruleset-2025.ts`. Las casillas
+   * nuevas SÍ lo declaran para poder existir en el catálogo sin tener una
+   * fórmula calculada todavía (`not_implemented`) o con una numeración de
+   * casilla oficial aún no confirmada contra el instructivo (`requires_review`).
+   */
+  implementationStatus?: Form210RuleValidationStatus;
+  /** Ids de `OFFICIAL_SOURCES_2025` que respaldan esta casilla, si existen. */
+  legalBasisSourceIds?: readonly string[];
+  /** Nota breve sobre el estado de verificación, visible en modo avanzado. */
+  verificationNote?: string;
 }
 
 export interface Form210BoxValue extends Form210BoxDefinition {
@@ -243,6 +281,15 @@ export interface Form210PreliminaryLiquidation {
   dependentsDeduction: DependentsDeductionComputation | null;
 
   /**
+   * Adición por dependientes (72 UVT, art. 336 num. 3 ET). `null` cuando el
+   * analista no aporta candidatos. El importe se cablea como componente
+   * explícito de la casilla 92 (nunca de la 39/41) y se conserva aquí con
+   * los excluidos y advertencias para trazabilidad. Independiente y sin
+   * fusionar con `dependentsDeduction` (art. 387).
+   */
+  dependentsAdditionalDeduction: DependentsAdditionalDeductionComputation | null;
+
+  /**
    * Deducción por facturas electrónicas (art. 336-1 ET, Ley 2277 de 2022).
    * `null` cuando el analista no aporta la base de compras con factura
    * electrónica. El importe se cablea a la casilla 39 y se conserva aquí
@@ -381,6 +428,14 @@ export interface Form210BuildInput {
    * casilla 39 del borrador y la expone en `preliminaryLiquidation`.
    */
   dependents?: readonly DependentDeclaration[];
+  /**
+   * Candidatos ya resueltos (elegibilidad + coexistencia, ver
+   * `@nexus-tax/aegis-rules` `resolveDependentBenefitCoexistence`) para el
+   * beneficio adicional de 72 UVT (art. 336 num. 3 ET). El motor aplica el
+   * tope de cuatro, cablea R138/R139 y el componente de R92, y NUNCA lo
+   * suma a R39/R41. Independiente del campo `dependents` (art. 387).
+   */
+  dependentsAdditional?: readonly DependentsAdditionalDeductionCandidate[];
   /**
    * Base de compras soportadas con factura electrónica y medio de pago
    * electrónico calificado (art. 336-1 ET). El motor aplica 1 % con tope de

@@ -7,6 +7,8 @@ import type {
   AcceptedExogenousValue,
   CaseNavigationState,
   CaseProduct,
+  DependentEvaluation,
+  DependentSupport,
   DocumentFact,
   DocumentFactCandidate,
   DocumentExtractionSession,
@@ -14,10 +16,13 @@ import type {
   EmploymentIncomeGroup,
   ExtractionFeedback,
   PreliminaryReconciliation,
+  PriorYearCarryForwardCandidate,
+  PriorYearTaxReturn,
   ProcessingResult,
   RequirementCoverage,
   RequirementSourceDecision,
   TaxCase,
+  TaxDependent,
   UploadedDocument,
   TaxResolutionDecision,
 } from '@nexus-tax/domain';
@@ -55,6 +60,20 @@ export interface StoredDocumentBlob {
   storedAt: string;
 }
 
+/**
+ * Contexto del expediente para el beneficio de dependientes (Sprint 2.4,
+ * Fase C). `employmentIncomeNature` es un hecho humano (nunca inferido) que
+ * alimenta `resolveDependentBenefitCoexistence`. `noDependentsDeclared` es
+ * la decisión explícita "No tengo dependientes": cierra tareas y deja
+ * R138/R139 en un estado coherente sin crear dependientes ficticios.
+ */
+export interface DependentsCaseContext {
+  caseId: string;
+  employmentIncomeNature: 'labor_relation' | 'independent' | 'unknown';
+  noDependentsDeclared: boolean;
+  updatedAt: string;
+}
+
 class NexusTaxDatabase extends Dexie {
   cases!: Table<TaxCase, string>;
   documents!: Table<UploadedDocument, string>;
@@ -77,6 +96,12 @@ class NexusTaxDatabase extends Dexie {
   extractionFeedback!: Table<ExtractionFeedback, string>;
   resolutionDecisions!: Table<TaxResolutionDecision, string>;
   form210Drafts!: Table<Form210Draft, string>;
+  priorYearReturns!: Table<PriorYearTaxReturn, string>;
+  priorYearCarryForwardCandidates!: Table<PriorYearCarryForwardCandidate, string>;
+  taxDependents!: Table<TaxDependent, string>;
+  dependentSupports!: Table<DependentSupport, string>;
+  dependentEvaluations!: Table<DependentEvaluation, string>;
+  dependentsCaseContext!: Table<DependentsCaseContext, string>;
 
   constructor() {
     super('nexustax');
@@ -296,6 +321,74 @@ class NexusTaxDatabase extends Dexie {
               typeof candidate.extractedValue === 'number' ? candidate.extractedValue : null;
           });
       });
+    // Sprint 2.4 (Fase B): declaraciones de años anteriores como fuente
+    // estructurada independiente y sus candidatos de arrastre (art. 807 y
+    // 850 ET). Ninguna tabla ni dato previo se modifica; solo se agregan
+    // dos tablas nuevas.
+    this.version(13).stores({
+      cases: 'id, updatedAt, taxYear, status',
+      documents: 'id, caseId, uploadedAt, sha256, status, kind, *entityIds',
+      results: 'caseId, updatedAt',
+      filingInputs: 'caseId, updatedAt',
+      analyses: 'caseId, updatedAt, ruleVersion',
+      documentBlobs: 'documentId, caseId, storedAt',
+      products: 'id, caseId, entityId, type, status',
+      coverages: 'id, caseId, requirementId, documentId, factId, entityId, status',
+      facts: 'id, caseId, documentId, entityId, productId, category, reviewStatus, updatedAt',
+      reconciliations: 'id, caseId, status, *factIds, *exogenousRecordIds, updatedAt',
+      employmentGroups: 'id, caseId, coverage, updatedAt',
+      navigationStates: 'caseId, lastStage, recommendedStage, updatedAt',
+      acceptedSources: 'id, caseId, exogenousRecordId, requirementId, status, updatedAt',
+      requirementSourceDecisions: 'id, caseId, requirementId, status, updatedAt',
+      extractionSessions: 'id, caseId, documentId, status, updatedAt',
+      documentCandidates:
+        'id, caseId, documentId, extractionSessionId, status, moneyParserVersion, updatedAt',
+      caseTasks: 'id, caseId, status, priority, stage, type, updatedAt',
+      documentProfiles: 'id, documentKind, status, updatedAt',
+      extractionFeedback:
+        'id, documentId, extractionSessionId, candidateId, applicability, createdAt',
+      resolutionDecisions: 'id, caseId, objectType, objectId, type, decidedAt',
+      form210Drafts: 'id, caseId, taxYear, generatedAt',
+      priorYearReturns: 'id, caseId, taxYear, status, identityMatch, isCurrentVersion, updatedAt',
+      priorYearCarryForwardCandidates:
+        'id, caseId, priorYearReturnId, sourceBoxNumber, targetBoxNumber, decision, updatedAt',
+    });
+    // Sprint 2.4 (Fase C): dependientes económicos, sus soportes y
+    // evaluaciones de elegibilidad/coexistencia, y el contexto del
+    // expediente (naturaleza de la renta de trabajo, "no tengo
+    // dependientes"). Aditivo; ninguna tabla previa se modifica.
+    this.version(14).stores({
+      cases: 'id, updatedAt, taxYear, status',
+      documents: 'id, caseId, uploadedAt, sha256, status, kind, *entityIds',
+      results: 'caseId, updatedAt',
+      filingInputs: 'caseId, updatedAt',
+      analyses: 'caseId, updatedAt, ruleVersion',
+      documentBlobs: 'documentId, caseId, storedAt',
+      products: 'id, caseId, entityId, type, status',
+      coverages: 'id, caseId, requirementId, documentId, factId, entityId, status',
+      facts: 'id, caseId, documentId, entityId, productId, category, reviewStatus, updatedAt',
+      reconciliations: 'id, caseId, status, *factIds, *exogenousRecordIds, updatedAt',
+      employmentGroups: 'id, caseId, coverage, updatedAt',
+      navigationStates: 'caseId, lastStage, recommendedStage, updatedAt',
+      acceptedSources: 'id, caseId, exogenousRecordId, requirementId, status, updatedAt',
+      requirementSourceDecisions: 'id, caseId, requirementId, status, updatedAt',
+      extractionSessions: 'id, caseId, documentId, status, updatedAt',
+      documentCandidates:
+        'id, caseId, documentId, extractionSessionId, status, moneyParserVersion, updatedAt',
+      caseTasks: 'id, caseId, status, priority, stage, type, updatedAt',
+      documentProfiles: 'id, documentKind, status, updatedAt',
+      extractionFeedback:
+        'id, documentId, extractionSessionId, candidateId, applicability, createdAt',
+      resolutionDecisions: 'id, caseId, objectType, objectId, type, decidedAt',
+      form210Drafts: 'id, caseId, taxYear, generatedAt',
+      priorYearReturns: 'id, caseId, taxYear, status, identityMatch, isCurrentVersion, updatedAt',
+      priorYearCarryForwardCandidates:
+        'id, caseId, priorYearReturnId, sourceBoxNumber, targetBoxNumber, decision, updatedAt',
+      taxDependents: 'id, caseId, status, relationship, updatedAt',
+      dependentSupports: 'id, caseId, dependentId, type, createdAt',
+      dependentEvaluations: 'id, caseId, dependentId, status, staleDueToRuleChange, evaluatedAt',
+      dependentsCaseContext: 'caseId, updatedAt',
+    });
   }
 }
 

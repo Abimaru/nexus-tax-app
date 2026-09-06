@@ -123,6 +123,9 @@ Cada componente del resultado expone la fuente que lo respalda:
 - `occasionalGainsTax.ruleSourceIds` → subconjunto de `['et-art-314', 'et-art-317']`.
 - `nextYearAdvance.ruleSourceId` → `'et-art-807'`.
 - `dependentsDeduction.ruleSourceId` → `'et-art-387'`.
+- `dependentsAdditionalDeduction.ruleSourceId` → `'et-art-336-num-3'` (Sprint 2.4,
+  Fase C — componente de la casilla 92, nunca de la 39/41; ver
+  `docs/DEPENDENTS_BENEFITS_2025.md`).
 - `electronicInvoicingDeduction.ruleSourceId` → `'et-art-336-1'`.
 - `individualDeductionLimits[].ruleSourceIds` → subconjunto de
   `['et-art-126-1', 'et-art-126-4', 'et-art-119', 'et-art-387']`.

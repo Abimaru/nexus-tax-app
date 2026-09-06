@@ -26,7 +26,43 @@ const box = (
   formula: string | null = null,
   dependencies: number[] = [],
   ruleComplete = false,
-): Form210BoxDefinition => ({ number, name, section, formula, dependencies, ruleComplete });
+): Form210BoxDefinition => ({
+  number,
+  name,
+  section,
+  formula,
+  dependencies,
+  ruleComplete,
+  implementationStatus: ruleComplete ? 'verified' : 'implemented_unverified',
+});
+
+/**
+ * Casilla estructural (Fase B0, Sprint 2.4): existe en el catálogo para que
+ * el Formulario 210 se pueda representar completo, pero su fórmula NO se
+ * implementa hasta confirmarse contra el instructivo oficial. `formula`
+ * siempre es `null` y `ruleComplete` siempre `false` — nunca se calcula
+ * automáticamente ni se cablea en `builder.ts` salvo que `verificationNote`
+ * documente explícitamente una fuente de valor ya calculada por otro motor
+ * (p. ej. la casilla 133 usa `nextYearAdvance`, ya probado en `aegis-rules`).
+ */
+const structuralBox = (
+  number: number,
+  name: string,
+  section: Form210BoxDefinition['section'],
+  implementationStatus: Form210BoxDefinition['implementationStatus'],
+  legalBasisSourceIds: readonly string[] = [],
+  verificationNote?: string,
+): Form210BoxDefinition => ({
+  number,
+  name,
+  section,
+  formula: null,
+  dependencies: [],
+  ruleComplete: false,
+  implementationStatus,
+  legalBasisSourceIds,
+  verificationNote,
+});
 
 export const FORM_210_BOXES_2025: readonly Form210BoxDefinition[] = [
   box(29, 'Patrimonio bruto', 'patrimony', 'Suma de activos al cierre', [], true),
@@ -126,6 +162,162 @@ export const FORM_210_BOXES_2025: readonly Form210BoxDefinition[] = [
   box(130, 'Anticipo de renta liquidado el año anterior', 'private_settlement'),
   box(131, 'Saldo a favor del año anterior sin devolución o compensación', 'private_settlement'),
   box(132, 'Retenciones del año gravable', 'private_settlement', null, [], true),
+
+  // --- Casillas estructurales agregadas en Fase B0 (Sprint 2.4) ---
+  //
+  // Completan el esqueleto del F-210 para las secciones de consolidación de
+  // la cédula general y liquidación del impuesto. NINGUNA fórmula se marca
+  // `verified`: se documentó en la auditoría de Fase A/B0 que no hay acceso
+  // directo y fiable al instructivo oficial DIAN para confirmar la posición
+  // exacta de cada casilla, por lo que solo se representa la ESTRUCTURA
+  // (número, sección, estado) y — donde ya existe un motor probado que
+  // calcula el valor subyacente — se cablea informativamente en
+  // `builder.ts` sin alterar ninguna casilla ya verificada.
+  structuralBox(
+    89,
+    'Renta líquida gravable — cédula general (consolidación de subcédulas)',
+    'general_income_consolidation',
+    'requires_review',
+    ['et-art-336'],
+    'Hallazgo Fase B0: la suma 42+61 no reproduce el valor esperado en ' +
+      'los fixtures de referencia; hay evidencia de una subcédula de ' +
+      '"rentas de trabajo sin relación laboral" (honorarios/servicios, ' +
+      'aprox. casillas 43-57) que el motor actual no modela. No se calcula ' +
+      'automáticamente hasta confirmar la fórmula con el instructivo oficial.',
+  ),
+  {
+    number: 91,
+    name: 'Renta líquida cédula general antes de beneficios del art. 336 ET',
+    section: 'general_income_consolidation',
+    formula: '34 + 61 + 78',
+    dependencies: [34, 61, 78],
+    ruleComplete: true,
+    implementationStatus: 'implemented_unverified',
+    legalBasisSourceIds: ['et-art-336'],
+    verificationNote:
+      'Fase C (Sprint 2.4): derivada algebraicamente de la mecánica R91→R92→R93 ' +
+      'descrita por fuentes secundarias (Gerencie); no es una cita literal del ' +
+      'instructivo DIAN, por eso permanece `implemented_unverified`.',
+  },
+  {
+    number: 92,
+    name: 'Rentas exentas y deducciones limitadas de la cédula general (incluye adición por dependientes)',
+    section: 'general_income_consolidation',
+    formula: '41 + 65 + 82 + 139',
+    dependencies: [41, 65, 82, 139],
+    ruleComplete: true,
+    implementationStatus: 'implemented_unverified',
+    legalBasisSourceIds: ['et-art-336', 'et-art-336-num-3'],
+    verificationNote:
+      'Fase C (Sprint 2.4): R139 (72 UVT por dependiente, art. 336 num. 3 ET) ' +
+      'se modela como COMPONENTE EXPLÍCITO de esta casilla, tal como indica el ' +
+      'instructivo (nunca como resta de R39/R41). Pendiente: confirmar si el ' +
+      '1 % de facturación electrónica (art. 336-1 ET) también debería ser ' +
+      'componente de R92 en vez de fluir por R39 (hallazgo de auditoría, ' +
+      'fuera de alcance de la Fase C — ver docs/DEPENDENTS_BENEFITS_2025.md).',
+  },
+  {
+    number: 93,
+    name: 'Renta líquida ordinaria de la cédula general',
+    section: 'general_income_consolidation',
+    formula: '91 - 92',
+    dependencies: [91, 92],
+    ruleComplete: true,
+    implementationStatus: 'implemented_unverified',
+    legalBasisSourceIds: ['et-art-336'],
+  },
+  structuralBox(
+    111,
+    'Base gravable conjunta para la tarifa del art. 241 ET (cédula general + pensiones + dividendos)',
+    'general_income_consolidation',
+    'not_implemented',
+    ['et-art-241'],
+  ),
+  structuralBox(
+    126,
+    'Impuesto de renta líquida gravable',
+    'tax_settlement',
+    'implemented_unverified',
+    ['et-art-241'],
+    'Cableada informativamente desde `preliminaryLiquidation.incomeTax` ' +
+      '(motor ya probado). La NUMERACIÓN oficial de esta casilla no está ' +
+      'confirmada contra el instructivo DIAN 2025.',
+  ),
+  structuralBox(
+    127,
+    'Impuesto de ganancias ocasionales',
+    'tax_settlement',
+    'requires_review',
+    ['et-art-314', 'et-art-317'],
+    'Cableada informativamente desde `preliminaryLiquidation.occasionalGainsTax` ' +
+      'cuando existe base gravable. Posición 127 evidenciada solo por un ' +
+      'fixture anterior (Sprint 2.3.2), sin segunda fuente independiente.',
+  ),
+  structuralBox(
+    129,
+    'Total impuesto a cargo (renta + ganancias ocasionales)',
+    'tax_settlement',
+    'implemented_unverified',
+    ['et-art-241', 'et-art-314'],
+    'Cableada informativamente desde `preliminaryLiquidation.totalTaxDueCop` ' +
+      '(motor ya probado). La NUMERACIÓN oficial no está confirmada.',
+  ),
+  structuralBox(
+    133,
+    'Anticipo de renta por el año gravable siguiente',
+    'private_settlement',
+    'implemented_unverified',
+    ['et-art-807'],
+    'Cableada informativamente desde `preliminaryLiquidation.nextYearAdvance` ' +
+      '(motor ya probado, `computeAdvancePayment`). Este es el valor que la ' +
+      'Fase B usa como candidato de arrastre hacia la casilla 130 del año ' +
+      'siguiente (adenda Sprint 2.4, punto 13).',
+  ),
+  structuralBox(
+    137,
+    'Saldo a favor',
+    'private_settlement',
+    'implemented_unverified',
+    [],
+    'Cableada informativamente desde `preliminaryLiquidation.netBalanceCop` ' +
+      '(motor ya probado) cuando el saldo neto es negativo. Este es el ' +
+      'valor que la Fase B usa como candidato de arrastre hacia la casilla ' +
+      '131 del año siguiente (adenda Sprint 2.4, punto 13).',
+  ),
+  structuralBox(
+    138,
+    'Número de dependientes económicos (adición 72 UVT, art. 336 ET)',
+    'informational',
+    'implemented_unverified',
+    ['et-art-336-num-3'],
+    'Fase C (Sprint 2.4): cableada informativamente desde ' +
+      '`preliminaryLiquidation.dependentsAdditionalDeduction.dependentsAppliedCount` ' +
+      '(motor probado). Refleja el número CONFIRMADO por elegibilidad y ' +
+      'coexistencia, no `dependents.length` bruto.',
+  ),
+  structuralBox(
+    139,
+    'Adición por dependientes a la casilla 92 (72 UVT, art. 336 ET)',
+    'informational',
+    'implemented_unverified',
+    ['et-art-336-num-3'],
+    'Fase C (Sprint 2.4): cableada informativamente desde ' +
+      '`preliminaryLiquidation.dependentsAdditionalDeduction.totalCop` (motor ' +
+      'probado). Por instructivo oficial es un componente de la casilla 92 y ' +
+      'queda fuera del límite conjunto de 40 %/1.340 UVT.',
+  ),
+  structuralBox(
+    140,
+    'Información complementaria — pendiente de verificación',
+    'informational',
+    'not_implemented',
+  ),
+  structuralBox(
+    141,
+    'Información complementaria — pendiente de verificación',
+    'informational',
+    'not_implemented',
+  ),
 ];
 
 export interface Form210Ruleset {

@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type {
+  DependentEvaluation,
   DocumentExtractionSession,
   DocumentFact,
   ProcessingResult,
+  TaxDependent,
   UploadedDocument,
 } from '@nexus-tax/domain';
 import { processWorkbookFile } from '@nexus-tax/exogenous-parser';
@@ -208,6 +210,239 @@ describe('expediente tributario derivado', () => {
     });
     expect(resolved.some((task) => task.requirementId === requirement.id)).toBe(false);
     expect(resolved.some((task) => task.type === 'confirm_vat')).toBe(false);
+  });
+
+  it('deriva tareas de declaraciones anteriores (Sprint 2.4, Fase B1)', () => {
+    const basePriorReturn = {
+      id: 'prior-return:1',
+      caseId: 'case:1',
+      taxYear: 2024,
+      filingYear: 2025,
+      formType: '210' as const,
+      formNumber: '1102345678901',
+      previousFormNumber: null,
+      taxpayerIdentityMasked: '••••4567',
+      submittedAt: '2025-05-10T00:00:00.000Z',
+      sourceDocumentId: 'doc-prior-1',
+      status: 'submitted' as const,
+      identityMatch: 'match' as const,
+      replaces: null,
+      replacedBy: null,
+      isCurrentVersion: true,
+      boxes: {},
+      extractionConfidence: 'high' as const,
+      parserVersion: 'form210-prior-year-1.0.0',
+      createdAt: '2026-09-05T00:00:00.000Z',
+      updatedAt: '2026-09-05T00:00:00.000Z',
+    };
+    const mismatchTasks = buildCaseTasks({
+      caseId: 'case:1',
+      documents: [],
+      coverages: [],
+      candidates: [],
+      reconciliations: [],
+      vatResponsibility: false,
+      priorYearReturns: [{ ...basePriorReturn, identityMatch: 'mismatch' }],
+      now: '2026-09-05T00:00:00.000Z',
+    });
+    expect(
+      mismatchTasks.some(
+        (task) => task.type === 'review_prior_year_identity_mismatch' && task.blocking,
+      ),
+    ).toBe(true);
+
+    const carryForwardTasks = buildCaseTasks({
+      caseId: 'case:1',
+      documents: [],
+      coverages: [],
+      candidates: [],
+      reconciliations: [],
+      vatResponsibility: false,
+      priorYearReturns: [basePriorReturn],
+      carryForwardCandidates: [
+        {
+          id: 'carry:1',
+          caseId: 'case:1',
+          priorYearReturnId: 'prior-return:1',
+          priorYearTaxYear: 2024,
+          sourceBoxNumber: 133,
+          targetBoxNumber: 130,
+          sourceValueCop: 79_000,
+          refundOrCompensationRequested: null,
+          decision: 'pending',
+          finalValueCop: null,
+          evidence: '133 Anticipo 79.000',
+          decidedAt: null,
+          createdAt: '2026-09-05T00:00:00.000Z',
+          updatedAt: '2026-09-05T00:00:00.000Z',
+        },
+        {
+          id: 'carry:2',
+          caseId: 'case:1',
+          priorYearReturnId: 'prior-return:1',
+          priorYearTaxYear: 2024,
+          sourceBoxNumber: 137,
+          targetBoxNumber: 131,
+          sourceValueCop: 0,
+          refundOrCompensationRequested: 'unknown',
+          decision: 'pending',
+          finalValueCop: null,
+          evidence: '137 Saldo a favor 0',
+          decidedAt: null,
+          createdAt: '2026-09-05T00:00:00.000Z',
+          updatedAt: '2026-09-05T00:00:00.000Z',
+        },
+      ],
+      now: '2026-09-05T00:00:00.000Z',
+    });
+    // El candidato de anticipo (valor > 0) genera tarea; el de saldo a
+    // favor en cero NO genera una tarea innecesaria (adenda punto 9).
+    expect(
+      carryForwardTasks.some((task) => task.id === 'task:prior-year-carry-forward:carry:1'),
+    ).toBe(true);
+    expect(
+      carryForwardTasks.some((task) => task.id === 'task:prior-year-carry-forward:carry:2'),
+    ).toBe(false);
+
+    const conflictTasks = buildCaseTasks({
+      caseId: 'case:1',
+      documents: [],
+      coverages: [],
+      candidates: [],
+      reconciliations: [],
+      vatResponsibility: false,
+      priorYearReturns: [
+        basePriorReturn,
+        { ...basePriorReturn, id: 'prior-return:2', sourceDocumentId: 'doc-prior-2' },
+      ],
+      now: '2026-09-05T00:00:00.000Z',
+    });
+    expect(conflictTasks.some((task) => task.type === 'resolve_prior_year_conflict')).toBe(true);
+  });
+
+  it('deriva tareas de dependientes económicos (Sprint 2.4, Fase C)', () => {
+    function dependent(overrides: Partial<TaxDependent> = {}): TaxDependent {
+      return {
+        id: 'dep-1',
+        caseId: 'case:1',
+        fullName: 'María Pérez',
+        documentType: 'CC',
+        documentNumber: '1000000001',
+        relationship: 'parent',
+        dateOfBirth: null,
+        dependencyType: 'no_income_or_low_income',
+        annualIncomeCop: 0,
+        studentStatus: 'not_applicable',
+        educationalInstitution: null,
+        disabilityOrDependencyCondition: null,
+        monthsClaimed: 12,
+        preferredBenefit: null,
+        notes: '',
+        status: 'active',
+        createdAt: '2026-09-05T00:00:00.000Z',
+        updatedAt: '2026-09-05T00:00:00.000Z',
+        ...overrides,
+      };
+    }
+    function evaluation(overrides: Partial<DependentEvaluation> = {}): DependentEvaluation {
+      return {
+        id: 'eval-1',
+        dependentId: 'dep-1',
+        caseId: 'case:1',
+        status: 'eligible',
+        reasons: [],
+        missingSupportTypes: [],
+        candidateBenefits: ['article_387', 'article_336'],
+        requiresCoexistenceChoice: false,
+        ruleVersion: 'test',
+        confirmedByAnalyst: false,
+        staleDueToRuleChange: false,
+        previousRuleVersion: null,
+        evaluatedAt: '2026-09-05T00:00:00.000Z',
+        updatedAt: '2026-09-05T00:00:00.000Z',
+        ...overrides,
+      };
+    }
+
+    const missingDocumentTasks = buildCaseTasks({
+      caseId: 'case:1',
+      documents: [],
+      coverages: [],
+      candidates: [],
+      reconciliations: [],
+      vatResponsibility: false,
+      dependents: [dependent({ documentNumber: null })],
+      dependentEvaluations: [evaluation()],
+      now: '2026-09-05T00:00:00.000Z',
+    });
+    expect(missingDocumentTasks.some((task) => task.type === 'dependent_missing_document')).toBe(
+      true,
+    );
+
+    const requiresSupportTasks = buildCaseTasks({
+      caseId: 'case:1',
+      documents: [],
+      coverages: [],
+      candidates: [],
+      reconciliations: [],
+      vatResponsibility: false,
+      dependents: [dependent()],
+      dependentEvaluations: [
+        evaluation({ status: 'requires_support', missingSupportTypes: ['education_certificate'] }),
+      ],
+      now: '2026-09-05T00:00:00.000Z',
+    });
+    expect(
+      requiresSupportTasks.some((task) => task.type === 'dependent_missing_education_certificate'),
+    ).toBe(true);
+
+    const staleTasks = buildCaseTasks({
+      caseId: 'case:1',
+      documents: [],
+      coverages: [],
+      candidates: [],
+      reconciliations: [],
+      vatResponsibility: false,
+      dependents: [dependent()],
+      dependentEvaluations: [evaluation({ staleDueToRuleChange: true })],
+      now: '2026-09-05T00:00:00.000Z',
+    });
+    expect(staleTasks.some((task) => task.type === 'dependent_stale_rule_change')).toBe(true);
+
+    // Quinto dependiente candidato a 72 UVT: se conserva pero genera tarea de límite.
+    const fiveDependents = Array.from({ length: 5 }, (_, index) =>
+      dependent({ id: `dep-${index + 1}`, fullName: `Dependiente ${index + 1}` }),
+    );
+    const fiveEvaluations = fiveDependents.map((item) => evaluation({ dependentId: item.id, id: `eval-${item.id}` }));
+    const maxTasks = buildCaseTasks({
+      caseId: 'case:1',
+      documents: [],
+      coverages: [],
+      candidates: [],
+      reconciliations: [],
+      vatResponsibility: false,
+      dependents: fiveDependents,
+      dependentEvaluations: fiveEvaluations,
+      now: '2026-09-05T00:00:00.000Z',
+    });
+    expect(maxTasks.some((task) => task.type === 'dependent_exceeds_additional_max')).toBe(true);
+    // Los 5 dependientes se conservan (no se pierden ni se eliminan tareas de otros).
+    expect(maxTasks.filter((task) => task.source === 'dependent').length).toBeGreaterThan(0);
+
+    // "No tengo dependientes" suprime todas las tareas de dependientes.
+    const noDependentsTasks = buildCaseTasks({
+      caseId: 'case:1',
+      documents: [],
+      coverages: [],
+      candidates: [],
+      reconciliations: [],
+      vatResponsibility: false,
+      dependents: [dependent({ documentNumber: null })],
+      dependentEvaluations: [evaluation()],
+      noDependentsDeclared: true,
+      now: '2026-09-05T00:00:00.000Z',
+    });
+    expect(noDependentsTasks.some((task) => task.source === 'dependent')).toBe(false);
   });
 
   it('deriva tareas OCR con destino exacto de documento y página', () => {

@@ -266,23 +266,34 @@ export interface AdvancePaymentComputation {
 /**
  * Tipo de dependiente calificado según el art. 387 del Estatuto Tributario.
  * El motor NO verifica la elegibilidad (edad, ingresos, certificaciones); esa
- * clasificación la aporta el analista y se conserva por trazabilidad. Los
- * valores son:
+ * clasificación la aporta el analista (o el evaluador de elegibilidad puro
+ * de la Fase C, `dependent-eligibility.ts`) y se conserva por trazabilidad.
+ * Los valores son:
  * - `child_minor`: hijos hasta 18 años.
- * - `child_studying_18_23`: hijos entre 18 y 23 años estudiando.
+ * - `child_studying_18_23`: hijos estudiando financiados por el
+ *   contribuyente. NOTA (Fase C, Sprint 2.4): la Ley 2411 de 2024 amplió el
+ *   rango de edad de 18-23 a **18-25 años**, vigente para AG2025. El
+ *   identificador se conserva por compatibilidad (no afecta el cálculo del
+ *   art. 387, que no depende de la edad); el rango correcto vive en
+ *   `CHILD_STUDENT_MAX_AGE` de `dependent-eligibility.ts`.
  * - `child_disabled`: hijos mayores de 18 en situación de dependencia física
  *   o psicológica debidamente certificada.
  * - `spouse_no_income`: cónyuge o compañero(a) permanente sin ingresos o con
  *   ingresos anuales inferiores a 260 UVT.
  * - `parent_or_sibling_low_income`: padres y hermanos económicamente
  *   dependientes cuyos ingresos anuales sean inferiores a 260 UVT.
+ * - `foster_family`: familiar de crianza (Fase C) — no está expresamente en
+ *   el parágrafo 2 del art. 387 ET; requiere evaluación caso a caso.
+ * - `other_review`: otro sujeto a revisión manual (Fase C).
  */
 export type DependentKind =
   | 'child_minor'
   | 'child_studying_18_23'
   | 'child_disabled'
   | 'spouse_no_income'
-  | 'parent_or_sibling_low_income';
+  | 'parent_or_sibling_low_income'
+  | 'foster_family'
+  | 'other_review';
 
 /** Dependiente calificado para la deducción del art. 387 ET. */
 export interface DependentDeclaration {
@@ -332,6 +343,41 @@ export interface DependentsDeductionComputation {
   formula: string;
   ruleSourceId: string;
   dependents: readonly DependentDeductionDetail[];
+}
+
+/**
+ * Dependiente candidato para el beneficio adicional de 72 UVT del art. 336
+ * num. 3 ET (Ley 2277 de 2022). `eligible` lo determina el evaluador de
+ * elegibilidad y el resolutor de coexistencia (fuera de este motor puro):
+ * este motor solo aplica el tope de 4 dependientes y multiplica por 72 UVT.
+ */
+export interface DependentsAdditionalDeductionCandidate {
+  id: string;
+  eligible: boolean;
+}
+
+/** Dependiente excluido del beneficio adicional, con el motivo. */
+export interface ExcludedAdditionalDependent {
+  id: string;
+  reason: 'not_eligible' | 'exceeds_max_four';
+}
+
+/**
+ * Resultado explicable del beneficio adicional de 72 UVT por dependiente
+ * (art. 336 num. 3 ET), independiente y sin fusionar con el art. 387.
+ */
+export interface DependentsAdditionalDeductionComputation {
+  taxYear: number;
+  dependentsProvidedCount: number;
+  dependentsEligibleCount: number;
+  dependentsAppliedCount: number;
+  uvtPerDependent: number;
+  totalUvt: number;
+  totalCop: number;
+  excludedDependents: readonly ExcludedAdditionalDependent[];
+  ruleSourceId: string;
+  formula: string;
+  warnings: readonly string[];
 }
 
 /**

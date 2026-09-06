@@ -1,5 +1,11 @@
 # Arquitectura — NexusTax
 
+> Sprint 2.4 (Fase B): `form-210` pasa a depender también de
+> `document-intelligence` (reutiliza `detectMonetaryAnomalies` y
+> `parseMoneyAmount` para arrastres/comparación de años anteriores, y expone
+> el parser puro `extractPriorYearForm210`). Ver
+> [PRIOR_YEAR_RETURNS.md](./PRIOR_YEAR_RETURNS.md).
+>
 > Sprint 2.3.2: `document-intelligence` interpreta montos, `domain` define
 > `AmountCandidate`, `form-210` hereda alertas y `web` persiste decisiones. Ver
 > [MONEY_PARSING.md](./MONEY_PARSING.md).

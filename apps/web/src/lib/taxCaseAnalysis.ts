@@ -4,14 +4,18 @@ import type {
   CaseEntitySummary,
   CaseProgress,
   CaseTask,
+  DependentEvaluation,
   DocumentFact,
   PreliminaryReconciliation,
+  PriorYearCarryForwardCandidate,
+  PriorYearTaxReturn,
   ProcessingResult,
   ReconciliationSuggestion,
   ReportingEntity,
   RequirementCoverage,
   RequirementSourceDecision,
   TaxCase,
+  TaxDependent,
   UploadedDocument,
   CaseProduct,
   CaseNavigationState,
@@ -24,8 +28,10 @@ import type {
   TaxResolutionDecision,
 } from '@nexus-tax/domain';
 import { deriveForm210BoxTasks, type Form210Draft } from '@nexus-tax/form-210';
+import { compareTaxEvolution, detectHistoricalScaleAnomalies } from '@nexus-tax/form-210';
 import { MAX_EMPLOYER_INSTANCES, TAX_CASE_EXPORT_SCHEMA_VERSION } from '@nexus-tax/domain';
 import { compareCaseTasks } from './caseTaskPriority';
+import { priorYearBoxLabel } from './priorYearBoxLabels';
 
 function percentage(numerator: number, denominator: number): number {
   return denominator === 0 ? 0 : Math.round((numerator / denominator) * 100);
@@ -245,6 +251,11 @@ export function buildCaseTasks(input: {
   reconciliations: readonly PreliminaryReconciliation[];
   requirementSourceDecisions?: readonly RequirementSourceDecision[];
   vatResponsibility: boolean | null;
+  priorYearReturns?: readonly PriorYearTaxReturn[];
+  carryForwardCandidates?: readonly PriorYearCarryForwardCandidate[];
+  dependents?: readonly TaxDependent[];
+  dependentEvaluations?: readonly DependentEvaluation[];
+  noDependentsDeclared?: boolean;
   now?: string;
 }): CaseTask[] {
   const timestamp = input.now ?? new Date().toISOString();
@@ -624,6 +635,473 @@ export function buildCaseTasks(input: {
       updatedAt: timestamp,
     });
   }
+
+  // --- Declaraciones anteriores (Sprint 2.4, Fase B1) ---
+  const priorYearReturns = input.priorYearReturns ?? [];
+  const carryForwardCandidates = input.carryForwardCandidates ?? [];
+  const currentVersions = priorYearReturns.filter((item) => item.isCurrentVersion);
+  for (const priorReturn of currentVersions) {
+    if (priorReturn.identityMatch === 'mismatch') {
+      tasks.push({
+        id: `task:prior-year-identity:${priorReturn.id}`,
+        caseId: input.caseId,
+        type: 'review_prior_year_identity_mismatch',
+        title: `La declaración AG ${priorReturn.taxYear} parece pertenecer a otra persona`,
+        explanation:
+          'La identidad detectada en el PDF no coincide con la del expediente. No se generan arrastres hasta resolver esta discrepancia.',
+        source: 'prior_year_return',
+        stage: 'declaracion',
+        view: 'declaraciones-anteriores',
+        entityId: null,
+        documentId: priorReturn.sourceDocumentId,
+        requirementId: null,
+        candidateId: null,
+        reconciliationId: null,
+        matrixGroupId: null,
+        extractionSessionId: null,
+        profileId: null,
+        page: null,
+        priority: 'high',
+        blocking: true,
+        status: 'pending',
+        recommendedAction: 'Revisar identificación detectada o eliminar el documento',
+        ruleId: 'case-task.prior-year-identity-mismatch.v1',
+        evidence: [priorReturn.taxpayerIdentityMasked ?? 'Identidad no detectada'],
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      });
+    }
+    if (
+      priorReturn.identityMatch !== 'mismatch' &&
+      priorReturn.extractionConfidence === 'insufficient'
+    ) {
+      tasks.push({
+        id: `task:prior-year-extraction-gap:${priorReturn.id}`,
+        caseId: input.caseId,
+        type: 'resolve_prior_year_extraction_gap',
+        title: `No pudimos reconocer las casillas de la declaración AG ${priorReturn.taxYear}`,
+        explanation:
+          'El parser local no encontró casillas con confianza suficiente en este PDF. Puede requerir OCR de respaldo o registro manual.',
+        source: 'prior_year_return',
+        stage: 'declaracion',
+        view: 'declaraciones-anteriores',
+        entityId: null,
+        documentId: priorReturn.sourceDocumentId,
+        requirementId: null,
+        candidateId: null,
+        reconciliationId: null,
+        matrixGroupId: null,
+        extractionSessionId: null,
+        profileId: null,
+        page: null,
+        priority: 'medium',
+        blocking: false,
+        status: 'pending',
+        recommendedAction: 'Revisar el documento o registrar los valores manualmente',
+        ruleId: 'case-task.prior-year-extraction-gap.v1',
+        evidence: [],
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      });
+    }
+  }
+  // Conflicto: más de una declaración vigente para el mismo año gravable
+  // (el analista no indicó que una corrige a la otra).
+  const currentByYear = new Map<number, PriorYearTaxReturn[]>();
+  for (const priorReturn of currentVersions) {
+    const list = currentByYear.get(priorReturn.taxYear) ?? [];
+    list.push(priorReturn);
+    currentByYear.set(priorReturn.taxYear, list);
+  }
+  for (const [taxYear, group] of currentByYear) {
+    if (group.length < 2) continue;
+    tasks.push({
+      id: `task:prior-year-conflict:${input.caseId}:${taxYear}`,
+      caseId: input.caseId,
+      type: 'resolve_prior_year_conflict',
+      title: `Hay ${group.length} declaraciones vigentes para AG ${taxYear}`,
+      explanation:
+        'Existen dos declaraciones cargadas para el mismo año sin indicar que una corrige a la otra. Confirma cuál es la vigente.',
+      source: 'prior_year_return',
+      stage: 'declaracion',
+      view: 'declaraciones-anteriores',
+      entityId: null,
+      documentId: null,
+      requirementId: null,
+      candidateId: null,
+      reconciliationId: null,
+      matrixGroupId: null,
+      extractionSessionId: null,
+      profileId: null,
+      page: null,
+      priority: 'medium',
+      blocking: false,
+      status: 'pending',
+      recommendedAction: 'Indicar cuál declaración corrige a la otra',
+      ruleId: 'case-task.prior-year-conflict.v1',
+      evidence: [],
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+  }
+  for (const candidate of carryForwardCandidates) {
+    if (candidate.decision !== 'pending') continue;
+    if (!candidate.sourceValueCop) continue; // R133/R137 = 0: no genera tarea innecesaria.
+    const isRefund = candidate.targetBoxNumber === 131;
+    const needsAnswer = isRefund && candidate.refundOrCompensationRequested === 'unknown';
+    tasks.push({
+      id: `task:prior-year-carry-forward:${candidate.id}`,
+      caseId: input.caseId,
+      type: 'confirm_prior_year_carry_forward',
+      title: needsAnswer
+        ? 'Definir uso del saldo a favor de la declaración anterior'
+        : isRefund
+          ? 'Confirmar saldo a favor de la declaración anterior'
+          : 'Confirmar anticipo de la declaración anterior',
+      explanation: needsAnswer
+        ? '¿Este saldo a favor ya fue solicitado en devolución o compensación?'
+        : `${priorYearBoxLabel(candidate.sourceBoxNumber)} de AG ${candidate.priorYearTaxYear}: candidato para la casilla ${candidate.targetBoxNumber} de este año.`,
+      source: 'prior_year_return',
+      stage: 'declaracion',
+      view: 'declaraciones-anteriores',
+      entityId: null,
+      documentId: null,
+      requirementId: null,
+      candidateId: null,
+      reconciliationId: null,
+      matrixGroupId: null,
+      extractionSessionId: null,
+      profileId: null,
+      page: null,
+      formBoxNumber: candidate.targetBoxNumber,
+      priority: 'medium',
+      blocking: false,
+      status: 'pending',
+      recommendedAction: needsAnswer
+        ? 'Responder si el saldo fue solicitado en devolución o compensación'
+        : 'Aplicar, corregir o no usar el arrastre',
+      ruleId: 'case-task.prior-year-carry-forward.v1',
+      evidence: [candidate.evidence],
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+  }
+  if (input.form210Draft) {
+    for (const priorReturn of currentVersions) {
+      const currentBoxValues: Record<number, number | null> = {};
+      for (const box of input.form210Draft.boxes) {
+        currentBoxValues[box.number] = box.confirmedValue ?? box.suggestedValue ?? null;
+      }
+      const metrics = compareTaxEvolution(priorReturn, currentBoxValues);
+      const anomalies = detectHistoricalScaleAnomalies(metrics);
+      for (const anomaly of anomalies) {
+        tasks.push({
+          id: `task:prior-year-scale-anomaly:${priorReturn.id}:${anomaly.boxNumber}`,
+          caseId: input.caseId,
+          type: 'review_historical_scale_anomaly',
+          title: `Posible error de escala en ${anomaly.label.toLowerCase()}`,
+          explanation:
+            anomaly.anomalies[0]?.message ??
+            'El valor actual difiere del año anterior por un factor de escala inusual.',
+          source: 'prior_year_return',
+          stage: 'declaracion',
+          view: 'declaraciones-anteriores',
+          entityId: null,
+          documentId: null,
+          requirementId: null,
+          candidateId: null,
+          reconciliationId: null,
+          matrixGroupId: null,
+          extractionSessionId: null,
+          profileId: null,
+          page: null,
+          priority: 'medium',
+          blocking: false,
+          status: 'pending',
+          recommendedAction: 'Revisar el valor actual o descartar la alerta',
+          ruleId: 'case-task.prior-year-scale-anomaly.v1',
+          evidence: [
+            `Anterior: ${anomaly.priorValueCop.toLocaleString('es-CO')}`,
+            `Actual: ${anomaly.currentValueCop.toLocaleString('es-CO')}`,
+          ],
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        });
+      }
+    }
+  }
+
+  // --- Dependientes económicos (Sprint 2.4, Fase C) ---
+  if (!input.noDependentsDeclared) {
+    const activeDependents = (input.dependents ?? []).filter(
+      (dependent) => dependent.status === 'active',
+    );
+    const evaluationByDependent = new Map(
+      (input.dependentEvaluations ?? []).map((item) => [item.dependentId, item]),
+    );
+    for (const dependent of activeDependents) {
+      const evaluation = evaluationByDependent.get(dependent.id);
+      if (!dependent.documentNumber) {
+        tasks.push({
+          id: `task:dependent-missing-document:${dependent.id}`,
+          caseId: input.caseId,
+          type: 'dependent_missing_document',
+          title: `${dependent.fullName || 'Dependiente'}: falta el documento de identidad`,
+          explanation: 'Registra el tipo y número de documento para poder evaluar la elegibilidad.',
+          source: 'dependent',
+          stage: 'declaracion',
+          view: 'beneficios-dependientes',
+          entityId: null,
+          documentId: null,
+          requirementId: null,
+          candidateId: null,
+          reconciliationId: null,
+          matrixGroupId: null,
+          extractionSessionId: null,
+          profileId: null,
+          page: null,
+          dependentId: dependent.id,
+          priority: 'medium',
+          blocking: false,
+          status: 'pending',
+          recommendedAction: 'Completar el documento de identidad',
+          ruleId: 'case-task.dependent-missing-document.v1',
+          evidence: [],
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        });
+      }
+      if (!evaluation) continue;
+      if (
+        evaluation.status === 'requires_support' &&
+        evaluation.missingSupportTypes.includes('education_certificate')
+      ) {
+        tasks.push({
+          id: `task:dependent-missing-education:${dependent.id}`,
+          caseId: input.caseId,
+          type: 'dependent_missing_education_certificate',
+          title: `${dependent.fullName || 'Dependiente'}: falta certificado de estudios`,
+          explanation: evaluation.reasons[0] ?? 'Falta el certificado de estudios para confirmar la elegibilidad.',
+          source: 'dependent',
+          stage: 'declaracion',
+          view: 'beneficios-dependientes',
+          entityId: null,
+          documentId: null,
+          requirementId: null,
+          candidateId: null,
+          reconciliationId: null,
+          matrixGroupId: null,
+          extractionSessionId: null,
+          profileId: null,
+          page: null,
+          dependentId: dependent.id,
+          priority: 'medium',
+          blocking: false,
+          status: 'pending',
+          recommendedAction: 'Adjuntar el certificado de estudios',
+          ruleId: 'case-task.dependent-missing-education.v1',
+          evidence: [],
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        });
+      }
+      if (
+        evaluation.status === 'pending_review' &&
+        dependent.annualIncomeCop === null &&
+        dependent.disabilityOrDependencyCondition === null
+      ) {
+        tasks.push({
+          id: `task:dependent-missing-income:${dependent.id}`,
+          caseId: input.caseId,
+          type: 'dependent_missing_income_info',
+          title: `${dependent.fullName || 'Dependiente'}: falta definir ingresos o condición`,
+          explanation: evaluation.reasons[0] ?? 'Falta información para evaluar la elegibilidad.',
+          source: 'dependent',
+          stage: 'declaracion',
+          view: 'beneficios-dependientes',
+          entityId: null,
+          documentId: null,
+          requirementId: null,
+          candidateId: null,
+          reconciliationId: null,
+          matrixGroupId: null,
+          extractionSessionId: null,
+          profileId: null,
+          page: null,
+          dependentId: dependent.id,
+          priority: 'medium',
+          blocking: false,
+          status: 'pending',
+          recommendedAction: 'Indicar ingresos anuales o condición certificada',
+          ruleId: 'case-task.dependent-missing-income.v1',
+          evidence: [],
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        });
+      }
+      if (
+        evaluation.status === 'requires_support' &&
+        evaluation.missingSupportTypes.some((type) =>
+          ['medical_certificate', 'accountant_certificate', 'civil_registry'].includes(type),
+        )
+      ) {
+        tasks.push({
+          id: `task:dependent-missing-dependency-support:${dependent.id}`,
+          caseId: input.caseId,
+          type: 'dependent_missing_dependency_support',
+          title: `${dependent.fullName || 'Dependiente'}: falta soporte de dependencia`,
+          explanation: `Soportes faltantes: ${evaluation.missingSupportTypes.join(', ')}.`,
+          source: 'dependent',
+          stage: 'declaracion',
+          view: 'beneficios-dependientes',
+          entityId: null,
+          documentId: null,
+          requirementId: null,
+          candidateId: null,
+          reconciliationId: null,
+          matrixGroupId: null,
+          extractionSessionId: null,
+          profileId: null,
+          page: null,
+          dependentId: dependent.id,
+          priority: 'medium',
+          blocking: false,
+          status: 'pending',
+          recommendedAction: 'Adjuntar el soporte faltante',
+          ruleId: 'case-task.dependent-missing-dependency-support.v1',
+          evidence: [],
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        });
+      }
+      if (evaluation.status === 'not_eligible') {
+        tasks.push({
+          id: `task:dependent-not-eligible:${dependent.id}`,
+          caseId: input.caseId,
+          type: 'dependent_possibly_not_eligible',
+          title: `${dependent.fullName || 'Dependiente'}: posiblemente no elegible`,
+          explanation: evaluation.reasons[0] ?? 'La evaluación sugiere que este dependiente no cumple los requisitos.',
+          source: 'dependent',
+          stage: 'declaracion',
+          view: 'beneficios-dependientes',
+          entityId: null,
+          documentId: null,
+          requirementId: null,
+          candidateId: null,
+          reconciliationId: null,
+          matrixGroupId: null,
+          extractionSessionId: null,
+          profileId: null,
+          page: null,
+          dependentId: dependent.id,
+          priority: 'low',
+          blocking: false,
+          status: 'pending',
+          recommendedAction: 'Revisar la elegibilidad de este dependiente',
+          ruleId: 'case-task.dependent-not-eligible.v1',
+          evidence: [],
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        });
+      }
+      if (evaluation.requiresCoexistenceChoice) {
+        tasks.push({
+          id: `task:dependent-coexistence-choice:${dependent.id}`,
+          caseId: input.caseId,
+          type: 'dependent_requires_coexistence_choice',
+          title: `${dependent.fullName || 'Dependiente'}: falta elegir un beneficio`,
+          explanation: evaluation.reasons[0] ?? 'El contribuyente es independiente: elige un único beneficio para este dependiente.',
+          source: 'dependent',
+          stage: 'declaracion',
+          view: 'beneficios-dependientes',
+          entityId: null,
+          documentId: null,
+          requirementId: null,
+          candidateId: null,
+          reconciliationId: null,
+          matrixGroupId: null,
+          extractionSessionId: null,
+          profileId: null,
+          page: null,
+          dependentId: dependent.id,
+          priority: 'medium',
+          blocking: false,
+          status: 'pending',
+          recommendedAction: 'Elegir el beneficio aplicable para este dependiente',
+          ruleId: 'case-task.dependent-coexistence-choice.v1',
+          evidence: [],
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        });
+      }
+      if (evaluation.staleDueToRuleChange) {
+        tasks.push({
+          id: `task:dependent-stale-rule:${dependent.id}`,
+          caseId: input.caseId,
+          type: 'dependent_stale_rule_change',
+          title: `${dependent.fullName || 'Dependiente'}: revisar por cambio de reglas`,
+          explanation:
+            'Esta decisión fue tomada con una versión anterior de las reglas y requiere revisión.',
+          source: 'dependent',
+          stage: 'declaracion',
+          view: 'beneficios-dependientes',
+          entityId: null,
+          documentId: null,
+          requirementId: null,
+          candidateId: null,
+          reconciliationId: null,
+          matrixGroupId: null,
+          extractionSessionId: null,
+          profileId: null,
+          page: null,
+          dependentId: dependent.id,
+          priority: 'high',
+          blocking: false,
+          status: 'pending',
+          recommendedAction: 'Revisar nuevamente con las reglas vigentes',
+          ruleId: 'case-task.dependent-stale-rule.v1',
+          evidence: [],
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        });
+      }
+    }
+    const eligibleForAdditional = activeDependents.filter(
+      (dependent) => evaluationByDependent.get(dependent.id)?.candidateBenefits.includes('article_336'),
+    );
+    for (const dependent of eligibleForAdditional.slice(4)) {
+      tasks.push({
+        id: `task:dependent-exceeds-max:${dependent.id}`,
+        caseId: input.caseId,
+        type: 'dependent_exceeds_additional_max',
+        title: `${dependent.fullName || 'Dependiente'}: fuera del límite de 4 para la adición de 72 UVT`,
+        explanation:
+          'Máximo cuatro dependientes para esta adición. Se conserva el dependiente, pero no genera este beneficio adicional.',
+        source: 'dependent',
+        stage: 'declaracion',
+        view: 'beneficios-dependientes',
+        entityId: null,
+        documentId: null,
+        requirementId: null,
+        candidateId: null,
+        reconciliationId: null,
+        matrixGroupId: null,
+        extractionSessionId: null,
+        profileId: null,
+        page: null,
+        dependentId: dependent.id,
+        priority: 'low',
+        blocking: false,
+        status: 'pending',
+        recommendedAction: 'Revisar cuál dependiente conviene priorizar para este beneficio',
+        ruleId: 'case-task.dependent-exceeds-max.v1',
+        evidence: [],
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      });
+    }
+  }
+
   const replacedDecisionIds = new Set(
     (input.resolutionDecisions ?? [])
       .map((decision) => decision.replacesDecisionId)

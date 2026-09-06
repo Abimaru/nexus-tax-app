@@ -1,6 +1,244 @@
-# Handoff del proyecto — NexusTax (Sprint 2.3.2)
+# Handoff del proyecto — NexusTax (Sprint 2.4, Fase B0 + B + B1 + C)
 
-_Última actualización: 2026-08-08._
+_Última actualización: 2026-09-06._
+
+## Sprint 2.4 — Fase C (beneficios de dependientes: art. 387 + art. 336 num. 3 ET)
+
+Continúa sobre el estado local de Fase B0+B+B1 (rama de trabajo local
+`feature/sprint-2.4-dependents`, creada sobre el checkout que ya contenía los
+13 commits reales de esa fase — ver "Estado de Git" al final de esta sección).
+Ver detalle completo en
+[`docs/DEPENDENTS_BENEFITS_2025.md`](./DEPENDENTS_BENEFITS_2025.md) y
+[`docs/DEPENDENTS_DEDUCTION_2025.md`](./DEPENDENTS_DEDUCTION_2025.md).
+
+### Auditoría normativa previa a cualquier código
+
+Antes de escribir código se verificó, con dos fuentes independientes
+(Gerencie.com, Tributi.com):
+
+1. **Bug real encontrado en el motor existente del art. 387 ET**: el tope de
+   32 UVT/mes y 384 UVT/año se estaba multiplicando por el número de
+   dependientes elegibles (hasta 4), permitiendo un tope efectivo de hasta
+   1.536 UVT/año. La doctrina es explícita: el tope es **agregado para el
+   contribuyente**, no por dependiente. Corregido — ver
+   `DEPENDENTS_DEDUCTION_2025.md`.
+2. El art. 336 num. 3 ET (72 UVT × dependiente, máx. 4) es **expresamente
+   adicional** tanto al tope general del 40 %/1.340 UVT como al propio art.
+   387 — deben modelarse como motores independientes, nunca fusionados.
+3. Ley 2411 de 2024 amplió el rango de "hijo estudiante" de 18-23 a 18-25
+   años, vigente para AG2025.
+4. La casilla 139 (72 UVT) es un componente algebraico de la casilla 92
+   (confirmado con la misma fuente secundaria usada en Fase B0 para R91-93).
+5. **Hallazgo flagged, no corregido** (fuera de alcance): la misma fuente
+   sugiere que el 1 % de facturación electrónica podría pertenecer a R92 en
+   lugar de R39 — contradice la documentación existente; requiere
+   verificación adicional antes de tocar R39 (ya verificado contra fixture
+   real).
+
+### Implementado
+
+- **Motor art. 387 corregido** (`dependents.ts`): sin escalado por número de
+  dependientes, sin cupo de 4 (ese cupo es exclusivo del art. 336).
+- **Motor art. 336 num. 3 nuevo e independiente**
+  (`dependents-additional-336.ts`): 72 UVT/dependiente, máx. 4, nunca
+  saturado por el 40 %/1.340 UVT.
+- **Evaluador de elegibilidad** (`dependent-eligibility.ts`): nunca devuelve
+  un falso `not_eligible` por datos incompletos — usa
+  `pending_review`/`requires_support`/`possibly_eligible`.
+- **Resolutor de coexistencia** (`dependents-coexistence.ts`): implementa el
+  Decreto 1625/2231-2023 — ambos beneficios simultáneos solo si el
+  contribuyente es asalariado; independientes eligen uno por dependiente. El
+  motor decide; la UI solo pregunta la naturaleza del ingreso.
+- **Casillas 91/92/93/138/139** cableadas en `form-210` (`implemented_unverified`).
+- **Dominio** (`taxDependent.ts`): `TaxDependent`, `DependentSupport`,
+  `DependentEvaluation`. `DOMAIN_VERSION` 0.11.0.
+- **Dexie v14**: `taxDependents`, `dependentSupports`, `dependentEvaluations`,
+  `dependentsCaseContext` (aditivo).
+- **8 tipos de tarea nuevos** con `source: 'dependent'` (ver `CASE_TASKS.md`).
+- **UI** (`DependentsPanel.tsx`, vista `beneficios-dependientes`): selector de
+  naturaleza de ingresos, tarjetas de dependiente, formulario seccionado,
+  modo avanzado con detalle normativo. Bug encontrado y corregido en E2E: el
+  banner de confirmación "No tengo dependientes" no se mostraba cuando la
+  lista estaba vacía (el caso exacto para el que existe el botón).
+
+### Pendiente explícito (no se avanzó, por decisión de alcance)
+
+- Adjuntar un documento de la biblioteca como soporte de un dependiente desde
+  la UI (campo estructural `documentLibraryFileId` listo; acción pendiente).
+- El 1 % de facturación electrónica como posible componente de R92 (flagged,
+  no aplicado).
+- Casilla 89 (subcédula de honorarios) — hallazgo abierto de Fase B0, sin
+  resolver.
+- Facturación electrónica DIAN, inmuebles, administración de propiedad
+  horizontal y medicina prepagada (secciones D-G del Sprint 2.4).
+
+### Verificación ejecutada
+
+- `pnpm --filter @nexus-tax/aegis-rules test`: 167/167 verdes.
+- `pnpm --filter @nexus-tax/form-210 test`: 89/89 verdes.
+- `pnpm --filter @nexus-tax/domain typecheck`: verde.
+- `pnpm --filter @nexus-tax/web test`: 99/99 verdes.
+- `pnpm --filter @nexus-tax/web typecheck` / `lint`: verdes.
+- `pnpm --filter @nexus-tax/web test:e2e`: 8/8 verdes (6 previos + 2 nuevos de
+  `dependents.spec.ts`), capturas desktop (1280 px) y móvil (390 px)
+  verificadas visualmente.
+
+### Estado de Git (limitación de entorno, no resuelta)
+
+El entorno de esta sesión **bloquea por completo** `git push` y la creación
+de PR: `git push` responde `Permission ... denied to AIBARGUEN_bocc` (403);
+la herramienta `create_pull_request` falla al intentar crear un fork
+("Enterprise Managed User ... cannot access this content", 403). Ninguna vía
+disponible en esta sesión permite publicar el trabajo. Por eso:
+
+- Fase B0+B+B1 (13 commits reales) y Fase C existen **únicamente** en el
+  worktree local, en la rama `feature/sprint-2.4-dependents`.
+- El PR #3 en GitHub (`feature/sprint-2.4-prior-year-returns`) fue fusionado
+  a `main`, pero su contenido real era un commit de estilo no relacionado
+  (orden alfabético) — **no** contiene el trabajo de declaraciones
+  anteriores. `main` no refleja ninguna de las fases de este sprint.
+- Un humano con permisos debe empujar la rama local y abrir el PR
+  manualmente, o ejecutar `gh auth login` con una cuenta habilitada en este
+  mismo entorno.
+
+## Sprint 2.4 — Fase B1 (integración UX de declaraciones anteriores)
+
+Continúa exactamente sobre el estado local de Fase B0+B (commits `c9f7ca7`…`8e36c8e`, verificados
+al inicio de esta fase). Ver detalle completo en
+[`docs/PRIOR_YEAR_RETURNS.md`](./PRIOR_YEAR_RETURNS.md).
+
+### Verificación inicial (punto 0 de la adenda)
+
+- Los 6 commits de Fase B0+B existen en `HEAD`/historial local; `git status` estaba limpio antes de
+  empezar.
+- `docs/PRIOR_YEAR_RETURNS.md` existe en el working tree y su contenido corresponde al commit
+  `8e36c8e`.
+- `docs/PROJECT_HANDOFF.md` ya contenía el cierre de Fase B0+B antes de esta fase.
+- **Discrepancia de `docs.zip`**: la sesión opera en un *worktree* (`aibarguen-bocc-...`) separado
+  del checkout principal (`main`) del repositorio. Los commits de Fase B0+B viven únicamente en la
+  rama de este worktree — todavía no están fusionados a `main`. Un ZIP de `docs/` tomado desde el
+  checkout principal (o desde `main`) necesariamente mostrará la documentación previa al Sprint 2.4,
+  porque esos archivos no han cambiado ahí. No es una inconsistencia del repositorio: es el
+  historial esperado de una rama de trabajo todavía no fusionada.
+
+### Fase B1 — completada funcionalmente
+
+Un analista puede ahora, únicamente desde la UI (`Declaración → Declaraciones anteriores`):
+
+1. Agregar una declaración cargando un Formulario 210 en PDF.
+2. Ver el análisis local en tiempo real (`Analizando documento…` → `Formulario reconocido` /
+   `Requiere revisión` / `No reconocido`).
+3. Confirmar año gravable e indicar si corrige una declaración ya cargada.
+4. Revisar identidad (bloqueo explícito y trazable si no coincide, nunca un "continuar de todas
+   formas" genérico).
+5. Ver las casillas extraídas con concepto humano, valor, confianza y procedencia (modo avanzado).
+6. Ver la comparación de evolución tributaria contra el año actual, con anomalías de escala
+   descartables (nunca autocorregidas).
+7. Confirmar, corregir o rechazar el arrastre de anticipo (R133→R130) y de saldo a favor
+   (R137→R131, con la pregunta de devolución/compensación del art. 850 ET).
+8. Ver el impacto reflejado de inmediato en el borrador del Formulario 210 y en Revisión final.
+
+Implementado: nueva vista `declaraciones-anteriores` en la etapa Declaración;
+`apps/web/src/lib/priorYearReturns.ts` y `priorYearBoxLabels.ts` (orquestación de carga, sin
+segundo parser en React); `PriorYearReturnsPanel.tsx` (listado, carga, drawer de detalle,
+tarjetas de arrastre, evolución tributaria); 5 tipos de tarea nuevos derivados en `buildCaseTasks`
+con deep-link desde Revisión final; reutilización de `saveTaxResolutionDecision` +
+`rebuildForm210Draft` para aplicar arrastres (sin reimplementar el motor de liquidación);
+`removePriorYearReturn` y `discardCaseTask` en el repositorio.
+
+### Limitación conocida, documentada explícitamente
+
+El arrastre se aplica mediante un ajuste genérico de casilla (`adjust_form_box`), no mediante el
+input dedicado `Form210BuildInput.priorYearBalance` del motor puro (que ya modela la nuance de
+devolución/compensación de forma más trazable). `rebuildForm210Draft` todavía no persiste ni lee
+ese contexto. Documentado como trabajo futuro en `docs/PRIOR_YEAR_RETURNS.md` §7.
+
+### Verificación ejecutada
+
+- `pnpm --filter @nexus-tax/web typecheck`: verde.
+- `pnpm --filter @nexus-tax/web lint`: verde, cero advertencias.
+- `pnpm --filter @nexus-tax/web test`: 89/89 verdes (84 previos de la sesión + 1 nuevo en
+  `taxCaseAnalysis.test.ts` + 4 nuevos en `PriorYearReturnsPanel.test.tsx`).
+- `pnpm build`: verde (monorepo completo).
+- `pnpm test:e2e`: 6/6 verdes (4 previos + 2 nuevos: flujo feliz completo y bloqueo por identidad),
+  con capturas desktop (1280 px) y móvil (390 px) verificadas visualmente.
+- `pnpm check:encoding`: sin mojibake.
+
+Ningún test previo de la sesión desapareció; el conteo total pasó de 454 a 459 tests unitarios más
+2 escenarios E2E nuevos (6/6 en total).
+
+## Sprint 2.4 — Fase B0 (esqueleto Formulario 210) + Fase B (declaraciones anteriores)
+
+Continúa sobre el cierre del Sprint 2.3.2. Ejecutado sobre `main`, sin operaciones destructivas
+de Git. Ver detalle completo en [`docs/PRIOR_YEAR_RETURNS.md`](./PRIOR_YEAR_RETURNS.md).
+
+### Corrección de la auditoría de Fase A
+
+La conclusión inicial de la Fase A (que la adición de 72 UVT se resta directamente de la renta
+líquida gravable consolidada) se corrigió: por instructivo oficial, la casilla 139 es un
+**componente explícito** de la casilla 92 (rentas exentas y deducciones limitadas de la cédula
+general), no una resta independiente posterior. La casilla 92 queda estructuralmente representada
+pero sin fórmula calculada (`not_implemented`) hasta la Fase C.
+
+### Fase B0 — esqueleto del Formulario 210
+
+- `FORM_210_BOXES_2025` se completó con 14 casillas estructurales (89, 91, 92, 93, 111, 126, 127,
+  129, 133, 137, 138, 139, 140, 141) usando un patrón nuevo (`structuralBox`) que declara
+  `implementationStatus` y `legalBasisSourceIds` sin inventar fórmulas no verificadas.
+- `Form210Section` agrega `general_income_consolidation`, `tax_settlement` e `informational`.
+- Las casillas 126, 127, 129, 133 y 137 se cablean **informativamente** en `buildForm210Draft` con
+  valores ya calculados por motores probados (impuesto de renta, impuesto de ganancias
+  ocasionales, total a cargo, anticipo del año siguiente, saldo a favor) — la numeración oficial
+  de casilla queda marcada como no verificada.
+- **Hallazgo documentado, no oculto**: la aritmética de los fixtures de referencia sugiere una
+  subcédula de "rentas de trabajo sin relación laboral" (honorarios/servicios, aprox. 43-57) no
+  modelada; la casilla 89 queda en `requires_review` sin fórmula automática.
+- Regresión ejecutada antes y después: 68/68 tests de `form-210` seguían verdes antes de agregar
+  las 3 pruebas nuevas de la Fase B0 (71/71 después). Ningún valor previamente verificado cambió.
+
+### Fase B — declaraciones anteriores
+
+- Nuevos contratos en `@nexus-tax/domain`: `PriorYearTaxReturn`, `PriorYearBoxValue` (con `role`
+  explícito: `carry_forward_candidate`/`calculation_input`/`historical_reference`/
+  `comparison_only`/`context_prefill`/`not_reusable`), `PriorYearCarryForwardCandidate`.
+- Nuevo parser puro en `@nexus-tax/document-intelligence`
+  (`extractPriorYearForm210`) que detecta el Formulario 210, año gravable, identidad (enmascarada),
+  estado y corrección, y extrae casillas por patrón número+etiqueta+valor. Verificado exactamente
+  contra el oráculo anonimizado AG2024 de la adenda (23 casillas, incluidas 89, 126, 129, 133,
+  137, 138, 139).
+- Nuevo motor puro en `@nexus-tax/form-210` (`prior-year.ts`): arrastres de anticipo (R133→R130) y
+  saldo a favor (R137→R131, con la pregunta de devolución/compensación del art. 850 ET),
+  comparación de evolución tributaria (`stable`/`increase`/`decrease`/`relevant_variation`/
+  `incomplete`/`not_comparable`) y detector de anomalías de escala histórica que **reutiliza**
+  `detectMonetaryAnomalies` de Sprint 2.3.2 en vez de reimplementarlo.
+- Dexie v13 agrega `priorYearReturns` y `priorYearCarryForwardCandidates` de forma aditiva.
+  `apps/web/src/lib/repository.ts` expone la capa de persistencia completa y probada
+  (`savePriorYearReturn`, `refreshPriorYearCarryForwardCandidates`,
+  `decideCarryForwardCandidate`, `answerRefundCarryForwardQuestion`,
+  `getTaxEvolutionComparison`).
+- `CaseTaskType` agrega 5 tipos nuevos para declaraciones anteriores;
+  `CaseTask.source` agrega `'prior_year_return'`.
+
+### Pendiente explícito (no se avanzó, por decisión de alcance)
+
+- El componente visual "Declaraciones anteriores" dentro del expediente y su wiring en la
+  navegación (deep-links de tareas, quality gate visual, capturas Playwright). El motor y la
+  persistencia están completos y probados; la UI queda para una iteración siguiente con revisión
+  intermedia, tal como se solicitó explícitamente ("detente para revisión antes de Fase C").
+- Fase C (beneficio de 72 UVT por dependiente, art. 336 ET, casillas 138/139) — explícitamente
+  fuera de alcance de este incremento.
+- Facturación electrónica DIAN, inmuebles, administración de propiedad horizontal y medicina
+  prepagada (secciones D-G del Sprint 2.4) no se iniciaron.
+
+### Verificación ejecutada
+
+- `pnpm --filter @nexus-tax/domain test`: 19/19 verdes (15 previos + 4 nuevos).
+- `pnpm --filter @nexus-tax/document-intelligence test`: 90/90 verdes (80 previos + 10 nuevos).
+- `pnpm --filter @nexus-tax/form-210 test`: 84/84 verdes (68 previos + 16 nuevos).
+- `pnpm --filter @nexus-tax/web typecheck`: verde.
+- `pnpm --filter @nexus-tax/web test`: 84/84 verdes (82 previos + 2 nuevos).
+- No se ejecutó `pnpm build` completo del monorepo ni Playwright E2E en este incremento (ver
+  limitaciones); se recomienda ejecutarlos antes de fusionar.
 
 ## Corrección UX — orden alfabético consistente
 

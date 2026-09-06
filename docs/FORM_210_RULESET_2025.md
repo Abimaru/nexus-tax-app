@@ -3,13 +3,39 @@
 Versión: `co.dian.form210.2025.v1`. Verificación: 2026-08-02. Presentación: 2026.
 
 El catálogo versiona las secciones de patrimonio (29–31), rentas de trabajo (32–42), capital
-(58–67), no laborales (74–84), pensiones (99–103), dividendos (104), ganancias ocasionales
-(112–115) y datos preliminares de liquidación privada (130–132).
+(58–67), no laborales (74–84), pensiones (99–103), dividendos (104), consolidación de la cédula
+general (89, 91–93), ganancias ocasionales (112–115), base conjunta del art. 241 ET (111),
+liquidación del impuesto (126, 127, 129), datos preliminares de liquidación privada (130–133, 137)
+e información complementaria (138–141).
 
 Solo se ejecutan fórmulas marcadas como completas: 31 = 29 − 30; 34 = 32 − 33; 37 = 35 + 36;
 40 = 38 + 39; 42 = 34 − 41; 61 = 58 − 59 − 60; 78 = 74 − 75 − 76 − 77; 101 = 99 − 100;
 103 = 101 − 102; 115 = 112 − 113 − 114. Las reglas parciales se muestran como incompletas y no
 se inventan límites, rentas exentas, deducciones ni impuesto.
+
+## Casillas agregadas en Sprint 2.4 (Fase B0 + Fase C)
+
+Marcadas `implementedUnverified` (no `verified`): la numeración se deriva algebraicamente de una
+fuente secundaria (Gerencie, guía de renta), no de una cita literal del instructivo DIAN.
+
+| Casilla | Fórmula                              | Fuente                          |
+| ------- | ------------------------------------- | -------------------------------- |
+| 89      | Sin calcular (`requires_review`)      | `et-art-336` — hallazgo abierto: posible subcédula de honorarios no modelada |
+| 91      | 34 + 61 + 78                          | `et-art-336`                     |
+| 92      | 41 + 65 + 82 + **139**                | `et-art-336`, `et-art-336-num-3` |
+| 93      | 91 − 92                               | `et-art-336`                     |
+| 126     | Cableada desde `incomeTax` (art. 241) | `et-art-241`                     |
+| 127     | Cableada desde `occasionalGainsTax`   | `et-art-314`, `et-art-317`       |
+| 129     | 126 + 127                              | `et-art-241`, `et-art-314`       |
+| 133     | Cableada desde `nextYearAdvance`      | `et-art-807`                     |
+| 137     | Cableada desde `netBalanceCop` (cuando es negativo) | —                  |
+| 138     | Dependientes confirmados para la adición de 72 UVT (art. 336 num. 3 ET) | `et-art-336-num-3` |
+| 139     | 138 × 72 UVT — **componente de R92**, nunca de R39/R41 | `et-art-336-num-3` |
+
+**Importante (Fase C):** R139 (72 UVT por dependiente) se modela explícitamente como componente de
+R92. Nunca se suma a R39 (deducciones imputables de trabajo) ni se resta directamente de la renta
+líquida gravable: eso mezclaría el beneficio del art. 336 num. 3 con el límite conjunto de 40 %/
+1.340 UVT del que está expresamente excluido.
 
 Fuentes oficiales versionadas:
 

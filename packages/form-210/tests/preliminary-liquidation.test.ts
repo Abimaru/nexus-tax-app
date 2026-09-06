@@ -5,7 +5,6 @@ import type {
   TaxResolutionDecision,
 } from '@nexus-tax/domain';
 import {
-  DEPENDENTS_MAX_ELIGIBLE,
   ELECTRONIC_INVOICING_ANNUAL_CAP_UVT,
   UVT_2025,
   computeProgressiveIncomeTax,
@@ -388,7 +387,10 @@ describe('liquidación privada preliminar (Fase K)', () => {
     expect(liq.dependentsDeduction!.ruleSourceId).toBe('et-art-387');
   });
 
-  it('advierte cuando se declaran más de cuatro dependientes', () => {
+  it('ya no limita a cuatro dependientes: el art. 387 no fija número máximo (Fase C)', () => {
+    // Corrección de auditoría (Sprint 2.4, Fase C): el warning de "solo los
+    // primeros 4" se eliminó porque no reflejaba la norma (ver
+    // packages/aegis-rules/tests/dependents.test.ts para el detalle).
     const dependents = Array.from({ length: 6 }, (_, index) => ({
       id: `dep-${index + 1}`,
       kind: 'child_minor' as const,
@@ -403,8 +405,8 @@ describe('liquidación privada preliminar (Fase K)', () => {
     });
     const liq = draft.preliminaryLiquidation!;
     expect(liq.dependentsDeduction!.dependentsProvidedCount).toBe(6);
-    expect(liq.dependentsDeduction!.dependentsEligibleCount).toBe(DEPENDENTS_MAX_ELIGIBLE);
-    expect(liq.warnings.some((warning) => warning.includes('primeros'))).toBe(true);
+    expect(liq.dependentsDeduction!.dependentsEligibleCount).toBe(6);
+    expect(liq.warnings.some((warning) => warning.includes('primeros'))).toBe(false);
   });
 
   it('cablea la deducción por facturas electrónicas a la casilla 39 y a la liquidación', () => {
@@ -745,5 +747,202 @@ describe('liquidación privada preliminar (Fase K)', () => {
     expect(liq.occasionalGainsTax?.totalTaxCop).toBe(15_000_000);
     expect(liq.totalTaxDueCop).toBe(expectedRenta + 15_000_000);
     expect(liq.status).toBe('to_pay');
+  });
+});
+
+describe('casillas estructurales de liquidación (Fase B0, Sprint 2.4)', () => {
+  it('cablea 126, 127 y 129 informativamente sin alterar el impuesto ya calculado', () => {
+    const uvt = UVT_2025;
+    const draft = buildForm210Draft({
+      caseId: 'case-b0-tax-boxes',
+      taxYear: 2025,
+      records: [],
+      facts: [],
+      resolutions: [
+        makeAdjustBoxDecision({
+          id: 'dec-42',
+          caseId: 'case-b0-tax-boxes',
+          boxNumber: 42,
+          finalValue: 3_000 * uvt,
+        }),
+        makeAdjustBoxDecision({
+          id: 'dec-115',
+          caseId: 'case-b0-tax-boxes',
+          boxNumber: 115,
+          finalValue: 100_000_000,
+        }),
+      ],
+    });
+    const liq = draft.preliminaryLiquidation!;
+    const box126 = draft.boxes.find((box) => box.number === 126)!;
+    const box127 = draft.boxes.find((box) => box.number === 127)!;
+    const box129 = draft.boxes.find((box) => box.number === 129)!;
+    expect(box126.suggestedValue).toBe(liq.incomeTax!.totalTaxCopRounded);
+    expect(box127.suggestedValue).toBe(liq.occasionalGainsTax!.totalTaxCop);
+    expect(box129.suggestedValue).toBe(liq.totalTaxDueCop);
+    expect(box129.suggestedValue).toBe(box126.suggestedValue! + box127.suggestedValue!);
+    // El estado de implementación sigue marcado como no verificado: la
+    // numeración oficial de estas casillas no está confirmada.
+    expect(box126.implementationStatus).toBe('implemented_unverified');
+    expect(box127.implementationStatus).toBe('requires_review');
+  });
+
+  it('cablea 133 (anticipo siguiente año) y 137 (saldo a favor) cuando aplican', () => {
+    const uvt = UVT_2025;
+    const retenciones = 30_000_000;
+    const draft = buildForm210Draft({
+      caseId: 'case-b0-settlement-boxes',
+      taxYear: 2025,
+      records: [],
+      facts: [],
+      resolutions: [
+        makeAdjustBoxDecision({
+          id: 'dec-42',
+          caseId: 'case-b0-settlement-boxes',
+          boxNumber: 42,
+          finalValue: 3_000 * uvt,
+        }),
+        makeAdjustBoxDecision({
+          id: 'dec-132',
+          caseId: 'case-b0-settlement-boxes',
+          boxNumber: 132,
+          finalValue: retenciones,
+        }),
+      ],
+      advancePaymentContext: {
+        filingCountIncludingCurrent: 1,
+        priorNetIncomeTaxCop: null,
+      },
+    });
+    const liq = draft.preliminaryLiquidation!;
+    const box133 = draft.boxes.find((box) => box.number === 133)!;
+    const box137 = draft.boxes.find((box) => box.number === 137)!;
+    expect(box133.suggestedValue).toBe(liq.nextYearAdvance!.netAdvanceCop);
+    expect(liq.status).toBe('refund');
+    expect(box137.suggestedValue).toBe(-liq.netBalanceCop);
+  });
+
+  it('138/139 permanecen sin calcular si solo se declara `dependents` (art. 387), no `dependentsAdditional` (art. 336)', () => {
+    // El campo `dependents` alimenta el motor del art. 387 (casilla 39);
+    // 138/139 requieren específicamente `dependentsAdditional` (art. 336 num.
+    // 3), que es un input independiente — confirma que ambos motores nunca
+    // se fusionan.
+    const draft = buildForm210Draft({
+      caseId: 'case-b0-dependents-336',
+      taxYear: 2025,
+      records: [employmentRecord('rec-1', 60_000_000)],
+      facts: [],
+      dependents: [{ id: 'dep-1', kind: 'child_minor', monthsClaimed: 12 }],
+    });
+    const box138 = draft.boxes.find((box) => box.number === 138)!;
+    const box139 = draft.boxes.find((box) => box.number === 139)!;
+    expect(box138.suggestedValue).toBeNull();
+    expect(box139.suggestedValue).toBeNull();
+    expect(box138.status).toBe('no_data');
+    expect(box139.status).toBe('no_data');
+  });
+});
+
+describe('adición por dependientes — R138/R139/R91/R92/R93 (Fase C, Sprint 2.4)', () => {
+  it('cablea R138 (conteo confirmado) y R139 (72 UVT × conteo) como componente de R92, nunca de R39', () => {
+    const draft = buildForm210Draft({
+      caseId: 'case-c-additional-dependents',
+      taxYear: 2025,
+      records: [employmentRecord('rec-1', 60_000_000)],
+      facts: [],
+      dependentsAdditional: [{ id: 'dep-1', eligible: true }],
+    });
+    const box39 = draft.boxes.find((box) => box.number === 39)!;
+    const box138 = draft.boxes.find((box) => box.number === 138)!;
+    const box139 = draft.boxes.find((box) => box.number === 139)!;
+    const box92 = draft.boxes.find((box) => box.number === 92)!;
+    expect(box138.suggestedValue).toBe(1);
+    expect(box139.suggestedValue).toBe(Math.round(72 * UVT_2025));
+    // R139 NUNCA se agrega a R39 (no fusionar con el art. 387).
+    expect(box39.suggestedValue).toBeNull();
+    expect(box92.suggestedValue).toBe(box139.suggestedValue);
+    expect(draft.preliminaryLiquidation!.dependentsAdditionalDeduction!.dependentsAppliedCount).toBe(
+      1,
+    );
+  });
+
+  it('4 dependientes elegibles: R138=4, R139=288 UVT; el quinto se excluye sin perderse', () => {
+    const draft = buildForm210Draft({
+      caseId: 'case-c-five-dependents',
+      taxYear: 2025,
+      records: [],
+      facts: [],
+      dependentsAdditional: [
+        { id: 'dep-1', eligible: true },
+        { id: 'dep-2', eligible: true },
+        { id: 'dep-3', eligible: true },
+        { id: 'dep-4', eligible: true },
+        { id: 'dep-5', eligible: true },
+      ],
+    });
+    const additional = draft.preliminaryLiquidation!.dependentsAdditionalDeduction!;
+    expect(additional.dependentsProvidedCount).toBe(5);
+    expect(additional.dependentsAppliedCount).toBe(4);
+    expect(additional.totalUvt).toBe(288);
+    expect(additional.excludedDependents).toEqual([{ id: 'dep-5', reason: 'exceeds_max_four' }]);
+    const box138 = draft.boxes.find((box) => box.number === 138)!;
+    expect(box138.suggestedValue).toBe(4);
+  });
+
+  it('R91 = R34 + R61 + R78 y R93 = R91 − R92 se calculan cuando hay señal en las subcédulas', () => {
+    const draft = buildForm210Draft({
+      caseId: 'case-c-cedular-consolidation',
+      taxYear: 2025,
+      records: [],
+      facts: [],
+      resolutions: [
+        makeAdjustBoxDecision({ id: 'dec-34', caseId: 'case-c-cedular-consolidation', boxNumber: 34, finalValue: 60_000_000 }),
+        makeAdjustBoxDecision({ id: 'dec-41', caseId: 'case-c-cedular-consolidation', boxNumber: 41, finalValue: 10_000_000 }),
+        makeAdjustBoxDecision({ id: 'dec-61', caseId: 'case-c-cedular-consolidation', boxNumber: 61, finalValue: 10_000_000 }),
+        makeAdjustBoxDecision({ id: 'dec-65', caseId: 'case-c-cedular-consolidation', boxNumber: 65, finalValue: 2_000_000 }),
+        makeAdjustBoxDecision({ id: 'dec-78', caseId: 'case-c-cedular-consolidation', boxNumber: 78, finalValue: 20_000_000 }),
+        makeAdjustBoxDecision({ id: 'dec-82', caseId: 'case-c-cedular-consolidation', boxNumber: 82, finalValue: 3_000_000 }),
+      ],
+      dependentsAdditional: [{ id: 'dep-1', eligible: true }],
+    });
+    const box91 = draft.boxes.find((box) => box.number === 91)!;
+    const box92 = draft.boxes.find((box) => box.number === 92)!;
+    const box93 = draft.boxes.find((box) => box.number === 93)!;
+    const uvtCop = Math.round(72 * UVT_2025);
+    expect(box91.suggestedValue).toBe(90_000_000);
+    expect(box92.suggestedValue).toBe(10_000_000 + 2_000_000 + 3_000_000 + uvtCop);
+    expect(box93.suggestedValue).toBe(90_000_000 - (15_000_000 + uvtCop));
+  });
+
+  it('la adición de 72 UVT NO se somete al límite conjunto de 40 %/1.340 UVT (queda fuera de R41/R65/R82)', () => {
+    // Renta líquida de trabajo muy alta para que el 40 % / 1.340 UVT dominen
+    // R41; la adición de dependientes debe seguir intacta en R139/R92 sin
+    // reducirse por ese límite, porque nunca pasa por R39/R41.
+    const draft = buildForm210Draft({
+      caseId: 'case-c-joint-limit-exclusion',
+      taxYear: 2025,
+      records: [employmentRecord('rec-1', 500_000_000)],
+      facts: [],
+      dependentsAdditional: [
+        { id: 'dep-1', eligible: true },
+        { id: 'dep-2', eligible: true },
+      ],
+    });
+    const box139 = draft.boxes.find((box) => box.number === 139)!;
+    expect(box139.suggestedValue).toBe(Math.round(144 * UVT_2025));
+  });
+
+  it('dependiente no elegible no genera R139 ni cuenta en R138', () => {
+    const draft = buildForm210Draft({
+      caseId: 'case-c-not-eligible',
+      taxYear: 2025,
+      records: [],
+      facts: [],
+      dependentsAdditional: [{ id: 'dep-1', eligible: false }],
+    });
+    const box138 = draft.boxes.find((box) => box.number === 138)!;
+    const box139 = draft.boxes.find((box) => box.number === 139)!;
+    expect(box138.suggestedValue).toBe(0);
+    expect(box139.suggestedValue).toBeNull();
   });
 });

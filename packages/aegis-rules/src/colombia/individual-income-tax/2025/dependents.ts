@@ -11,14 +11,31 @@ import { getTaxUnit } from './tax-unit';
  * residentes en Colombia).
  *
  * El artículo permite deducir el 10 % de los ingresos brutos por rentas de
- * trabajo del contribuyente, con dos topes por dependiente calificado:
- *   - 32 UVT mensuales por dependiente (`MONTHLY_CAP_UVT_PER_DEPENDENT`).
- *   - 384 UVT anuales por dependiente (`ANNUAL_CAP_UVT_PER_DEPENDENT`).
+ * trabajo del contribuyente, con un tope **total para el contribuyente**
+ * (no por dependiente):
+ *   - 32 UVT mensuales (`MONTHLY_CAP_UVT_TOTAL`).
+ *   - 384 UVT anuales (`ANNUAL_CAP_UVT_TOTAL`).
  *
- * Además, la doctrina limita el beneficio a **máximo cuatro dependientes**.
- * Cuando el analista declara más de cuatro, el motor toma los primeros
- * cuatro por orden de aparición y devuelve el excedente en el conteo para
- * que la UI pueda generar un warning.
+ * CORRECCIÓN NORMATIVA (Sprint 2.4, Fase C): la implementación anterior
+ * multiplicaba estos topes por el número de dependientes elegibles
+ * (`eligibleCount × 384 UVT`), inflando el beneficio cuando había más de un
+ * dependiente. La doctrina es explícita: "el límite es por el total de
+ * dependientes, pues esta deducción no fija un número máximo de ellos... la
+ * deducción es la misma si se tiene un solo dependiente, cuatro o cinco"
+ * (Gerencie, guía de renta 2025; confirmado además por Tributi). El número
+ * de dependientes NO escala el tope de este artículo — solo habilita que el
+ * beneficio exista (basta con tener al menos un dependiente calificado). El
+ * límite de "máximo cuatro dependientes" (`DEPENDENTS_MAX_ELIGIBLE`) NO
+ * aplica al art. 387: es exclusivo del beneficio adicional de 72 UVT del
+ * art. 336 num. 3 (ver `dependents-additional-336.ts`). Se conserva aquí por
+ * compatibilidad de la doctrina histórica del art. 387 (que no fija número
+ * máximo), pero el motor ya no lo usa para escalar el tope.
+ *
+ * El tope anual se prorratea por el mes con mayor cobertura entre los
+ * dependientes declarados (`coveredMonths`): si el contribuyente tuvo al
+ * menos un dependiente calificado durante N meses del año, el tope aplicable
+ * es `N × 32 UVT` (máximo 384 UVT a los 12 meses). Esto refleja que el tope
+ * es mensual y único, no una suma de contribuciones por dependiente.
  *
  * Este motor NO valida la elegibilidad de cada dependiente (edad, ingresos,
  * certificaciones, parentesco) — esa clasificación es del analista y se
@@ -27,9 +44,8 @@ import { getTaxUnit } from './tax-unit';
  */
 export const DEPENDENTS_DEDUCTION_SOURCE_ID = 'et-art-387';
 export const DEPENDENTS_INCOME_PERCENTAGE = 0.1;
-export const DEPENDENTS_MAX_ELIGIBLE = 4;
-export const MONTHLY_CAP_UVT_PER_DEPENDENT = 32;
-export const ANNUAL_CAP_UVT_PER_DEPENDENT = 384;
+export const MONTHLY_CAP_UVT_TOTAL = 32;
+export const ANNUAL_CAP_UVT_TOTAL = 384;
 
 export interface DependentsDeductionInput {
   taxYear: number;
@@ -54,7 +70,10 @@ function clampMonths(months: number): number {
  * El resultado siempre incluye el detalle por dependiente y los tres
  * candidatos (porcentaje, tope mensual, tope anual) para que el analista
  * pueda ver cuál fue el limitante efectivo. La deducción aplicada es el
- * mínimo entre los tres.
+ * mínimo entre los tres. El tope mensual/anual es agregado (no se multiplica
+ * por dependiente): se calcula sobre `coveredMonths`, el mayor número de
+ * meses declarado entre los dependientes (basta con tener al menos uno
+ * calificado ese mes para que el tope de ese mes esté disponible).
  */
 export function computeDependentsDeduction(
   input: DependentsDeductionInput,
@@ -67,26 +86,28 @@ export function computeDependentsDeduction(
   const uvt = getTaxUnit(input.taxYear).valueCop;
   const grossIncome = Math.max(0, input.grossEmploymentIncomeCop);
   const providedCount = input.dependents.length;
-  const eligible = input.dependents.slice(0, DEPENDENTS_MAX_ELIGIBLE);
-  const eligibleCount = eligible.length;
-
-  const monthlyCapPerDependentCop = MONTHLY_CAP_UVT_PER_DEPENDENT * uvt;
-  const details: DependentDeductionDetail[] = eligible.map((dependent) => {
+  // El art. 387 ET no fija un número máximo de dependientes: el tope es
+  // agregado para el contribuyente, no por dependiente (a diferencia del
+  // beneficio adicional de 72 UVT del art. 336 num. 3, que sí limita a
+  // cuatro). Todos los dependientes declarados participan del cálculo.
+  const eligibleCount = providedCount;
+  const monthlyCapTotalCop = MONTHLY_CAP_UVT_TOTAL * uvt;
+  const details: DependentDeductionDetail[] = input.dependents.map((dependent) => {
     const months = clampMonths(dependent.monthsClaimed);
     return {
       id: dependent.id,
       kind: dependent.kind,
       monthsClaimed: months,
-      monthlyCapContributionCop: Math.round(months * monthlyCapPerDependentCop),
+      // Cobertura informativa de este dependiente por sí solo; el tope
+      // agregado usa `coveredMonths` (el máximo entre todos), no la suma.
+      monthlyCapContributionCop: Math.round(months * monthlyCapTotalCop),
     };
   });
+  const coveredMonths = details.reduce((max, detail) => Math.max(max, detail.monthsClaimed), 0);
 
   const percentageCandidateCop = Math.round(grossIncome * DEPENDENTS_INCOME_PERCENTAGE);
-  const monthlyCapCandidateCop = details.reduce(
-    (sum, detail) => sum + detail.monthlyCapContributionCop,
-    0,
-  );
-  const annualCapCandidateCop = Math.round(eligibleCount * ANNUAL_CAP_UVT_PER_DEPENDENT * uvt);
+  const monthlyCapCandidateCop = Math.round(coveredMonths * monthlyCapTotalCop);
+  const annualCapCandidateCop = Math.round(ANNUAL_CAP_UVT_TOTAL * uvt);
 
   const candidates: readonly {
     key: DependentsDeductionComputation['bindingCandidate'];
@@ -102,7 +123,7 @@ export function computeDependentsDeduction(
 
   const appliedDeductionCop = Math.max(0, binding.value);
 
-  const formula = `min(10 % × ingresos_trabajo, Σ 32 UVT × meses, ${eligibleCount} × 384 UVT) — art. 387 ET`;
+  const formula = `min(10 % × ingresos_trabajo, ${coveredMonths} meses × 32 UVT, 384 UVT) — art. 387 ET (tope total, no por dependiente)`;
 
   return {
     taxYear: input.taxYear,

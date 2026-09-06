@@ -7,6 +7,8 @@ Documento índice del borrador trazable AG 2025.
 - [Trazabilidad](./FORM_210_TRACEABILITY.md)
 - [Validaciones](./FORM_210_VALIDATION.md)
 - [Liquidación preliminar](./FORM_210_LIQUIDATION.md)
+- [Declaraciones anteriores (Sprint 2.4)](./PRIOR_YEAR_RETURNS.md)
+- [Beneficios de dependientes (Sprint 2.4, Fase C)](./DEPENDENTS_BENEFITS_2025.md)
 - [Cierre](./CASE_CLOSURE.md)
 
 Desde Sprint 2.3.2 R31, R37 y R40 derivan de sus operandos; un interés de

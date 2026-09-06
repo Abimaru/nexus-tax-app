@@ -34,6 +34,8 @@ export * from './documentProfile';
 export * from './extractionFeedback';
 export * from './caseTasks';
 export * from './taxResolution';
+export * from './priorYearReturn';
+export * from './taxDependent';
 
 /** Versión del contrato de dominio. Se incrementa ante cambios incompatibles. */
-export const DOMAIN_VERSION = '0.9.0';
+export const DOMAIN_VERSION = '0.11.0';

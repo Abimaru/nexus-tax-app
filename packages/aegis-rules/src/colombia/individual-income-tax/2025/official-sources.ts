@@ -131,8 +131,20 @@ export const OFFICIAL_SOURCES_2025: readonly OfficialSourceReference[] = [
     verifiedAt: VERIFIED_AT,
     taxYear: null,
     scope:
-      'Deducción por dependientes económicos (10 % ingresos brutos, hasta 32 UVT mensuales y 384 UVT anuales por dependiente, máx. 4 dependientes)',
+      'Deducción por dependientes económicos (10 % ingresos brutos, hasta 32 UVT mensuales y 384 UVT anuales TOTALES para el contribuyente; sin número máximo de dependientes)',
     relatedBoxNumbers: [39],
+  },
+  {
+    id: 'et-art-336-num-3',
+    authority: 'Estatuto Tributario',
+    title:
+      'Estatuto Tributario, artículo 336, numeral 3, inciso 2 — Adición por dependientes (adicionado por la Ley 2277 de 2022)',
+    url: 'https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=6533#336',
+    verifiedAt: VERIFIED_AT,
+    taxYear: null,
+    scope:
+      'Deducción adicional de 72 UVT por dependiente, máximo cuatro dependientes; adicional al límite del 40 %/1.340 UVT y a la deducción del art. 387 (arts. 1.2.1.20.3 y 2231 de 2023 del Decreto 1625 de 2016 regulan la coexistencia)',
+    relatedBoxNumbers: [92, 138, 139],
   },
   {
     id: 'et-art-261',

@@ -31,6 +31,9 @@ const SECTION: Record<Form210Section, string> = {
   dividends: 'Dividendos',
   occasional_gains: 'Ganancias ocasionales',
   private_settlement: 'Liquidación privada preliminar',
+  general_income_consolidation: 'Consolidación de la cédula general',
+  tax_settlement: 'Liquidación del impuesto',
+  informational: 'Información complementaria',
 };
 const STATUS: Record<Form210BoxStatus, string> = {
   no_data: 'Sin datos',

@@ -229,6 +229,9 @@ importers:
       '@nexus-tax/aegis-rules':
         specifier: workspace:*
         version: link:../aegis-rules
+      '@nexus-tax/document-intelligence':
+        specifier: workspace:*
+        version: link:../document-intelligence
       '@nexus-tax/domain':
         specifier: workspace:*
         version: link:../domain
