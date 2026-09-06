@@ -38,6 +38,9 @@ describe('suggestExogenousMatches — estados granulares (Sprint 2.4, Fase E)', 
     const [match] = suggestExogenousMatches(roundingCandidate, [record]);
     expect(match?.status).toBe('rounding_match');
     expect(match?.reasons.join(' ')).toMatch(/redondea/i);
+    // Sprint 2.4, Fase E.1, §11: "por redondeo" reemplaza a "valor
+    // cercano", nunca coexisten — la UI no debe mostrar ambas frases.
+    expect(match?.reasons).not.toContain('Valor cercano.');
   });
 
   it('marca ambiguo cuando dos registros empatan en el primer lugar', () => {
