@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { DocumentKindSchema } from './documents';
+import { CandidateExogenousMatchStatusSchema, NumericEvidenceClassificationSchema } from './evidenceMatching';
 import { AmountCandidateSchema } from './money';
 import { IsoTimestampSchema } from './primitives';
 import { ProductTypeSchema } from './taxDossier';
@@ -179,13 +180,7 @@ export type OcrPageOutcome = z.infer<typeof OcrPageOutcomeSchema>;
 
 export const CandidateExogenousMatchSchema = z.object({
   recordId: z.string(),
-  status: z.enum([
-    'strong_match',
-    'probable_match',
-    'multiple_candidates',
-    'no_match',
-    'possible_contradiction',
-  ]),
+  status: CandidateExogenousMatchStatusSchema,
   reasons: z.array(z.string()),
   exogenousValue: z.number().optional(),
   documentDecimalValue: z.number().nullable().optional(),
@@ -326,6 +321,22 @@ export const DocumentExtractionMetricsSchema = z.object({
   nativeCandidates: z.number().int().nonnegative().optional(),
   ocrCandidates: z.number().int().nonnegative().optional(),
   manualCandidates: z.number().int().nonnegative().optional(),
+  /**
+   * Métricas de clasificación antirruido (Sprint 2.4, Fase E, §36). Se
+   * agregan durante la extracción; son locales al expediente/sesión, nunca
+   * telemetría. `numericEvidenceDetected` cuenta todos los tokens
+   * numéricos evaluados por `classifyNumericEvidence` (dinero + ruido);
+   * `numericNoiseSuppressed` es la resta de los que NO se promovieron a
+   * candidato monetario.
+   */
+  numericEvidenceDetected: z.number().int().nonnegative().optional(),
+  monetaryEvidencePromoted: z.number().int().nonnegative().optional(),
+  numericNoiseSuppressed: z.number().int().nonnegative().optional(),
+  exactMatches: z.number().int().nonnegative().optional(),
+  roundingMatches: z.number().int().nonnegative().optional(),
+  ambiguousMatches: z.number().int().nonnegative().optional(),
+  manualGuidedCaptures: z.number().int().nonnegative().optional(),
+  unresolvedExpectedEvidence: z.number().int().nonnegative().optional(),
 });
 export type DocumentExtractionMetrics = z.infer<typeof DocumentExtractionMetricsSchema>;
 
@@ -352,10 +363,18 @@ export const DocumentExtractionSessionSchema = z.object({
   errorMessage: z.string().nullable(),
   supersedesSessionId: z.string().nullable(),
   obsoleteCandidateIds: z.array(z.string()),
+  /**
+   * Evidencia numérica clasificada como ruido (NIT, cuentas, resoluciones,
+   * años, etc.), acotada a las primeras 200 entradas por sesión (Sprint
+   * 2.4, Fase E, §6). Nunca se elimina físicamente la evidencia: queda
+   * disponible para inspección en modo avanzado/laboratorio, pero jamás
+   * satura la revisión normal (que solo ve el resumen de `metrics`).
+   */
+  suppressedNumericEvidence: z.array(NumericEvidenceClassificationSchema).max(200).optional(),
   startedAt: IsoTimestampSchema,
   finishedAt: IsoTimestampSchema.nullable(),
   updatedAt: IsoTimestampSchema,
 });
 export type DocumentExtractionSession = z.infer<typeof DocumentExtractionSessionSchema>;
 
-export const DOCUMENT_EXTRACTION_SCHEMA_VERSION = '2.2.0';
+export const DOCUMENT_EXTRACTION_SCHEMA_VERSION = '2.3.0';

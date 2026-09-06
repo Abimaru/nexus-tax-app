@@ -68,7 +68,15 @@ export const RequirementCoverageSchema = z.object({
 });
 export type RequirementCoverage = z.infer<typeof RequirementCoverageSchema>;
 
-export const FactCaptureMethodSchema = z.enum(['manual', 'automatic', 'assisted', 'imported']);
+/**
+ * `manual_guided` (Sprint 2.4, Fase E, §19-20): captura manual contextual
+ * disparada desde una expectativa (`ExpectedTaxEvidence`) sin buen
+ * candidato. Se distingue de `manual` porque conserva procedencia
+ * adicional (expectativa de origen) y porque la UI nunca pide
+ * categoría/naturaleza/tratamiento/producto/casilla: ya están implícitos
+ * en la expectativa que la originó.
+ */
+export const FactCaptureMethodSchema = z.enum(['manual', 'automatic', 'assisted', 'imported', 'manual_guided']);
 export type FactCaptureMethod = z.infer<typeof FactCaptureMethodSchema>;
 export const FactReviewStatusSchema = z.enum(['pending', 'reviewed', 'confirmed', 'rejected']);
 export type FactReviewStatus = z.infer<typeof FactReviewStatusSchema>;
@@ -117,6 +125,14 @@ export const DocumentFactSchema = z.object({
   adapterVersion: z.string().nullable().optional(),
   finalConfidence: z.enum(['high', 'medium', 'low', 'insufficient']).optional(),
   analystDecision: z.string().optional(),
+  /**
+   * `expectedEvidenceId` (Sprint 2.4, Fase E, §20): presente cuando el
+   * hecho nace de una captura manual guiada (`captureMethod:
+   * 'manual_guided'`) o de confirmar una sugerencia de Guided Review.
+   * Conserva la trazabilidad hacia la expectativa que originó la captura,
+   * sin necesidad de re-derivarla.
+   */
+  expectedEvidenceId: z.string().nullable().optional(),
 });
 export type DocumentFact = z.infer<typeof DocumentFactSchema>;
 
