@@ -1,6 +1,108 @@
-# Handoff del proyecto — NexusTax (Sprint 2.4, Fase B0 + B + B1 + C + D + E + revisiones puntuales)
+# Handoff del proyecto — NexusTax (Sprint 2.4, Fase B0 + B + B1 + C + D + E + E.1 + revisiones puntuales)
 
-_Última actualización: 2026-09-06._
+_Última actualización: 2026-09-06 (cierre Fase E.1)._
+
+## Sprint 2.4 — Fase E.1: cierre de Evidence Matching & Guided Reconciliation
+
+Continuación exclusiva sobre `feature/sprint-2.4-evidence-matching` (misma rama, sin crear otra).
+Cierra los dos criterios de aceptación que quedaron pendientes al terminar la Fase E funcional:
+(1) el clasificador antirruido no participaba en la decisión de promover evidencia numérica a
+candidato monetario, solo en la inspección; (2) no existía un E2E de Playwright del Guided Review.
+
+### 1. Promotion gate
+
+`monetaryMatches()` (`packages/document-intelligence/src/adapters.ts`) ahora aplica
+`classifyNumericEvidence` como filtro semántico DESPUÉS de sus filtros previos (línea explicativa,
+%/x adyacente, rango de año, umbral de 10.000/formato/moneda): solo `role === 'money'` se promueve
+con normalidad; `role === 'unknown'` se promueve de forma conservadora forzando
+`status: 'requires_review'`; cualquier rol de ruido (NIT, cédula, cuenta, resolución, referencia
+legal, fecha, año, porcentaje, página) se suprime — nunca se descarta como evidencia, sigue
+disponible vía `classifyDocumentNumericEvidence`/`suppressedNumericEvidence`, pero no se convierte
+en `DocumentFactCandidate`. Antes de este cierre, un NIT con separadores de miles (p. ej.
+`900.123.456-7`) podía pasar el filtro ad-hoc por formato y magnitud aunque el clasificador ya lo
+reconociera como ruido — la clasificación no tenía ningún efecto sobre la promoción real.
+
+Se reordenó `classifyNumericEvidence` por prioridad para resolver los casos de contexto exigidos:
+símbolo de moneda pegado al propio token (`$4.500.000`) gana siempre sobre una palabra de
+referencia más atrás en la línea (`"Saldo cuenta 1234567890: $4.500.000"` → cuenta suprimida, monto
+promovido); NIT/cédula ganan siempre incluso con formato de miles; una palabra de monto ("saldo",
+"valor", "rendimientos", etc.) + formato de miles/decimales en el propio token gana sobre
+"cuenta"/"obligación" (`"Saldo obligación 45.123.456"` → dinero; `"Obligación 4512345678"` sin
+palabra de monto ni formato → identificador). Se agregó una alternativa bare "obligación" (sin
+requerir "no") al patrón de `account_number`.
+
+Se corrigió además un defecto encontrado durante la verificación de redondeo: cuando
+`suggestExogenousMatches` detecta `rounding_match`, ya no coexiste la razón genérica "Valor
+cercano." junto con la razón específica de redondeo — se reemplaza, para que la UI nunca muestre
+ambas frases. La etiqueta de `describeMatchConfidence('rounding_match')` se ajustó a "Coincide por
+redondeo al peso" (antes "Coincide por redondeo", a secas).
+
+### 2. Gaps de UI completados (no un rediseño)
+
+Al construir el E2E se encontraron dos piezas del modelo ya definido (`EvidenceReviewAction`) que
+no estaban conectadas en `EvidenceReviewPanel`:
+
+- **Resolución de ambigüedad**: `allowedActions` para `ambiguous` ahora incluye `confirm` (además
+  de `choose_alternative`), con el botón etiquetado "Elegir este valor". Elegir una expectativa
+  consume el candidato (`factId`); la expectativa competidora deja de encontrarlo como candidato
+  abierto en la siguiente recomputación y vuelve automáticamente a `unresolved`, sin necesidad de
+  un selector de alternativas independiente.
+- **Captura manual guiada sin conciliación**: `createGuidedManualCapture` creaba el `DocumentFact`
+  pero nunca marcaba la expectativa como resuelta ante el resto de la revisión guiada — volvía a
+  aparecer como "Falta este dato" en cada recomputación. Ahora también registra la
+  `PreliminaryReconciliation` correspondiente (`status: 'reconciled'`, igual que
+  `confirmEvidenceMatch`). `buildEvidenceReviewSuggestions` recibe `reconciledExogenousRecordIds`
+  (derivado de `workspace.reconciliations`) para excluir por completo cualquier expectativa ya
+  conciliada.
+- La tarjeta de sugerencia ahora renderiza `suggestion.reasons` y usa
+  `describeMatchConfidence(matchStatus)` como etiqueta principal (en vez del genérico "Coincide con
+  la exógena" para exact/rounding), para que la distinción de redondeo sea visible en la UI, no
+  solo en los datos.
+
+### 3. E2E de Playwright
+
+Nuevo `apps/web/tests-e2e/evidence-review.spec.ts`: expediente sintético con exógena + PDF
+financiero sintético (kind `consolidated_tax_certificate`, con categorías reales `asset`/
+`financial_income`/`liability`/`withholding` para evitar colisiones de score entre candidatos no
+relacionados) que mezcla ruido (NIT con/sin separadores, cuenta, resolución, año, porcentaje) con
+3 valores monetarios reales: coincidencia exacta, coincidencia por redondeo, y un valor ambiguo que
+empata contra dos registros exógenos idénticos. Cubre: resumen de la revisión guiada; solo 3
+candidatos reales en modo avanzado (nunca los 5 números de ruido); confirmación en bloque segura;
+resolución de ambigüedad; captura manual guiada de una expectativa sin documento; conciliación
+resultante (4 decisiones — A, B, D confirmados + C manual — sin doble conteo); persistencia tras
+recargar la página; trazabilidad en modo avanzado; y 390px sin overflow horizontal.
+
+Se actualizaron `smoke.spec.ts` y `document-lab.spec.ts`: como `EvidenceReviewPanel` es ahora la
+vista por defecto de `organizacion/revision-documental` (reemplazando el render directo de
+`DocumentExtractionReviewPanel` desde el cierre funcional de Fase E), ambos specs necesitaban abrir
+el interruptor "Ver otros datos detectados" antes de interactuar con la revisión detallada. Se
+agregó el helper `openAdvancedReview(page)` en ambos archivos.
+
+### Verificación ejecutada
+
+- `pnpm check:encoding`: sin mojibake (387 archivos).
+- `pnpm -r typecheck`: limpio en todo el monorepo.
+- `pnpm -r lint`: 0 advertencias.
+- `pnpm -r test`: **609/609** tests (domain 19, aegis-rules 175, document-intelligence 118 [+15],
+  form-210 93, exogenous-parser 77, web 127 [+2] — sin regresiones en los 592 previos).
+- `pnpm build`: exitoso.
+- `pnpm test:e2e`: **11/11** specs (incluye el nuevo `evidence-review.spec.ts`).
+
+### Limitaciones reales restantes para Fase E2
+
+Ver `docs/EVIDENCE_MATCHING.md` §"Limitaciones conocidas": los dos scorers sin unificar
+(`suggestExogenousMatches`/`suggestReconciliations`), el clasificador de ruido ejecutado dos veces
+por documento (gate + inspección, sin unificar el recorrido), captura manual guiada sin edición de
+categoría/naturaleza/tratamiento, sin paginación en `EvidenceReviewPanel` para expedientes muy
+grandes, y un caso límite conocido en el chequeo de ambigüedad del matcher (marca `ambiguous` al
+tercer elemento del top-3 cuando solo empatan los dos primeros) — no cubierto por los fixtures
+requeridos, documentado para no perderlo de vista.
+
+### Estado de Git
+
+Continuó sobre `feature/sprint-2.4-evidence-matching` (misma rama de la Fase E funcional), sin
+crear otra. Pendiente de push y PR — el cierre de esta fase no incluyó publicación salvo
+indicación explícita del usuario.
 
 ## Sprint 2.4 — Fase E: Evidence Matching & Guided Reconciliation
 
