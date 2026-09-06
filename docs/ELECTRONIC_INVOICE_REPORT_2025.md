@@ -1,13 +1,22 @@
 # Reporte DIAN de facturación electrónica (Sprint 2.4, Fase D)
 
-_Última actualización: 2026-09-06._
+_Última actualización: 2026-09-06 — incluye revisión normativa puntual posterior a Fase D._
+
+> **Corrección normativa posterior a Fase D**: la sección 15 de este
+> documento describía el destino del beneficio del 1 % como componente de
+> la casilla 92 (vía casillas 140/141). Una revisión posterior encontró que
+> esto también era incorrecto: el fundamento legal correcto es el
+> **numeral 5 del art. 336 ET** (no el "artículo 336-1 ET") y la casilla
+> oficial es la **28** (no 140/141, que tienen significados oficiales
+> distintos). Ver el detalle completo en
+> [`ELECTRONIC_INVOICING_2025.md`](./ELECTRONIC_INVOICING_2025.md).
 
 ## 1. Qué resuelve esta fase
 
 Convierte el reporte DIAN de facturación electrónica (el archivo que el
 contribuyente descarga del portal DIAN con el detalle factura por factura)
 en una fuente estructurada, trazable y conciliable — distinta de la
-exógena — que alimenta el motor del 1 % (art. 336-1 ET) con una base
+exógena — que alimenta el motor del 1 % (art. 336 num. 5 ET) con una base
 explicable y auditable.
 
 Flujo completo:
@@ -60,7 +69,7 @@ post-decisiones) es la que finalmente alimenta el motor del 1 %.
 | ¿Hay parser monetario central? | Sí — `parseMoneyAmount`/`AmountCandidate` v2.0.0 en `@nexus-tax/document-intelligence`; `exogenous-parser` no lo usaba (usaba `coerceNumber`, más simple, sin evidencia/confianza). Se agregó como dependencia. |
 | ¿Hay política de conciliación reutilizable? | Sí — `evaluateReconciliationDifference` en `reconciliationPolicy.ts` (estados exact/rounding/minor/relevant, tolerancia de $1 ya incorporada). |
 | ¿Hay infraestructura de decisiones tributarias? | Sí — `TaxResolutionDecision`/`saveTaxResolutionDecision` (append-only, reversible). Reutilizada en vez de crear una tercera tabla de decisiones. |
-| Riesgos de integración | Numeración de casillas 140/141 ya reservada (`not_implemented`) desde Fase B0 — encajaban perfectamente para este propósito. |
+| Riesgos de integración | Numeración de casillas 140/141 ya reservada (`not_implemented`) desde Fase B0 — se asumió inicialmente (Fase D) que encajaban para este propósito, pero una revisión normativa posterior encontró que tienen significados oficiales distintos (indicador art. 336-1 ET y aporte voluntario art. 244-1 ET, respectivamente); la casilla oficial correcta es la 28, no modelada hasta la revisión puntual. |
 
 ## 4. Modelo de dominio
 
@@ -219,13 +228,17 @@ sin ninguna excepción especial de "$1".
 ## 15. Corrección normativa: destino en el Formulario 210
 
 Ver el detalle completo en
-[`ELECTRONIC_INVOICING_2025.md`](./ELECTRONIC_INVOICING_2025.md) §"Corrección
-normativa". Resumen: el Decreto 2231 de 2023 exime esta deducción del
-límite del 40 %/1.340 UVT (numeral 3 del art. 336 ET) — cablearla a la
-casilla 39 (que sí entra a ese límite vía R40→R41) era incorrecto. Se
-corrige moviéndola a ser componente de la casilla 92 (fórmula `92 = 41 +
-65 + 82 + 139 + 141`) usando las casillas 140 (base) y 141 (deducción),
-análogo a R139 (72 UVT por dependiente, Fase C).
+[`ELECTRONIC_INVOICING_2025.md`](./ELECTRONIC_INVOICING_2025.md) §"Historial
+de correcciones normativas". Resumen: el numeral 5 del art. 336 ET exime
+esta deducción del límite del 40 %/1.340 UVT (numeral 3 del mismo
+artículo) — cablearla a la casilla 39 (que sí entra a ese límite vía
+R40→R41, Fase D) era incorrecto. Una revisión normativa posterior también
+corrigió el destino intermedio (componente de R92 vía casillas 140/141,
+asumido en Fase D): las casillas oficiales 140 y 141 tienen significados
+completamente distintos (indicador de costos/gastos estimados del art.
+336-1 ET, e impuesto voluntario del art. 244-1 ET, respectivamente). La
+casilla oficial correcta es la **28** (dato informativo previo a
+patrimonio), fuera de cualquier fórmula de consolidación cedular.
 
 ## 16. Persistencia (Dexie v15)
 
@@ -272,8 +285,9 @@ CUFE completo.
   workbook completo, montos CO, CUFE, duplicados exactos/conflictivos/
   malformados, NC/ND, neto, métodos de pago, totales, regresión numérica de
   227 facturas, conciliación con diferencia de $1).
-- `packages/form-210`: 89/89 tests (reescritos para reflejar el destino
-  correcto en 140/141, nunca 39).
+- `packages/form-210`: 93/93 tests (reescritos en la revisión normativa puntual para reflejar el
+  destino oficial correcto en la casilla 28, nunca 39/92/140/141; incluye 4 tests de guardarraíl
+  dedicados).
 - `apps/web`: 113/113 tests (7 nuevos de repository — importar, archivo no
   reconocido, doble beneficio, opt-out reversible, deduplicación, eliminar,
   reimportar —, 1 nuevo de `taxCaseAnalysis` con los 8 tipos de tarea, 4
@@ -282,8 +296,8 @@ CUFE completo.
   flujo completo (cargar → conciliar → decidir → verificar F-210 →
   recargar → tarea → cierre) y archivo no reconocido. Capturas
   desktop/móvil verificadas.
-- Monorepo completo: `check:encoding`, `typecheck`, `lint`, `test` (562
-  tests), `build`, `test:e2e` (10/10) — todo verde.
+- Monorepo completo (revisión normativa puntual): `check:encoding`, `typecheck`, `lint`, `test`
+  (566 tests), `build`, `test:e2e` (10/10) — todo verde.
 
 ## 20. Fuera de alcance / limitaciones conocidas
 

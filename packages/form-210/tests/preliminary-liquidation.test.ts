@@ -409,11 +409,15 @@ describe('liquidación privada preliminar (Fase K)', () => {
     expect(liq.warnings.some((warning) => warning.includes('primeros'))).toBe(false);
   });
 
-  it('cablea la deducción por facturas electrónicas a las casillas 140/141 (componente de R92, Fase D)', () => {
-    // CORRECCIÓN NORMATIVA (Fase D): antes cableada a la casilla 39; el
-    // Decreto 2231 de 2023 exime esta deducción del límite del 40 %/1.340
-    // UVT que sí gobierna la casilla 39 (vía R40→R41), por lo que se mueve a
-    // ser componente de R92 (análogo a R139), nunca de R39.
+  it('cablea la deducción por facturas electrónicas a la casilla 28 (revisión normativa puntual)', () => {
+    // CORRECCIÓN NORMATIVA (revisión posterior a Fase D): la ubicación
+    // oficial de esta deducción es la casilla 28 (dato informativo previo a
+    // patrimonio), confirmada por múltiples fuentes independientes. Las
+    // casillas 140/141 NO le pertenecen: 140 es un indicador de exceso de
+    // costos/gastos (art. 336-1 ET, norma distinta) y 141 es el impuesto
+    // voluntario (art. 244-1 ET). El fundamento legal correcto es el
+    // numeral 5 del art. 336 ET, exento del límite del 40 %/1.340 UVT, por
+    // lo que nunca entra a R39 ni a la fórmula de R92.
     // Compras 50M → 1 % = 500.000, muy por debajo del tope 240 UVT ≈ 11.95M.
     const draft = buildForm210Draft({
       caseId: 'case-fe',
@@ -424,22 +428,27 @@ describe('liquidación privada preliminar (Fase K)', () => {
     });
     const box39 = draft.boxes.find((box) => box.number === 39)!;
     expect(
-      box39.sources.some((source) => source.sourceId === 'calc:electronic-invoicing-336-1'),
+      box39.sources.some((source) => source.sourceId.includes('electronic-invoicing')),
     ).toBe(false);
     const box140 = draft.boxes.find((box) => box.number === 140)!;
-    expect(box140.suggestedValue).toBe(50_000_000);
+    expect(box140.suggestedValue).toBeNull();
     const box141 = draft.boxes.find((box) => box.number === 141)!;
-    expect(box141.suggestedValue).toBe(500_000);
+    expect(box141.suggestedValue).toBeNull();
+    const box28 = draft.boxes.find((box) => box.number === 28)!;
+    expect(box28.suggestedValue).toBe(500_000);
     expect(
-      box141.sources.some((source) => source.sourceId === 'calc:electronic-invoicing-336-1'),
+      box28.sources.some((source) => source.sourceId === 'calc:electronic-invoicing-336-num-5'),
     ).toBe(true);
     const box92 = draft.boxes.find((box) => box.number === 92)!;
-    expect(box92.suggestedValue).toBe(500_000);
+    // R92 se calcula por su propia fórmula (41+65+82+139, todas en 0 aquí
+    // por falta de rentas exentas/deducciones/dependientes declarados) —
+    // nunca incluye el valor de la deducción de facturación electrónica.
+    expect(box92.suggestedValue).toBe(0);
     const liq = draft.preliminaryLiquidation!;
     expect(liq.electronicInvoicingDeduction).not.toBeNull();
     expect(liq.electronicInvoicingDeduction!.appliedDeductionCop).toBe(500_000);
     expect(liq.electronicInvoicingDeduction!.bindingCandidate).toBe('percentage');
-    expect(liq.electronicInvoicingDeduction!.ruleSourceId).toBe('et-art-336-1');
+    expect(liq.electronicInvoicingDeduction!.ruleSourceId).toBe('et-art-336-num-5');
   });
 
   it('respeta el tope de 240 UVT cuando el 1 % lo excede', () => {
@@ -455,12 +464,12 @@ describe('liquidación privada preliminar (Fase K)', () => {
     const expectedCap = Math.round(ELECTRONIC_INVOICING_ANNUAL_CAP_UVT * UVT_2025);
     expect(liq.electronicInvoicingDeduction!.appliedDeductionCop).toBe(expectedCap);
     expect(liq.electronicInvoicingDeduction!.bindingCandidate).toBe('uvt_cap');
-    const box141 = draft.boxes.find((box) => box.number === 141)!;
-    expect(box141.suggestedValue).toBe(expectedCap);
+    const box28 = draft.boxes.find((box) => box.number === 28)!;
+    expect(box28.suggestedValue).toBe(expectedCap);
   });
 
-  it('dependientes (R39/R92 vía R139) y facturas electrónicas (R92 vía R141) nunca se mezclan en R39', () => {
-    // Dependiente 10 % × 60M = 6M (casilla 39) ; compras 50M × 1 % = 500.000 (casilla 141, componente de R92).
+  it('dependientes (R39 vía art. 387) y facturación electrónica (R28) nunca se mezclan en la misma casilla', () => {
+    // Dependiente 10 % × 60M = 6M (casilla 39) ; compras 50M × 1 % = 500.000 (casilla 28, independiente).
     const draft = buildForm210Draft({
       caseId: 'case-combo',
       taxYear: 2025,
@@ -472,8 +481,80 @@ describe('liquidación privada preliminar (Fase K)', () => {
     const box39 = draft.boxes.find((box) => box.number === 39)!;
     expect(box39.suggestedValue).toBe(6_000_000);
     expect(box39.sources).toHaveLength(1);
-    const box141 = draft.boxes.find((box) => box.number === 141)!;
-    expect(box141.suggestedValue).toBe(500_000);
+    const box28 = draft.boxes.find((box) => box.number === 28)!;
+    expect(box28.suggestedValue).toBe(500_000);
+  });
+
+  describe('GUARDARRAÍL — revisión normativa puntual (impide la reintroducción de los 4 errores encontrados)', () => {
+    it('R140 nunca se trata como importe monetario (COP): permanece null/sin sources incluso con facturación electrónica declarada', () => {
+      const draft = buildForm210Draft({
+        caseId: 'case-guard-140',
+        taxYear: 2025,
+        records: [employmentRecord('rec-1', 60_000_000)],
+        facts: [],
+        electronicInvoicing: { purchasesWithElectronicInvoiceCop: 50_000_000 },
+      });
+      const box140 = draft.boxes.find((box) => box.number === 140)!;
+      expect(box140.suggestedValue).toBeNull();
+      expect(box140.sources).toHaveLength(0);
+      expect(box140.formula).toBeNull();
+      expect(box140.ruleComplete).toBe(false);
+    });
+
+    it('R141 nunca se usa para la deducción de facturación electrónica: permanece null/sin sources', () => {
+      const draft = buildForm210Draft({
+        caseId: 'case-guard-141',
+        taxYear: 2025,
+        records: [employmentRecord('rec-1', 60_000_000)],
+        facts: [],
+        electronicInvoicing: { purchasesWithElectronicInvoiceCop: 2_000_000_000 }, // fuerza el tope de 240 UVT también
+      });
+      const box141 = draft.boxes.find((box) => box.number === 141)!;
+      expect(box141.suggestedValue).toBeNull();
+      expect(box141.sources).toHaveLength(0);
+      expect(
+        box141.sources.some((source) => source.sourceId.includes('electronic-invoicing')),
+      ).toBe(false);
+    });
+
+    it('la deducción del 1 % nunca vuelve a cablearse en la casilla 39', () => {
+      const draft = buildForm210Draft({
+        caseId: 'case-guard-39',
+        taxYear: 2025,
+        records: [employmentRecord('rec-1', 60_000_000)],
+        facts: [],
+        dependents: [{ id: 'dep-1', kind: 'child_minor', monthsClaimed: 12 }],
+        electronicInvoicing: { purchasesWithElectronicInvoiceCop: 50_000_000 },
+      });
+      const box39 = draft.boxes.find((box) => box.number === 39)!;
+      // Solo la fuente de dependientes debe estar presente; nunca facturación electrónica.
+      expect(box39.sources.map((source) => source.sourceId)).toEqual(['calc:dependents-387']);
+      expect(
+        box39.sources.some((source) => source.sourceId.includes('electronic-invoicing')),
+      ).toBe(false);
+    });
+
+    it('la deducción del 1 % nunca queda sujeta al límite del 40 %/1.340 UVT (R92/R41): un tope de deducciones bajo no la recorta', () => {
+      // Ingreso de trabajo 500M, SIN rentas exentas/deducciones declaradas
+      // (37+40 = 0), por lo que R41 = min(40%×500M, 1.340 UVT, 0) = 0 — el
+      // componente detectado es el limitante más restrictivo posible. Si la
+      // deducción del 1 % dependiera de R41/R92 (el bug corregido), su valor
+      // se vería arrastrado a 0. Compras 50M → 1 % = 500.000: debe
+      // conservarse íntegro en R28, ajeno por completo a esa cadena.
+      const draft = buildForm210Draft({
+        caseId: 'case-guard-limit',
+        taxYear: 2025,
+        records: [employmentRecord('rec-1', 500_000_000)],
+        facts: [],
+        electronicInvoicing: { purchasesWithElectronicInvoiceCop: 50_000_000 },
+      });
+      const box41 = draft.boxes.find((box) => box.number === 41)!;
+      expect(box41.suggestedValue).toBe(0); // confirma que el límite conjunto SÍ está activo y restrictivo.
+      const box28 = draft.boxes.find((box) => box.number === 28)!;
+      expect(box28.suggestedValue).toBe(500_000); // la deducción del 1 % no se ve afectada.
+      const liq = draft.preliminaryLiquidation!;
+      expect(liq.electronicInvoicingDeduction!.appliedDeductionCop).toBe(500_000);
+    });
   });
 
   it('aplica límites individuales declarativos (AFC, vivienda, medicina) y advierte excesos', () => {

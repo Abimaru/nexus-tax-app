@@ -138,7 +138,7 @@ describe('exportación consolidada del F-210 (Fase U)', () => {
         'et-art-314',
         'et-art-336',
         'et-art-387',
-        'et-art-336-1',
+        'et-art-336-num-5',
         'et-art-126-1',
         'et-art-126-4',
         'et-art-119',

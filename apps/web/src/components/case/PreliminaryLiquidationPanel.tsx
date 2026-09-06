@@ -407,7 +407,7 @@ export function PreliminaryLiquidationPanel({
                 <li className="rounded-lg border border-overlay/8 bg-surface-raised/40 p-3">
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <p className="font-medium text-content-strong">
-                      Facturas electrónicas (art. 336-1 ET)
+                      Facturas electrónicas (art. 336 num. 5 ET)
                     </p>
                     <p className="font-semibold text-content-strong">
                       {formatCurrencyCOP(liq.electronicInvoicingDeduction.appliedDeductionCop)}

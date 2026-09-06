@@ -1739,11 +1739,10 @@ describe('facturación electrónica (Sprint 2.4, Fase D)', () => {
     expect(purchases.every((purchase) => purchase.benefitDecision === 'eligible')).toBe(true);
 
     const workspace = await getTaxCaseWorkspace(created.id);
-    const box140 = workspace.form210Draft?.boxes.find((box) => box.number === 140);
-    const box141 = workspace.form210Draft?.boxes.find((box) => box.number === 141);
-    expect(box140?.suggestedValue).toBe(2_000_000);
+    const box28 = workspace.form210Draft?.boxes.find((box) => box.number === 28);
     // 1 % de 2.000.000 = 20.000, muy por debajo del tope de 240 UVT.
-    expect(box141?.suggestedValue).toBe(20_000);
+    // Corrección normativa puntual: casilla oficial 28, no 140/141.
+    expect(box28?.suggestedValue).toBe(20_000);
     // Nunca debe fluir por la casilla 39 (corrección normativa Fase D).
     const box39 = workspace.form210Draft?.boxes.find((box) => box.number === 39);
     expect(
@@ -1771,7 +1770,7 @@ describe('facturación electrónica (Sprint 2.4, Fase D)', () => {
     expect(await getElectronicInvoiceReport(created.id)).toBeUndefined();
   });
 
-  it('excluir una factura por doble beneficio recalcula la base y la casilla 141', async () => {
+  it('excluir una factura por doble beneficio recalcula la base y la casilla 28', async () => {
     const created = await createCase({ alias: 'Doble beneficio', taxYear: 2025 });
     const file = electronicInvoiceFile([
       [
@@ -1809,9 +1808,9 @@ describe('facturación electrónica (Sprint 2.4, Fase D)', () => {
       'Esta factura ya se dedujo como costo en la cédula no laboral.',
     );
     const workspace = await getTaxCaseWorkspace(created.id);
-    const box141 = workspace.form210Draft?.boxes.find((box) => box.number === 141);
+    const box28 = workspace.form210Draft?.boxes.find((box) => box.number === 28);
     // Solo la segunda factura (1.000.000) queda elegible → 1 % = 10.000.
-    expect(box141?.suggestedValue).toBe(10_000);
+    expect(box28?.suggestedValue).toBe(10_000);
     const decisions = await listTaxResolutionDecisions(created.id);
     expect(
       decisions.some((decision) => decision.type === 'decide_electronic_invoice_benefit'),
@@ -1840,8 +1839,8 @@ describe('facturación electrónica (Sprint 2.4, Fase D)', () => {
     let report = await getElectronicInvoiceReport(created.id);
     expect(report?.benefitOptedOut).toBe(true);
     let workspace = await getTaxCaseWorkspace(created.id);
-    let box141 = workspace.form210Draft?.boxes.find((box) => box.number === 141);
-    expect(box141?.suggestedValue ?? 0).toBe(0);
+    let box28 = workspace.form210Draft?.boxes.find((box) => box.number === 28);
+    expect(box28?.suggestedValue ?? 0).toBe(0);
     // El reporte y las facturas se conservan (no se borran).
     expect(await getElectronicInvoicePurchases(created.id)).toHaveLength(1);
 
@@ -1850,8 +1849,8 @@ describe('facturación electrónica (Sprint 2.4, Fase D)', () => {
     report = await getElectronicInvoiceReport(created.id);
     expect(report?.benefitOptedOut).toBe(false);
     workspace = await getTaxCaseWorkspace(created.id);
-    box141 = workspace.form210Draft?.boxes.find((box) => box.number === 141);
-    expect(box141?.suggestedValue).toBe(10_000);
+    box28 = workspace.form210Draft?.boxes.find((box) => box.number === 28);
+    expect(box28?.suggestedValue).toBe(10_000);
   });
 
   it('CUFE duplicado exacto no se suma dos veces en los totales persistidos', async () => {
@@ -1913,8 +1912,8 @@ describe('facturación electrónica (Sprint 2.4, Fase D)', () => {
     expect(await getElectronicInvoiceReport(created.id)).toBeUndefined();
     expect(await getElectronicInvoicePurchases(created.id)).toHaveLength(0);
     const workspace = await getTaxCaseWorkspace(created.id);
-    const box141 = workspace.form210Draft?.boxes.find((box) => box.number === 141);
-    expect(box141?.suggestedValue ?? 0).toBe(0);
+    const box28 = workspace.form210Draft?.boxes.find((box) => box.number === 28);
+    expect(box28?.suggestedValue ?? 0).toBe(0);
   });
 
   it('re-importar el reporte reemplaza el anterior (1 reporte activo por expediente)', async () => {

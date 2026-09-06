@@ -178,8 +178,8 @@ function computeFormula(number: number, get: (box: number) => number | null): nu
         ? (get(34) ?? 0) + (get(61) ?? 0) + (get(78) ?? 0)
         : null,
     92: () =>
-      get(41) !== null || get(65) !== null || get(82) !== null || get(139) !== null || get(141) !== null
-        ? (get(41) ?? 0) + (get(65) ?? 0) + (get(82) ?? 0) + (get(139) ?? 0) + (get(141) ?? 0)
+      get(41) !== null || get(65) !== null || get(82) !== null || get(139) !== null
+        ? (get(41) ?? 0) + (get(65) ?? 0) + (get(82) ?? 0) + (get(139) ?? 0)
         : null,
     93: () =>
       get(91) !== null && get(92) !== null ? safeSubtract([get(91) ?? 0, get(92) ?? 0]) : null,
@@ -859,23 +859,40 @@ export function buildForm210Draft(input: Form210BuildInput): Form210Draft {
     }
   }
 
-  // Deducción por facturas electrónicas (art. 336-1 ET). El motor recibe la
-  // base de compras calificadas que aporta el analista y aplica 1 % con
-  // tope de 240 UVT.
+  // Deducción por facturas electrónicas (art. 336 numeral 5 ET, adicionado
+  // por el art. 7 de la Ley 2277 de 2022). El motor recibe la base de
+  // compras calificadas que aporta el analista y aplica 1 % con tope de
+  // 240 UVT.
   //
-  // CORRECCIÓN NORMATIVA (Sprint 2.4, Fase D): el Decreto 2231 de 2023
-  // (que sustituye el numeral 5 del art. 336 ET) establece textualmente que
-  // "la deducción de que trata el presente numeral NO SE ENCUENTRA SUJETA
-  // AL LÍMITE previsto en el numeral 3 del presente artículo" — el mismo
-  // límite del 40 %/1.340 UVT que gobierna las casillas 41/65/82. La
-  // implementación anterior (Fase B0) cableaba esta deducción a la casilla
-  // 39 (componente de 37+40), que SÍ entra al candidato "componente" del
-  // límite conjunto en la casilla 41 — violando esa exención igual que el
-  // bug ya corregido para R139 (72 UVT por dependiente) en la Fase C. Se
-  // cablea ahora, análogamente a R138/R139, como componente de R92 (fuera
-  // del límite): R140 = base de compras calificadas (informativo), R141 =
-  // deducción aplicada (componente de la fórmula 92 = 41+65+82+139+141 en
-  // `computeFormula`). R141 NUNCA se agrega a la casilla 39.
+  // CORRECCIÓN NORMATIVA (Sprint 2.4, revisión puntual posterior a Fase D):
+  // dos hallazgos de una segunda auditoría normativa, verificados con al
+  // menos tres fuentes independientes (Connotar, Gerencie, cobertura de
+  // prensa del calendario AG2025):
+  //
+  // 1. El fundamento legal correcto es el **numeral 5 del artículo 336
+  //    ET** (texto introducido por el art. 7 de la Ley 2277 de 2022 al
+  //    sustituir el artículo completo), NO el "artículo 336-1 ET". El
+  //    artículo 336-1 ET (adicionado por el art. 60 de la misma ley) es
+  //    una norma COMPLETAMENTE DISTINTA: estimación de costos y gastos
+  //    deducibles (tope indicativo del 60 % de ingresos brutos), cuyo
+  //    exceso se informa marcando la casilla 140 — un indicador booleano,
+  //    nunca un valor monetario.
+  // 2. La deducción del 1 % tiene su **propia casilla oficial: la 28**
+  //    (sección de datos informativos, antes de patrimonio) — no es un
+  //    componente de R92 ni de R39/R41. Las Fases B0 y D asumieron
+  //    erróneamente que ocupaba las casillas 140/141 (reservadas
+  //    informativamente desde Fase B0 sin verificación); en realidad R141
+  //    corresponde al "impuesto voluntario" del art. 244-1 ET, sin
+  //    relación alguna con facturación electrónica.
+  //
+  // Se corrige cableando la base y la deducción aplicada como fuentes de
+  // la casilla 28 (única, informativa como el resto de las casillas
+  // 89-141, `implemented_unverified`). R140/R141 quedan intactas con su
+  // significado oficial correcto (ver `ruleset-2025.ts`) y ninguna recibe
+  // valores de este motor. R28 nunca se agrega a la casilla 39 ni entra a
+  // la fórmula de R92 (92 = 41+65+82+139): la deducción del numeral 5 está
+  // expresamente exenta del límite del 40 %/1.340 UVT del numeral 3, y por
+  // eso no participa de ninguna fórmula de consolidación cedular.
   const electronicInvoicingInput = input.electronicInvoicing;
   const electronicInvoicingDeduction =
     electronicInvoicingInput && electronicInvoicingInput.purchasesWithElectronicInvoiceCop > 0
@@ -885,33 +902,19 @@ export function buildForm210Draft(input: Form210BuildInput): Form210Draft {
             electronicInvoicingInput.purchasesWithElectronicInvoiceCop,
         })
       : null;
-  if (electronicInvoicingDeduction) {
-    sourcesByBox.set(140, [
+  if (electronicInvoicingDeduction && electronicInvoicingDeduction.appliedDeductionCop > 0) {
+    sourcesByBox.set(28, [
       {
         type: 'calculation',
-        sourceId: 'calc:electronic-invoicing-336-1-base',
+        sourceId: 'calc:electronic-invoicing-336-num-5',
         recordId: null,
         documentId: null,
         factId: null,
-        label: 'Valor de compras con derecho a la deducción por facturación electrónica',
-        value: electronicInvoicingDeduction.purchasesBaseCop,
-        evidence: `Base declarada por el analista (art. 336-1 ET): ${electronicInvoicingDeduction.purchasesBaseCop.toLocaleString('es-CO')} pesos.`,
+        label: 'Deducción especial por compras con factura electrónica (art. 336 num. 5 ET)',
+        value: electronicInvoicingDeduction.appliedDeductionCop,
+        evidence: electronicInvoicingDeduction.formula,
       },
     ]);
-    if (electronicInvoicingDeduction.appliedDeductionCop > 0) {
-      sourcesByBox.set(141, [
-        {
-          type: 'calculation',
-          sourceId: 'calc:electronic-invoicing-336-1',
-          recordId: null,
-          documentId: null,
-          factId: null,
-          label: 'Deducción por facturas electrónicas (art. 336-1 ET)',
-          value: electronicInvoicingDeduction.appliedDeductionCop,
-          evidence: electronicInvoicingDeduction.formula,
-        },
-      ]);
-    }
   }
 
   // Límites individuales declarativos (Fase E): AFC/AVC/FVP (art. 126-1/126-4),

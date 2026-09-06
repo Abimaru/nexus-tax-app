@@ -198,7 +198,7 @@ describe('flujo tributario end-to-end AG 2025', () => {
     expect(impact.summary).toMatch(/disminuye/);
   });
 
-  it('agregar dependientes (R39) + factura electrónica (R92 vía R141) no se mezclan (Fase D)', () => {
+  it('agregar dependientes (R39) + facturación electrónica (R28) no se mezclan (revisión normativa puntual)', () => {
     const caseId = 'e2e-deducciones';
     const draft = buildForm210Draft({
       caseId,
@@ -209,15 +209,15 @@ describe('flujo tributario end-to-end AG 2025', () => {
       electronicInvoicing: { purchasesWithElectronicInvoiceCop: 50_000_000 },
     });
     const box39 = draft.boxes.find((box) => box.number === 39)!;
-    // 10% × 100M = 10M (dependientes, art. 387 ET) — la FE ya no entra aquí.
+    // 10% × 100M = 10M (dependientes, art. 387 ET) — la FE nunca entra aquí.
     expect(box39.suggestedValue).toBe(10_000_000);
     expect(box39.sources.map((source) => source.sourceId)).toEqual(['calc:dependents-387']);
-    const box141 = draft.boxes.find((box) => box.number === 141)!;
-    // 1% × 50M = 500K (FE, componente de R92, art. 336-1 ET).
-    expect(box141.suggestedValue).toBe(500_000);
+    const box28 = draft.boxes.find((box) => box.number === 28)!;
+    // 1% × 50M = 500K (FE, casilla propia 28, art. 336 num. 5 ET).
+    expect(box28.suggestedValue).toBe(500_000);
     const liq = draft.preliminaryLiquidation!;
     expect(liq.dependentsDeduction?.ruleSourceId).toBe('et-art-387');
-    expect(liq.electronicInvoicingDeduction?.ruleSourceId).toBe('et-art-336-1');
+    expect(liq.electronicInvoicingDeduction?.ruleSourceId).toBe('et-art-336-num-5');
   });
 
   it('escenario sin datos suficientes reporta insufficient_data y saldo neto 0', () => {

@@ -191,7 +191,7 @@ export function ElectronicInvoicingPanel({
             <h2 className="text-xl font-semibold text-content-strong">Facturación electrónica</h2>
             <p className="mt-2 max-w-2xl text-sm text-content-muted">
               Carga el reporte DIAN de facturación electrónica para conciliarlo con tus compras y
-              estimar la deducción del 1 % (art. 336-1 ET). Todo se procesa localmente; la
+              estimar la deducción del 1 % (art. 336 num. 5 ET). Todo se procesa localmente; la
               certificación final siempre requiere revisión humana.
             </p>
           </div>
@@ -298,11 +298,11 @@ export function ElectronicInvoicingPanel({
             </div>
             {advanced && electronicInvoicingDeduction ? (
               <div className="mt-4 rounded-lg border border-overlay/10 bg-overlay/[0.02] p-3 text-sm">
-                <p className="font-medium text-content-strong">Detalle normativo (art. 336-1 ET)</p>
+                <p className="font-medium text-content-strong">Detalle normativo (art. 336 num. 5 ET)</p>
                 <p className="mt-1 text-content-muted">{electronicInvoicingDeduction.formula}</p>
                 <p className="mt-1 text-xs text-content-subtle">
-                  Fuera del límite conjunto del 40 %/1.340 UVT (Decreto 2231 de 2023): componente de
-                  la casilla 92, nunca de la casilla 39.
+                  Fuera del límite conjunto del 40 %/1.340 UVT (numeral 3 del mismo artículo):
+                  casilla propia (28), nunca componente de la casilla 92 ni de la casilla 39.
                 </p>
               </div>
             ) : null}

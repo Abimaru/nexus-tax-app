@@ -1,11 +1,12 @@
 # Roadmap — NexusTax
 
-> Sprint 2.4 (Fase B0 + Fase B + Fase B1 + Fase C + Fase D) completado:
-> esqueleto de casillas del F-210, declaraciones anteriores, los dos
-> beneficios de dependientes económicos (art. 387 y art. 336 num. 3 ET), y el
-> reporte DIAN detallado de facturación electrónica (CUFE, deduplicación,
-> conciliación, motor del 1 % corregido a su destino normativo correcto en
-> R92). Pendiente: el resto del Sprint 2.4 (inmuebles, administración de
+> Sprint 2.4 (Fase B0 + Fase B + Fase B1 + Fase C + Fase D + revisión
+> normativa puntual) completado: esqueleto de casillas del F-210,
+> declaraciones anteriores, los dos beneficios de dependientes económicos
+> (art. 387 y art. 336 num. 3 ET), y el reporte DIAN detallado de
+> facturación electrónica (CUFE, deduplicación, conciliación, motor del 1 %
+> corregido a su casilla oficial correcta: la 28, art. 336 num. 5 ET).
+> Pendiente: el resto del Sprint 2.4 (inmuebles, administración de
 > propiedad horizontal, medicina prepagada).
 
 ## Entregado hasta hoy ✅
@@ -187,10 +188,9 @@ administración de propiedad horizontal y medicina prepagada quedan para increme
 
 ## Sprint 2.4 — Fase D (reporte DIAN de facturación electrónica)
 
-Implementado: corrección normativa del destino de la deducción del 1 % (art. 336-1 ET) — se movía
-a la casilla 39, exponiéndola indirectamente al límite del 40 %/1.340 UVT del que el Decreto 2231
-de 2023 la exime expresamente; se corrige moviéndola a ser componente de la casilla 92 (casillas
-140/141), análogo a R139; nuevo parser XLSX del reporte DIAN detallado (adaptador hermano de la
+Implementado: cableado del motor del 1 % — inicialmente movido de la casilla 39 a "componente de
+la casilla 92" (casillas 140/141), corrección posteriormente revertida en la revisión normativa
+puntual (ver más abajo); nuevo parser XLSX del reporte DIAN detallado (adaptador hermano de la
 exógena, reutiliza su infraestructura de lectura pero no su semántica); parser monetario central
 (`@nexus-tax/document-intelligence`) reutilizado en vez de duplicar lógica de coerción numérica;
 deduplicación por CUFE (exacto/conflictivo/ausente/malformado); validación de notas crédito/débito
@@ -207,3 +207,18 @@ como tarea deep-linkeable (se muestra como error inmediato en la UI, ya que un a
 reconocido nunca se guarda); el reporte no se asocia a la biblioteca documental general. Inmuebles,
 administración de propiedad horizontal y medicina prepagada no se iniciaron: quedan para
 incrementos siguientes con revisión intermedia.
+
+## Sprint 2.4 — Revisión normativa puntual (cierre de Fase D)
+
+Antes de publicar la Fase D se ejecutó una revisión normativa exclusiva de la integración del
+beneficio del 1 % con el Formulario 210. Hallazgo: la Fase D había corregido el destino de la
+casilla 39 pero introducido un segundo error, asumiendo el fundamento legal "artículo 336-1 ET" y
+las casillas 140/141 como destino. Verificado con múltiples fuentes independientes: el fundamento
+real es el **numeral 5 del art. 336 ET** y la casilla oficial es la **28** (dato informativo previo
+a patrimonio) — el art. 336-1 ET es una norma distinta (indicador de exceso de costos y gastos
+estimados, casilla 140, checkbox no monetario) y la casilla 141 corresponde al impuesto voluntario
+del art. 244-1 ET, sin relación con este beneficio. Se corrigió el cableado (casilla 28 propia,
+fuera de R39/R92), el `sourceId` del motor (`et-art-336-num-5`), el catálogo de fuentes oficiales
+(tres entradas separadas para las tres normas antes confundidas) y se agregó un bloque de 4 tests
+de guardarraíl que impide permanentemente la reintroducción de los cuatro errores encontrados. Ver
+`docs/ELECTRONIC_INVOICING_2025.md` §"Historial de correcciones normativas".

@@ -183,16 +183,49 @@ export const OFFICIAL_SOURCES_2025: readonly OfficialSourceReference[] = [
     relatedBoxNumbers: [29, 30, 31],
   },
   {
+    id: 'et-art-336-num-5',
+    authority: 'Estatuto Tributario',
+    title:
+      'Estatuto Tributario, artículo 336, numeral 5 — Deducción especial por compras con factura electrónica (texto introducido por el art. 7 de la Ley 2277 de 2022)',
+    url: 'https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=6533#336',
+    verifiedAt: VERIFIED_AT,
+    taxYear: null,
+    scope:
+      'Deducción especial: 1 % de compras soportadas con factura electrónica y pagadas con ' +
+      'medios electrónicos, tope anual 240 UVT; expresamente exenta del límite del 40 %/1.340 ' +
+      'UVT del numeral 3 del mismo artículo (Ley 2277 de 2022). Casilla oficial 28 del ' +
+      'Formulario 210 (dato informativo previo a patrimonio), corregido tras revisión ' +
+      'normativa puntual — NO es el "artículo 336-1 ET" (norma distinta, ver ese id).',
+    relatedBoxNumbers: [28],
+  },
+  {
     id: 'et-art-336-1',
     authority: 'Estatuto Tributario',
     title:
-      'Estatuto Tributario, artículo 336-1 — Deducción por facturas electrónicas soportadas con medios de pago electrónicos',
+      'Estatuto Tributario, artículo 336-1 — Estimación de costos y gastos para la cédula general (adicionado por el art. 60 de la Ley 2277 de 2022)',
     url: 'https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=6533#336-1',
     verifiedAt: VERIFIED_AT,
     taxYear: null,
     scope:
-      'Deducción imputable a la cédula general: 1 % de compras soportadas con factura electrónica, tope anual 240 UVT (Ley 2277 de 2022)',
-    relatedBoxNumbers: [39],
+      'Tope indicativo de costos y gastos deducibles (60 % de ingresos brutos de rentas de ' +
+      'trabajo, u otro tope que fije la DIAN por actividad económica); su exceso se informa ' +
+      'marcando la casilla 140 del Formulario 210 (indicador booleano, no monetario). Norma ' +
+      'distinta de la deducción del 1 % por facturación electrónica (ver `et-art-336-num-5`).',
+    relatedBoxNumbers: [140],
+  },
+  {
+    id: 'et-art-244-1',
+    authority: 'Estatuto Tributario',
+    title: 'Estatuto Tributario, artículo 244-1 — Impuesto voluntario',
+    url: 'https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=6533#244-1',
+    verifiedAt: VERIFIED_AT,
+    taxYear: null,
+    scope:
+      'Aporte/impuesto voluntario adicional que el contribuyente puede optar por liquidar; ' +
+      'casilla oficial 141 del Formulario 210. No modelado por NexusTax en esta fase; se ' +
+      'registra únicamente para trazabilidad y para evitar que R141 se confunda con otros ' +
+      'beneficios (dependientes o facturación electrónica).',
+    relatedBoxNumbers: [141],
   },
   {
     id: 'et-art-126-1',

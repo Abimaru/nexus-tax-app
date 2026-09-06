@@ -1,61 +1,81 @@
 # Deducción por facturas electrónicas — motor del 1 % (AG 2025)
 
-_Última actualización: 2026-09-06 — Sprint 2.4, Fase D (corrección normativa)._
+_Última actualización: 2026-09-06 — Sprint 2.4, revisión normativa puntual (posterior a Fase D)._
 
-> Este documento cubre únicamente el motor puro del 1 % (art. 336-1 ET). El
-> reporte DIAN detallado (CUFE, notas crédito/débito, deduplicación,
+> Este documento cubre únicamente el motor puro del 1 % (art. 336 num. 5 ET).
+> El reporte DIAN detallado (CUFE, notas crédito/débito, deduplicación,
 > conciliación contra Tope 5, decisiones por factura, UI) se documenta en
 > [`ELECTRONIC_INVOICE_REPORT_2025.md`](./ELECTRONIC_INVOICE_REPORT_2025.md).
 
 ## 1. Alcance
 
-`packages/aegis-rules` modela la deducción imputable a la cédula general por
-facturas electrónicas soportadas con medios de pago electrónicos, según el
-art. 336-1 del Estatuto Tributario (incorporado por el art. 61 de la
-Ley 2277 de 2022). `packages/form-210` la consume desde el builder.
+`packages/aegis-rules` modela la deducción especial por compras soportadas
+con factura electrónica y pagadas con medios electrónicos, según el
+**numeral 5 del artículo 336 del Estatuto Tributario** (texto introducido
+por el art. 7 de la Ley 2277 de 2022, que sustituyó el artículo 336
+completo). `packages/form-210` la consume desde el builder.
 
 Todo es orientativo. NexusTax no verifica los requisitos legales de la
 factura (soporte electrónico, medio de pago, titularidad): esa clasificación
 la aporta el analista o, desde la Fase D, el reporte DIAN detallado más las
 decisiones tributarias por factura.
 
-## ⚠️ Corrección normativa (Sprint 2.4, Fase D)
+## ⚠️ Historial de correcciones normativas
 
-La implementación anterior (Fase B0/G del Sprint 2.3.1) cableaba esta
+Este beneficio ha requerido **dos correcciones sucesivas** en el mismo
+Sprint 2.4, ambas verificadas con múltiples fuentes independientes:
+
+### Corrección 1 (Fase D): destino incorrecto en la casilla 39
+
+La implementación original (Fase B0/G del Sprint 2.3.1) cableaba esta
 deducción a la **casilla 39** ("Otras deducciones imputables"), que
 alimenta la casilla 40 y, de ahí, entra al candidato "componente" del
-límite conjunto del 40 %/1.340 UVT en la casilla 41 (`min(40 % × 34,
-1.340 UVT, 37 + 40)`).
+límite conjunto del 40 %/1.340 UVT en la casilla 41
+(`min(40 % × 34, 1.340 UVT, 37 + 40)`) — exponiéndola indirectamente a un
+límite del que la norma la exime expresamente.
 
-Esto era normativamente incorrecto. El Decreto 2231 de 2023 (que sustituye
-el numeral 5 del art. 336 ET) establece textualmente:
+### Corrección 2 (revisión normativa puntual posterior a Fase D): fundamento legal y casilla real incorrectos
 
-> *"La deducción de que trata el presente numeral **no se encuentra
-> sujeta al límite previsto en el numeral 3 del presente artículo** y no
-> se tendrá en cuenta para el cálculo de la retención en la fuente, ni
-> podrá dar lugar a pérdidas."*
+Al corregir el destino en la Fase D, se asumió erróneamente que:
 
-El numeral 3 es exactamente el límite del 40 %/1.340 UVT que gobierna las
-casillas 41/65/82. Cablear la deducción a la casilla 39 la exponía a ese
-límite indirectamente (si el total de deducciones declaradas superaba el
-tope, el candidato "componente" ya no era el limitante y el 1 % podía verse
-recortado) — el mismo tipo de error ya corregido para R139 (72 UVT por
-dependiente) en la Fase C.
+1. El fundamento legal era el **"artículo 336-1 ET"**.
+2. La casilla oficial correcta era la **141** (componente de R92, junto a
+   R138/R139 de dependientes), con R140 como base informativa.
 
-**Corrección**: la deducción se mueve a ser **componente de la casilla 92**
-(rentas exentas y deducciones limitadas de la cédula general), análogo a
-R139, usando dos casillas informativas nuevas:
+Ambos supuestos eran incorrectos, verificados con múltiples fuentes
+independientes (Estatuto.co, Gerencie, Consultor Contable, Connotar, y
+cobertura de prensa específica de la temporada de declaración AG2025/2026):
 
-- **Casilla 140**: valor de compras con derecho a la deducción (base
-  declarada, informativa).
-- **Casilla 141**: deducción aplicada (1 % con tope de 240 UVT) —
-  componente de la fórmula `92 = 41 + 65 + 82 + 139 + 141`. **Nunca** se
-  suma a la casilla 39.
+- El **artículo 336-1 ET** (adicionado por el art. 60 de la Ley 2277 de
+  2022) es una norma **completamente distinta**: estimación de costos y
+  gastos deducibles (tope indicativo del 60 % de ingresos brutos de rentas
+  de trabajo, u otro que fije la DIAN por actividad económica). Su exceso
+  se informa marcando la **casilla 140** — un **indicador booleano**
+  ("marque X"), nunca un valor monetario.
+- La **casilla 141** del Formulario 210 corresponde al **impuesto
+  voluntario del art. 244-1 ET** — sin relación alguna con dependientes ni
+  con facturación electrónica.
+- La deducción del 1 % tiene su **propia casilla oficial: la 28** (sección
+  de datos informativos, previa a patrimonio), confirmada explícitamente
+  por Connotar ("Nueva casilla 28 del formulario 210 para informar el 1 %
+  de las compras personales") y por cobertura de prensa del calendario
+  AG2025/2026 ("el valor correspondiente al 1 % debe registrarse en la
+  casilla 28 del formulario").
+
+### Corrección aplicada
+
+La deducción del numeral 5 del art. 336 ET se cablea ahora a su **casilla
+propia (28)**, completamente separada de R39, R92, R140 y R141. R140 y R141
+recuperan su significado oficial correcto (indicador de costos/gastos
+estimados y impuesto voluntario, respectivamente) y ninguno recibe valores
+de este motor. R28 nunca participa de ninguna fórmula de consolidación
+cedular (R91/R92/R93): el numeral 5 exime expresamente esta deducción del
+límite del 40 %/1.340 UVT del numeral 3 del mismo artículo.
 
 ## 2. Regla
 
-El art. 336-1 ET permite tomar como deducción, **fuera del límite conjunto
-del 40 %/1.340 UVT**:
+El numeral 5 del art. 336 ET permite tomar como deducción, **fuera del
+límite conjunto del 40 %/1.340 UVT**:
 
 ```
 appliedDeductionCop = min(
@@ -67,22 +87,27 @@ appliedDeductionCop = min(
 Requisitos (validados por el analista o por decisión tributaria por
 factura, no automáticamente por el motor):
 
-- Las compras cuentan con **factura electrónica de venta** vigente.
+- Las compras cuentan con **factura electrónica de venta** vigente,
+  expedida por un sujeto obligado a facturar electrónicamente.
 - Se pagaron con **tarjeta débito, crédito o cualquier otro medio de pago
-  electrónico** (transferencia, PSE, etc.).
+  electrónico** vigilado por la Superintendencia Financiera (transferencia,
+  PSE, etc.), dentro del mismo período gravable.
 - La factura contiene el **NIT o número de identificación** del
   contribuyente.
+- La compra no debe haberse usado como costo, deducción, IVA descontable,
+  ingreso no constitutivo, renta exenta, descuento tributario u otro
+  beneficio (evita doble beneficio — ver `ELECTRONIC_INVOICE_REPORT_2025.md`).
 
 Para 2025 el tope absoluto son `240 × 49.799 = 11.951.760` pesos.
 
 ## 3. Contrato del motor
 
 `packages/aegis-rules/src/colombia/individual-income-tax/2025/electronic-invoicing.ts`
-(sin cambios de Fase D — el motor de cálculo puro ya era correcto; solo su
-cableado en `form-210` estaba mal):
+(el cálculo puro ya era correcto desde su creación; solo el `sourceId` y su
+cableado en `form-210` necesitaban corrección):
 
 ```ts
-export const ELECTRONIC_INVOICING_SOURCE_ID = 'et-art-336-1';
+export const ELECTRONIC_INVOICING_SOURCE_ID = 'et-art-336-num-5';
 export const ELECTRONIC_INVOICING_PERCENTAGE = 0.01;
 export const ELECTRONIC_INVOICING_ANNUAL_CAP_UVT = 240;
 
@@ -101,6 +126,16 @@ o `uvt_cap`), `formula` y `ruleSourceId`.
 Bases negativas se tratan como cero. El resultado se redondea al peso más
 cercano por candidato.
 
+El catálogo `OFFICIAL_SOURCES_2025` (`packages/aegis-rules/src/colombia/individual-income-tax/2025/official-sources.ts`)
+registra ahora **tres fuentes separadas** para evitar la confusión que
+originó la Corrección 2:
+
+| id | Norma | Casilla | Naturaleza |
+|---|---|---|---|
+| `et-art-336-num-5` | Art. 336 num. 5 ET | 28 | Deducción monetaria del 1 % |
+| `et-art-336-1` | Art. 336-1 ET | 140 | Indicador booleano (exceso de costos/gastos) |
+| `et-art-244-1` | Art. 244-1 ET | 141 | Impuesto voluntario (no modelado) |
+
 ## 4. Integración en el borrador del F-210 (corregida)
 
 `Form210BuildInput` acepta un campo opcional:
@@ -117,27 +152,32 @@ buildForm210Draft({
 });
 ```
 
-Desde la Fase D, `apps/web` nunca declara este valor manualmente: lo deriva
+`apps/web` nunca declara este valor manualmente: lo deriva
 `buildElectronicInvoicingInput` (`apps/web/src/lib/electronicInvoiceEngine.ts`)
 a partir de la base explicable del reporte DIAN
 (`ElectronicInvoiceBenefitBase.baseConsideredCop`) — ver
 `docs/ELECTRONIC_INVOICE_REPORT_2025.md` §6-7.
 
-Cuando `purchasesWithElectronicInvoiceCop > 0`, el builder ejecuta
-`computeElectronicInvoicingDeduction` y cablea:
+Cuando `purchasesWithElectronicInvoiceCop > 0` y `appliedDeductionCop > 0`,
+el builder ejecuta `computeElectronicInvoicingDeduction` y cablea:
 
-- Casilla **140** ← `purchasesBaseCop` (siempre, informativa).
-- Casilla **141** ← `appliedDeductionCop` (solo si > 0; componente de R92).
+- Casilla **28** ← `appliedDeductionCop` (única fuente; dato informativo
+  previo a patrimonio).
 
-**Nunca** se agrega a la casilla 39. La computación completa queda en
+**Nunca** se agrega a la casilla 39, ni participa de la fórmula de R92
+(`92 = 41 + 65 + 82 + 139`). La computación completa queda en
 `preliminaryLiquidation.electronicInvoicingDeduction`.
 
 ## 5. Verificación
 
-Motor puro — `packages/aegis-rules/tests/electronic-invoicing.test.ts` (7
-fixtures, sin cambios en Fase D — el motor ya era correcto):
+Motor puro — `packages/aegis-rules/tests/electronic-invoicing.test.ts` (8
+tests, +1 de la revisión puntual que verifica el catálogo de fuentes):
 
 - Constantes normativas verificadas.
+- El `sourceId` resuelve a `et-art-336-num-5` en el catálogo oficial, con
+  `relatedBoxNumbers: [28]`; el id real `et-art-336-1` resuelve por
+  separado con `relatedBoxNumbers: [140]` y nunca menciona "factura
+  electrónica" en su título (guardarraíl contra una futura confusión).
 - Sin compras ⇒ deducción 0.
 - 1 % por debajo del tope ⇒ `bindingCandidate = 'percentage'`.
 - 1 % por encima del tope ⇒ `bindingCandidate = 'uvt_cap'` y aplicado
@@ -147,18 +187,25 @@ fixtures, sin cambios en Fase D — el motor ya era correcto):
 - Año no modelado ⇒ excepción.
 
 Integración F-210 — `packages/form-210/tests/preliminary-liquidation.test.ts`
-(reescritos en Fase D):
+(reescritos en la revisión puntual, incluye un bloque `describe`
+"GUARDARRAÍL" con 4 tests dedicados):
 
-- Cablea 1 % a las casillas **140/141** (nunca 39) y a
+- Cablea 1 % a la casilla **28** (nunca 39, nunca 140/141) y a
   `preliminaryLiquidation.electronicInvoicingDeduction` con
-  `ruleSourceId = 'et-art-336-1'`.
+  `ruleSourceId = 'et-art-336-num-5'`.
 - Tope 240 UVT respetado cuando el 1 % lo excede
-  (`bindingCandidate = 'uvt_cap'`), reflejado en la casilla 141.
-- Dependientes (art. 387, casilla 39) y facturación electrónica (casilla 92
-  vía 141) nunca se mezclan en la misma casilla.
+  (`bindingCandidate = 'uvt_cap'`), reflejado en la casilla 28.
+- Dependientes (art. 387, casilla 39) y facturación electrónica (casilla
+  28) nunca se mezclan en la misma casilla.
+- **Guardarraíles explícitos**: R140 nunca se trata como importe COP (sus
+  `sources` permanecen vacíos incluso con facturación electrónica
+  declarada); R141 nunca se usa para esta deducción; el 1 % nunca vuelve a
+  cablearse en R39; el 1 % nunca queda sujeto al límite del 40 %/1.340 UVT
+  (verificado forzando R41 = 0 por un tope de deducciones agotado y
+  confirmando que R28 conserva su valor íntegro).
 
-Sweep local (Fase D): `pnpm -r typecheck` verde; `pnpm -r test` = 562 tests
-OK en todo el monorepo (aegis-rules 174, form-210 89, domain 19,
+Sweep local (revisión puntual): `pnpm -r typecheck` verde; `pnpm -r test` =
+566 tests OK en todo el monorepo (aegis-rules 175, form-210 93, domain 19,
 document-intelligence 90, exogenous-parser 77, web 113).
 
 ## 6. Fuera de alcance de este documento
@@ -173,4 +220,9 @@ document-intelligence 90, exogenous-parser 77, web 113).
   motor asume que la deducción se aplica a la cédula general (rentas de
   trabajo). Si el contribuyente distribuye la base entre cédulas, debe
   recomputar manualmente.
+- **El indicador de exceso de costos/gastos (casilla 140, art. 336-1 ET)**
+  no se modela en esta fase: la casilla permanece `not_implemented` para
+  no inventar un valor booleano sin un motor que lo respalde.
+- **El impuesto voluntario (casilla 141, art. 244-1 ET)** no se modela en
+  esta fase.
 
