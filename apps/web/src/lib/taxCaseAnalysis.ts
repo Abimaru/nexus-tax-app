@@ -543,6 +543,55 @@ export function buildCaseTasks(input: {
       updatedAt: timestamp,
     });
   }
+  // Sprint 2.4, Fase F.2, §15/§17/§18: certificado de vivienda reconocido
+  // pero sin candidato de intereses. La deducción de intereses de vivienda
+  // NUNCA se reporta como información exógena (§11 del prompt de Fase
+  // F.2), así que este fallback NO puede depender de un
+  // `ExpectedTaxEvidence` derivado de la exógena — se origina directamente
+  // del tipo de documento. Reutiliza el mismo `CaseTaskType`
+  // (`evidence_missing_expected`) que el caso derivado de exógena, en vez
+  // de crear un segundo sistema de tareas paralelo. Nunca inventa el
+  // monto (§13): solo ofrece captura manual guiada.
+  for (const session of latestSessions.values()) {
+    if (!activeDocumentIds.has(session.documentId)) continue;
+    if (session.classification?.proposedKind !== 'housing_interest_certificate') continue;
+    const hasInterestCandidate = input.candidates.some(
+      (candidate) =>
+        candidate.documentId === session.documentId &&
+        candidate.proposedCategory === 'housing_interest',
+    );
+    if (hasInterestCandidate) continue;
+    tasks.push({
+      id: `task:housing-interest-missing:${session.documentId}`,
+      caseId: input.caseId,
+      type: 'evidence_missing_expected',
+      title: 'Registrar intereses de vivienda pagados',
+      explanation:
+        'Encontramos un certificado de vivienda, pero no pudimos identificar con seguridad los intereses pagados. Este beneficio normalmente se sustenta con el certificado de la entidad; no necesitamos una coincidencia en exógena para conservarlo como evidencia.',
+      source: 'document',
+      stage: 'organizacion',
+      view: 'revision-documental',
+      entityId: null,
+      documentId: session.documentId,
+      requirementId: null,
+      candidateId: null,
+      reconciliationId: null,
+      matrixGroupId: null,
+      extractionSessionId: session.id,
+      profileId: null,
+      page: null,
+      priority: 'medium',
+      blocking: false,
+      status: 'pending',
+      recommendedAction: 'Capturar manualmente desde la revisión guiada',
+      ruleId: 'case-task.housing-interest-missing.v1',
+      evidence: [
+        'El documento se reconoció como certificado de vivienda, pero ninguna regla del adaptador encontró un valor de intereses explícito.',
+      ],
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+  }
   for (const requirement of input.result?.requirements ?? []) {
     if (
       input.requirementSourceDecisions?.some(
