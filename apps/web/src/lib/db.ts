@@ -13,6 +13,8 @@ import type {
   DocumentFactCandidate,
   DocumentExtractionSession,
   DocumentProfile,
+  ElectronicInvoicePurchase,
+  ElectronicInvoiceReport,
   EmploymentIncomeGroup,
   ExtractionFeedback,
   PreliminaryReconciliation,
@@ -102,6 +104,8 @@ class NexusTaxDatabase extends Dexie {
   dependentSupports!: Table<DependentSupport, string>;
   dependentEvaluations!: Table<DependentEvaluation, string>;
   dependentsCaseContext!: Table<DependentsCaseContext, string>;
+  electronicInvoiceReports!: Table<ElectronicInvoiceReport, string>;
+  electronicInvoicePurchases!: Table<ElectronicInvoicePurchase, string>;
 
   constructor() {
     super('nexustax');
@@ -388,6 +392,48 @@ class NexusTaxDatabase extends Dexie {
       dependentSupports: 'id, caseId, dependentId, type, createdAt',
       dependentEvaluations: 'id, caseId, dependentId, status, staleDueToRuleChange, evaluatedAt',
       dependentsCaseContext: 'caseId, updatedAt',
+    });
+    // Sprint 2.4 (Fase D): reporte DIAN de facturación electrónica y sus
+    // facturas individuales. Aditivo; ninguna tabla previa se modifica. Las
+    // decisiones tributarias por factura (§25/§29 del prompt) reutilizan la
+    // tabla existente `resolutionDecisions` (objectType
+    // `electronic_invoice_purchase`/`electronic_invoice_report`) en vez de
+    // crear una tercera tabla — el dominio ya lo permite (append-only,
+    // reversible, con motivo y evidencia).
+    this.version(15).stores({
+      cases: 'id, updatedAt, taxYear, status',
+      documents: 'id, caseId, uploadedAt, sha256, status, kind, *entityIds',
+      results: 'caseId, updatedAt',
+      filingInputs: 'caseId, updatedAt',
+      analyses: 'caseId, updatedAt, ruleVersion',
+      documentBlobs: 'documentId, caseId, storedAt',
+      products: 'id, caseId, entityId, type, status',
+      coverages: 'id, caseId, requirementId, documentId, factId, entityId, status',
+      facts: 'id, caseId, documentId, entityId, productId, category, reviewStatus, updatedAt',
+      reconciliations: 'id, caseId, status, *factIds, *exogenousRecordIds, updatedAt',
+      employmentGroups: 'id, caseId, coverage, updatedAt',
+      navigationStates: 'caseId, lastStage, recommendedStage, updatedAt',
+      acceptedSources: 'id, caseId, exogenousRecordId, requirementId, status, updatedAt',
+      requirementSourceDecisions: 'id, caseId, requirementId, status, updatedAt',
+      extractionSessions: 'id, caseId, documentId, status, updatedAt',
+      documentCandidates:
+        'id, caseId, documentId, extractionSessionId, status, moneyParserVersion, updatedAt',
+      caseTasks: 'id, caseId, status, priority, stage, type, updatedAt',
+      documentProfiles: 'id, documentKind, status, updatedAt',
+      extractionFeedback:
+        'id, documentId, extractionSessionId, candidateId, applicability, createdAt',
+      resolutionDecisions: 'id, caseId, objectType, objectId, type, decidedAt',
+      form210Drafts: 'id, caseId, taxYear, generatedAt',
+      priorYearReturns: 'id, caseId, taxYear, status, identityMatch, isCurrentVersion, updatedAt',
+      priorYearCarryForwardCandidates:
+        'id, caseId, priorYearReturnId, sourceBoxNumber, targetBoxNumber, decision, updatedAt',
+      taxDependents: 'id, caseId, status, relationship, updatedAt',
+      dependentSupports: 'id, caseId, dependentId, type, createdAt',
+      dependentEvaluations: 'id, caseId, dependentId, status, staleDueToRuleChange, evaluatedAt',
+      dependentsCaseContext: 'caseId, updatedAt',
+      electronicInvoiceReports: 'id, caseId, taxYear, processingStatus, importedAt',
+      electronicInvoicePurchases:
+        'id, reportId, caseId, normalizedCufe, cufeStatus, paymentMethodCategory, benefitDecision, createdAt',
     });
   }
 }
