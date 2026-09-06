@@ -156,7 +156,10 @@ export function suggestExogenousMatches(
                   ? 'contradiction'
                   : 'no_match';
     const reasons = isRoundingMatch
-      ? [...item.reasons, 'El valor documental redondea exactamente al valor de la exógena.']
+      ? [
+          ...item.reasons.filter((reason) => reason !== 'Valor cercano.'),
+          'El valor documental redondea exactamente al valor de la exógena.',
+        ]
       : item.reasons;
     return {
       recordId: item.record.id,
@@ -204,7 +207,7 @@ export function describeMatchConfidence(
       return { label: 'Coincide exactamente', description: 'El valor documental es idéntico al reportado en la exógena.' };
     case 'rounding_match':
       return {
-        label: 'Coincide por redondeo',
+        label: 'Coincide por redondeo al peso',
         description: 'El valor documental (con centavos) redondea exactamente al valor reportado en la exógena.',
       };
     case 'minor_difference':
