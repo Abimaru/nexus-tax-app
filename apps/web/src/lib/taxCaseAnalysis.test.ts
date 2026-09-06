@@ -850,4 +850,151 @@ describe('expediente tributario derivado', () => {
       expect.objectContaining({ type: 'evidence_missing_expected' }),
     );
   });
+
+  it('Sprint 2.4, Fase F.2 (§17/§18): fallback guiado de vivienda SIN depender de la exógena', () => {
+    const timestamp = '2026-09-06T00:00:00.000Z';
+    const document: UploadedDocument = {
+      id: 'document:housing',
+      caseId: 'case:1',
+      kind: 'other',
+      category: 'other',
+      fileName: 'certificado-vivienda.pdf',
+      extension: '.pdf',
+      fileSizeBytes: 100,
+      mimeType: 'application/pdf',
+      sha256: 'c'.repeat(64),
+      storageMode: 'store_locally',
+      status: 'active',
+      entityIds: [],
+      productIds: [],
+      taxYear: 2025,
+      cutoffDate: null,
+      notes: '',
+      requiresPassword: false,
+      version: 1,
+      replacesDocumentId: null,
+      replacedByDocumentId: null,
+      coveredRequirementIds: [],
+      partialRequirementIds: [],
+      uploadedAt: timestamp,
+      updatedAt: timestamp,
+    };
+    const session: DocumentExtractionSession = {
+      id: 'session:housing',
+      caseId: 'case:1',
+      documentId: document.id,
+      runNumber: 1,
+      status: 'confirmed',
+      phase: 'complete',
+      completedPhases: ['reading', 'classifying', 'extracting'],
+      pageCount: 1,
+      readablePageCount: 1,
+      candidateIds: [],
+      classification: {
+        proposedKind: 'housing_interest_certificate',
+        confidence: 'medium',
+        alternatives: [],
+        supportingSignals: [],
+        opposingSignals: [],
+        requiresReview: true,
+        correctedKind: null,
+      },
+      adapterId: 'co.housing-interest.generic',
+      adapterVersion: '1.2.0',
+      findings: [],
+      textPersisted: false,
+      errorCode: null,
+      errorMessage: null,
+      supersedesSessionId: null,
+      obsoleteCandidateIds: [],
+      startedAt: timestamp,
+      finishedAt: timestamp,
+      updatedAt: timestamp,
+    };
+
+    // Sin ningún candidato `housing_interest`: debe aparecer el fallback
+    // guiado — nunca depende de un `ExpectedTaxEvidence` de la exógena
+    // (§15/§18), ya esta deducción no se reporta como información exógena.
+    const withoutInterestCandidate = buildCaseTasks({
+      caseId: 'case:1',
+      documents: [document],
+      coverages: [],
+      candidates: [],
+      extractionSessions: [session],
+      reconciliations: [],
+      vatResponsibility: false,
+      now: timestamp,
+    });
+    expect(withoutInterestCandidate).toContainEqual(
+      expect.objectContaining({
+        type: 'evidence_missing_expected',
+        documentId: document.id,
+        recommendedAction: 'Capturar manualmente desde la revisión guiada',
+      }),
+    );
+
+    // Con un candidato `housing_interest` ya presente: el fallback NO debe
+    // aparecer (no inventa un problema que ya está resuelto, §13/§17).
+    const interestCandidate: DocumentFactCandidate = {
+      id: 'candidate:housing-interest',
+      caseId: 'case:1',
+      documentId: document.id,
+      extractionSessionId: session.id,
+      page: 1,
+      proposedEntityId: null,
+      entityName: null,
+      proposedProductId: null,
+      productType: 'mortgage_loan',
+      productLabel: null,
+      originalConcept: 'Intereses pagados',
+      normalizedConcept: 'intereses pagados',
+      proposedCategory: 'housing_interest',
+      proposedNature: 'deduction',
+      proposedTreatment: 'deductible_subject_to_rules',
+      correctedCategory: null,
+      correctedNature: null,
+      correctedTreatment: null,
+      extractedValue: 450_000,
+      correctedValue: null,
+      finalValue: null,
+      currency: 'COP',
+      period: '2025',
+      cutoffDate: null,
+      evidence: {
+        page: 1,
+        excerpt: 'Intereses pagados: $ 450.000',
+        detectedLabel: 'Intereses pagados',
+        detectedValue: '$ 450.000',
+        location: 'page:1',
+      },
+      adapterId: 'co.housing-interest.generic',
+      adapterVersion: '1.2.0',
+      ruleId: 'housing-interest',
+      confidence: { level: 'medium', score: 72, reasons: [] },
+      warnings: [],
+      status: 'pending',
+      possibleDuplicateIds: [],
+      suggestedRequirementIds: [],
+      suggestedExogenousMatches: [],
+      selectedExogenousRecordId: null,
+      observation: '',
+      factId: null,
+      decisions: [],
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    };
+    const withInterestCandidate = buildCaseTasks({
+      caseId: 'case:1',
+      documents: [document],
+      coverages: [],
+      candidates: [interestCandidate],
+      extractionSessions: [session],
+      reconciliations: [],
+      vatResponsibility: false,
+      now: timestamp,
+    });
+    expect(withInterestCandidate).not.toContainEqual(
+      expect.objectContaining({ type: 'evidence_missing_expected', documentId: document.id }),
+    );
+  });
 });

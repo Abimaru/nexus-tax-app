@@ -211,6 +211,11 @@ export function buildEvidenceReviewSuggestions(input: {
       (match) => MATCH_STATUS_TO_SUGGESTION_STATUS[match.status] !== null,
     );
     if (hasAnyUsableMatch) continue;
+    // Sprint 2.4, Fase F.2, §15: la deducción de intereses de vivienda
+    // nunca se reporta como información exógena — la ausencia de
+    // coincidencia NO implica un error. Copy distinto y tranquilizador,
+    // nunca "No aparece en exógena" como si fuera un problema.
+    const isHousingInterest = candidate.proposedCategory === 'housing_interest';
     suggestions.push({
       id: `evidence-suggestion:candidate:${candidate.id}`,
       caseId: input.caseId,
@@ -219,9 +224,13 @@ export function buildEvidenceReviewSuggestions(input: {
       alternativeCandidateIds: [],
       status: 'new_relevant_value',
       matchStatus: null,
-      reasons: [
-        'Este valor documental no coincide con ningún registro de la exógena: podría ser información nueva.',
-      ],
+      reasons: isHousingInterest
+        ? [
+            'Este beneficio normalmente se sustenta con el certificado de la entidad. No necesitamos una coincidencia en exógena para conservarlo como evidencia.',
+          ]
+        : [
+            'Este valor documental no coincide con ningún registro de la exógena: podría ser información nueva.',
+          ],
       documentValueCop: candidateDocumentValue(candidate),
       expectedValueCop: null,
       differenceCop: null,

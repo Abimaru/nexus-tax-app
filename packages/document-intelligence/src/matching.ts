@@ -7,6 +7,7 @@ import type {
 } from '@nexus-tax/domain';
 import { comparableText } from './normalize';
 import { detectMonetaryAnomalies } from './money';
+import { detectSemanticContradiction } from './semanticGate';
 
 export function suggestEntity(input: {
   candidate: DocumentFactCandidate;
@@ -136,12 +137,25 @@ export function suggestExogenousMatches(
     const documentDecimalValue = candidate.amount?.decimalValue ?? candidate.extractedValue;
     const exogenousValue = item.record.reportedValue ?? 0;
     const roundedDocumentValue = Math.round(documentDecimalValue);
+    // Gate semántico (Sprint 2.4, Fase F.2, §6 de docs/EVIDENCE_MATCHING.md):
+    // se calcula por PAR candidato↔registro (no solo por candidato) para
+    // detectar también la contradicción CRUZADA — el propio texto del
+    // candidato puede contradecir la categoría del REGISTRO exógeno
+    // aunque el adaptador ya haya categorizado correctamente al
+    // candidato (defensa en profundidad ante el caso real del benchmark,
+    // §6/§8 del prompt). `igualdad numérica ≠ equivalencia tributaria`.
+    const semanticContradiction = detectSemanticContradiction({
+      originalConcept: candidate.originalConcept,
+      normalizedConcept: candidate.normalizedConcept,
+      proposedCategory: candidate.proposedCategory,
+      referenceCategories: [item.record.category],
+    });
     // Redondeo explícito (§9/§10 de docs/EVIDENCE_MATCHING.md): el valor
     // decimal del documento (con centavos) redondea EXACTAMENTE al entero
     // reportado en la exógena, aunque los valores crudos difieran.
     const isRoundingMatch =
       item.difference !== 0 && roundedDocumentValue === exogenousValue;
-    const status: DocumentFactCandidate['suggestedExogenousMatches'][number]['status'] =
+    const rawStatus: DocumentFactCandidate['suggestedExogenousMatches'][number]['status'] =
       isAmbiguous
         ? 'ambiguous'
         : item.difference === 0
@@ -155,12 +169,26 @@ export function suggestExogenousMatches(
                 : item.difference > 0
                   ? 'contradiction'
                   : 'no_match';
-    const reasons = isRoundingMatch
-      ? [
-          ...item.reasons.filter((reason) => reason !== 'Valor cercano.'),
-          'El valor documental redondea exactamente al valor de la exógena.',
-        ]
-      : item.reasons;
+    // Match gate semántico (§6): una contradicción fuerte NUNCA puede
+    // quedar como `exact_match`/`rounding_match` con capacidad de
+    // confirmación en bloque — la semántica tiene precedencia sobre la
+    // igualdad/redondeo numérico (§19). Se degrada como máximo a
+    // `possible_match` (nunca se oculta el candidato, §7).
+    const downgradedBySemanticGate =
+      semanticContradiction.contradictory &&
+      (rawStatus === 'exact_match' || rawStatus === 'rounding_match');
+    const status = downgradedBySemanticGate ? 'possible_match' : rawStatus;
+    const reasons = downgradedBySemanticGate
+      ? [...item.reasons, semanticContradiction.reason!]
+      : isRoundingMatch
+        ? [
+            ...item.reasons.filter((reason) => reason !== 'Valor cercano.'),
+            'El valor documental redondea exactamente al valor de la exógena.',
+          ]
+        : item.reasons;
+    const anomalyCodes = downgradedBySemanticGate
+      ? [...item.anomalies.map((anomaly) => anomaly.code), 'semantic_concept_contradiction' as const]
+      : item.anomalies.map((anomaly) => anomaly.code);
     return {
       recordId: item.record.id,
       status,
@@ -175,19 +203,22 @@ export function suggestExogenousMatches(
           : (item.difference / Math.abs(item.record.reportedValue ?? 0)) * 100,
       possibleScaleFactor:
         item.anomalies.find((anomaly) => anomaly.possibleScaleFactor)?.possibleScaleFactor ?? null,
-      recommendedSource: item.anomalies.length
-        ? ('human_review' as const)
-        : item.difference <= 1
-          ? ('both' as const)
-          : candidate.amount?.confidence === 'high'
-            ? ('document' as const)
-            : ('human_review' as const),
-      recommendationReason: item.anomalies.length
-        ? 'La diferencia puede provenir de la interpretación monetaria; confirma el texto original.'
+      recommendedSource:
+        downgradedBySemanticGate || item.anomalies.length
+          ? ('human_review' as const)
+          : item.difference <= 1
+            ? ('both' as const)
+            : candidate.amount?.confidence === 'high'
+              ? ('document' as const)
+              : ('human_review' as const),
+      recommendationReason: downgradedBySemanticGate
+        ? semanticContradiction.reason!
+        : item.anomalies.length
+          ? 'La diferencia puede provenir de la interpretación monetaria; confirma el texto original.'
         : item.difference <= 1
           ? 'Las fuentes coinciden después de considerar centavos y redondeo al peso.'
           : 'La fuente documental conserva evidencia directa, pero requiere revisión humana.',
-      anomalyCodes: item.anomalies.map((anomaly) => anomaly.code),
+      anomalyCodes,
     };
   });
 }

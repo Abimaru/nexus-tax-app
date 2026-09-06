@@ -1,6 +1,43 @@
-# Handoff del proyecto — NexusTax (Sprint 2.4, Fase B0 + B + B1 + C + D + E + E.1 + revisiones puntuales)
+# Handoff del proyecto — NexusTax (Sprint 2.4, Fase B0 + B + B1 + C + D + E + E.1 + F + F.1 + F.2 + revisiones puntuales)
 
-_Última actualización: 2026-09-06 (cierre Fase E.1)._
+_Última actualización: 2026-09-06 (cierre Fase F.2)._
+
+## Sprint 2.4 — Fase F.2: Safety & Critical Evidence Hardening
+
+Rama `feature/sprint-2.4-evidence-safety`, creada desde `main` actualizado (post-merge de Fase
+E.1). Responde a dos hallazgos críticos del benchmark real Documento ↔ Exógena (Fase F/F.1,
+puramente diagnóstico, ningún documento real llegó nunca al repositorio):
+
+1. **False confident match real**: un candidato cuyo texto describía una retención fue
+   clasificado como ingreso y obtuvo `exact_match` contra un registro de ingresos. Corregido en
+   dos capas: (a) causa raíz en `co.financial.consolidated.generic` (regla `withholding` ampliada +
+   exclusividad "retención domina sobre ingreso en la misma línea"); (b) defensa general en
+   `packages/document-intelligence/src/semanticGate.ts` (`detectSemanticContradiction`), un gate
+   semántico reusable que degrada cualquier `exact_match`/`rounding_match` contradictorio a
+   `possible_match` antes de que `safeForBulkConfirm` pueda ser `true`. Ver
+   `docs/EVIDENCE_MATCHING.md` §Fase F.2 para el diseño completo y la tabla de compatibilidad.
+2. **Certificados de vivienda sin red de seguridad**: la deducción de intereses de vivienda nunca
+   se reporta como información exógena, así que un fallo de extracción no tiene ningún respaldo
+   cruzado. Se amplió el vocabulario del clasificador y del adaptador de vivienda (sin exigir
+   "crédito hipotecario" literal), se habilitó la evidencia `housing_interest` como válida
+   "document-only" sin exógena, y se agregó un fallback guiado (`evidence_missing_expected`
+   reutilizado, sin nuevo tipo de tarea) cuando el documento se reconoce como vivienda pero no se
+   identifican los intereses.
+
+**Rebenchmark local (§23, script temporal, eliminado; datos nunca persistidos)**: el false
+confident original quedó corregido en la raíz (candidato ahora etiquetado `withholding`, sin
+`semantic_concept_contradiction` en su match); los dos casos de riesgo previos (GMF base gravable,
+saldo como GMF) siguen bloqueados sin regresión; de los 2 certificados reales de vivienda, uno
+mejoró (confianza de clasificación medium→high, más el fallback guiado ahora disponible) y el otro
+no mostró mejora medible en esta pasada (el vocabulario real de ese emisor específico elude las
+señales ampliadas; no se investigó más por la prohibición de derivar patrones de texto real).
+Ningún caso revalidado produjo un nuevo false confident.
+
+**Quality gate**: `check:encoding`, `-r typecheck`, `-r lint`, `-r test` (634+ tests, todos los
+paquetes), `build` y `test:e2e` (12/12, incluye el nuevo `evidence-safety.spec.ts`) — todo en
+verde. Nuevos tests: `semanticGate.test.ts` (15), `housingInterest.test.ts` (8), más ajustes en
+`evidenceReview.test.ts` y `taxCaseAnalysis.test.ts`. **No se unificaron los dos scorers**
+(`suggestExogenousMatches` vs. `suggestReconciliations`) — explícitamente diferido a Fase F.3.
 
 ## Sprint 2.4 — Fase E.1: cierre de Evidence Matching & Guided Reconciliation
 

@@ -92,3 +92,22 @@ número de cuenta, resolución, año o porcentaje ya no aparece como candidato m
 de las dos vistas (guiada o avanzada), aunque su formato numérico se pareciera a un monto. Sigue
 disponible como evidencia inspeccionable (metadatos de la sesión), pero nunca como candidato falso
 en la revisión. Ver `docs/EVIDENCE_MATCHING.md` para el detalle completo.
+
+## Defensa semántica y vivienda (Sprint 2.4, Fase F.2)
+
+Un `exact_match`/`rounding_match` con contradicción semántica (p. ej. el texto del candidato
+describe una retención, pero se comparó como ingreso) se degrada automáticamente a "probable
+coincidencia" en el grupo **Probables coincidencias**, nunca en **Coinciden con la exógena** ni en
+la confirmación en bloque; su razón explica el problema en lenguaje humano ("El monto coincide,
+pero el certificado parece describir…"), nunca jerga técnica ni un score. El candidato sigue
+visible y puede confirmarse manualmente si el analista, tras revisarlo, considera que sí
+corresponde.
+
+Un candidato de intereses de vivienda (`proposedCategory: 'housing_interest'`) sin ninguna
+coincidencia exógena aparece en **Posibles valores nuevos** con un título ("Certificado de
+vivienda (evidencia propia)") y una razón distintos ("Este beneficio normalmente se sustenta con
+el certificado de la entidad. No necesitamos una coincidencia en exógena para conservarlo como
+evidencia."), nunca el genérico "sin relación con la exógena" — la ausencia de match no implica
+error para este tipo de evidencia (ver `docs/EVIDENCE_MATCHING.md` §Fase F.2). Ver
+`docs/CASE_TASKS.md` para el fallback guiado cuando ni siquiera se detecta un candidato de
+intereses.

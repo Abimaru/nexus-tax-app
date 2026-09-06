@@ -37,6 +37,27 @@ compatible o un cero en una columna monetaria. Se excluyen numeraciones de
 sección, años, porcentajes y líneas explicativas de normas, artículos, leyes o
 decretos. Cuando hay filas detalladas, los totales no se duplican como hechos.
 
+## Defensa semántica (Sprint 2.4, Fase F.2)
+
+Ningún adaptador decide por sí solo si un candidato es "confiable": la
+categoría/naturaleza que propone una regla es una **etiqueta**, no una
+garantía. `packages/document-intelligence/src/semanticGate.ts` detecta cuándo
+el propio texto de un candidato contradice esa etiqueta (p. ej. "Retención
+sobre rendimientos financieros" nunca es `financial_income`; "Base gravable
+GMF" nunca es el valor deducible de GMF; "Saldo cuenta ahorros" nunca es una
+deducción) y degrada el resultado del emparejador antes de permitir una
+confirmación en bloque — ver `docs/EVIDENCE_MATCHING.md` §Fase F.2 para el
+detalle completo. Además, en `co.financial.consolidated.generic`, una línea
+con marcador léxico de retención ("retención"/"retenciones") **domina** sobre
+cualquier regla de categoría "ingreso" en la misma línea: nunca se genera
+también un candidato de ingreso para esa línea.
+
+El adaptador `co.housing-interest.generic` amplió su vocabulario de intereses
+(pagados/causados/del período) y de saldo de la obligación sin exigir la frase
+literal "crédito hipotecario" (una entidad no bancaria también certifica
+vivienda), y nunca infiere el valor de intereses a partir del saldo ni lo
+calcula por diferencia — solo extrae evidencia documental explícita.
+
 ## Reglas de extensión
 
 1. Reutilizar normalización y evidencia; no codificar nombres de clientes.

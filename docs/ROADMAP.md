@@ -245,6 +245,32 @@ Nuevo E2E de Playwright (`evidence-review.spec.ts`) cubre el flujo completo con 
 promoción/supresión, redondeo, ambigüedad, captura manual, conciliación sin doble conteo,
 persistencia y responsive. Detalle completo en `docs/EVIDENCE_MATCHING.md`.
 
+## Sprint 2.4 — Fase F / F.1 (benchmark real, diagnóstico)
+
+Validación exclusivamente diagnóstica del motor de extracción y del emparejador contra documentos
+reales de dos personas (nunca copiados al repositorio; solo métricas redactadas/agregadas en el
+chat). Encontró: el *promotion gate* antirruido funciona correctamente; el problema principal es
+de cobertura/clasificación/adaptadores, no de ruido; 1 false confident match real (retención
+clasificada como ingreso, `exact_match` contra un registro de ingresos); certificados de
+intereses de vivienda sin cobertura y sin categoría exógena equivalente; divergencias reales entre
+`suggestExogenousMatches` y la política de conciliación de la matriz (`evaluateReconciliationDifference`)
+sobre el tratamiento del redondeo y de "posible coincidencia". No se modificó ningún código de
+producción en estas dos fases.
+
+## Sprint 2.4 — Fase F.2 (Safety & Critical Evidence Hardening)
+
+Corrige los dos hallazgos críticos de F.1 mediante una defensa semántica general, no un parche por
+emisor: gate semántico reusable (`detectSemanticContradiction`) que impide que un `exact_match`/
+`rounding_match` con contradicción de concepto (retención vs. ingreso, base gravable vs. valor,
+saldo vs. deducción) sea confirmable en bloque; corrección de causa raíz en la regla de retención
+del adaptador financiero consolidado; ampliación del vocabulario y las reglas de vivienda;
+vivienda habilitada como evidencia "document-only" válida sin exógena; fallback guiado
+(`evidence_missing_expected` reutilizado) cuando no se identifican los intereses. Rebenchmark
+local confirmó la corrección del false confident original y ninguna regresión en los casos ya
+bloqueados; la cobertura de vivienda mejoró parcialmente (1 de 2 casos reales). Deliberadamente
+**no** se unificaron los dos scorers divergentes encontrados en F.1 — queda para una futura Fase
+F.3. Detalle completo en `docs/EVIDENCE_MATCHING.md` §Fase F.2.
+
 ## Sprint 2.4 — Revisión normativa puntual (cierre de Fase D)
 
 Antes de publicar la Fase D se ejecutó una revisión normativa exclusiva de la integración del

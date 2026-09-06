@@ -239,6 +239,24 @@ describe('buildEvidenceReviewSuggestions', () => {
     expect(suggestions[0]).toMatchObject({ status: 'new_relevant_value', candidateId: candidate.id });
   });
 
+  it('Sprint 2.4, Fase F.2 (§15): la vivienda sin exógena NO se presenta como error', () => {
+    const candidate = baseCandidate({
+      proposedCategory: 'housing_interest',
+      proposedNature: 'deduction',
+      suggestedExogenousMatches: [],
+    });
+    const suggestions = buildEvidenceReviewSuggestions({
+      caseId: 'case:1',
+      candidates: [candidate],
+      expectedEvidence: [],
+      now: NOW,
+    });
+    expect(suggestions).toHaveLength(1);
+    expect(suggestions[0]?.status).toBe('new_relevant_value');
+    expect(suggestions[0]?.reasons.join(' ')).not.toMatch(/no aparece en (la )?ex[oó]gena/i);
+    expect(suggestions[0]?.reasons.join(' ')).toMatch(/no necesitamos una coincidencia en ex[oó]gena/i);
+  });
+
   it('ignora candidatos ya confirmados (con factId) para no duplicar la revisión', () => {
     const candidate = baseCandidate({ factId: 'fact:1', status: 'confirmed' });
     const suggestions = buildEvidenceReviewSuggestions({
