@@ -68,7 +68,7 @@ import { EntitiesPanel } from './EntitiesPanel';
 import { FactsPanel } from './FactsPanel';
 import { ReconciliationsPanel } from './ReconciliationsPanel';
 import { RequirementsPanel } from './RequirementsPanel';
-import { DocumentExtractionReviewPanel } from './DocumentExtractionReviewPanel';
+import { EvidenceReviewPanel } from './EvidenceReviewPanel';
 import { DocumentLabPanel } from './DocumentLabPanel';
 import { CaseTasksPanel } from './CaseTasksPanel';
 import { ResolutionCenterPanel } from './ResolutionCenterPanel';
@@ -609,7 +609,8 @@ export function CaseWorkbench({
           />
         ) : null}
         {stage === 'organizacion' && view === 'revision-documental' ? (
-          <DocumentExtractionReviewPanel
+          <EvidenceReviewPanel
+            caseId={caseId}
             result={result}
             documents={workspace.documents}
             products={workspace.products}
