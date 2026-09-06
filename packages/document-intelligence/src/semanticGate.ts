@@ -65,17 +65,33 @@ export function detectConceptRoleMarkers(text: string): ConceptRoleMarker[] {
  *   una BASE gravable ("Base gravable GMF" ≠ "Valor GMF") ni un SALDO de
  *   cuenta ("Saldo cuenta ahorros" ≠ "GMF").
  * - Un beneficio de intereses de vivienda nunca puede ser en realidad un
- *   saldo de la obligación (§13 del prompt de Fase F.2).
+ *   saldo de la obligación (§13 del prompt de Fase F.2) — SALVO que el
+ *   propio texto también contenga la frase específica de intereses
+ *   (`overrideIfPresent`, revisión puntual de regresión): una línea real
+ *   como "Saldo obligación e intereses pagados durante el año" NO debe
+ *   degradarse solo porque menciona "saldo" en el mismo renglón/contexto
+ *   — la contradicción debe ser del CONTEXTO asociado al valor, no de
+ *   cualquier palabra presente en toda la fila. La señal específica y
+ *   más fuerte (la misma frase que activa la regla `housing-interest` en
+ *   `adapters.ts`) domina sobre el marcador genérico "saldo".
  */
-const FORBIDDEN_MARKERS_BY_CATEGORY: Partial<Record<TaxCategory, readonly ConceptRoleMarker[]>> = {
-  financial_income: ['withholding'],
-  employment_income: ['withholding'],
-  other_income: ['withholding'],
-  dividend_income: ['withholding'],
-  pension_income: ['withholding'],
-  withholding: ['base'],
-  deduction_candidate: ['base', 'balance'],
-  housing_interest: ['balance'],
+interface ForbiddenMarkerRule {
+  marker: ConceptRoleMarker;
+  /** Si coincide, esta regla NO contradice — una señal más específica domina. */
+  overrideIfPresent?: RegExp;
+}
+
+const HOUSING_INTEREST_STRONG_SIGNAL = /\bintereses?\s+(?:pagados|causados|del\s+periodo)\b/;
+
+const FORBIDDEN_MARKERS_BY_CATEGORY: Partial<Record<TaxCategory, readonly ForbiddenMarkerRule[]>> = {
+  financial_income: [{ marker: 'withholding' }],
+  employment_income: [{ marker: 'withholding' }],
+  other_income: [{ marker: 'withholding' }],
+  dividend_income: [{ marker: 'withholding' }],
+  pension_income: [{ marker: 'withholding' }],
+  withholding: [{ marker: 'base' }],
+  deduction_candidate: [{ marker: 'base' }, { marker: 'balance' }],
+  housing_interest: [{ marker: 'balance', overrideIfPresent: HOUSING_INTEREST_STRONG_SIGNAL }],
 };
 
 export interface SemanticContradiction {
@@ -131,15 +147,18 @@ export function detectSemanticContradiction(candidate: {
     candidate.proposedCategory,
     ...(candidate.referenceCategories ?? []),
   ]);
-  const markers = detectConceptRoleMarkers(
-    `${candidate.originalConcept} ${candidate.normalizedConcept ?? ''}`,
-  );
+  const combinedText = `${candidate.originalConcept} ${candidate.normalizedConcept ?? ''}`;
+  const markers = detectConceptRoleMarkers(combinedText);
   if (!markers.length) return { contradictory: false, marker: null, reason: null };
+  const normalizedCombinedText = comparableText(combinedText);
   for (const category of categories) {
-    const forbidden = FORBIDDEN_MARKERS_BY_CATEGORY[category];
-    if (!forbidden || !forbidden.length) continue;
-    const hit = forbidden.find((marker) => markers.includes(marker));
-    if (hit) return { contradictory: true, marker: hit, reason: reasonForMarker(hit) };
+    const rules = FORBIDDEN_MARKERS_BY_CATEGORY[category];
+    if (!rules || !rules.length) continue;
+    for (const rule of rules) {
+      if (!markers.includes(rule.marker)) continue;
+      if (rule.overrideIfPresent && rule.overrideIfPresent.test(normalizedCombinedText)) continue;
+      return { contradictory: true, marker: rule.marker, reason: reasonForMarker(rule.marker) };
+    }
   }
   return { contradictory: false, marker: null, reason: null };
 }

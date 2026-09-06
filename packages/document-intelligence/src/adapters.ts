@@ -193,7 +193,12 @@ export const DOCUMENT_ADAPTERS: readonly DocumentAdapter[] = [
           // intereses financieros sigue siendo una retención, no un
           // ingreso — aunque no mencione literalmente "fuente"/"renta"
           // (§3/§12 del prompt de Fase F.2, caso real del benchmark).
+          // Bidireccional: en una tabla real, "Rendimientos financieros"
+          // puede aparecer ANTES o DESPUÉS de "Retención" según cómo se
+          // reconstruya la fila posicionada (regresión F.2, revisión
+          // puntual de retención-domina-ingreso).
           'retencion(?:es)?.*(?:rendimientos|intereses|financiero)',
+          '(?:rendimientos|intereses|financiero).*retencion(?:es)?',
         ],
         'withholding',
         'tax_credit',
@@ -414,6 +419,30 @@ export function selectAdapter(kind: DocumentKind): DocumentAdapter {
   );
 }
 
+/**
+ * Devuelve solo el fragmento de texto INMEDIATAMENTE asociado a un valor
+ * monetario dentro de una línea (Sprint 2.4, Fase F.2 — revisión puntual):
+ * desde el final del monto anterior más cercano (o el inicio de la línea,
+ * si no hay uno) hasta el inicio de `targetIndex`. Evita que una línea
+ * reconstruida de una fila posicionada con VARIOS conceptos/valores (p.
+ * ej. "Rendimientos financieros 1.500.000 Retención 60.000") contamine la
+ * decisión de un valor con la etiqueta de OTRO valor en la misma línea —
+ * la ventana local, no la línea completa, es lo que se evalúa.
+ */
+function localLabelWindow(
+  line: string,
+  amounts: readonly MonetaryMatch[],
+  targetIndex: number,
+): string {
+  let start = 0;
+  for (const candidate of amounts) {
+    if (candidate.index >= targetIndex) continue;
+    const end = candidate.index + candidate.raw.length;
+    if (end > start) start = end;
+  }
+  return line.slice(start, targetIndex);
+}
+
 const VALUE_PATTERN = /(?:cop\s*)?\$?\s*-?\d[\d.,]*(?:,\d{1,2})?/gi;
 
 interface MonetaryMatch {
@@ -592,22 +621,37 @@ export function extractCandidates(
     for (const [lineIndex, line] of lines.entries()) {
       const normalizedLine = comparableText(line);
       if (isExplanatoryLine(normalizedLine, line)) continue;
+      const lineAmounts = monetaryMatches(line);
       for (const currentRule of selected.rules) {
         const label = currentRule.labels.find((pattern) => pattern.test(normalizedLine));
         if (!label) continue;
         if (isTotalLine(line) && rulesWithDetail.has(currentRule.id)) continue;
-        // Sprint 2.4, Fase F.2 (§3/§4): "Retención sobre rendimientos
-        // financieros" nunca debe generar TAMBIÉN un candidato de ingreso
-        // bajo la regla `interest` (u otra de ingreso) solo porque la
-        // misma línea contiene esas palabras — la retención domina.
-        if (
-          currentRule.category !== 'withholding' &&
-          INCOME_LIKE_CATEGORIES.has(currentRule.category) &&
-          detectConceptRoleMarkers(line).includes('withholding')
-        ) {
-          continue;
-        }
-        for (const amount of monetaryMatches(line)) {
+        for (const amount of lineAmounts) {
+          // Sprint 2.4, Fase F.2 (§3/§4, revisión puntual de regresión):
+          // una línea reconstruida de una fila posicionada puede mezclar
+          // VARIOS conceptos con VARIOS valores (p. ej. "Rendimientos
+          // financieros 1.500.000 Retención 60.000"). La decisión de si
+          // "retención domina sobre ingreso" se evalúa sobre la VENTANA
+          // LOCAL de texto asociada a este valor concreto (§localLabelWindow),
+          // nunca sobre la línea completa — así el ingreso legítimo de la
+          // misma línea no se bloquea solo porque otra columna/etiqueta
+          // mencione "retención".
+          const localWindow = localLabelWindow(line, lineAmounts, amount.index);
+          const localMarkers = detectConceptRoleMarkers(localWindow);
+          if (
+            currentRule.category !== 'withholding' &&
+            INCOME_LIKE_CATEGORIES.has(currentRule.category) &&
+            localMarkers.includes('withholding')
+          ) {
+            continue;
+          }
+          // Simétricamente: la regla `withholding` solo reclama un valor
+          // concreto cuando SU PROPIA ventana local lo asocia con
+          // "retención" — evita que, en la misma línea multi-concepto,
+          // también reclame el valor de ingreso vecino.
+          if (currentRule.category === 'withholding' && !localMarkers.includes('withholding')) {
+            continue;
+          }
           addCandidate({
             line,
             rule: currentRule,
