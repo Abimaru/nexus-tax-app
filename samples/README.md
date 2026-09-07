@@ -22,3 +22,17 @@ Esto crea `samples/exogena-sintetica.xlsx` con:
 
 El archivo generado está permitido por `.gitignore` (excepción para `samples/`),
 pero de todas formas se recomienda no versionarlo salvo que sea necesario.
+
+## Caso sintético integral ("golden case")
+
+Este generador produce un archivo mínimo para probar la carga de un solo
+archivo. Para un expediente sintético **completo y coherente** (exógena +
+documentos + declaración anterior + facturación electrónica + dependiente +
+inmueble, diseñado para demostrar y regresionar el pipeline real end-to-end),
+ver `apps/web/src/lib/goldenCase.ts` y `docs/SYNTHETIC_SAMPLE_CASE.md`. Ese
+módulo vive en el paquete `apps/web` (no aquí) porque su suite de coherencia
+(`apps/web/src/lib/goldenCase.test.ts`) necesita ejecutar el parser de
+exógena, los adaptadores documentales, el matcher, el motor de inmuebles y
+el resto de paquetes de NexusTax — reutiliza toda esa infraestructura en vez
+de crear un segundo sistema de muestras.
+
