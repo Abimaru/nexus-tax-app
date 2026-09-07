@@ -1,6 +1,52 @@
-# Handoff del proyecto — NexusTax (Sprint 2.4, Fase B0 + B + B1 + C + D + E + E.1 + F + F.1 + F.2 + revisiones puntuales)
+# Handoff del proyecto — NexusTax (Sprint 2.4, Fase B0 + B + B1 + C + D + E + E.1 + F + F.1 + F.2 + F.3 + revisiones puntuales)
 
-_Última actualización: 2026-09-06 (cierre Fase F.2)._
+_Última actualización: 2026-09-06 (cierre Fase F.3)._
+
+## Sprint 2.4 — Fase F.3: Unified Reconciliation & Coverage Hardening
+
+Rama `feature/sprint-2.4-reconciliation-coverage`, creada desde `main` actualizado (post-merge de
+Fase F.2). Cierra la limitación explícita de F.2 (dos scorers sin unificar) y corrige
+incompatibilidades estructurales entre adaptadores y la taxonomía de la exógena encontradas en el
+benchmark real (Fase F.1).
+
+1. **Política numérica única** (`packages/domain/src/numericReconciliation.ts`,
+   `evaluateNumericReconciliation`): fuente única para exact/rounding/minor/relevant, consumida
+   ahora por `suggestExogenousMatches` (candidato↔exógena), `evaluateReconciliationDifference`
+   (umbral/matriz) y `suggestReconciliations` (hecho↔exógena). Un cuarto punto de divergencia
+   encontrado en la auditoría (`ReconciliationsPanel.tsx`'s `score >= 75 && difference <= 5`
+   hardcodeado, sin gate semántico) también se unificó y ahora respeta el gate de Fase F.2 —
+   `suggestReconciliations` calcula `semanticContradiction`/`semanticContradictionReason`
+   reutilizando `detectSemanticContradiction`.
+2. **Cobertura estructural corregida**: cesantías (`co.severance.generic` + `classification.ts`,
+   saldo reclasificado de `asset` a `severance`, aporte/consignación patronal reconocido en ambos
+   lados); nuevo adaptador `co.annual-cost-report.generic`; corrección de la señal de clasificación
+   "certificado tributario" (singular→plural, causa raíz real de una miscategorización a
+   `debt_certificate`); fixture de tabla multiproducto; vocabulario adicional de Form 220 textual.
+3. **Routing documental explícito** (`packages/document-intelligence/src/documentRouting.ts`):
+   antes de `extractCandidates`, decide si el documento usa el pipeline genérico, la ruta de
+   declaración anterior, o queda marcado como extracto bancario transaccional (detectado
+   estructuralmente) — nunca se descarta el documento, solo se evita el extractor equivocado.
+4. **Menos falsos `unresolved`**: `buildExpectedTaxEvidence` excluye 5 categorías estructuralmente
+   sin certificado esperado (card_consumption, bank_movement, investment_movement,
+   electronic_invoicing_total/benefit_base).
+5. **Human Review Burden** (`computeHumanReviewBurden`, nuevo `docs/HUMAN_REVIEW_BURDEN.md`):
+   métrica local de benchmark, nunca telemetría.
+
+**Rebenchmark real (§23, script temporal, eliminado; datos nunca persistidos)**: mismo corpus real
+de Fase F.1 (2 exógenas, 29 PDF, 2 reportes de facturación electrónica). Resultados: unresolved
+59→37, candidatos totales 142→52 (el routing evitó ~80 candidatos de baja calidad de un extracto
+bancario real), evidencia document-only 115→26, Human Review Burden total ~192→88,
+**falseConfidentMatches se mantuvo en 0**. Detalle completo en `docs/EVIDENCE_MATCHING.md`
+§Fase F.3.
+
+**Quality gate**: `check:encoding`, `pnpm -r typecheck`, `pnpm -r lint`, `pnpm -r test` (696 tests
+en todos los paquetes), `pnpm build`, `pnpm test:e2e` (13/13, incluye el nuevo
+`evidence-reconciliation-coverage.spec.ts`) — todo en verde.
+
+**Limitaciones explícitas para una futura Fase F.4**: la detección de extracto transaccional es
+una heurística estructural modesta (podría tener falsos negativos/positivos en formatos atípicos);
+la cobertura de vivienda de los 2 casos reales que F.2 dejó con mejora parcial no se revisó de
+nuevo; `unresolvedAfterAllDocuments` es hoy un alias exacto de `manualGuidedCapture`.
 
 ## Sprint 2.4 — Fase F.2: Safety & Critical Evidence Hardening
 

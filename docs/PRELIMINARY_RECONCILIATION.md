@@ -16,6 +16,20 @@ relevante, no comparable, otro producto y dato exógeno cuestionado.
 Cada decisión conserva valores, diferencia absoluta y porcentual, producto,
 explicación, decisión del analista, fuentes enlazadas y marcas de tiempo.
 
+## Política numérica única (Sprint 2.4, Fase F.3)
+
+`suggestReconciliations` ya NO redefine sus propios umbrales de redondeo/diferencia menor: delega
+en `evaluateNumericReconciliation` (`@nexus-tax/domain/numericReconciliation.ts`), la misma
+política que usa `suggestExogenousMatches` (candidato↔exógena) y `evaluateReconciliationDifference`
+(umbral/matriz). Ver `docs/EVIDENCE_MATCHING.md` §Fase F.3 para el diseño completo.
+
+`suggestReconciliations` también calcula `semanticContradiction`/`semanticContradictionReason`
+(reutilizando `detectSemanticContradiction` de Fase F.2) — un hecho documental cuyo texto
+contradice la categoría del registro exógeno comparado nunca se presenta como "seguro para
+confirmar" en `ReconciliationsPanel`, sin importar cuán alto sea su score. `ReconciliationsPanel`
+reemplazó su umbral ad-hoc anterior (`score >= 75 && difference <= 5`, desconectado de las demás
+políticas y sin protección semántica) por la misma política central + el mismo gate.
+
 ## Aceptación exógena y documento posterior
 
 Si un registro fue aceptado provisionalmente, una conciliación humana posterior

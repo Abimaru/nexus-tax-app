@@ -22,6 +22,7 @@ protejan la compatibilidad.
 | `co.housing-interest.generic`      | intereses de vivienda, corrección y saldo                               |
 | `co.severance-certificate.generic` | saldo, abonos, retiros, rendimientos y retenciones                      |
 | `co.property-tax.generic`          | avalúo, impuesto y participación                                        |
+| `co.annual-cost-report.generic`    | intereses/rendimientos, retención, GMF, total informativo (Fase F.3)    |
 | `co.generic-label-value`           | pares concepto–valor no cubiertos; confianza baja                       |
 
 El certificado financiero es multipropósito: una sola lectura genera grupos
@@ -57,6 +58,30 @@ El adaptador `co.housing-interest.generic` amplió su vocabulario de intereses
 literal "crédito hipotecario" (una entidad no bancaria también certifica
 vivienda), y nunca infiere el valor de intereses a partir del saldo ni lo
 calcula por diferencia — solo extrae evidencia documental explícita.
+
+## Cobertura y routing (Sprint 2.4, Fase F.3)
+
+- **Cesantías** (`co.severance.generic`): el saldo de cesantías se clasifica como categoría
+  `severance` (antes `asset`), compatible con la categoría que la exógena asigna a un saldo de
+  cesantías "en bruto" (`packages/exogenous-parser/src/classification.ts`). Se agregó
+  reconocimiento de aporte/consignación patronal en ambos lados (documento y exógena) — antes un
+  aporte de cesantías caía en `bank_movement` genérico del lado de la exógena, una incompatibilidad
+  estructural real encontrada en el benchmark (Fase F.1).
+- **`co.annual-cost-report.generic`** (nuevo): cubre intereses/rendimientos, retención, GMF y un
+  total informativo de entidad — reutiliza el mismo mapeo que `co.financial.consolidated.generic`,
+  sin duplicar el gate semántico.
+- **Certificados tributarios consolidados**: la señal de clasificación `certificado tributario`
+  (`classifier.ts`) no reconocía la redacción real plural "Certificados tributarios" — causa raíz
+  real de una miscategorización a `debt_certificate` en el benchmark. Se corrigió y se agregaron
+  señales estructurales acumulativas (saldo + rendimiento + retención + GMF) para que un documento
+  multiproducto genuino supere a una clasificación más estrecha.
+- **Routing documental explícito** (`packages/document-intelligence/src/documentRouting.ts`): antes
+  de `extractCandidates`, una decisión pura determina si el documento debe usar el pipeline
+  genérico, la ruta especializada de declaración anterior (`extractPriorYearForm210`), o quedar
+  marcado como extracto bancario transaccional (detectado estructuralmente por conteo de fechas y
+  vocabulario de movimiento, nunca por nombre de banco/NIT/filename) — en ese caso no se generan
+  candidatos, pero el documento sigue disponible en biblioteca/evidencia/historial. Ver
+  `docs/EVIDENCE_MATCHING.md` §Fase F.3 para el detalle completo.
 
 ## Reglas de extensión
 

@@ -111,3 +111,17 @@ evidencia."), nunca el genérico "sin relación con la exógena" — la ausencia
 error para este tipo de evidencia (ver `docs/EVIDENCE_MATCHING.md` §Fase F.2). Ver
 `docs/CASE_TASKS.md` para el fallback guiado cuando ni siquiera se detecta un candidato de
 intereses.
+
+## Unificación numérica, cobertura y routing (Sprint 2.4, Fase F.3)
+
+La revisión guiada y el panel de conciliaciones (`ReconciliationsPanel`) ya comparten la misma
+política numérica (`evaluateNumericReconciliation`) para redondeo/diferencia menor — ver
+`docs/EVIDENCE_MATCHING.md` §Fase F.3. `ReconciliationsPanel` también respeta ahora el gate
+semántico de Fase F.2: una sugerencia de conciliación cuyo hecho documental contradice
+semánticamente la categoría del registro exógeno comparado nunca se marca "segura para confirmar",
+con el mismo copy humano ("El valor coincide, pero el concepto no").
+
+Cuando un documento se enruta como declaración anterior o extracto bancario transaccional
+(`decideDocumentRouting`, §13-§15), la revisión guiada no muestra candidatos para ese documento —
+el motivo se explica en modo avanzado a través de un `DocumentExtractionFinding` con
+`code: 'requires_specialized_route'`, nunca como un error silencioso.
