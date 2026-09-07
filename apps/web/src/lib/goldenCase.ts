@@ -470,3 +470,25 @@ export const GOLDEN_PROPERTY_EXPENSE_INPUT: SavePropertyExpenseInput = {
   supportStatus: 'sufficient',
   supportTypes: ['administration_account_statement'],
 };
+
+/**
+ * Salud complementaria sintética (Sprint 2.4, Fase H, §23 del prompt):
+ * medicina prepagada del contribuyente en dos meses (uno bajo el tope,
+ * otro que lo supera) y un seguro de salud del dependiente ya registrado
+ * (`GOLDEN_DEPENDENT_INPUT`), vinculado explícitamente — nunca se asume
+ * elegibilidad solo por la relación textual (§4/§14).
+ */
+export const GOLDEN_HEALTH_PROVIDER = { name: 'Medicina Prepagada Sintetica Golden Case SAS' } as const;
+
+/** Enero: pago bajo el tope mensual de 16 UVT (~$ 796.784). */
+export const GOLDEN_HEALTH_PAYMENT_JANUARY_COP = 300_000;
+/** Junio: pago que SUPERA el tope mensual — demuestra el recorte explicado en la UI (§19). */
+export const GOLDEN_HEALTH_PAYMENT_JUNE_COP = 1_200_000;
+/** Seguro de salud del dependiente (marzo), vinculado a `GOLDEN_DEPENDENT_INPUT`. */
+export const GOLDEN_HEALTH_PAYMENT_DEPENDENT_COP = 250_000;
+
+export const GOLDEN_HEALTH_MONTHLY_CAP_COP = Math.round(16 * 49_799);
+
+/** Resultado esperado del tope agregado (§23): enero íntegro, junio recortado, marzo íntegro. */
+export const GOLDEN_HEALTH_EXPECTED_ANNUAL_ELIGIBLE_COP =
+  GOLDEN_HEALTH_PAYMENT_JANUARY_COP + GOLDEN_HEALTH_MONTHLY_CAP_COP + GOLDEN_HEALTH_PAYMENT_DEPENDENT_COP;
