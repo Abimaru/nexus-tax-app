@@ -142,7 +142,13 @@ export const FORM_210_VALIDATION_MATRIX_2025: readonly Form210RuleValidation[] =
       'de vivienda, etc.) con sus topes. NO incluye la deducción especial por compras con ' +
       'factura electrónica (art. 336 num. 5 ET, casilla oficial 28): esa deducción tiene su ' +
       'propia casilla y está expresamente exenta del límite conjunto que sí afecta a esta ' +
-      'casilla vía R40→R41. Corregido en revisión normativa puntual posterior a Fase D.',
+      'casilla vía R40→R41. Corregido en revisión normativa puntual posterior a Fase D. ' +
+      'Salud complementaria (medicina prepagada/seguros de salud, art. 387 ET, tope MENSUAL ' +
+      'de 16 UVT agregado para el contribuyente) implementada en Fase H — motor puro ' +
+      '`evaluateComplementaryHealthMonthlyCap`, sumada (no fusionada) con la deducción de ' +
+      'dependientes del mismo artículo. El estado del box permanece `not_implemented` porque ' +
+      'esta casilla es un AGREGADO de fuentes calculadas independientes (nunca una fórmula ' +
+      'aritmética propia entre casillas), igual que ya ocurría con dependientes.',
   }),
   row(40, 'verified', {
     formulaDescription: 'Total deducciones = 38 + 39.',

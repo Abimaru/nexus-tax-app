@@ -7,6 +7,8 @@ import type {
 } from '@nexus-tax/domain';
 import type {
   AdvancePaymentComputation,
+  ComplementaryHealthMonthlyCapComputation,
+  ComplementaryHealthPaymentDeclaration,
   DependentDeclaration,
   DependentsAdditionalDeductionCandidate,
   DependentsAdditionalDeductionComputation,
@@ -298,6 +300,19 @@ export interface Form210PreliminaryLiquidation {
   electronicInvoicingDeduction: ElectronicInvoicingDeductionComputation | null;
 
   /**
+   * Deducción por salud complementaria — medicina prepagada y seguros de
+   * salud (art. 387 ET, Sprint 2.4, Fase H). `null` cuando el analista no
+   * aporta pagos ya validados individualmente (beneficiario, mes, soporte
+   * y exclusiones de EPS/gasto médico directo). El tope es MENSUAL y
+   * AGREGADO para el contribuyente (16 UVT, nunca por proveedor/póliza/
+   * beneficiario); el importe se cablea a la casilla 39, independiente de
+   * `dependentsDeduction` (art. 387, deducción distinta bajo el mismo
+   * artículo). Se conserva el detalle mes a mes para que la UI explique
+   * el tope sin recalcular.
+   */
+  complementaryHealthDeduction: ComplementaryHealthMonthlyCapComputation | null;
+
+  /**
    * Límites individuales declarativos (AFC/AVC/FVP, intereses de vivienda,
    * medicina prepagada) aplicados sobre los valores declarados por el
    * analista. Cada entrada conserva su regla, candidatos y limitante
@@ -436,6 +451,17 @@ export interface Form210BuildInput {
    * suma a R39/R41. Independiente del campo `dependents` (art. 387).
    */
   dependentsAdditional?: readonly DependentsAdditionalDeductionCandidate[];
+  /**
+   * Pagos de salud complementaria (medicina prepagada, seguros de salud)
+   * YA validados individualmente por el analista/repositorio
+   * (`evaluateComplementaryHealthPaymentEligibility` = `eligible`):
+   * beneficiario definido, mes conocido, soporte suficiente, sin ser un
+   * aporte obligatorio a EPS ni un gasto médico directo. El motor aplica
+   * el tope mensual agregado de 16 UVT (art. 387 ET) y cablea el
+   * resultado a la casilla 39, independiente de `dependents` (misma
+   * artículo, deducción distinta — Sprint 2.4, Fase H).
+   */
+  complementaryHealth?: readonly ComplementaryHealthPaymentDeclaration[];
   /**
    * Base de compras soportadas con factura electrónica y medio de pago
    * electrónico calificado (art. 336-1 ET). El motor aplica 1 % con tope de

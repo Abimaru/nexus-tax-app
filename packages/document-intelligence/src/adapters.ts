@@ -498,6 +498,47 @@ export const DOCUMENT_ADAPTERS: readonly DocumentAdapter[] = [
     ],
   ),
   adapter(
+    'co.complementary-health.generic',
+    ['complementary_health_certificate'],
+    [
+      'medicina prepagada|prepagada|seguro(?:s)? de salud|plan(?:es)? adicional(?:es)? de salud',
+    ],
+    [
+      // Sprint 2.4, Fase H (§12): prioriza conceptos tributariamente
+      // útiles (pago mensual, total del certificado) — nunca infiere
+      // `mensual × 12` (mismo principio que
+      // `co.property-administration.generic`). Evita promover número de
+      // póliza, identificación, teléfono, resolución o porcentaje: al no
+      // existir una regla para esas etiquetas, esas líneas nunca generan
+      // un candidato monetario.
+      rule(
+        'monthly-payment',
+        [
+          'pago(?:s)? mensual(?:es)?',
+          'valor (?:pagado|cancelado).*mes',
+          'cuota mensual',
+        ],
+        'deduction_candidate',
+        'possible_deduction',
+        'review_as_deduction',
+        'health_plan',
+      ),
+      rule(
+        'annual-total',
+        ['total anual', 'total (?:pagado|cancelado|certificado).*(?:ano|periodo)', 'total certificado'],
+        'deduction_candidate',
+        'possible_deduction',
+        'review_as_deduction',
+        'health_plan',
+      ),
+    ],
+    [
+      'No exige factura electrónica como único soporte: el certificado o comprobante emitido por la entidad vigilada (medicina prepagada o aseguradora) es idóneo.',
+      'Nunca infiere el valor mensual multiplicado por 12: cada concepto (pago mensual, total del certificado) se extrae de forma independiente y explícita.',
+      'No promueve número de póliza, identificación, teléfono, resolución ni porcentaje como candidatos monetarios.',
+    ],
+  ),
+  adapter(
     'co.annual-cost-report.generic',
     ['annual_cost_report'],
     ['reporte anual de costos|relacion de compras y gastos'],

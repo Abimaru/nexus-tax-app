@@ -43,3 +43,5 @@ export * from './prior-year-balance';
 export * from './withholdings';
 export * from './cross-validations';
 export * from './property-expense-eligibility';
+export * from './complementary-health-eligibility';
+export * from './complementary-health-monthly-cap';
