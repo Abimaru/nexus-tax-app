@@ -23,6 +23,7 @@ protejan la compatibilidad.
 | `co.severance-certificate.generic` | saldo, abonos, retiros, rendimientos y retenciones                      |
 | `co.property-tax.generic`          | avalúo, impuesto y participación                                        |
 | `co.annual-cost-report.generic`    | intereses/rendimientos, retención, GMF, total informativo (Fase F.3)    |
+| `co.property-administration.generic` | cuota extraordinaria, total anual, cuota mensual, saldo, pagos (Fase G) |
 | `co.generic-label-value`           | pares concepto–valor no cubiertos; confianza baja                       |
 
 El certificado financiero es multipropósito: una sola lectura genera grupos
@@ -82,6 +83,20 @@ calcula por diferencia — solo extrae evidencia documental explícita.
   vocabulario de movimiento, nunca por nombre de banco/NIT/filename) — en ese caso no se generan
   candidatos, pero el documento sigue disponible en biblioteca/evidencia/historial. Ver
   `docs/EVIDENCE_MATCHING.md` §Fase F.3 para el detalle completo.
+
+### `co.property-administration.generic` (Sprint 2.4, Fase G)
+
+Reconoce certificados/cuentas de cobro de administración de propiedad horizontal
+(`property_administration_certificate`). Cinco reglas independientes, **nunca** derivadas unas de
+otras (`monthly × 12` está explícitamente prohibido): `extraordinary-fee`, `annual-total`,
+`monthly-fee`, `balance` (informativo, nunca un candidato de gasto) y `payments`. Ninguna regla ni
+ningún texto de límite/advertencia menciona "factura" — el fundamento normativo (Decreto 1625 de
+2016 art. 1.3.1.13.5 + Oficio DIAN 912878 de 2021: la cuota de administración es un aporte a
+capital, no un hecho generador de IVA ni una venta/servicio facturable) hace que el soporte idóneo
+sea la cuenta de cobro, el certificado de la copropiedad, un recibo o un comprobante/extracto de
+pago — nunca una factura electrónica. Ver `docs/PROPERTY_INCOME_EXPENSES_2025.md` para el detalle
+normativo completo y cómo este candidato documental se conecta con `PropertyExpense` y el motor de
+elegibilidad puro.
 
 ## Reglas de extensión
 

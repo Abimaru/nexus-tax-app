@@ -1,16 +1,16 @@
 # Roadmap — NexusTax
 
 > Sprint 2.4 (Fase B0 + Fase B + Fase B1 + Fase C + Fase D + Fase E + Fase
-> E.1 + revisiones normativas puntuales) completado: esqueleto de casillas
-> del F-210, declaraciones anteriores, los dos beneficios de dependientes
-> económicos (art. 387 y art. 336 num. 3 ET), el reporte DIAN detallado de
-> facturación electrónica (CUFE, deduplicación, conciliación, motor del 1 %
-> en su casilla oficial: la 28, art. 336 num. 5 ET), y Evidence Matching &
-> Guided Reconciliation con su promotion gate cerrado (el clasificador de
-> ruido numérico ahora decide qué se promueve a candidato monetario, no
-> solo qué se inspecciona) y cobertura E2E completa.
-> Pendiente: el resto del Sprint 2.4 (inmuebles, administración de
-> propiedad horizontal, medicina prepagada).
+> E.1 + Fase F + F.1 + F.2 + F.3 + Fase G + revisiones normativas puntuales)
+> completado: esqueleto de casillas del F-210, declaraciones anteriores, los
+> dos beneficios de dependientes económicos (art. 387 y art. 336 num. 3 ET),
+> el reporte DIAN detallado de facturación electrónica (CUFE, deduplicación,
+> conciliación, motor del 1 % en su casilla oficial: la 28, art. 336 num. 5
+> ET), Evidence Matching & Guided Reconciliation con su promotion gate
+> cerrado y política de reconciliación numérica unificada, y el módulo de
+> inmuebles/renta inmobiliaria/administración de propiedad horizontal
+> (candidatos, nunca cableado al Formulario 210 todavía).
+> Pendiente: medicina prepagada.
 
 ## Entregado hasta hoy ✅
 
@@ -304,3 +304,32 @@ fuera de R39/R92), el `sourceId` del motor (`et-art-336-num-5`), el catálogo de
 (tres entradas separadas para las tres normas antes confundidas) y se agregó un bloque de 4 tests
 de guardarraíl que impide permanentemente la reintroducción de los cuatro errores encontrados. Ver
 `docs/ELECTRONIC_INVOICING_2025.md` §"Historial de correcciones normativas".
+
+## Sprint 2.4 — Fase G (Inmuebles, renta inmobiliaria y administración de propiedad horizontal)
+
+Nuevo módulo de dominio (`packages/domain/src/property.ts`): `TaxProperty`, `RentalActivity`
+(período real, nunca los 12 meses del año por defecto), `RentalIncome` (enlace de lectura a un
+registro exógeno/hecho documental/manual, nunca un segundo libro de ingresos que duplique sumas) y
+`PropertyExpense` (candidato, con `eligibilityStatus` de seis estados explicables — nunca un
+booleano `deductible = true/false`). Motor puro `evaluatePropertyExpenseEligibility`
+(`@nexus-tax/aegis-rules`, 16 tests) que aplica en orden: posible duplicado → cuota extraordinaria
+→ residencia personal (`not_applicable`) → uso vacante/otro/desconocido (`requires_context`) → uso
+mixto sin asignación (`requires_allocation`) → período/ingreso de arrendamiento sin definir
+(`requires_context`) → soporte insuficiente (`requires_support`, con copy específico de
+administración de PH que nunca exige factura) → `potentially_deductible`. Nuevo adaptador
+`co.property-administration.generic` (7 tests) para certificados/cuentas de cobro de
+administración, con cinco reglas independientes (nunca `mensual × 12`). Dexie v16 (4 tablas
+nuevas, aditiva). 6 tipos de tarea nuevos (`source: 'property'`, ver `docs/CASE_TASKS.md`). UI
+`PropertiesPanel` con flujo guiado (uso → período → ingreso → gasto → soporte/asignación →
+decisión humana) y modo avanzado con razones y fuentes normativas. E2E con capturas
+desktop/móvil. Fundamento normativo: ET art. 107 (causalidad/necesidad/proporcionalidad), ET art.
+743 (idoneidad de la prueba), Decreto 1625 de 2016 art. 1.3.1.13.5 + Oficio DIAN 912878 de 2021
+(administración de PH = aporte a capital, nunca facturable). Ver
+`docs/PROPERTY_INCOME_EXPENSES_2025.md` para el detalle completo.
+
+**Decisión de alcance explícita**: esta fase **no** cablea ningún valor de `PropertyExpense`/
+`RentalIncome` a ninguna casilla del Formulario 210 (ni la 58 "ingresos brutos de rentas de
+capital" ni la 60 "costos y deducciones procedentes de rentas de capital", ambas ya existentes en
+el ruleset pero sin fórmula que las alimente). El módulo queda completamente autocontenido; el
+impacto preliminar mostrado en el panel es informativo, no se persiste en `Form210Draft`. Queda
+para una futura fase — ver limitación completa en `docs/PROPERTY_INCOME_EXPENSES_2025.md`.

@@ -1,6 +1,56 @@
-# Handoff del proyecto — NexusTax (Sprint 2.4, Fase B0 + B + B1 + C + D + E + E.1 + F + F.1 + F.2 + F.3 + revisiones puntuales)
+# Handoff del proyecto — NexusTax (Sprint 2.4, Fase B0 + B + B1 + C + D + E + E.1 + F + F.1 + F.2 + F.3 + G + revisiones puntuales)
 
-_Última actualización: 2026-09-06 (cierre Fase F.3)._
+_Última actualización: 2026-09-08 (cierre Fase G)._
+
+## Sprint 2.4 — Fase G: Inmuebles, renta inmobiliaria y administración de propiedad horizontal
+
+Rama `feature/sprint-2.4-properties`, creada desde `main` actualizado (post-merge de Fase F.3).
+
+Principio inviolable de esta fase: `propiedad del inmueble != gasto deducible`. Nunca se sugiere
+administración, predial, mantenimiento, reparaciones, seguros o intereses como gasto deducible
+solo porque el usuario sea propietario — primero debe existir uso, período de arrendamiento e
+ingreso conciliado.
+
+1. **Modelo de dominio** (`packages/domain/src/property.ts`): `TaxProperty`, `RentalActivity`
+   (período real, nunca los 12 meses por defecto), `RentalIncome` (enlace de lectura a
+   exógena/hecho documental/manual, nunca un segundo libro de ingresos que duplique sumas),
+   `PropertyExpense` (candidato con `eligibilityStatus` de seis estados, nunca un booleano). 5
+   tests de esquema.
+2. **Motor de elegibilidad puro** (`evaluatePropertyExpenseEligibility`,
+   `@nexus-tax/aegis-rules`): orden explícito duplicado → cuota extraordinaria → residencia
+   personal → uso vacante/otro/desconocido → uso mixto sin asignación → período/ingreso sin
+   definir → soporte insuficiente (nunca exige factura para administración de PH) →
+   potencialmente deducible. 16 tests. Fundamento: ET art. 107, ET art. 743, Decreto 1625 de 2016
+   art. 1.3.1.13.5, Oficio DIAN 912878 de 2021.
+3. **Adaptador documental** `co.property-administration.generic` (5 reglas independientes, nunca
+   `mensual × 12`, nunca menciona "factura"). 7 tests.
+4. **Persistencia**: Dexie v16 (4 tablas nuevas, aditiva); repositorio con CRUD completo +
+   `recalculatePropertyExpenseEligibility` (recálculo en cascada ante cualquier cambio de
+   contexto). 12 tests de integración cubriendo los guardarraíles de doble conteo (§26): mensual
+   vs. total anual duplicado, intereses de vivienda ya confirmados como hecho documental.
+5. **6 tipos de tarea nuevos** (`source: 'property'`, ver `docs/CASE_TASKS.md`).
+6. **UI `PropertiesPanel`**: flujo guiado uso → período → ingreso → gasto → soporte/asignación →
+   decisión humana; modo avanzado con razones y "impacto preliminar" informativo. Catálogos en
+   español en `apps/web/src/lib/propertyLabels.ts`.
+7. **E2E** (`properties.spec.ts`, 2 escenarios con capturas desktop/móvil): arrendado completo
+   confirmado como candidato + persistencia tras recarga; vivienda personal nunca sugiere gasto
+   deducible.
+
+**Decisión de alcance explícita**: esta fase **no** cablea ningún valor al Formulario 210 (casillas
+58/60 existen en el ruleset pero sin fórmula, antes y después de esta fase). `packages/form-210`
+no se tocó. El impacto mostrado es informativo, vive solo dentro de `PropertiesPanel`. Detalle
+completo, incluida la justificación de esta decisión, en `docs/PROPERTY_INCOME_EXPENSES_2025.md`.
+
+**Quality gate**: `check:encoding`, `pnpm -r typecheck`, `pnpm -r lint`, `pnpm -r test` (domain 36,
+aegis-rules 191, document-intelligence 182, exogenous-parser 87, form-210 93, web 147 = 736 tests
+en todos los paquetes), `pnpm build`, `pnpm test:e2e` (17/17) — todo en verde.
+
+**Limitaciones explícitas para una futura fase**: sin integración con el Formulario 210 (ver
+arriba); la vinculación de `RentalIncome` a un registro exógeno/hecho documental existente no tiene
+un selector dedicado en la UI de esta fase (solo entrada manual) — el modelo ya soporta
+`sourceKind: 'exogenous_record'|'document_fact'`, falta el componente de selección; no se modeló
+todavía la venta/enajenación de inmuebles (ganancia ocasional), solo renta corriente y
+administración.
 
 ## Sprint 2.4 — Fase F.3: Unified Reconciliation & Coverage Hardening
 
