@@ -83,11 +83,16 @@ export function ReconciliationsPanel({
     },
   ).slice(0, 20);
   async function confirm(suggestion: ReconciliationSuggestion) {
+    // Sprint 2.4, Fase F.3 (§4/§6): misma tolerancia de redondeo ($1) que
+    // decide si el botón "Confirmar" está disponible en primer lugar
+    // (`safeToConfirm`, más abajo), para que el estado final persistido
+    // nunca contradiga la razón por la que se ofreció la confirmación en
+    // un solo clic.
     const policy = evaluateReconciliationDifference({
       leftValue: suggestion.documentaryValue,
       rightValue: suggestion.exogenousValue,
       source: 'document',
-      roundingUnit: 5,
+      roundingUnit: 1,
       groupNature: 'other',
     });
     const status =
@@ -198,9 +203,25 @@ export function ReconciliationsPanel({
                 const record = result.normalizedRecords.find(
                   (item) => item.id === suggestion.exogenousRecordId,
                 );
+                // Sprint 2.4, Fase F.3 (§6 del prompt): "seguro para
+                // confirmar" ya no usa un umbral ad-hoc de diferencia
+                // (`<= 5`) desconectado de la política central — reusa
+                // `evaluateReconciliationDifference` (la MISMA fuente que
+                // el matcher de candidatos) y respeta el gate semántico
+                // de Fase F.2: una contradicción semántica NUNCA es
+                // "segura", sin importar cuán alto sea el score.
+                const numericPolicy = evaluateReconciliationDifference({
+                  leftValue: suggestion.documentaryValue,
+                  rightValue: suggestion.exogenousValue,
+                  source: 'document',
+                  roundingUnit: 1,
+                  groupNature: 'other',
+                });
                 const safeToConfirm =
                   suggestion.score >= 75 &&
-                  suggestion.difference <= 5 &&
+                  !suggestion.semanticContradiction &&
+                  (numericPolicy.status === 'reconciled' ||
+                    numericPolicy.status === 'rounding_difference') &&
                   fact?.nature === record?.nature &&
                   fact?.category === record?.category;
                 return (
@@ -226,7 +247,12 @@ export function ReconciliationsPanel({
                       />
                       <Value label="Diferencia" value={formatCurrencyCOP(suggestion.difference)} />
                     </dl>
-                    {!safeToConfirm ? (
+                    {suggestion.semanticContradiction ? (
+                      <p className="mt-3 text-xs text-tone-amber">
+                        {suggestion.semanticContradictionReason ??
+                          'El valor coincide, pero el concepto no. Revísalo antes de confirmar.'}
+                      </p>
+                    ) : !safeToConfirm ? (
                       <p className="mt-3 text-xs text-tone-amber">
                         Esta coincidencia necesita tu criterio porque hay diferencias en el valor o
                         en la clasificación. Revisa la evidencia antes de decidir.

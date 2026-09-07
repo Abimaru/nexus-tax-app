@@ -1,3 +1,5 @@
+import { evaluateNumericReconciliation } from '@nexus-tax/domain';
+
 export const RECONCILIATION_POLICY_VERSION = 'co.form210.reconciliation.2025.v1';
 
 export type ReconciliationPolicyStatus =
@@ -21,58 +23,45 @@ export interface ReconciliationPolicyResult {
   policyVersion: string;
 }
 
-/** Política única: clasifica la diferencia, pero nunca la acepta por el analista. */
+const STATUS_MAP: Record<
+  ReturnType<typeof evaluateNumericReconciliation>['status'],
+  ReconciliationPolicyStatus
+> = {
+  exact: 'reconciled',
+  rounding: 'rounding_difference',
+  minor: 'minor_difference',
+  relevant: 'relevant_difference',
+};
+
+/**
+ * Política de conciliación de umbrales/consolidados (Sprint 2.4, Fase D/E,
+ * evolucionada en Fase F.3 — Unified Reconciliation & Coverage Hardening).
+ *
+ * Desde Fase F.3, esta función es un envoltorio delgado sobre la política
+ * numérica única (`evaluateNumericReconciliation`,
+ * `@nexus-tax/domain/numericReconciliation.ts`): conserva su contrato
+ * público exacto (nombres de estado, forma del resultado) para no romper
+ * a sus consumidores existentes (`analysis.ts` para topes/consolidados,
+ * `ReconciliationsPanel.tsx` para hechos↔exógena), pero YA NO redefine
+ * sus propios umbrales — delega la clasificación exacta/redondeo/menor/
+ * relevante a la fuente única compartida también por
+ * `suggestExogenousMatches` (`@nexus-tax/document-intelligence`).
+ */
 export function evaluateReconciliationDifference(
   input: ReconciliationPolicyInput,
 ): ReconciliationPolicyResult {
-  const differenceAbsolute = Math.abs(input.leftValue - input.rightValue);
-  const base = Math.abs(input.rightValue);
-  const differencePercentage = base === 0 ? null : (differenceAbsolute / base) * 100;
-  const roundingUnit = Math.max(1, Math.abs(input.roundingUnit ?? 1));
-
-  if (differenceAbsolute === 0) {
-    return {
-      status: 'reconciled',
-      differenceAbsolute,
-      differencePercentage: 0,
-      roundingUnit,
-      explanation: 'Los valores coinciden exactamente.',
-      requiresHumanConfirmation: false,
-      policyVersion: RECONCILIATION_POLICY_VERSION,
-    };
-  }
-  if (differenceAbsolute <= roundingUnit) {
-    return {
-      status: 'rounding_difference',
-      differenceAbsolute,
-      differencePercentage,
-      roundingUnit,
-      explanation: `La diferencia de ${differenceAbsolute} es compatible con la unidad de redondeo de ${roundingUnit}.`,
-      requiresHumanConfirmation: true,
-      policyVersion: RECONCILIATION_POLICY_VERSION,
-    };
-  }
-  if (
-    differenceAbsolute <= 100 &&
-    (differencePercentage === null || differencePercentage <= 0.01)
-  ) {
-    return {
-      status: 'minor_difference',
-      differenceAbsolute,
-      differencePercentage,
-      roundingUnit,
-      explanation: 'La diferencia es menor según el umbral absoluto y porcentual de esta política.',
-      requiresHumanConfirmation: true,
-      policyVersion: RECONCILIATION_POLICY_VERSION,
-    };
-  }
+  const result = evaluateNumericReconciliation({
+    documentDecimalValue: input.leftValue,
+    exogenousValue: input.rightValue,
+    roundingToleranceCop: input.roundingUnit,
+  });
   return {
-    status: 'relevant_difference',
-    differenceAbsolute,
-    differencePercentage,
-    roundingUnit,
-    explanation: 'La diferencia supera los límites de redondeo y revisión menor.',
-    requiresHumanConfirmation: true,
+    status: STATUS_MAP[result.status],
+    differenceAbsolute: result.differenceAbsolute,
+    differencePercentage: result.differencePercentage,
+    roundingUnit: result.roundingToleranceCop,
+    explanation: result.explanation,
+    requiresHumanConfirmation: result.requiresHumanConfirmation,
     policyVersion: RECONCILIATION_POLICY_VERSION,
   };
 }

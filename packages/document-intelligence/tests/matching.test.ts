@@ -67,7 +67,16 @@ describe('suggestExogenousMatches — estados granulares (Sprint 2.4, Fase E)', 
     expect(matches[1]?.status).toBe('ambiguous');
   });
 
-  it('marca diferencia menor cuando el desfase es de un peso y no proviene de redondeo de centavos', () => {
+  it('Fase F.3 (política unificada): un desfase de $1 se trata como redondeo, sin importar si proviene de centavos o de un entero', () => {
+    // Antes de la unificación (Fase F.3), un desfase de exactamente $1
+    // entre dos valores enteros producía `minor_difference`, mientras que
+    // el mismo desfase originado por centavos producía `rounding_match`
+    // — una divergencia real detectada en el benchmark (Fase F.1). La
+    // política única (`evaluateNumericReconciliation`, §3-§4 del prompt
+    // de Fase F.3) trata ambos casos igual: un desfase dentro de la
+    // tolerancia de redondeo ($1 por defecto) siempre es `rounding_match`,
+    // fiscalmente equivalente, pero SIGUE exigiendo confirmación humana
+    // explícita (nunca se autoconfirma silenciosamente).
     const candidate = extractCandidates(
       representation('Saldo al cierre: $ 1.000.000'),
       'balance_certificate',
@@ -78,6 +87,25 @@ describe('suggestExogenousMatches — estados granulares (Sprint 2.4, Fase E)', 
       id: 'record:1',
       category: candidate.proposedCategory,
       reportedValue: 1_000_001,
+      entityName: '',
+    } as Parameters<typeof suggestExogenousMatches>[1][number];
+    const [match] = suggestExogenousMatches(candidate, [record]);
+    expect(match?.status).toBe('rounding_match');
+  });
+
+  it('marca diferencia menor cuando el desfase supera la tolerancia de redondeo pero es absoluta y relativamente pequeño', () => {
+    const candidate = extractCandidates(
+      representation('Saldo al cierre: $ 1.000.000'),
+      'balance_certificate',
+      context,
+      DEFAULT_PDF_LIMITS,
+    ).candidates[0]!;
+    // $50 de diferencia sobre $1.000.000 = 0.005 %: dentro de ambos
+    // límites (absoluto ≤$100 y relativo ≤0.01 %) de la política única.
+    const record = {
+      id: 'record:1',
+      category: candidate.proposedCategory,
+      reportedValue: 1_000_050,
       entityName: '',
     } as Parameters<typeof suggestExogenousMatches>[1][number];
     const [match] = suggestExogenousMatches(candidate, [record]);

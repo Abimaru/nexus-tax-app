@@ -185,6 +185,18 @@ export const ReconciliationSuggestionSchema = z.object({
   documentaryValue: z.number(),
   difference: z.number(),
   differencePercentage: z.number().nullable(),
+  /**
+   * `true` cuando el propio texto del hecho documental contradice
+   * semánticamente la categoría del registro exógeno comparado (Sprint
+   * 2.4, Fase F.3: la misma defensa de Fase F.2 —
+   * `detectSemanticContradiction`— aplicada también a este segundo
+   * consumidor, que antes no tenía ninguna protección semántica). Cuando
+   * es `true`, la UI nunca debe ofrecer esta sugerencia como
+   * "confirmación segura" aunque el score/diferencia numérica sean altos.
+   */
+  semanticContradiction: z.boolean().optional(),
+  /** Explicación humana de la contradicción, sin jerga técnica ni scores. */
+  semanticContradictionReason: z.string().nullable().optional(),
 });
 export type ReconciliationSuggestion = z.infer<typeof ReconciliationSuggestionSchema>;
 

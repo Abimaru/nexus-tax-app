@@ -5,6 +5,7 @@ import type {
   NormalizedExogenousRecord,
   ReportingEntity,
 } from '@nexus-tax/domain';
+import { evaluateNumericReconciliation } from '@nexus-tax/domain';
 import { comparableText } from './normalize';
 import { detectMonetaryAnomalies } from './money';
 import { detectSemanticContradiction } from './semanticGate';
@@ -136,7 +137,18 @@ export function suggestExogenousMatches(
   return top.map((item) => {
     const documentDecimalValue = candidate.amount?.decimalValue ?? candidate.extractedValue;
     const exogenousValue = item.record.reportedValue ?? 0;
-    const roundedDocumentValue = Math.round(documentDecimalValue);
+    // Política numérica única (Sprint 2.4, Fase F.3 — Unified
+    // Reconciliation & Coverage Hardening): exact/rounding/minor/relevant
+    // ya NO se redefinen aquí — se derivan de
+    // `evaluateNumericReconciliation` (`@nexus-tax/domain`), la misma
+    // fuente que usa `evaluateReconciliationDifference` (matriz/topes) y
+    // `ReconciliationsPanel` (hechos↔exógena). Tolerancia de redondeo de
+    // $1 (redondeo simple de centavos), como en el comportamiento previo.
+    const numericPolicy = evaluateNumericReconciliation({
+      documentDecimalValue,
+      exogenousValue,
+      roundingToleranceCop: 1,
+    });
     // Gate semántico (Sprint 2.4, Fase F.2, §6 de docs/EVIDENCE_MATCHING.md):
     // se calcula por PAR candidato↔registro (no solo por candidato) para
     // detectar también la contradicción CRUZADA — el propio texto del
@@ -150,37 +162,34 @@ export function suggestExogenousMatches(
       proposedCategory: candidate.proposedCategory,
       referenceCategories: [item.record.category],
     });
-    // Redondeo explícito (§9/§10 de docs/EVIDENCE_MATCHING.md): el valor
-    // decimal del documento (con centavos) redondea EXACTAMENTE al entero
-    // reportado en la exógena, aunque los valores crudos difieran.
-    const isRoundingMatch =
-      item.difference !== 0 && roundedDocumentValue === exogenousValue;
     const rawStatus: DocumentFactCandidate['suggestedExogenousMatches'][number]['status'] =
       isAmbiguous
         ? 'ambiguous'
-        : item.difference === 0
+        : numericPolicy.status === 'exact'
           ? 'exact_match'
-          : isRoundingMatch
+          : numericPolicy.status === 'rounding'
             ? 'rounding_match'
-            : item.difference <= 1
+            : numericPolicy.status === 'minor'
               ? 'minor_difference'
               : item.score >= 50
                 ? 'possible_match'
                 : item.difference > 0
                   ? 'contradiction'
                   : 'no_match';
-    // Match gate semántico (§6): una contradicción fuerte NUNCA puede
-    // quedar como `exact_match`/`rounding_match` con capacidad de
+    // Match gate semántico (Fase F.2, §6): una contradicción fuerte NUNCA
+    // puede quedar como `exact_match`/`rounding_match` con capacidad de
     // confirmación en bloque — la semántica tiene precedencia sobre la
-    // igualdad/redondeo numérico (§19). Se degrada como máximo a
-    // `possible_match` (nunca se oculta el candidato, §7).
+    // igualdad/redondeo numérico (Fase F.3, §6 del prompt: "semantic
+    // compatibility + numeric reconciliation policy = final match
+    // status", con la semántica siempre primero). Se degrada como máximo
+    // a `possible_match` (nunca se oculta el candidato, §7).
     const downgradedBySemanticGate =
       semanticContradiction.contradictory &&
       (rawStatus === 'exact_match' || rawStatus === 'rounding_match');
     const status = downgradedBySemanticGate ? 'possible_match' : rawStatus;
     const reasons = downgradedBySemanticGate
       ? [...item.reasons, semanticContradiction.reason!]
-      : isRoundingMatch
+      : numericPolicy.status === 'rounding'
         ? [
             ...item.reasons.filter((reason) => reason !== 'Valor cercano.'),
             'El valor documental redondea exactamente al valor de la exógena.',
@@ -197,10 +206,7 @@ export function suggestExogenousMatches(
       documentDecimalValue: candidate.amount?.decimalValue ?? candidate.extractedValue,
       roundedTaxValue: candidate.amount?.roundedTaxValue ?? Math.round(candidate.extractedValue),
       difference: item.difference,
-      differencePercentage:
-        item.record.reportedValue === 0
-          ? null
-          : (item.difference / Math.abs(item.record.reportedValue ?? 0)) * 100,
+      differencePercentage: numericPolicy.differencePercentage,
       possibleScaleFactor:
         item.anomalies.find((anomaly) => anomaly.possibleScaleFactor)?.possibleScaleFactor ?? null,
       recommendedSource:

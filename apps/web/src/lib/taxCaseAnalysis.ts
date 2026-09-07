@@ -32,6 +32,7 @@ import type {
 import { deriveForm210BoxTasks, type Form210Draft } from '@nexus-tax/form-210';
 import { compareTaxEvolution, detectHistoricalScaleAnomalies } from '@nexus-tax/form-210';
 import { MAX_EMPLOYER_INSTANCES, TAX_CASE_EXPORT_SCHEMA_VERSION } from '@nexus-tax/domain';
+import { detectSemanticContradiction } from '@nexus-tax/document-intelligence';
 import { compareCaseTasks } from './caseTaskPriority';
 import { priorYearBoxLabel } from './priorYearBoxLabels';
 
@@ -1529,6 +1530,20 @@ export function suggestReconciliations(input: {
         signals.push('mismo producto');
       }
       if (score < 40) continue;
+      // Sprint 2.4, Fase F.3 (§6 del prompt): el gate semántico de Fase
+      // F.2 protegía únicamente a `suggestExogenousMatches`
+      // (candidato↔exógena, pre-confirmación). Este segundo consumidor
+      // (hecho↔exógena, post-confirmación, alimenta
+      // `ReconciliationsPanel`) no tenía NINGUNA protección semántica —
+      // un hecho cuyo texto describe una retención podía sugerirse como
+      // "seguro" contra un registro de ingresos solo por coincidir en
+      // score/valor. Se reutiliza la MISMA función
+      // (`detectSemanticContradiction`), nunca un segundo mecanismo.
+      const semanticContradiction = detectSemanticContradiction({
+        originalConcept: fact.originalConcept,
+        proposedCategory: fact.category,
+        referenceCategories: [record.category],
+      });
       suggestions.push({
         id: `suggestion:${fact.id}:${record.id}`,
         factId: fact.id,
@@ -1540,6 +1555,8 @@ export function suggestReconciliations(input: {
         difference,
         differencePercentage:
           record.reportedValue === 0 ? null : (difference / Math.abs(record.reportedValue)) * 100,
+        semanticContradiction: semanticContradiction.contradictory,
+        semanticContradictionReason: semanticContradiction.reason,
       });
     }
   }
