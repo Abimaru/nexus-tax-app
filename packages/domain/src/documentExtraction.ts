@@ -73,6 +73,15 @@ export const DocumentExtractionFindingSchema = z.object({
     'partial_extraction',
     'adapter_unavailable',
     'limit_exceeded',
+    /**
+     * Sprint 2.4, Fase F.3 (§13-§15): el documento corresponde a un tipo
+     * con ruta de análisis propia y especializada (declaración de un año
+     * anterior → `extractPriorYearForm210`) o a un tipo estructuralmente
+     * incompatible con la extracción de certificados tributarios
+     * (extracto bancario transaccional) — el pipeline genérico de
+     * candidatos se omite deliberadamente, no por un error.
+     */
+    'requires_specialized_route',
   ]),
   category: DocumentFindingCategorySchema,
   message: z.string(),
