@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { DocumentFactCandidate, ProcessingResult } from '@nexus-tax/domain';
-import { buildEvidenceReviewSuggestions, buildExpectedTaxEvidence } from './evidenceReview';
+import {
+  buildEvidenceReviewSuggestions,
+  buildExpectedTaxEvidence,
+  computeHumanReviewBurden,
+} from './evidenceReview';
 
 const NOW = '2026-01-01T00:00:00.000Z';
 
@@ -108,6 +112,48 @@ describe('buildExpectedTaxEvidence', () => {
 
   it('devuelve una lista vacía sin resultado procesado', () => {
     expect(buildExpectedTaxEvidence({ caseId: 'case:1' })).toEqual([]);
+  });
+
+  it('Sprint 2.4, Fase F.3 (§16): excluye categorías estructuralmente sin certificado esperado', () => {
+    const result = {
+      entities: [],
+      normalizedRecords: (
+        ['card_consumption', 'bank_movement', 'investment_movement', 'electronic_invoicing_total', 'electronic_invoicing_benefit_base', 'asset'] as const
+      ).map((category, index) => ({
+        id: `record:${index}`,
+        rawId: `raw:${index}`,
+        source: { sheet: 'Datos', row: index + 2, column: 4 },
+        entityName: 'Entidad Sintetica',
+        entityTaxId: null,
+        reportingEntityDocument: null,
+        reportedPersonDocument: null,
+        reportedPersonDocumentNormalized: null,
+        identityMatch: 'unavailable',
+        conceptCode: null,
+        conceptLabel: `Concepto ${category}`,
+        reportedValue: 1_000,
+        withholding: null,
+        currency: 'COP',
+        suggestedUse: null,
+        classificationVersion: 'v1',
+        nature: 'unclassified',
+        category,
+        treatment: 'do_not_aggregate',
+        confidence: 'medium',
+        classificationEvidence: [],
+        secondaryUses: [],
+        multiplicityType: 'single',
+        multiplicityExplanation: null,
+        consolidationDisposition: 'included',
+        consolidationReason: '',
+        extra: {},
+      })),
+    } as unknown as ProcessingResult;
+    const expectations = buildExpectedTaxEvidence({ caseId: 'case:1', result });
+    // Solo la categoría "asset" (la última) genera expectativa; las 5
+    // categorías del §16 quedan excluidas.
+    expect(expectations).toHaveLength(1);
+    expect(expectations[0]?.category).toBe('asset');
   });
 });
 
@@ -239,6 +285,33 @@ describe('buildEvidenceReviewSuggestions', () => {
     expect(suggestions[0]).toMatchObject({ status: 'new_relevant_value', candidateId: candidate.id });
   });
 
+  it('Sprint 2.4, Fase F.3 (§16): un candidato cuya única coincidencia apunta a un registro excluido (p. ej. bank_movement) NO desaparece silenciosamente', () => {
+    // El registro exógeno "record:excluded" pertenece a una categoría
+    // filtrada por `buildExpectedTaxEvidence` (§16), así que NUNCA
+    // aparece en `expectedEvidence` — pero el candidato SÍ tiene un match
+    // exitoso contra ese recordId. Debe seguir surgiendo como "posible
+    // valor nuevo", nunca ocultarse (§28).
+    const candidate = baseCandidate({
+      suggestedExogenousMatches: [
+        {
+          recordId: 'record:excluded',
+          status: 'exact_match',
+          reasons: ['Mismo valor.'],
+          exogenousValue: 1_000_000,
+          difference: 0,
+        },
+      ],
+    });
+    const suggestions = buildEvidenceReviewSuggestions({
+      caseId: 'case:1',
+      candidates: [candidate],
+      expectedEvidence: [], // record:excluded nunca llega aquí (§16)
+      now: NOW,
+    });
+    expect(suggestions).toHaveLength(1);
+    expect(suggestions[0]).toMatchObject({ status: 'new_relevant_value', candidateId: candidate.id });
+  });
+
   it('Sprint 2.4, Fase F.2 (§15): la vivienda sin exógena NO se presenta como error', () => {
     const candidate = baseCandidate({
       proposedCategory: 'housing_interest',
@@ -281,5 +354,47 @@ describe('buildEvidenceReviewSuggestions', () => {
       now: NOW,
     });
     expect(suggestions).toHaveLength(0);
+  });
+});
+
+describe('computeHumanReviewBurden (Fase F.3, §1/§19)', () => {
+  it('clasifica cada estado en el balde correcto', () => {
+    const burden = computeHumanReviewBurden([
+      { status: 'matched', safeForBulkConfirm: true },
+      { status: 'matched', safeForBulkConfirm: true },
+      { status: 'matched', safeForBulkConfirm: false },
+      { status: 'likely_match', safeForBulkConfirm: false },
+      { status: 'needs_review', safeForBulkConfirm: false },
+      { status: 'unresolved', safeForBulkConfirm: false },
+      { status: 'unresolved', safeForBulkConfirm: false },
+      { status: 'new_relevant_value', safeForBulkConfirm: false },
+    ]);
+    expect(burden).toEqual({
+      bulkConfirmable: 2,
+      meaningfulHumanReview: 3,
+      manualGuidedCapture: 2,
+      irrelevantCandidateReview: 1,
+      unresolvedAfterAllDocuments: 2,
+      total: 8,
+    });
+  });
+
+  it('nunca cuenta una sugerencia en más de un balde (bulkConfirmable y meaningfulHumanReview son mutuamente excluyentes)', () => {
+    const burden = computeHumanReviewBurden([
+      { status: 'matched', safeForBulkConfirm: true },
+    ]);
+    expect(burden.bulkConfirmable).toBe(1);
+    expect(burden.meaningfulHumanReview).toBe(0);
+  });
+
+  it('lista vacía produce todos los conteos en cero', () => {
+    expect(computeHumanReviewBurden([])).toEqual({
+      bulkConfirmable: 0,
+      meaningfulHumanReview: 0,
+      manualGuidedCapture: 0,
+      irrelevantCandidateReview: 0,
+      unresolvedAfterAllDocuments: 0,
+      total: 0,
+    });
   });
 });
