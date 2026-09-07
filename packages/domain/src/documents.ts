@@ -18,6 +18,8 @@ export const DocumentKindSchema = z.enum([
   'prize_certificate',
   'annual_cost_report',
   'dependent_support',
+  /** Certificado o estado de cuenta de administración de propiedad horizontal (Sprint 2.4, Fase G). */
+  'property_administration_certificate',
   'other',
 ]);
 export type DocumentKind = z.infer<typeof DocumentKindSchema>;
@@ -231,6 +233,18 @@ export const DOCUMENT_CATALOG: readonly DocumentCatalogEntry[] = [
     ['other', 'unknown'],
     ['dependent'],
     ['identificacion', 'periodo'],
+    true,
+    false,
+    ['pdf', 'jpg', 'png'],
+  ),
+  catalog(
+    'property_administration_certificate',
+    'Certificado de administracion de propiedad horizontal',
+    'property',
+    'Estado de cuenta o certificado de cuotas de administracion de un inmueble.',
+    ['other', 'unknown'],
+    ['property'],
+    ['cuota mensual', 'total anual', 'periodo', 'saldo'],
     true,
     false,
     ['pdf', 'jpg', 'png'],

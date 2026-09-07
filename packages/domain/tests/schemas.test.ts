@@ -95,7 +95,7 @@ describe('esquemas de dominio', () => {
   });
 
   it('mantiene un catalogo documental completo y multiproposito', () => {
-    expect(DOCUMENT_CATALOG).toHaveLength(16);
+    expect(DOCUMENT_CATALOG).toHaveLength(17);
     const consolidated = DOCUMENT_CATALOG.find(
       (entry) => entry.kind === 'consolidated_tax_certificate',
     );
