@@ -76,6 +76,7 @@ un test de guardarraíl permanente (§Tests).
 | Reporte DIAN de facturación electrónica | `buildGoldenElectronicInvoiceWorkbook()` | 3 CUFE únicos, una compra no elegible (pago en efectivo), notas crédito, base del 1 % derivada por el motor real |
 | Dependiente | `GOLDEN_DEPENDENT_INPUT` | Hijo menor elegible con soporte de registro civil; ambos beneficios (art. 387/336) coexisten automáticamente (naturaleza laboral) |
 | Inmueble | `GOLDEN_PROPERTY_INPUT` + `GOLDEN_RENTAL_ACTIVITY_INPUT` + `GOLDEN_PROPERTY_EXPENSE_INPUT` | Apartamento arrendado todo el año, ingreso vinculado manualmente, cuota de administración con soporte suficiente |
+| Salud complementaria | `GOLDEN_HEALTH_PROVIDER` + `GOLDEN_HEALTH_PAYMENT_*` | Medicina prepagada del contribuyente en dos meses (enero bajo el tope, junio lo supera) + seguro de salud del dependiente vinculado explícitamente |
 
 **No incluido deliberadamente** (extensión futura, ver `docs/ROADMAP.md`):
 `annual_cost_report` (documento opcional, "cuando sea útil" por el prompt de
@@ -128,6 +129,12 @@ constantes nombradas en `goldenCase.ts` (`GOLDEN_EXOGENOUS_VALUES`,
 - dependiente: elegible tras un soporte, ambos beneficios candidatos;
 - inmueble: `requires_context` antes de registrar período/ingreso,
   `potentially_deductible` después — nunca automático;
+- salud complementaria (Sprint 2.4, Fase H): enero íntegro ($ 300.000),
+  junio recortado al tope mensual de 16 UVT ($ 796.784, redondeado), el
+  pago del dependiente vinculado ($ 250.000) queda íntegro — el total
+  elegible anual (`GOLDEN_HEALTH_EXPECTED_ANNUAL_ELIGIBLE_COP`) nunca
+  incluye el excedente de junio; ambas deducciones del art. 387
+  (dependientes + salud) coexisten en la casilla 39 sin fusionarse;
 - Human Review Burden: techo modesto (`< 20` decisiones totales incluso sin
   ningún documento vinculado todavía), consciente y deliberadamente lejos
   de las ~88 decisiones del benchmark real (Fase F.1/F.3).

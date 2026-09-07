@@ -151,6 +151,36 @@ Ver `docs/PROPERTY_INCOME_EXPENSES_2025.md` para el modelo de dominio, el motor 
 los guardarraíles de doble conteo. Esta fase **no** escribe ningún valor al Formulario 210 (ver
 limitación explícita documentada allí).
 
+## Salud complementaria y medicina prepagada (Sprint 2.4, Fase H)
+
+Seis tipos nuevos con `source: 'complementary_health'`, campo `complementaryHealthPaymentId` para
+trazabilidad y destino `declaracion/salud-complementaria`, derivados en `buildCaseTasks` a partir de
+`complementaryHealthPayments` (nunca reinterpretando `eligibilityReasons` en texto libre del motor
+puro):
+
+- `complementary_health_beneficiary_missing`: el pago tiene `eligibilityStatus:
+  'requires_beneficiary_review'` — beneficiario sin definir o marcado como `dependent` sin vincular
+  a un `TaxDependent` activo (nunca se asume elegibilidad solo por la relación textual).
+- `complementary_health_period_missing`: el pago no tiene mes conocido NI ninguna descripción de
+  período de cobertura (`coveragePeriodDescription`) — falta el dato más básico de período.
+- `complementary_health_monthly_breakdown_required`: el pago SÍ declara un período de cobertura
+  (p. ej. "Enero-Diciembre 2025") pero sin detalle mensual recuperable — nunca se asume dividir el
+  total entre 12; distinto del tipo anterior para dar una explicación más precisa según el caso.
+- `complementary_health_support_missing`: falta certificado o comprobante emitido por la entidad
+  vigilada (medicina prepagada o aseguradora); el texto aclara que nunca se exige factura
+  electrónica como única forma de soporte.
+- `complementary_health_review_required`: agrupa tres causas — posible duplicado o cualquier otro
+  `requires_review` (prioridad `high` si `possiblyDuplicateOfPaymentId` está presente, `low` en
+  otro caso), y un pago `eligible`/`cap_applied`/`partially_eligible` en espera de la decisión
+  humana (`decisionStatus: 'pending'`, prioridad `low`).
+
+`not_applicable` (aporte obligatorio a EPS o gasto médico directo) deliberadamente **no** genera
+ninguna tarea: esos pagos están fuera del alcance de la deducción por diseño, no son un pendiente
+que resolver. Ver `docs/COMPLEMENTARY_HEALTH_2025.md` para el modelo de dominio, el motor de tope
+mensual agregado (16 UVT, art. 387 ET) y los guardarraíles de doble conteo. Esta fase cablea la
+deducción a la casilla 39 del Formulario 210, sumada (no fusionada) con la deducción de
+dependientes del mismo artículo.
+
 Cuando un documento se enruta como declaración anterior o extracto bancario transaccional
 (`decideDocumentRouting`, `packages/document-intelligence/src/documentRouting.ts`), no se generan
 tareas de tipo `confirm_candidate`/`identify_product`/`associate_entity` para ese documento (no hay
