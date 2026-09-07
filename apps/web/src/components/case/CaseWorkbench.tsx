@@ -17,6 +17,7 @@ import { Badge } from '@nexus-tax/ui';
 import {
   deleteCase,
   enableManualCase,
+  getComplementaryHealthPayments,
   getDependentEvaluations,
   getDependentsCaseContext,
   getDependentSupports,
@@ -84,6 +85,7 @@ import { PriorYearReturnsPanel } from './PriorYearReturnsPanel';
 import { DependentsPanel } from './DependentsPanel';
 import { ElectronicInvoicingPanel } from './ElectronicInvoicingPanel';
 import { PropertiesPanel } from './PropertiesPanel';
+import { ComplementaryHealthPanel } from './ComplementaryHealthPanel';
 import { ContextualNavigation, WorkflowStepper } from './WorkflowNavigation';
 import {
   BasicCaseDataPanel,
@@ -125,9 +127,14 @@ export function CaseWorkbench({
   const rentalActivities = useLiveQuery(() => getRentalActivities(caseId), [caseId]);
   const rentalIncomes = useLiveQuery(() => getRentalIncomes(caseId), [caseId]);
   const propertyExpenses = useLiveQuery(() => getPropertyExpenses(caseId), [caseId]);
+  const complementaryHealthPayments = useLiveQuery(
+    () => getComplementaryHealthPayments(caseId),
+    [caseId],
+  );
   const [advancedDependents, setAdvancedDependents] = useState(false);
   const [advancedElectronicInvoicing, setAdvancedElectronicInvoicing] = useState(false);
   const [advancedProperties, setAdvancedProperties] = useState(false);
+  const [advancedComplementaryHealth, setAdvancedComplementaryHealth] = useState(false);
   const taxCase = workspace?.taxCase;
   const result = workspace?.result;
   const analysis = workspace?.analysis;
@@ -207,6 +214,7 @@ export function CaseWorkbench({
         rentalActivities,
         rentalIncomes,
         propertyExpenses,
+        complementaryHealthPayments,
         now: taskTimestamp,
       }),
     [
@@ -225,6 +233,7 @@ export function CaseWorkbench({
       rentalActivities,
       rentalIncomes,
       propertyExpenses,
+      complementaryHealthPayments,
       taskTimestamp,
     ],
   );
@@ -788,6 +797,17 @@ export function CaseWorkbench({
             tasks={tasks}
             advanced={advancedProperties}
             onToggleAdvanced={() => setAdvancedProperties((value) => !value)}
+          />
+        ) : null}
+        {stage === 'declaracion' && view === 'salud-complementaria' ? (
+          <ComplementaryHealthPanel
+            caseId={caseId}
+            dependents={taxDependents ?? []}
+            payments={complementaryHealthPayments ?? []}
+            form210Draft={workspace.form210Draft}
+            tasks={tasks}
+            advanced={advancedComplementaryHealth}
+            onToggleAdvanced={() => setAdvancedComplementaryHealth((value) => !value)}
           />
         ) : null}
         {stage === 'declaracion' && view === 'liquidacion-preliminar' ? (

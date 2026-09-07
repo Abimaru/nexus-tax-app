@@ -75,6 +75,11 @@ import type {
   PropertyAllocationMethod,
   PropertySupportStatus,
   PropertyExpenseDecisionStatus,
+  ComplementaryHealthPayment,
+  ComplementaryHealthProductType,
+  ComplementaryHealthBeneficiary,
+  ComplementaryHealthSupportStatus,
+  ComplementaryHealthDecisionStatus,
 } from '@nexus-tax/domain';
 import {
   ACCEPTED_SOURCE_RULE_VERSION,
@@ -97,7 +102,11 @@ import {
 import { getDb, type StoredResult, type DependentsCaseContext } from './db';
 import { newId, nowIso } from './id';
 import { buildEmploymentIncomeGroup, calculateEmploymentGroupCoverage } from './taxCaseAnalysis';
-import { evaluatePropertyExpenseEligibility } from '@nexus-tax/aegis-rules';
+import {
+  evaluatePropertyExpenseEligibility,
+  evaluateComplementaryHealthPaymentEligibility,
+  evaluateComplementaryHealthMonthlyCap,
+} from '@nexus-tax/aegis-rules';
 import {
   DEPENDENTS_ENGINE_VERSION,
   buildArticle336Input,
@@ -2744,6 +2753,7 @@ export async function rebuildForm210Draft(caseId: string): Promise<Form210Draft 
     dependentSupports,
     electronicInvoiceReport,
     electronicInvoicePurchases,
+    complementaryHealthPayments,
   ] = await Promise.all([
     db.cases.get(caseId),
     db.results.get(caseId),
@@ -2757,6 +2767,7 @@ export async function rebuildForm210Draft(caseId: string): Promise<Form210Draft 
     db.dependentSupports.where('caseId').equals(caseId).toArray(),
     db.electronicInvoiceReports.where('caseId').equals(caseId).first(),
     db.electronicInvoicePurchases.where('caseId').equals(caseId).toArray(),
+    db.complementaryHealthPayments.where('caseId').equals(caseId).toArray(),
   ]);
   if (!taxCase || taxCase.taxYear !== 2025) return undefined;
   const activeDependents = dependents.filter((dependent) => dependent.status === 'active');
@@ -2782,6 +2793,19 @@ export async function rebuildForm210Draft(caseId: string): Promise<Form210Draft 
         electronicInvoiceReport.benefitOptedOut,
       )
     : undefined;
+  // Solo los pagos que ya pasaron la validación individual (§9/§13:
+  // beneficiario, mes, soporte, exclusión de EPS/gasto médico directo —
+  // `recalculateComplementaryHealthCap` los marca `eligible`/`cap_applied`)
+  // participan del tope mensual agregado que recalcula el builder. Nunca
+  // se pasa el valor ya recortado como si fuera el declarado: el builder
+  // vuelve a aplicar el mismo motor puro sobre los montos originales.
+  const complementaryHealthInput = complementaryHealthPayments
+    .filter(
+      (payment) =>
+        (payment.eligibilityStatus === 'eligible' || payment.eligibilityStatus === 'cap_applied') &&
+        payment.month !== null,
+    )
+    .map((payment) => ({ id: payment.id, month: payment.month!, amountPaidCop: payment.amountPaidCop }));
   const draft = buildForm210Draft({
     caseId,
     taxYear: taxCase.taxYear,
@@ -2796,6 +2820,7 @@ export async function rebuildForm210Draft(caseId: string): Promise<Form210Draft 
     dependents: buildArticle387Input(activeDependents, coexistence),
     dependentsAdditional: buildArticle336Input(activeDependents, coexistence),
     electronicInvoicing: electronicInvoicingInput,
+    complementaryHealth: complementaryHealthInput,
   });
   await db.form210Drafts.put(draft);
   return draft;
@@ -3965,5 +3990,224 @@ export async function recalculatePropertyExpenseEligibility(
   };
   await db.propertyExpenses.put(updated);
   return updated;
+}
+
+// --- Salud complementaria y medicina prepagada (Sprint 2.4, Fase H) ---
+//
+// Principio inviolable (§0/§9/§10 del prompt): un aporte obligatorio a EPS
+// o un gasto médico pagado directamente NUNCA se trata como esta
+// deducción. El límite es MENSUAL y AGREGADO para el contribuyente (art.
+// 387 ET) — `recalculateComplementaryHealthCap` recalcula TODOS los pagos
+// del expediente juntos porque el tope no puede evaluarse pago por pago:
+// depende del total pagado en cada mes entre todos los proveedores.
+
+export async function getComplementaryHealthPayments(
+  caseId: string,
+): Promise<ComplementaryHealthPayment[]> {
+  return getDb().complementaryHealthPayments.where('caseId').equals(caseId).toArray();
+}
+
+export interface SaveComplementaryHealthPaymentInput {
+  providerName: string;
+  providerTaxIdMasked?: string | null;
+  productType: ComplementaryHealthProductType;
+  beneficiary: ComplementaryHealthBeneficiary;
+  beneficiaryDependentId?: string | null;
+  month: number | null;
+  /** Período de cobertura declarado por el certificado (texto libre), cuando `month` es `null` (§7/§8). */
+  coveragePeriodDescription?: string | null;
+  amountPaidCop: number;
+  sourceDocumentId?: string | null;
+  evidenceDescription?: string | null;
+  supportStatus: ComplementaryHealthSupportStatus;
+  supportTypes?: string[];
+  isMandatoryEpsContribution?: boolean;
+  isDirectMedicalExpense?: boolean;
+  possiblyDuplicateOfPaymentId?: string | null;
+}
+
+/**
+ * Crea un pago candidato de salud complementaria y recalcula de inmediato
+ * el tope mensual agregado del expediente (§9). Nunca marca
+ * `decisionStatus: 'confirmed'` al crear: la confirmación siempre es una
+ * decisión humana explícita posterior (§13/§25).
+ */
+export async function createComplementaryHealthPayment(
+  caseId: string,
+  input: SaveComplementaryHealthPaymentInput,
+): Promise<ComplementaryHealthPayment> {
+  const db = getDb();
+  const taxCase = await db.cases.get(caseId);
+  const timestamp = nowIso();
+  const payment: ComplementaryHealthPayment = {
+    id: newId('complementary-health'),
+    caseId,
+    providerName: input.providerName.trim(),
+    providerTaxIdMasked: input.providerTaxIdMasked ?? null,
+    productType: input.productType,
+    beneficiary: input.beneficiary,
+    beneficiaryDependentId: input.beneficiaryDependentId ?? null,
+    taxYear: taxCase?.taxYear ?? 2025,
+    month: input.month,
+    coveragePeriodDescription: input.coveragePeriodDescription ?? null,
+    amountPaidCop: input.amountPaidCop,
+    eligibleAmountCop: null,
+    sourceDocumentId: input.sourceDocumentId ?? null,
+    evidenceDescription: input.evidenceDescription ?? null,
+    supportStatus: input.supportStatus,
+    supportTypes: input.supportTypes ?? [],
+    isMandatoryEpsContribution: input.isMandatoryEpsContribution ?? false,
+    isDirectMedicalExpense: input.isDirectMedicalExpense ?? false,
+    eligibilityStatus: 'requires_review',
+    eligibilityReasons: [],
+    ruleVersion: '',
+    decisionStatus: 'pending',
+    reasons: [],
+    possiblyDuplicateOfPaymentId: input.possiblyDuplicateOfPaymentId ?? null,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+  await db.complementaryHealthPayments.add(payment);
+  await recalculateComplementaryHealthCap(caseId);
+  return (await db.complementaryHealthPayments.get(payment.id)) ?? payment;
+}
+
+/** Edita un pago de salud complementaria y recalcula el tope mensual agregado del expediente (§9/§26). */
+export async function updateComplementaryHealthPayment(
+  paymentId: string,
+  changes: Partial<SaveComplementaryHealthPaymentInput>,
+): Promise<ComplementaryHealthPayment | undefined> {
+  const db = getDb();
+  const existing = await db.complementaryHealthPayments.get(paymentId);
+  if (!existing) return undefined;
+  const updated: ComplementaryHealthPayment = {
+    ...existing,
+    ...changes,
+    updatedAt: nowIso(),
+  };
+  await db.complementaryHealthPayments.put(updated);
+  await recalculateComplementaryHealthCap(existing.caseId);
+  return db.complementaryHealthPayments.get(paymentId);
+}
+
+/** Decisión humana explícita sobre un pago — nunca se autoconfirma (§13/§25). */
+export async function decideComplementaryHealthPayment(
+  paymentId: string,
+  decisionStatus: ComplementaryHealthDecisionStatus,
+  reasons: string[] = [],
+): Promise<ComplementaryHealthPayment | undefined> {
+  const db = getDb();
+  const existing = await db.complementaryHealthPayments.get(paymentId);
+  if (!existing) return undefined;
+  const updated: ComplementaryHealthPayment = {
+    ...existing,
+    decisionStatus,
+    reasons,
+    updatedAt: nowIso(),
+  };
+  await db.complementaryHealthPayments.put(updated);
+  await rebuildForm210Draft(existing.caseId);
+  return updated;
+}
+
+export async function removeComplementaryHealthPayment(paymentId: string): Promise<void> {
+  const db = getDb();
+  const existing = await db.complementaryHealthPayments.get(paymentId);
+  if (!existing) return;
+  await db.complementaryHealthPayments.delete(paymentId);
+  await recalculateComplementaryHealthCap(existing.caseId);
+}
+
+/**
+ * Recalcula TODOS los pagos de salud complementaria de un expediente:
+ * primero la elegibilidad individual de cada pago
+ * (`evaluateComplementaryHealthPaymentEligibility`, beneficiario/mes/
+ * soporte/exclusiones EPS y gasto médico directo), luego el tope mensual
+ * agregado (`evaluateComplementaryHealthMonthlyCap`, 16 UVT, art. 387 ET)
+ * SOLO sobre los pagos que pasaron la validación individual. Nunca escribe
+ * directamente al Formulario 210 salvo por la casilla 39 vía
+ * `rebuildForm210Draft` (que reutiliza este mismo cálculo).
+ */
+export async function recalculateComplementaryHealthCap(
+  caseId: string,
+): Promise<ComplementaryHealthPayment[]> {
+  const db = getDb();
+  const [payments, taxCase, dependents] = await Promise.all([
+    db.complementaryHealthPayments.where('caseId').equals(caseId).toArray(),
+    db.cases.get(caseId),
+    db.taxDependents.where('caseId').equals(caseId).toArray(),
+  ]);
+  const taxYear = taxCase?.taxYear ?? 2025;
+  const activeDependentIds = new Set(
+    dependents.filter((dependent) => dependent.status === 'active').map((dependent) => dependent.id),
+  );
+
+  const gateResults = new Map<string, ReturnType<typeof evaluateComplementaryHealthPaymentEligibility>>();
+  for (const payment of payments) {
+    const beneficiaryDependentLinked =
+      payment.beneficiary === 'dependent' &&
+      Boolean(payment.beneficiaryDependentId) &&
+      activeDependentIds.has(payment.beneficiaryDependentId!);
+    gateResults.set(
+      payment.id,
+      evaluateComplementaryHealthPaymentEligibility({
+        taxYear,
+        productType: payment.productType,
+        beneficiary: payment.beneficiary,
+        beneficiaryDependentLinked,
+        month: payment.month,
+        supportStatus: payment.supportStatus,
+        supportTypes: payment.supportTypes,
+        isMandatoryEpsContribution: payment.isMandatoryEpsContribution,
+        isDirectMedicalExpense: payment.isDirectMedicalExpense,
+        hasPossibleDuplicate: Boolean(payment.possiblyDuplicateOfPaymentId),
+      }),
+    );
+  }
+
+  const eligiblePayments = payments.filter((payment) => gateResults.get(payment.id)!.status === 'eligible');
+  const capComputation = evaluateComplementaryHealthMonthlyCap({
+    taxYear,
+    payments: eligiblePayments.map((payment) => ({
+      id: payment.id,
+      month: payment.month!,
+      amountPaidCop: payment.amountPaidCop,
+    })),
+  });
+  const allocationById = new Map(capComputation.allocations.map((item) => [item.id, item]));
+
+  const updates: ComplementaryHealthPayment[] = payments.map((payment) => {
+    const gate = gateResults.get(payment.id)!;
+    if (gate.status !== 'eligible') {
+      return {
+        ...payment,
+        eligibilityStatus: gate.status,
+        eligibilityReasons: [...gate.reasons],
+        eligibleAmountCop: null,
+        ruleVersion: gate.ruleVersion,
+        updatedAt: nowIso(),
+      };
+    }
+    const allocation = allocationById.get(payment.id)!;
+    const status = allocation.capApplied ? 'cap_applied' : 'eligible';
+    const reasons = allocation.capApplied
+      ? [
+          ...gate.reasons,
+          `El tope mensual agregado (16 UVT, ${capComputation.monthlyCapCop.toLocaleString('es-CO')} COP) recortó el valor considerado de ${payment.amountPaidCop.toLocaleString('es-CO')} a ${allocation.eligibleAmountCop.toLocaleString('es-CO')} para el mes ${payment.month}.`,
+        ]
+      : [...gate.reasons];
+    return {
+      ...payment,
+      eligibilityStatus: status,
+      eligibilityReasons: reasons,
+      eligibleAmountCop: allocation.eligibleAmountCop,
+      ruleVersion: capComputation.ruleVersion,
+      updatedAt: nowIso(),
+    };
+  });
+
+  await db.complementaryHealthPayments.bulkPut(updates);
+  await rebuildForm210Draft(caseId);
+  return updates;
 }
 
