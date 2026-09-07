@@ -1,20 +1,22 @@
 # Roadmap — NexusTax
 
 > Sprint 2.4 (Fase B0 + Fase B + Fase B1 + Fase C + Fase D + Fase E + Fase
-> E.1 + Fase F + F.1 + F.2 + F.3 + Fase G + Fase G.1 + revisiones
-> normativas puntuales) completado: esqueleto de casillas del F-210,
-> declaraciones anteriores, los dos beneficios de dependientes económicos
-> (art. 387 y art. 336 num. 3 ET), el reporte DIAN detallado de
+> E.1 + Fase F + F.1 + F.2 + F.3 + Fase G + Fase G.1 + Fase H +
+> revisiones normativas puntuales) completado: esqueleto de casillas del
+> F-210, declaraciones anteriores, los dos beneficios de dependientes
+> económicos (art. 387 y art. 336 num. 3 ET), el reporte DIAN detallado de
 > facturación electrónica (CUFE, deduplicación, conciliación, motor del
 > 1 % en su casilla oficial: la 28, art. 336 num. 5 ET), Evidence
 > Matching & Guided Reconciliation con su promotion gate cerrado y
 > política de reconciliación numérica unificada, el módulo de
 > inmuebles/renta inmobiliaria/administración de propiedad horizontal
-> (candidatos, nunca cableado al Formulario 210 todavía), y un caso
+> (candidatos, nunca cableado al Formulario 210 todavía), un caso
 > tributario sintético integral ("golden case") que reemplaza el sample
 > mínimo de humo, coherente entre todas las fuentes y validado contra el
-> pipeline real.
-> Pendiente: medicina prepagada.
+> pipeline real, y la deducción de salud complementaria/medicina
+> prepagada (art. 387 ET, tope mensual agregado de 16 UVT, cableada a la
+> casilla 39 junto con dependientes).
+> Sprint 2.4 completo — sin fases pendientes de esta lista original.
 
 ## Entregado hasta hoy ✅
 
@@ -353,4 +355,23 @@ benchmarks reales de Fase F/F.1 reaparezca aquí). Human Review Burden deliberad
 (techo `< 20`), lejos de las ~88 decisiones del benchmark real. Sin integración nueva al
 Formulario 210 (respeta el límite ya documentado de Fase G) y sin E2E nuevo (no existe mecanismo
 de UI "Cargar caso de ejemplo" en la aplicación hoy). Ver `docs/SYNTHETIC_SAMPLE_CASE.md`.
+
+## Sprint 2.4 — Fase H (Salud complementaria y medicina prepagada)
+
+Modela pagos de medicina prepagada, seguros de salud y planes adicionales de salud elegibles bajo
+el art. 387 ET, separados completamente de aportes obligatorios a EPS y gastos médicos directos.
+Auditoría normativa verificó literalmente que el límite de 16 UVT mensuales es un único tope
+AGREGADO compartido entre medicina prepagada y seguros de salud (nunca separado por concepto, ni
+por proveedor, ni por beneficiario); el equivalente anual de 192 UVT se deriva en código, nunca es
+la regla primaria. Nuevo `packages/domain/src/complementaryHealth.ts` (`ComplementaryHealthPayment`,
+ocho estados de elegibilidad, nunca booleano), dos motores puros en `@nexus-tax/aegis-rules`
+(validación individual + tope mensual agregado con reparto proporcional entre proveedores del mismo
+mes), adaptador documental `co.complementary-health.generic` (2 reglas independientes, nunca
+`mensual × 12`), Dexie v17, repositorio con recálculo agregado de todo el expediente, 6 tipos de
+tarea nuevos, integración a la casilla 39 del Formulario 210 (SUMADA, no fusionada, con la
+deducción de dependientes del mismo artículo — ninguna casilla nueva inventada), UI
+`ComplementaryHealthPanel` con explicación mes a mes en lenguaje simple, E2E con capturas
+desktop/móvil, y extensión del golden synthetic case de Fase G.1 con dos meses (uno bajo el tope,
+otro que lo supera) y un beneficiario dependiente vinculado explícitamente. Ver
+`docs/COMPLEMENTARY_HEALTH_2025.md`.
 

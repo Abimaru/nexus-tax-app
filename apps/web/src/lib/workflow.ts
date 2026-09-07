@@ -108,6 +108,7 @@ export const WORKFLOW_STAGES: readonly WorkflowStageDefinition[] = [
       { id: 'declaraciones-anteriores', label: 'Declaraciones anteriores' },
       { id: 'beneficios-dependientes', label: 'Beneficios y deducciones' },
       { id: 'inmuebles', label: 'Inmuebles' },
+      { id: 'salud-complementaria', label: 'Salud complementaria' },
       { id: 'facturacion-electronica', label: 'Facturación electrónica' },
       { id: 'liquidacion-preliminar', label: 'Liquidación preliminar' },
       { id: 'estados', label: 'Estados' },

@@ -16,13 +16,16 @@ import { getDb } from './db';
 import {
   addDependentSupport,
   createCase,
+  createComplementaryHealthPayment,
   createPropertyExpense,
   createRentalActivity,
   createTaxDependent,
   createTaxProperty,
   getCase,
+  getComplementaryHealthPayments,
   getDependentEvaluations,
   getElectronicInvoicePurchases,
+  getForm210Draft,
   getPriorYearCarryForwardCandidates,
   getPropertyExpenses,
   importElectronicInvoiceReport,
@@ -41,6 +44,12 @@ import {
   GOLDEN_ELECTRONIC_INVOICE_EXPECTATIONS,
   GOLDEN_EXOGENOUS_RECORDS,
   GOLDEN_EXOGENOUS_VALUES,
+  GOLDEN_HEALTH_EXPECTED_ANNUAL_ELIGIBLE_COP,
+  GOLDEN_HEALTH_MONTHLY_CAP_COP,
+  GOLDEN_HEALTH_PAYMENT_DEPENDENT_COP,
+  GOLDEN_HEALTH_PAYMENT_JANUARY_COP,
+  GOLDEN_HEALTH_PAYMENT_JUNE_COP,
+  GOLDEN_HEALTH_PROVIDER,
   GOLDEN_PRIOR_YEAR_TEXT_LINES,
   GOLDEN_PROPERTY_EXPENSE_INPUT,
   GOLDEN_PROPERTY_INPUT,
@@ -385,6 +394,69 @@ describe('caso sintético golden case (Sprint 2.4, Fase G.1)', () => {
 
       const expenses = await getPropertyExpenses(created.id);
       expect(expenses).toHaveLength(1);
+    });
+  });
+
+  describe('§H salud complementaria (Sprint 2.4, Fase H, §23 del prompt) — dos meses, uno sobre el tope, beneficiario vinculado', () => {
+    it('el tope mensual agregado recorta junio pero no enero, y el pago del dependiente vinculado queda íntegro', async () => {
+      const created = await createCase({ alias: GOLDEN_CASE_PROFILE.alias, taxYear: GOLDEN_CASE_PROFILE.taxYear });
+      const exogenousBuffer = buildGoldenExogenousWorkbook();
+      const result = processWorkbookFile(
+        exogenousBuffer,
+        'exogena-golden-case.xlsx',
+        exogenousBuffer.byteLength,
+        { sheetName: 'Reporte' },
+      );
+      await saveResult(created.id, result);
+      await saveDependentsCaseContext(created.id, { employmentIncomeNature: 'labor_relation' });
+      const dependent = await createTaxDependent(created.id, GOLDEN_DEPENDENT_INPUT);
+      await addDependentSupport(dependent.id, created.id, 'civil_registry', null);
+
+      const january = await createComplementaryHealthPayment(created.id, {
+        providerName: GOLDEN_HEALTH_PROVIDER.name,
+        productType: 'prepaid_medicine',
+        beneficiary: 'taxpayer',
+        month: 1,
+        amountPaidCop: GOLDEN_HEALTH_PAYMENT_JANUARY_COP,
+        supportStatus: 'sufficient',
+        supportTypes: ['prepaid_medicine_certificate'],
+      });
+      expect(january.eligibilityStatus).toBe('eligible');
+      expect(january.eligibleAmountCop).toBe(GOLDEN_HEALTH_PAYMENT_JANUARY_COP);
+
+      const june = await createComplementaryHealthPayment(created.id, {
+        providerName: GOLDEN_HEALTH_PROVIDER.name,
+        productType: 'prepaid_medicine',
+        beneficiary: 'taxpayer',
+        month: 6,
+        amountPaidCop: GOLDEN_HEALTH_PAYMENT_JUNE_COP,
+        supportStatus: 'sufficient',
+        supportTypes: ['prepaid_medicine_certificate'],
+      });
+      expect(june.eligibilityStatus).toBe('cap_applied');
+      expect(june.eligibleAmountCop).toBe(GOLDEN_HEALTH_MONTHLY_CAP_COP);
+
+      const dependentPayment = await createComplementaryHealthPayment(created.id, {
+        providerName: 'Aseguradora Sintetica Golden Case S.A.',
+        productType: 'health_insurance',
+        beneficiary: 'dependent',
+        beneficiaryDependentId: dependent.id,
+        month: 3,
+        amountPaidCop: GOLDEN_HEALTH_PAYMENT_DEPENDENT_COP,
+        supportStatus: 'sufficient',
+        supportTypes: ['health_insurance_certificate'],
+      });
+      expect(dependentPayment.eligibilityStatus).toBe('eligible');
+
+      const payments = await getComplementaryHealthPayments(created.id);
+      const totalEligible = payments.reduce((sum, item) => sum + (item.eligibleAmountCop ?? 0), 0);
+      expect(totalEligible).toBe(GOLDEN_HEALTH_EXPECTED_ANNUAL_ELIGIBLE_COP);
+
+      const draft = await getForm210Draft(created.id);
+      const box39 = draft?.boxes.find((box) => box.number === 39);
+      expect(box39?.sources.map((source) => source.sourceId)).toEqual(
+        expect.arrayContaining(['calc:dependents-387', 'calc:complementary-health-387']),
+      );
     });
   });
 

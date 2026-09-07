@@ -126,12 +126,24 @@ export const OFFICIAL_SOURCES_2025: readonly OfficialSourceReference[] = [
     id: 'et-art-387',
     authority: 'Estatuto Tributario',
     title:
-      'Estatuto Tributario, artículo 387 — Deducciones que se restarán de la base de retención (dependientes)',
+      'Estatuto Tributario, artículo 387 — Deducciones que se restarán de la base de retención (dependientes y salud)',
     url: 'https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=6533#387',
     verifiedAt: VERIFIED_AT,
     taxYear: null,
     scope:
-      'Deducción por dependientes económicos (10 % ingresos brutos, hasta 32 UVT mensuales y 384 UVT anuales TOTALES para el contribuyente; sin número máximo de dependientes)',
+      'Regula DOS deducciones distintas bajo el mismo artículo: (1) dependientes económicos (10 % ingresos brutos, hasta 32 UVT mensuales y 384 UVT anuales TOTALES para el contribuyente; sin número máximo de dependientes) y (2) pagos por salud — medicina prepagada y seguros de salud — hasta 16 UVT mensuales TOTALES para el contribuyente (Sprint 2.4, Fase H; ver `et-art-387-par-2-salud` para el detalle de esta segunda deducción). Ambas son independientes entre sí y ambas se cablean a la casilla 39.',
+    relatedBoxNumbers: [39],
+  },
+  {
+    id: 'et-art-387-par-2-salud',
+    authority: 'Estatuto Tributario',
+    title:
+      'Estatuto Tributario, artículo 387 — Deducción por pagos de salud (medicina prepagada y seguros de salud)',
+    url: 'https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=6533#387',
+    verifiedAt: VERIFIED_AT,
+    taxYear: null,
+    scope:
+      'Texto verbatim (literal (a)/(b) del art. 387 ET): "los pagos por salud, siempre que el valor a disminuir mensualmente [...] no supere dieciséis (16) UVT mensuales". El límite es MENSUAL y AGREGADO para el contribuyente (nunca por proveedor, póliza ni beneficiario — literal (b), seguros de salud, usa expresamente "la misma limitación del literal anterior": un único tope de 16 UVT compartido con literal (a), medicina prepagada). Cubre al contribuyente, cónyuge, hijos y demás dependientes definidos en el parágrafo 2 del mismo artículo. Requiere que el pago se realice a una entidad vigilada por la Superintendencia Nacional de Salud (medicina prepagada, literal a) o por la Superintendencia Financiera de Colombia (seguros de salud, literal b). Limitación de esta revisión: la numeración exacta del artículo reglamentario del Decreto 1625 de 2016 que desarrolla estos requisitos de control no se verificó con una fuente primaria confiable durante esta fase — se documenta el requisito (entidad vigilada) directamente desde el texto del art. 387 ET, que es autosuficiente para esta regla.',
     relatedBoxNumbers: [39],
   },
   {
