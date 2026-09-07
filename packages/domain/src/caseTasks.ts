@@ -82,6 +82,16 @@ export const CaseTaskTypeSchema = z.enum([
   'property_expense_allocation_required',
   /** Un gasto de inmueble requiere revisión humana (posible duplicado, cuota extraordinaria, u otra ambigüedad). */
   'property_expense_review_required',
+  /** Un pago de salud complementaria no tiene beneficiario definido o no está vinculado a un TaxDependent existente (Sprint 2.4, Fase H). */
+  'complementary_health_beneficiary_missing',
+  /** Un pago de salud complementaria no tiene mes definido. */
+  'complementary_health_period_missing',
+  /** Un certificado anual de salud complementaria no tiene detalle mensual recuperable. */
+  'complementary_health_monthly_breakdown_required',
+  /** Falta soporte idóneo para un pago de salud complementaria. */
+  'complementary_health_support_missing',
+  /** Un pago de salud complementaria requiere revisión humana (posible duplicado, tope aplicado, u otra ambigüedad). */
+  'complementary_health_review_required',
 ]);
 export type CaseTaskType = z.infer<typeof CaseTaskTypeSchema>;
 
@@ -113,6 +123,7 @@ export const CaseTaskSchema = z.object({
     'dependent',
     'electronic_invoice',
     'property',
+    'complementary_health',
   ]),
   stage: WorkflowStageIdSchema,
   view: WorkflowViewIdSchema,
@@ -136,6 +147,8 @@ export const CaseTaskSchema = z.object({
   /** Inmueble o gasto de inmueble al que deep-linkea la tarea (Sprint 2.4, Fase G). */
   propertyId: z.string().nullable().optional(),
   propertyExpenseId: z.string().nullable().optional(),
+  /** Pago de salud complementaria al que deep-linkea la tarea (Sprint 2.4, Fase H). */
+  complementaryHealthPaymentId: z.string().nullable().optional(),
   priority: z.enum(['high', 'medium', 'low']),
   blocking: z.boolean(),
   status: CaseTaskStatusSchema,

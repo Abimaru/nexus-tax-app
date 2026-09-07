@@ -50,6 +50,7 @@ export const WorkflowViewIdSchema = z.enum([
   'declaraciones-anteriores',
   'beneficios-dependientes',
   'inmuebles',
+  'salud-complementaria',
   'facturacion-electronica',
   'liquidacion-preliminar',
   'estados',

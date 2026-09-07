@@ -20,6 +20,8 @@ export const DocumentKindSchema = z.enum([
   'dependent_support',
   /** Certificado o estado de cuenta de administración de propiedad horizontal (Sprint 2.4, Fase G). */
   'property_administration_certificate',
+  /** Certificado de medicina prepagada, seguro de salud o plan adicional de salud (Sprint 2.4, Fase H). */
+  'complementary_health_certificate',
   'other',
 ]);
 export type DocumentKind = z.infer<typeof DocumentKindSchema>;
@@ -245,6 +247,18 @@ export const DOCUMENT_CATALOG: readonly DocumentCatalogEntry[] = [
     ['other', 'unknown'],
     ['property'],
     ['cuota mensual', 'total anual', 'periodo', 'saldo'],
+    true,
+    false,
+    ['pdf', 'jpg', 'png'],
+  ),
+  catalog(
+    'complementary_health_certificate',
+    'Certificado de medicina prepagada o seguro de salud',
+    'personal_support',
+    'Certificado de pagos de medicina prepagada, seguro de salud o plan adicional de salud, emitido por una entidad vigilada.',
+    ['other', 'unknown'],
+    ['complementary_health'],
+    ['proveedor', 'beneficiario', 'periodo', 'valor pagado', 'total certificado'],
     true,
     false,
     ['pdf', 'jpg', 'png'],
