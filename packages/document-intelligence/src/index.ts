@@ -11,6 +11,7 @@ export * from './ocrRecommendation';
 export * from './profileMatching';
 export * from './adapters';
 export * from './semanticGate';
+export * from './documentRouting';
 export * from './matching';
 export * from './reader';
 export * from './structure';
