@@ -80,6 +80,16 @@ const DEFINITIONS: readonly ClassifierDefinition[] = [
     ['avaluo catastral', 4],
     ['identificacion predial', 3],
   ]),
+  // Sprint 2.4, Fase G (§17): certificado/estado de cuenta de
+  // administración de propiedad horizontal. Vocabulario sintético
+  // estructural — nunca derivado de un documento real.
+  definition('property_administration_certificate', [
+    ['administracion.*(?:propiedad horizontal|copropiedad|conjunto residencial)', 5],
+    ['cuota(?:s)? de administracion', 4],
+    ['estado de cuenta.*administracion', 4],
+    ['certificado.*administracion', 3],
+    ['cuota(?:s)? (?:ordinaria|extraordinaria)', 2],
+  ]),
   definition('prize_certificate', [
     ['certificado de premio', 5],
     ['ganancia ocasional', 4],

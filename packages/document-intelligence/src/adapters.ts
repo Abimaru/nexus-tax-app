@@ -442,6 +442,62 @@ export const DOCUMENT_ADAPTERS: readonly DocumentAdapter[] = [
     ['La extracción no determina por sí sola el valor fiscal declarable.'],
   ),
   adapter(
+    'co.property-administration.generic',
+    ['property_administration_certificate'],
+    ['administracion.*(?:propiedad horizontal|copropiedad|conjunto residencial)|cuota(?:s)? de administracion'],
+    [
+      // Sprint 2.4, Fase G (§17/§18/§19): prioriza conceptos
+      // tributariamente útiles (cuota mensual, total anual, cuota
+      // extraordinaria, saldo) — NO un extractor universal de estados de
+      // cuenta. Nunca calcula `monthly × 12`: cada concepto se extrae
+      // como su propio candidato explícito.
+      rule(
+        'extraordinary-fee',
+        ['cuota(?:s)? extraordinaria(?:s)?'],
+        'deduction_candidate',
+        'possible_deduction',
+        'requires_review',
+        'property',
+      ),
+      rule(
+        'annual-total',
+        ['total anual', 'total pagado.*ano', 'total.*periodo'],
+        'deduction_candidate',
+        'possible_deduction',
+        'review_as_deduction',
+        'property',
+      ),
+      rule(
+        'monthly-fee',
+        ['cuota(?:s)? (?:mensual|ordinaria)(?:es)?', 'cuota(?:s)? de administracion'],
+        'deduction_candidate',
+        'possible_deduction',
+        'review_as_deduction',
+        'property',
+      ),
+      rule(
+        'balance',
+        ['saldo(?:s)?.*(?:pendiente|cuenta|cartera)'],
+        'informational',
+        'informational',
+        'do_not_aggregate',
+        'property',
+      ),
+      rule(
+        'payments',
+        ['pagos? (?:realizados|efectuados)'],
+        'informational',
+        'informational',
+        'do_not_aggregate',
+        'property',
+      ),
+    ],
+    [
+      'La cuota de administración no exige factura electrónica como soporte (Decreto 1625/2016, art. 1.3.1.13.5; Oficio DIAN 912878/2021): cuenta de cobro, certificado o comprobante de pago son soportes idóneos.',
+      'Nunca infiere el valor mensual multiplicado por 12: cada concepto (mensual, anual, extraordinario, saldo) se extrae de forma independiente y explícita.',
+    ],
+  ),
+  adapter(
     'co.annual-cost-report.generic',
     ['annual_cost_report'],
     ['reporte anual de costos|relacion de compras y gastos'],
