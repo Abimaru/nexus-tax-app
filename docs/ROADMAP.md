@@ -271,6 +271,25 @@ bloqueados; la cobertura de vivienda mejoró parcialmente (1 de 2 casos reales).
 **no** se unificaron los dos scorers divergentes encontrados en F.1 — queda para una futura Fase
 F.3. Detalle completo en `docs/EVIDENCE_MATCHING.md` §Fase F.2.
 
+## Sprint 2.4 — Fase F.3 (Unified Reconciliation & Coverage Hardening)
+
+Unifica la dimensión numérica de los tres/cuatro puntos donde NexusTax evaluaba diferencias
+numéricas con criterios distintos (`suggestExogenousMatches`, `evaluateReconciliationDifference`,
+`suggestReconciliations`, y un umbral ad-hoc en `ReconciliationsPanel.tsx`) bajo una única política
+pura (`evaluateNumericReconciliation`, `@nexus-tax/domain`), preservando la precedencia del gate
+semántico de Fase F.2 en los cuatro consumidores. Corrige incompatibilidades estructurales reales:
+cesantías (saldo reclasificado de `asset` a `severance`, aporte/consignación reconocido en ambos
+lados), certificados tributarios consolidados mal clasificados como `debt_certificate` (señal
+singular→plural), nuevo adaptador `co.annual-cost-report.generic`, vocabulario textual ampliado de
+Form 220, y una fixture de tabla multiproducto. Introduce routing documental explícito (declaración
+anterior → ruta especializada; extracto bancario transaccional → sin candidatos, detectado
+estructuralmente) sin descartar nunca el documento. Reduce falsos `unresolved` excluyendo 5
+categorías exógenas estructuralmente sin certificado esperado. Nueva métrica local Human Review
+Burden (`docs/HUMAN_REVIEW_BURDEN.md`). Rebenchmark real sobre el mismo corpus de F.1 confirmó
+mejoras sustanciales (Human Review Burden ~192→88, candidatos totales 142→52, evidencia
+document-only 115→26) manteniendo `falseConfidentMatches` en 0. Detalle completo en
+`docs/EVIDENCE_MATCHING.md` §Fase F.3.
+
 ## Sprint 2.4 — Revisión normativa puntual (cierre de Fase D)
 
 Antes de publicar la Fase D se ejecutó una revisión normativa exclusiva de la integración del

@@ -110,3 +110,17 @@ manualmente desde la revisión guiada'`. La deducción de intereses de vivienda
 nunca se reporta como información exógena (§15 del prompt de Fase F.2), así
 que esta rama es la única forma de que el expediente ofrezca captura guiada
 para ese beneficio cuando la extracción automática no encuentra el valor.
+
+### Menos expectativas falsas y routing documental (Sprint 2.4, Fase F.3)
+
+`evidence_missing_expected` derivado de la exógena ya no se genera para 5 categorías
+estructuralmente sin certificado esperado (`card_consumption`, `bank_movement`,
+`investment_movement`, `electronic_invoicing_total`, `electronic_invoicing_benefit_base`) — ver
+`docs/EVIDENCE_MATCHING.md` §Fase F.3 §16. Esto reduce falsos `unresolved` sin tocar el mecanismo
+de tareas.
+
+Cuando un documento se enruta como declaración anterior o extracto bancario transaccional
+(`decideDocumentRouting`, `packages/document-intelligence/src/documentRouting.ts`), no se generan
+tareas de tipo `confirm_candidate`/`identify_product`/`associate_entity` para ese documento (no hay
+candidatos) — el motivo queda documentado en el `DocumentExtractionFinding` de la sesión
+(`code: 'requires_specialized_route'`), visible en modo avanzado.

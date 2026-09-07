@@ -102,6 +102,43 @@ describe('expediente tributario derivado', () => {
     );
   });
 
+  it('Sprint 2.4, Fase F.3 (§6): marca contradiccion semantica cuando el hecho describe una retencion comparada contra un registro de ingresos', () => {
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(
+      workbook,
+      XLSX.utils.aoa_to_sheet([
+        ['NIT', 'Nombre', 'Concepto', 'Valor'],
+        ['900', 'Banco Sintetico', 'Rendimientos financieros', 100],
+      ]),
+      'Datos',
+    );
+    const processed = processWorkbookFile(
+      XLSX.write(workbook, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer,
+      'x.xlsx',
+      1,
+      { sheetName: 'Datos', now: () => '2026-01-01T00:00:00.000Z' },
+    );
+    const record = processed.normalizedRecords[0]!;
+    expect(record.category).toBe('financial_income');
+    const withholdingFact: DocumentFact = {
+      ...fact(processed.entities[0]!.id),
+      originalConcept: 'Retención sobre rendimientos financieros',
+      category: 'withholding',
+      nature: 'tax_credit',
+      treatment: 'subtract_from_tax',
+      value: record.reportedValue ?? 0,
+    };
+    const suggestions = suggestReconciliations({
+      facts: [withholdingFact],
+      result: processed,
+      products: [],
+    });
+    expect(suggestions).toHaveLength(1);
+    expect(suggestions[0]?.semanticContradiction).toBe(true);
+    expect(suggestions[0]?.semanticContradictionReason).not.toBeNull();
+    expect(suggestions[0]?.semanticContradictionReason).toMatch(/retenci[oó]n/i);
+  });
+
   it('calcula coberturas por separado sin porcentaje general enganoso', () => {
     const progress = calculateCaseProgress({
       documents: [],

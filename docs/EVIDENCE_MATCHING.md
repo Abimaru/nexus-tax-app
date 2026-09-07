@@ -32,16 +32,15 @@ conserva completa, siempre disponible detrás de un interruptor ("modo avanzado"
   `associate_entity`), sino que la complementan con las situaciones específicas de Guided Review.
 - E2E de Playwright (`evidence-review.spec.ts`) que cubre el flujo completo con datos sintéticos.
 
-## Por qué NO se unificó el segundo scorer existente
+## Por qué NO se unificó el segundo scorer existente (histórico, superado en Fase F.3)
 
-Durante la auditoría se encontró que `apps/web/src/lib/taxCaseAnalysis.ts` ya tiene un segundo
-emparejador, `suggestReconciliations` (a nivel de `DocumentFact` ya confirmado, alimenta
-`PreliminaryReconciliation`), que duplica buena parte de la lógica de puntuación de
-`suggestExogenousMatches` (a nivel de `DocumentFactCandidate`, antes de confirmar). Unificarlos
-habría sido un refactor mucho más grande y riesgoso que el alcance de esta fase. **Se dejó como
-limitación conocida** para una futura Fase E2: hoy conviven dos scorers con criterios similares
-pero no idénticos, cada uno resolviendo una etapa distinta del flujo (pre-confirmación vs.
-post-confirmación).
+Durante la auditoría original (Fase E) se encontró que `apps/web/src/lib/taxCaseAnalysis.ts` ya
+tiene un segundo emparejador, `suggestReconciliations` (a nivel de `DocumentFact` ya confirmado,
+alimenta `PreliminaryReconciliation`), que duplicaba buena parte de la lógica de puntuación de
+`suggestExogenousMatches` (a nivel de `DocumentFactCandidate`, antes de confirmar). En ese momento
+se dejó como limitación conocida para una futura fase. **Fase F.3 unificó la dimensión numérica de
+ambos scorers** (y de un tercer punto de divergencia encontrado en `ReconciliationsPanel.tsx`) —
+ver la sección "Fase F.3" más abajo para el diseño final.
 
 ## Clasificador de evidencia numérica
 
@@ -429,3 +428,150 @@ Ningún caso revalidado produjo un **nuevo** false confident match.
   real observado.
 - El chequeo de ambigüedad documentado en la limitación (5) de la sección anterior sigue pendiente.
 
+## Fase F.3 — Unified Reconciliation & Coverage Hardening
+
+Cierra la limitación explícita de Fase F.2: unifica la dimensión NUMÉRICA de los tres puntos donde
+NexusTax evaluaba "¿qué tan cerca están estos dos valores?" con criterios distintos, y corrige
+incompatibilidades estructurales entre adaptadores y la taxonomía de la exógena encontradas en el
+benchmark real (Fase F.1).
+
+### Auditoría de los tres consumidores
+
+1. **`suggestExogenousMatches`** (`packages/document-intelligence/src/matching.ts`) — candidato↔
+   exógena, PRE-confirmación. Umbrales propios: exacto (diferencia=0), redondeo (diferencia≤1),
+   menor (diferencia≤1, mismo umbral que redondeo — una redundancia real), posible (score≥50).
+2. **`evaluateReconciliationDifference`** (`packages/exogenous-parser/src/reconciliationPolicy.ts`)
+   — umbral/consolidado↔tope DIAN, usado en `analysis.ts` (matriz) y en `ReconciliationsPanel.tsx`
+   (hecho↔exógena confirmado). Umbrales propios: redondeo (diferencia≤`roundingUnit`, típicamente 5
+   para topes), menor (diferencia≤$100 **y** ≤0.01 %).
+3. **`suggestReconciliations`** (`apps/web/src/lib/taxCaseAnalysis.ts`) — hecho↔exógena,
+   PRE-sugerencia para `ReconciliationsPanel`. Tenía su propio sistema de score (sin estado
+   granular) y **sin ninguna protección semántica** — un hallazgo real de esta auditoría: un hecho
+   documental que describe una retención podía sugerirse como coincidencia "segura" contra un
+   registro de ingresos, sin que el gate semántico de Fase F.2 lo bloqueara, porque ese gate solo
+   protegía al primer consumidor.
+4. **`ReconciliationsPanel.tsx`** tenía además un CUARTO umbral ad-hoc, hardcodeado en la UI
+   (`score >= 75 && difference <= 5`), desconectado de los otros tres y también sin gate semántico.
+
+### Política numérica única (`@nexus-tax/domain/numericReconciliation.ts`)
+
+`evaluateNumericReconciliation` es la única fuente de verdad para `exact`/`rounding`/`minor`/
+`relevant`. Vive en `@nexus-tax/domain` (sin dependencias hacia otros paquetes de NexusTax) porque
+tanto `document-intelligence` como `exogenous-parser` (que ya depende de `document-intelligence`)
+necesitan importarla — es el único paquete alcanzable desde ambos sin crear una dependencia
+circular.
+
+- **Redondeo**: `documentRoundedValue` (con centavos redondeados) dentro de una `roundingToleranceCop`
+  (por defecto $1) del valor exógeno. El mismo parámetro modela también la tolerancia de redondeo
+  agregado de topes/consolidados (`roundingUnit: 5`), unificando dos mecanismos que antes vivían
+  por separado bajo el mismo nombre "rounding".
+- **Menor** (§5 del prompt): exige **ambas** condiciones — diferencia absoluta ≤$100 **y**
+  diferencia relativa ≤0.01 %. Nunca "menor" solo por porcentaje pequeño en un monto grande (un
+  monto de $10.000.000 con $101 de diferencia, 0.00101 %, sigue siendo `relevant`, no `minor`).
+- `evaluateReconciliationDifference` (exogenous-parser) y `suggestExogenousMatches`
+  (document-intelligence) ahora son envoltorios delgados sobre esta política — conservan sus
+  contratos públicos (nombres de estado, forma del resultado) para no romper a sus consumidores.
+- `ReconciliationsPanel.tsx` reemplazó su umbral ad-hoc (`difference <= 5`) por la misma política
+  (`roundingUnit: 1`, igual que el matcher de candidatos) y **ahora respeta el gate semántico**:
+  `suggestReconciliations` calcula `semanticContradiction`/`semanticContradictionReason`
+  (reutilizando `detectSemanticContradiction` de Fase F.2, nunca un segundo mecanismo) y la UI
+  nunca ofrece "seguro para confirmar" cuando hay contradicción, con el mismo copy humano
+  ("El valor coincide, pero el concepto no").
+- **Precedencia semántica preservada** (§6 del prompt): la política numérica NUNCA sustituye el
+  gate de Fase F.2 — un `exact`/`rounding` con contradicción semántica sigue degradándose a
+  `possible_match` antes de habilitar confirmación en bloque.
+- **Guardarraíl obligatorio** (§20): `packages/exogenous-parser/tests/unifiedReconciliationGuardrail.test.ts`
+  verifica que el mismo par numérico produzca un balde de resultado compatible
+  (`exact/rounding` ↔ `reconciled/rounding_difference`, etc.) en ambos consumidores.
+
+### Cobertura estructural corregida
+
+- **Cesantías** (`co.severance.generic` + `classification.ts`, §8): el saldo de cesantías se
+  reclasificó de `asset` a `severance` (compatible con el fallback de la exógena para un saldo de
+  cesantías "en bruto"); se agregó reconocimiento de aporte/consignación patronal tanto en el
+  adaptador documental como en el clasificador de la exógena (antes caía en `bank_movement`
+  genérico, una incompatibilidad de categoría real).
+- **`annual_cost_report`** (`co.annual-cost-report.generic`, §9): nuevo adaptador dedicado
+  (intereses/rendimientos, retención, GMF, total informativo de entidad) — antes caía en
+  `co.generic.label-value` (categoría `unclassified`, siempre revisión).
+- **Certificados tributarios consolidados** (`classifier.ts`, §10): la señal `certificado
+  tributario` (singular) no reconocía la redacción real plural "Certificados tributarios" — causa
+  raíz real de la miscategorización a `debt_certificate` encontrada en el benchmark. Se corrigió y
+  se agregaron señales estructurales acumulativas (saldo + rendimiento + retención + GMF) para que
+  un documento genuinamente multiproducto supere a una clasificación más estrecha.
+- **Tabla multiproducto** (`packages/document-intelligence/tests/multiproductTable.test.ts`, §11):
+  fixture con 3 productos, columna de porcentaje intercalada y valores cero — confirma
+  header→producto→concepto→valor sin arrastrar headers vecinos.
+- **Form 220 textual** (`co.form-220.generic`, §12): vocabulario público adicional del formulario
+  DIAN (ingresos por rentas de trabajo, auxilio de cesantías consignadas, otros ingresos,
+  indemnizaciones, valor retenido) — nunca derivado de un documento real.
+
+### Routing documental explícito (`packages/document-intelligence/src/documentRouting.ts`, §13-§15)
+
+`decideDocumentRouting` se ejecuta DESPUÉS de clasificar y ANTES de `extractCandidates`:
+
+- **Declaración de un año anterior** (`prior_year_return`): se omite el pipeline genérico por
+  completo — este tipo de documento tiene su ruta especializada propia
+  (`extractPriorYearForm210`). Copy: "Reconocimos una declaración de un año anterior. La
+  analizaremos como declaración previa, no como certificado."
+- **Extracto bancario transaccional**: detectado estructuralmente (≥20 fechas de movimiento y ≥5
+  palabras clave de movimiento en el texto) — nunca por nombre de banco/NIT/filename. Copy: "Este
+  archivo parece ser un extracto de movimientos, no un certificado tributario. Lo conservamos como
+  soporte, pero no intentaremos convertir cada movimiento en un dato para la declaración."
+- En ambos casos el documento **sigue disponible** en biblioteca/evidencia/modo avanzado/historial
+  (§14): el routing solo omite `extractCandidates`, nunca borra ni rechaza el archivo. Se expone un
+  nuevo `DocumentExtractionFinding` (`code: 'requires_specialized_route'`) con el mensaje y la
+  acción sugerida.
+- La facturación electrónica mantiene su ruta XLSX estructurada existente, sin cambios (§13.C).
+
+### Expected evidence reducida a falsos `unresolved` estructurales (§16)
+
+`buildExpectedTaxEvidence` (`apps/web/src/lib/evidenceReview.ts`) excluye 5 categorías que nunca
+deberían generar una expectativa de certificado: `card_consumption` (señal de umbral, no un hecho
+documental), `bank_movement`/`investment_movement` (movimientos del período, no el saldo final que
+sí certifica un producto), `electronic_invoicing_total`/`electronic_invoicing_benefit_base`
+(reconciliadas exclusivamente contra el reporte DIAN de facturación electrónica, Fase D). Un
+candidato cuya única coincidencia apunte a uno de estos registros excluidos sigue apareciendo como
+"posible valor nuevo" — nunca desaparece silenciosamente (§28 de Fase E).
+
+### Human Review Burden (`computeHumanReviewBurden`, `apps/web/src/lib/evidenceReview.ts`, §1/§19)
+
+Métrica local de benchmark (nunca telemetría remota) que separa `bulkConfirmable` (cero esfuerzo),
+`meaningfulHumanReview` (juicio real), `manualGuidedCapture` (captura sin documento),
+`irrelevantCandidateReview` (candidatos sin relación con la exógena, a revisar) y
+`unresolvedAfterAllDocuments` (mismo conjunto que `manualGuidedCapture`, nombrado para alinear con
+el benchmark de Fase F.1).
+
+### Rebenchmark real (§23) — resultados antes/después
+
+Repetido con las mismas 2 exógenas, los mismos 29 PDF y los mismos 2 reportes de facturación
+electrónica del benchmark de Fase F.1 (script temporal, eliminado; nunca se persistieron datos
+reales):
+
+| Métrica | Antes (Fase F.1) | Después (Fase F.3) |
+| --- | --- | --- |
+| expectationsTotal | 82 | 62 (−20, exclusión de categorías estructuralmente sin certificado, §16) |
+| expectationsWithCandidate | 22 | 25 |
+| unresolved | 59 | 37 |
+| candidatesTotal | 142 | 52 (routing evita ~80 candidatos de un extracto bancario real) |
+| document-only (`new_relevant_value`) | 115 | 26 |
+| falseConfidentMatches | 1 (corregido en F.2) | **0** |
+| Human Review Burden total | ~192 (estimado en F.1) | 88 |
+| bulkConfirmable | 2 | 6 |
+
+El extracto bancario transaccional real del corpus (que en Fase F.1 generó 80 candidatos de baja
+calidad) fue correctamente detectado y enrutado, explicando gran parte de la reducción en
+candidatos totales y en evidencia document-only. `falseConfidentMatches` se mantuvo en 0 en ambos
+expedientes, confirmando que ningún cambio de esta fase reintrodujo el hallazgo crítico de F.1.
+
+### Limitaciones restantes para una futura Fase F.4
+
+- La detección de "extracto bancario transaccional" es una heurística estructural modesta (conteo
+  de fechas + palabras clave); podría producir falsos negativos con formatos de fecha no
+  contemplados o falsos positivos con certificados que enumeran muchas fechas por otros motivos.
+- La cobertura de vivienda de los 2 casos reales que Fase F.2 dejó con mejora parcial no se
+  revisó de nuevo en esta fase (fuera del alcance explícito de F.3).
+- `unresolvedAfterAllDocuments` es hoy un alias exacto de `manualGuidedCapture`; si en el futuro se
+  necesita distinguir "sin candidato tras cargar todos los documentos disponibles" de "sin
+  candidato en este momento", requerirá una señal adicional (p. ej. cuántos documentos del tipo
+  esperado ya se cargaron).

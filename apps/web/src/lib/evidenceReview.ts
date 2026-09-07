@@ -42,10 +42,37 @@ const MATCH_STATUS_TO_SUGGESTION_STATUS: Record<
 };
 
 /**
+ * Categorías de la exógena que NUNCA deben convertirse en una expectativa
+ * de evidencia documental (Sprint 2.4, Fase F.3, §16): son informativas,
+ * de movimiento del período (no un saldo final que un certificado
+ * reporte), o se resuelven por una fuente estructurada distinta que ya
+ * tiene su propia reconciliación dedicada.
+ *
+ * - `card_consumption`: señal de umbral de consumo (UVT), no un hecho
+ *   documental discreto que una tarjeta de crédito certifique.
+ * - `bank_movement` / `investment_movement`: movimientos del período, no
+ *   el saldo final que sí certifica un producto financiero (ese saldo
+ *   vive bajo `asset`, que SÍ genera expectativa).
+ * - `electronic_invoicing_total` / `electronic_invoicing_benefit_base`:
+ *   se reconcilian exclusivamente contra el reporte DIAN de facturación
+ *   electrónica (Sprint 2.4, Fase D), nunca contra un certificado PDF
+ *   genérico — crear una expectativa aquí solo produciría un falso
+ *   `unresolved` permanente.
+ */
+const CATEGORIES_WITHOUT_DOCUMENT_EXPECTATION = new Set<string>([
+  'card_consumption',
+  'bank_movement',
+  'investment_movement',
+  'electronic_invoicing_total',
+  'electronic_invoicing_benefit_base',
+]);
+
+/**
  * Construye "qué espera encontrar el expediente" a partir de la exógena
  * (§13-§14 de docs/EVIDENCE_MATCHING.md). El contrato es genérico
  * (`sourceKind`), pero hoy solo se deriva de `NormalizedExogenousRecord`
- * con valor reportado no nulo.
+ * con valor reportado no nulo, EXCLUYENDO las categorías que Fase F.3
+ * (§16) identificó como falsos `unresolved` estructurales.
  */
 export function buildExpectedTaxEvidence(input: {
   caseId: string;
@@ -53,7 +80,10 @@ export function buildExpectedTaxEvidence(input: {
 }): ExpectedTaxEvidence[] {
   if (!input.result) return [];
   return input.result.normalizedRecords
-    .filter((record) => record.reportedValue !== null)
+    .filter(
+      (record) =>
+        record.reportedValue !== null && !CATEGORIES_WITHOUT_DOCUMENT_EXPECTATION.has(record.category),
+    )
     .map((record) => ({
       id: `expected:${record.id}`,
       caseId: input.caseId,
@@ -106,6 +136,14 @@ export function buildEvidenceReviewSuggestions(input: {
   const openCandidates = input.candidates.filter(isCandidateOpen);
   const suggestions: EvidenceReviewSuggestion[] = [];
   const consumedCandidateIds = new Set<string>();
+  // Sprint 2.4, Fase F.3 (§16): las categorías excluidas de
+  // `buildExpectedTaxEvidence` no generan `ExpectedTaxEvidence`, pero un
+  // candidato cuya ÚNICA coincidencia apunte a uno de esos registros
+  // excluidos NUNCA debe desaparecer silenciosamente (§28) — se calcula
+  // el conjunto de `sourceId` realmente presentes en `expectedEvidence`
+  // para que esos matches sigan contando como "sin relación útil" y el
+  // candidato caiga en el flujo de "posible valor nuevo" más abajo.
+  const expectedSourceIds = new Set(input.expectedEvidence.map((item) => item.sourceId));
 
   for (const expectation of input.expectedEvidence) {
     if (input.reconciledExogenousRecordIds?.has(expectation.sourceId)) continue;
@@ -208,7 +246,9 @@ export function buildEvidenceReviewSuggestions(input: {
   for (const candidate of openCandidates) {
     if (consumedCandidateIds.has(candidate.id)) continue;
     const hasAnyUsableMatch = candidate.suggestedExogenousMatches.some(
-      (match) => MATCH_STATUS_TO_SUGGESTION_STATUS[match.status] !== null,
+      (match) =>
+        MATCH_STATUS_TO_SUGGESTION_STATUS[match.status] !== null &&
+        expectedSourceIds.has(match.recordId),
     );
     if (hasAnyUsableMatch) continue;
     // Sprint 2.4, Fase F.2, §15: la deducción de intereses de vivienda
@@ -242,4 +282,63 @@ export function buildEvidenceReviewSuggestions(input: {
   }
 
   return suggestions;
+}
+
+/**
+ * Human Review Burden (Sprint 2.4, Fase F.3, §1/§19): métrica local de
+ * benchmark que aproxima "decisiones humanas necesarias para cerrar el
+ * expediente" con más granularidad que solo contar candidatos. Nunca se
+ * persiste ni se envía como telemetría (§1/§19 del prompt) — es una
+ * función PURA calculable en tests/benchmark local sobre el resultado ya
+ * producido por `buildEvidenceReviewSuggestions`.
+ *
+ * - `bulkConfirmable`: sugerencias marcadas `safeForBulkConfirm` — cero
+ *   esfuerzo real, un solo clic masivo.
+ * - `meaningfulHumanReview`: sugerencias con relación candidato↔registro
+ *   que SÍ requieren criterio humano (coincidencia probable, ambigüedad,
+ *   contradicción, o un exact/rounding que quedó fuera del bloque por
+ *   alguna anomalía) — la revisión "con sentido" del expediente.
+ * - `manualGuidedCapture`: expectativas sin ningún candidato — exigen
+ *   captura manual guiada.
+ * - `irrelevantCandidateReview`: candidatos sin relación con la exógena
+ *   (`new_relevant_value`) — un humano debe mirarlos al menos una vez
+ *   para decidir si son relevantes o descartables; en la práctica suelen
+ *   incluir tanto evidencia legítima (p. ej. vivienda) como ruido.
+ * - `unresolvedAfterAllDocuments`: lo que sigue sin resolver incluso
+ *   después de haber cargado todos los documentos disponibles — hoy
+ *   coincide exactamente con `manualGuidedCapture` (ninguna expectativa
+ *   sin candidato se resuelve por sí sola con más documentos ya
+ *   cargados); se reporta con su propio nombre para alinear con el
+ *   vocabulario del benchmark de Fase F.1.
+ */
+export interface HumanReviewBurden {
+  bulkConfirmable: number;
+  meaningfulHumanReview: number;
+  manualGuidedCapture: number;
+  irrelevantCandidateReview: number;
+  unresolvedAfterAllDocuments: number;
+  total: number;
+}
+
+export function computeHumanReviewBurden(
+  suggestions: readonly Pick<EvidenceReviewSuggestion, 'status' | 'safeForBulkConfirm'>[],
+): HumanReviewBurden {
+  const bulkConfirmable = suggestions.filter((item) => item.safeForBulkConfirm).length;
+  const meaningfulHumanReview = suggestions.filter(
+    (item) =>
+      !item.safeForBulkConfirm &&
+      (item.status === 'matched' || item.status === 'likely_match' || item.status === 'needs_review'),
+  ).length;
+  const manualGuidedCapture = suggestions.filter((item) => item.status === 'unresolved').length;
+  const irrelevantCandidateReview = suggestions.filter(
+    (item) => item.status === 'new_relevant_value',
+  ).length;
+  return {
+    bulkConfirmable,
+    meaningfulHumanReview,
+    manualGuidedCapture,
+    irrelevantCandidateReview,
+    unresolvedAfterAllDocuments: manualGuidedCapture,
+    total: suggestions.length,
+  };
 }

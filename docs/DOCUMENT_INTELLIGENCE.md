@@ -30,6 +30,11 @@ inmutable aunque el analista lo corrija.
 - `classifier.ts`: señales ponderadas y niveles alta/media/baja/insuficiente.
 - `adapters.ts`: catálogo versionado y extractor genérico de baja confianza.
 - `matching.ts`: sugerencias de entidad, requisito y registro exógeno.
+- `semanticGate.ts`: defensa semántica (Sprint 2.4, Fase F.2) — contradicción
+  entre el texto de un candidato y su categoría propuesta.
+- `documentRouting.ts`: routing documental explícito (Sprint 2.4, Fase F.3) —
+  decide si un documento usa el pipeline genérico, la ruta de declaración
+  anterior, o queda marcado como extracto bancario transaccional.
 - `pipeline.ts`: orquestación pura y hallazgos recuperables.
 - `contracts.ts`: representación independiente de PDF.js, límites, progreso y
   contrato unificado de tokens nativo/OCR.

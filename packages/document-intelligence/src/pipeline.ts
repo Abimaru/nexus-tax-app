@@ -18,7 +18,8 @@ import type {
 import { DEFAULT_PDF_LIMITS } from './contracts';
 import { classifyDocument } from './classifier';
 import { diagnosePdfDocument } from './diagnosis';
-import { classifyDocumentNumericEvidence, extractCandidates } from './adapters';
+import { classifyDocumentNumericEvidence, extractCandidates, selectAdapter } from './adapters';
+import { decideDocumentRouting } from './documentRouting';
 import {
   suggestEntity,
   suggestExogenousMatches,
@@ -82,12 +83,28 @@ export async function analyzePdfDocument(input: AnalyzePdfInput) {
     message: 'Buscando valores candidatos…',
   });
   const limits = { ...DEFAULT_PDF_LIMITS, ...input.limits };
-  const extraction = extractCandidates(
-    representation,
-    classification.correctedKind ?? classification.proposedKind,
-    input,
-    limits,
-  );
+  // Sprint 2.4, Fase F.3 (§13-§15): decisión de routing explícita ANTES
+  // de ejecutar el pipeline genérico de candidatos. Cuando la ruta no es
+  // `generic_pipeline` (declaración de un año anterior, o extracto
+  // bancario transaccional), se omite `extractCandidates` — el documento
+  // NUNCA se descarta (§14): sigue disponible en biblioteca, evidencia,
+  // modo avanzado e historial; solo se evita el extractor equivocado.
+  const routingDecision = decideDocumentRouting(representation, classification);
+  const extraction =
+    routingDecision.route === 'generic_pipeline'
+      ? extractCandidates(
+          representation,
+          classification.correctedKind ?? classification.proposedKind,
+          input,
+          limits,
+        )
+      : {
+          adapter: selectAdapter(classification.correctedKind ?? classification.proposedKind),
+          candidates: [],
+          warnings: [],
+          generatedCandidateCount: 0,
+          pendingCandidateCount: 0,
+        };
   const candidates = extraction.candidates.map((candidate) => enrichCandidate(candidate, input));
   input.onProgress?.({
     phase: 'extracting',
@@ -101,6 +118,18 @@ export async function analyzePdfDocument(input: AnalyzePdfInput) {
     candidates,
     extraction.warnings,
   );
+  if (routingDecision.route !== 'generic_pipeline' && routingDecision.reason) {
+    findings.push({
+      code: 'requires_specialized_route',
+      category: 'technical_limitation',
+      message: routingDecision.reason,
+      page: null,
+      suggestedAction:
+        routingDecision.route === 'prior_year_form_210'
+          ? 'Usa la carga dedicada de declaraciones anteriores para extraer sus casillas.'
+          : 'Consérvalo como soporte documental; no se generarán candidatos tributarios principales.',
+    });
+  }
   const numericEvidence = classifyDocumentNumericEvidence(representation);
   const suppressedNumericEvidence = numericEvidence
     .filter((item) => item.role !== 'money')
