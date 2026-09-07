@@ -81,7 +81,16 @@ export const DOCUMENT_ADAPTERS: readonly DocumentAdapter[] = [
     [
       rule(
         'employment-income',
-        ['ingresos laborales', 'pagos por salarios', 'total ingresos'],
+        [
+          'ingresos laborales',
+          'pagos por salarios',
+          'total ingresos',
+          // Sprint 2.4, Fase F.3 (§12): vocabulario adicional del
+          // Formulario 220 oficial DIAN (redacción pública, no derivada
+          // de ningún documento real) para páginas textuales realistas.
+          'ingresos.*rentas de trabajo',
+          'compensaciones|bonificaciones',
+        ],
         'employment_income',
         'income',
         'add_to_employment_income',
@@ -89,7 +98,13 @@ export const DOCUMENT_ADAPTERS: readonly DocumentAdapter[] = [
       ),
       rule(
         'severance',
-        ['cesantias abonadas', 'cesantias pagadas'],
+        [
+          'cesantias abonadas',
+          'cesantias pagadas',
+          'auxilio de cesantias',
+          'consignacion.*cesantias',
+          'cesantias consignadas',
+        ],
         'severance',
         'income',
         'requires_review',
@@ -128,8 +143,25 @@ export const DOCUMENT_ADAPTERS: readonly DocumentAdapter[] = [
         'employment_income',
       ),
       rule(
+        'other-income',
+        // Sprint 2.4, Fase F.3 (§12): conceptos que el Formulario 220
+        // reporta fuera del salario base — nunca se asumía tratamiento
+        // tributario propio, solo se cubre la extracción/categoría; el
+        // gate semántico y la revisión humana siguen aplicando igual.
+        ['otros ingresos', 'indemnizacion(?:es)?'],
+        'other_income',
+        'income',
+        'requires_review',
+        'employment_income',
+      ),
+      rule(
         'withholding',
-        ['retencion(?:es)?.*(?:fuente|renta)', 'retenciones'],
+        [
+          'retencion(?:es)?.*(?:fuente|renta)',
+          'retenciones',
+          'valor retenido',
+          'retencion practicada',
+        ],
         'withholding',
         'tax_credit',
         'subtract_from_tax',
@@ -343,17 +375,31 @@ export const DOCUMENT_ADAPTERS: readonly DocumentAdapter[] = [
     ['severance_certificate'],
     ['certificado de cesantias|fondo de cesantias'],
     [
+      // Sprint 2.4, Fase F.3 (§8): corrige la incompatibilidad estructural
+      // encontrada en el benchmark real — el saldo de cesantías se
+      // clasifica aquí como `severance` (no `asset`) porque la exógena
+      // (`classification.ts`) también clasifica un saldo de cesantías
+      // "en bruto" bajo la categoría `severance`, no `asset`. Antes de
+      // esta corrección, ningún candidato de saldo de cesantías podía
+      // empatar con su registro exógeno correspondiente.
       rule(
         'closing-balance',
-        ['saldo.*cierre|saldo final'],
-        'asset',
-        'asset',
+        ['saldo.*cierre|saldo final|saldo.*cesantias'],
+        'severance',
+        'informational',
         'requires_review',
         'severance',
       ),
       rule(
         'credited',
-        ['cesantias abonadas'],
+        [
+          'cesantias abonadas',
+          // Cubre variantes reales de redacción (aporte/consignación
+          // patronal), que la exógena también clasifica como `severance`
+          // desde esta misma fase — antes caían en `bank_movement`.
+          '(?:aporte|consignacion|abono)(?:s)?.*cesantias',
+          'cesantias.*(?:aportad|consignad|abonad)',
+        ],
         'severance',
         'income',
         'requires_review',
@@ -394,6 +440,62 @@ export const DOCUMENT_ADAPTERS: readonly DocumentAdapter[] = [
       ),
     ],
     ['La extracción no determina por sí sola el valor fiscal declarable.'],
+  ),
+  adapter(
+    'co.annual-cost-report.generic',
+    ['annual_cost_report'],
+    ['reporte anual de costos|relacion de compras y gastos'],
+    [
+      // Sprint 2.4, Fase F.3 (§9): reutiliza el mismo mapeo
+      // interest→financial_income / withholding→tax_credit ya usado en
+      // `co.financial.consolidated.generic`, en vez de duplicar reglas o
+      // el gate semántico (que sigue viviendo en `matching.ts`).
+      rule(
+        'interest',
+        ['intereses pagados|rendimientos financieros', 'intereses.*(?:periodo|ano)'],
+        'financial_income',
+        'income',
+        'add_to_income',
+        'unidentified',
+      ),
+      rule(
+        'withholding',
+        ['retencion(?:es)?.*(?:fuente|renta)', 'retencion(?:es)?.*(?:rendimientos|intereses)'],
+        'withholding',
+        'tax_credit',
+        'subtract_from_tax',
+        'unidentified',
+      ),
+      rule(
+        'gmf',
+        ['gravamen.*movimientos financieros|gmf'],
+        'deduction_candidate',
+        'possible_deduction',
+        'review_as_deduction',
+        'checking_account',
+      ),
+      rule(
+        'informational-total',
+        // Sprint 2.4, Fase F.3: el total emitido por la entidad (p. ej.
+        // "Nu Colombia Compañía de Financiamiento SA Total") es
+        // informativo — nunca se suma como si fuera un concepto propio;
+        // los conceptos ya se capturan por sus propias reglas arriba.
+        ['total (?:costos|gastos|compras)', '(?:compania|financiamiento|s\\.?a\\.?).*\\btotal\\b|\\btotal\\b.*(?:compania|financiamiento|s\\.?a\\.?)'],
+        'informational',
+        'informational',
+        'do_not_aggregate',
+        'unidentified',
+      ),
+      rule(
+        'non-deductible-base',
+        ['base no deducible|no constituye (?:costo|deduccion)'],
+        'informational',
+        'informational',
+        'do_not_aggregate',
+        'unidentified',
+      ),
+    ],
+    ['Un reporte anual de costos puede mezclar conceptos de distintos productos; confirma cada uno.'],
   ),
 ];
 

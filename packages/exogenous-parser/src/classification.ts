@@ -193,6 +193,27 @@ function detailRule(detail: string): ClassificationCore | null {
       'Rendimiento del fondo de cesantías clasificado por el concepto financiero, no por la palabra empleado.',
     );
   }
+  // Sprint 2.4, Fase F.3 (§8): un aporte/consignación patronal a
+  // cesantías es evidencia de cesantías, NO un movimiento bancario
+  // genérico — debe evaluarse ANTES de la regla genérica de
+  // "movimiento/consignación" (más abajo) para no perder la categoría
+  // `severance` que el adaptador documental (`co.severance.generic`)
+  // también usa para este mismo subconcepto.
+  if (
+    /(?:aporte|consignacion|abono)(?:s)?.*cesantias|cesantias.*(?:aporte|consignacion|abono)(?:s)?/.test(
+      detail,
+    )
+  ) {
+    return core(
+      'informational',
+      'severance',
+      'requires_review',
+      'high',
+      ['document_checklist'],
+      'informational',
+      'Aporte o consignación patronal a cesantías; registro informativo identificado.',
+    );
+  }
   if (/salario|pago laboral|nomina|empleado/.test(detail)) {
     return core('income', 'employment_income', 'add_to_employment_income', 'high', [
       'income_threshold',

@@ -30,9 +30,12 @@ import { comparableText } from './normalize';
 export type ConceptRoleMarker = 'withholding' | 'base' | 'balance';
 
 const MARKER_PATTERNS: Record<ConceptRoleMarker, RegExp> = {
-  // "retención"/"retenciones": el concepto es una retención practicada,
-  // nunca un ingreso.
-  withholding: /\bretencion(?:es)?\b/,
+  // "retención"/"retenciones"/"retenido(s)": el concepto es una retención
+  // practicada, nunca un ingreso. Se incluye la forma participio
+  // ("retenido"/"retenidos", p. ej. "valor retenido") porque comparte la
+  // misma raíz semántica y es una redacción real del Formulario 220
+  // (Sprint 2.4, Fase F.3, §12).
+  withholding: /\bretencion(?:es)?\b|\bretenid[oa]s?\b/,
   // "base" (base gravable, base imponible, base de retención): el valor
   // es informativo/base de cálculo, nunca el monto final deducible o
   // retenido.

@@ -15,10 +15,30 @@ const DEFINITIONS: readonly ClassifierDefinition[] = [
     ['aportes obligatorios a salud', 2],
   ]),
   definition('consolidated_tax_certificate', [
-    ['certificado tributario', 4],
+    // Sprint 2.4, Fase F.3 (§10): "certificado tributario" (singular) no
+    // reconocía la redacción real plural "Certificados tributarios" — el
+    // patrón exigía la palabra exacta "certificado" seguida de espacio,
+    // que nunca aparece cuando el documento dice "certificados". Esta es
+    // la causa raíz real de la miscategorización a `debt_certificate`
+    // encontrada en el benchmark (Fase F.1): sin esta señal, el
+    // documento perdía su score más alto y una señal más estrecha
+    // (`debt_certificate`, "saldo de capital") ganaba por defecto.
+    ['certificados? tributarios?', 4],
     ['informacion tributaria', 3],
     ['saldos.*rendimientos.*retenciones', 5],
     ['productos financieros', 2],
+    // Señales estructurales (§10/§11 del prompt de Fase F.3): un
+    // certificado que menciona VARIOS de estos conceptos a la vez —
+    // saldo, rendimiento, retención, GMF — es evidencia de un documento
+    // multipropósito/multiproducto, nunca del nombre del banco/NIT/
+    // archivo. Cada señal pesa poco por sí sola, pero su combinación
+    // permite que un documento genuinamente consolidado supere a una
+    // clasificación más estrecha (p. ej. `debt_certificate`) que solo
+    // detecta una de sus secciones.
+    ['\\bsaldo', 1],
+    ['rendimiento|interes', 1],
+    ['retencion', 1],
+    ['gravamen.*movimientos financieros|gmf', 1],
   ]),
   definition('debt_certificate', [
     ['certificado de deuda', 5],
