@@ -24,8 +24,12 @@ import {
   getElectronicInvoiceReport,
   getPriorYearCarryForwardCandidates,
   getPriorYearReturns,
+  getPropertyExpenses,
+  getRentalActivities,
+  getRentalIncomes,
   getTaxCaseWorkspace,
   getTaxDependents,
+  getTaxProperties,
   markWorkflowViewCompleted,
   removeExogenousSource,
   saveCaseNavigation,
@@ -79,6 +83,7 @@ import { FinalReviewPanel } from './FinalReviewPanel';
 import { PriorYearReturnsPanel } from './PriorYearReturnsPanel';
 import { DependentsPanel } from './DependentsPanel';
 import { ElectronicInvoicingPanel } from './ElectronicInvoicingPanel';
+import { PropertiesPanel } from './PropertiesPanel';
 import { ContextualNavigation, WorkflowStepper } from './WorkflowNavigation';
 import {
   BasicCaseDataPanel,
@@ -116,8 +121,13 @@ export function CaseWorkbench({
     () => getElectronicInvoicePurchases(caseId),
     [caseId],
   );
+  const taxProperties = useLiveQuery(() => getTaxProperties(caseId), [caseId]);
+  const rentalActivities = useLiveQuery(() => getRentalActivities(caseId), [caseId]);
+  const rentalIncomes = useLiveQuery(() => getRentalIncomes(caseId), [caseId]);
+  const propertyExpenses = useLiveQuery(() => getPropertyExpenses(caseId), [caseId]);
   const [advancedDependents, setAdvancedDependents] = useState(false);
   const [advancedElectronicInvoicing, setAdvancedElectronicInvoicing] = useState(false);
+  const [advancedProperties, setAdvancedProperties] = useState(false);
   const taxCase = workspace?.taxCase;
   const result = workspace?.result;
   const analysis = workspace?.analysis;
@@ -193,6 +203,10 @@ export function CaseWorkbench({
         noDependentsDeclared: dependentsCaseContext?.noDependentsDeclared ?? false,
         electronicInvoiceReport,
         electronicInvoicePurchases,
+        properties: taxProperties,
+        rentalActivities,
+        rentalIncomes,
+        propertyExpenses,
         now: taskTimestamp,
       }),
     [
@@ -207,6 +221,10 @@ export function CaseWorkbench({
       dependentsCaseContext,
       electronicInvoiceReport,
       electronicInvoicePurchases,
+      taxProperties,
+      rentalActivities,
+      rentalIncomes,
+      propertyExpenses,
       taskTimestamp,
     ],
   );
@@ -757,6 +775,19 @@ export function CaseWorkbench({
             tasks={tasks}
             advanced={advancedElectronicInvoicing}
             onToggleAdvanced={() => setAdvancedElectronicInvoicing((value) => !value)}
+          />
+        ) : null}
+        {stage === 'declaracion' && view === 'inmuebles' ? (
+          <PropertiesPanel
+            caseId={caseId}
+            taxYear={taxCase.taxYear}
+            properties={taxProperties ?? []}
+            rentalActivities={rentalActivities ?? []}
+            rentalIncomes={rentalIncomes ?? []}
+            propertyExpenses={propertyExpenses ?? []}
+            tasks={tasks}
+            advanced={advancedProperties}
+            onToggleAdvanced={() => setAdvancedProperties((value) => !value)}
           />
         ) : null}
         {stage === 'declaracion' && view === 'liquidacion-preliminar' ? (
