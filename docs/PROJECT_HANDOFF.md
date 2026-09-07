@@ -1,6 +1,49 @@
-# Handoff del proyecto — NexusTax (Sprint 2.4, Fase B0 + B + B1 + C + D + E + E.1 + F + F.1 + F.2 + F.3 + G + revisiones puntuales)
+# Handoff del proyecto — NexusTax (Sprint 2.4, Fase B0 + B + B1 + C + D + E + E.1 + F + F.1 + F.2 + F.3 + G + G.1 + revisiones puntuales)
 
-_Última actualización: 2026-09-08 (cierre Fase G)._
+_Última actualización: 2026-09-08 (cierre Fase G.1)._
+
+## Sprint 2.4 — Fase G.1: Realistic Synthetic Tax Case
+
+Rama `feature/sprint-2.4-realistic-sample`, creada desde `main` actualizado (post-merge de Fase G).
+
+Reemplaza el sample mínimo de humo (`samples/generate-sample.mjs`, un único archivo exógeno sin
+relación con ninguna fase posterior a Sprint 2.3) por un "golden synthetic case": un expediente
+AG 2025 completamente ficticio, coherente entre exógena, documentos, declaración anterior AG 2024,
+facturación electrónica, dependiente e inmueble.
+
+1. **Auditoría**: el sample anterior no está referenciado por ningún test/E2E, no representa
+   ninguna fase de Sprint 2.4 y no tiene ninguna expectativa de reconciliación verificable. No
+   existe ningún mecanismo de UI "Cargar caso de ejemplo" en la aplicación.
+2. **`apps/web/src/lib/goldenCase.ts`** (nuevo): perfil ficticio, generador del libro exógeno
+   (formato "Persona que reporta"), 6 documentos textuales (Form 220, certificado tributario
+   consolidado, cesantías, vivienda, predial, administración PH), texto de declaración anterior
+   AG 2024, generador del reporte DIAN de facturación electrónica, e inputs de dependiente e
+   inmueble. Ningún dato proviene de un expediente real.
+3. **Tabla de reconciliaciones deliberada (§7)**: exact_match, rounding_match, minor_difference,
+   contradicción semántica (demostrada directamente contra el gate, no emergente de los
+   documentos), document_only (vivienda), exógena-only (aportes a pensión, acción "capturar
+   manualmente"), y una ambigüedad realista (dos entidades con el mismo valor).
+4. **`apps/web/src/lib/goldenCase.test.ts`** (nuevo, 24 tests): ejercita el pipeline REAL
+   (`processWorkbookFile`, `extractCandidates`/`classifyDocument`, `suggestExogenousMatches`,
+   `detectSemanticContradiction`, `importElectronicInvoiceReport`, `evaluatePropertyExpenseEligibility`,
+   `extractPriorYearForm210`, dependientes) — no un mock. Incluye guardarraíl permanente de
+   privacidad (§19): ningún identificador del benchmark real (`1130641532`/`1130671777`) puede
+   aparecer en el caso sintético.
+5. **Golden expectations**: constantes nombradas (no un snapshot gigante), verificadas contra el
+   pipeline real: exógena coherente, FE sin doble conteo (neto = Tope 5 exacto), base del 1%
+   derivada por el motor (nunca hardcodeada), CUFE únicos, carry-forward AG2024→AG2025 coherente,
+   Human Review Burden modesto (techo `< 20`, deliberadamente lejos de las ~88 decisiones del
+   benchmark real).
+6. **Sin integración con el Formulario 210 más allá de lo ya soportado**: el inmueble no aparece
+   cableado a ninguna casilla, respetando la limitación explícita de Fase G.
+7. **Sin E2E nuevo**: no existe mecanismo "Cargar caso de ejemplo" en la UI (§18 del prompt es
+   condicional a que exista), así que la validación equivalente la da la suite de coherencia
+   de 24 tests contra el pipeline real.
+
+**Quality gate**: `check:encoding`, `pnpm -r typecheck`, `pnpm -r lint`, `pnpm -r test` (+24
+tests nuevos), `pnpm build`, `pnpm test:e2e` (sin cambios) — todo en verde. Ver
+`docs/SYNTHETIC_SAMPLE_CASE.md` para el detalle completo (auditoría, diseño, tabla de
+reconciliaciones, golden expectations, cómo extenderlo).
 
 ## Sprint 2.4 — Fase G: Inmuebles, renta inmobiliaria y administración de propiedad horizontal
 

@@ -1,15 +1,19 @@
 # Roadmap — NexusTax
 
 > Sprint 2.4 (Fase B0 + Fase B + Fase B1 + Fase C + Fase D + Fase E + Fase
-> E.1 + Fase F + F.1 + F.2 + F.3 + Fase G + revisiones normativas puntuales)
-> completado: esqueleto de casillas del F-210, declaraciones anteriores, los
-> dos beneficios de dependientes económicos (art. 387 y art. 336 num. 3 ET),
-> el reporte DIAN detallado de facturación electrónica (CUFE, deduplicación,
-> conciliación, motor del 1 % en su casilla oficial: la 28, art. 336 num. 5
-> ET), Evidence Matching & Guided Reconciliation con su promotion gate
-> cerrado y política de reconciliación numérica unificada, y el módulo de
+> E.1 + Fase F + F.1 + F.2 + F.3 + Fase G + Fase G.1 + revisiones
+> normativas puntuales) completado: esqueleto de casillas del F-210,
+> declaraciones anteriores, los dos beneficios de dependientes económicos
+> (art. 387 y art. 336 num. 3 ET), el reporte DIAN detallado de
+> facturación electrónica (CUFE, deduplicación, conciliación, motor del
+> 1 % en su casilla oficial: la 28, art. 336 num. 5 ET), Evidence
+> Matching & Guided Reconciliation con su promotion gate cerrado y
+> política de reconciliación numérica unificada, el módulo de
 > inmuebles/renta inmobiliaria/administración de propiedad horizontal
-> (candidatos, nunca cableado al Formulario 210 todavía).
+> (candidatos, nunca cableado al Formulario 210 todavía), y un caso
+> tributario sintético integral ("golden case") que reemplaza el sample
+> mínimo de humo, coherente entre todas las fuentes y validado contra el
+> pipeline real.
 > Pendiente: medicina prepagada.
 
 ## Entregado hasta hoy ✅
@@ -333,3 +337,20 @@ capital" ni la 60 "costos y deducciones procedentes de rentas de capital", ambas
 el ruleset pero sin fórmula que las alimente). El módulo queda completamente autocontenido; el
 impacto preliminar mostrado en el panel es informativo, no se persiste en `Form210Draft`. Queda
 para una futura fase — ver limitación completa en `docs/PROPERTY_INCOME_EXPENSES_2025.md`.
+
+## Sprint 2.4 — Fase G.1 (Realistic Synthetic Tax Case)
+
+Reemplaza el sample mínimo de humo (`samples/generate-sample.mjs`, un único archivo exógeno sin
+relación con ninguna fase posterior a Sprint 2.3) por un "golden synthetic case" completamente
+ficticio: expediente AG 2025 coherente entre exógena, 6 documentos textuales (Form 220,
+certificado tributario consolidado, cesantías, vivienda, predial, administración PH), declaración
+anterior AG 2024, reporte DIAN de facturación electrónica, un dependiente y un inmueble arrendado.
+Diseñado deliberadamente para exercitar los siete escenarios de reconciliación (exact/rounding/
+minor/contradicción semántica/document-only/exógena-only/ambigüedad) contra el pipeline REAL, sin
+mocks. Nuevo `apps/web/src/lib/goldenCase.ts` (builder puro) + `goldenCase.test.ts` (24 tests,
+incluye guardarraíl permanente de privacidad que impide que cualquier identificador de los
+benchmarks reales de Fase F/F.1 reaparezca aquí). Human Review Burden deliberadamente modesto
+(techo `< 20`), lejos de las ~88 decisiones del benchmark real. Sin integración nueva al
+Formulario 210 (respeta el límite ya documentado de Fase G) y sin E2E nuevo (no existe mecanismo
+de UI "Cargar caso de ejemplo" en la aplicación hoy). Ver `docs/SYNTHETIC_SAMPLE_CASE.md`.
+
