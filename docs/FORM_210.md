@@ -11,6 +11,9 @@ Documento índice del borrador trazable AG 2025.
 - [Beneficios de dependientes (Sprint 2.4, Fase C)](./DEPENDENTS_BENEFITS_2025.md)
 - [Facturación electrónica: reporte DIAN detallado (Sprint 2.4, Fase D)](./ELECTRONIC_INVOICE_REPORT_2025.md)
 - [Facturación electrónica: motor del 1 %](./ELECTRONIC_INVOICING_2025.md)
+- [Inmuebles y administración de PH (Sprint 2.4, Fase G)](./PROPERTY_INCOME_EXPENSES_2025.md) —
+  **deliberadamente sin cablear a ninguna casilla todavía**, ver limitación explícita en ese
+  documento.
 - [Cierre](./CASE_CLOSURE.md)
 
 Desde Sprint 2.3.2 R31, R37 y R40 derivan de sus operandos; un interés de

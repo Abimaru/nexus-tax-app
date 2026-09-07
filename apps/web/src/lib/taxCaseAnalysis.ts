@@ -18,6 +18,10 @@ import type {
   RequirementSourceDecision,
   TaxCase,
   TaxDependent,
+  TaxProperty,
+  RentalActivity,
+  RentalIncome,
+  PropertyExpense,
   UploadedDocument,
   CaseProduct,
   CaseNavigationState,
@@ -261,6 +265,10 @@ export function buildCaseTasks(input: {
   noDependentsDeclared?: boolean;
   electronicInvoiceReport?: ElectronicInvoiceReport;
   electronicInvoicePurchases?: readonly ElectronicInvoicePurchase[];
+  properties?: readonly TaxProperty[];
+  rentalActivities?: readonly RentalActivity[];
+  rentalIncomes?: readonly RentalIncome[];
+  propertyExpenses?: readonly PropertyExpense[];
   now?: string;
 }): CaseTask[] {
   const timestamp = input.now ?? new Date().toISOString();
@@ -1429,6 +1437,221 @@ export function buildCaseTasks(input: {
           updatedAt: timestamp,
         });
       }
+    }
+  }
+
+  // Sprint 2.4, Fase G (§24): tareas de inmuebles. Solo accionables — nunca
+  // una tarea por cada mes. Prioridad: uso desconocido → período faltante
+  // → ingreso sin conciliar → gastos (soporte/asignación/revisión). No se
+  // genera ninguna tarea para `not_applicable` (residencia personal, §22)
+  // ni se re-deriva desde el texto de `eligibilityReasons` (§9): siempre
+  // desde el estado explícito del inmueble/actividad/ingreso/gasto.
+  for (const property of input.properties ?? []) {
+    if (property.use === 'unknown') {
+      tasks.push({
+        id: `task:property-use-missing:${property.id}`,
+        caseId: input.caseId,
+        type: 'property_use_missing',
+        title: `Definir el uso de ${property.label}`,
+        explanation: '¿Para qué usaste este inmueble durante el año gravable?',
+        source: 'property',
+        stage: 'declaracion',
+        view: 'inmuebles',
+        entityId: null,
+        documentId: null,
+        requirementId: null,
+        candidateId: null,
+        reconciliationId: null,
+        matrixGroupId: null,
+        extractionSessionId: null,
+        profileId: null,
+        page: null,
+        propertyId: property.id,
+        priority: 'medium',
+        blocking: false,
+        status: 'pending',
+        recommendedAction: 'Elegir el uso del inmueble',
+        ruleId: 'case-task.property-use-missing.v1',
+        evidence: [],
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      });
+      continue;
+    }
+    const isIncomeGenerating =
+      property.use === 'rented' || property.use === 'mixed' || property.use === 'business_use';
+    if (!isIncomeGenerating) continue;
+    const activities = (input.rentalActivities ?? []).filter(
+      (activity) => activity.propertyId === property.id,
+    );
+    if (!activities.length) {
+      tasks.push({
+        id: `task:rental-period-missing:${property.id}`,
+        caseId: input.caseId,
+        type: 'rental_period_missing',
+        title: `Registrar el período de actividad de ${property.label}`,
+        explanation:
+          'Falta el período en que el inmueble generó renta; no se asumen los 12 meses del año.',
+        source: 'property',
+        stage: 'declaracion',
+        view: 'inmuebles',
+        entityId: null,
+        documentId: null,
+        requirementId: null,
+        candidateId: null,
+        reconciliationId: null,
+        matrixGroupId: null,
+        extractionSessionId: null,
+        profileId: null,
+        page: null,
+        propertyId: property.id,
+        priority: 'medium',
+        blocking: false,
+        status: 'pending',
+        recommendedAction: 'Registrar el período de arrendamiento o actividad',
+        ruleId: 'case-task.rental-period-missing.v1',
+        evidence: [],
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      });
+      continue;
+    }
+    const incomes = (input.rentalIncomes ?? []).filter((income) => income.propertyId === property.id);
+    if (!incomes.length) {
+      tasks.push({
+        id: `task:property-income-unreconciled:${property.id}`,
+        caseId: input.caseId,
+        type: 'property_income_unreconciled',
+        title: `Vincular el ingreso por arrendamiento de ${property.label}`,
+        explanation:
+          'El inmueble tiene un período de actividad registrado, pero ningún ingreso (exógena, hecho documental o manual) está vinculado todavía.',
+        source: 'property',
+        stage: 'declaracion',
+        view: 'inmuebles',
+        entityId: null,
+        documentId: null,
+        requirementId: null,
+        candidateId: null,
+        reconciliationId: null,
+        matrixGroupId: null,
+        extractionSessionId: null,
+        profileId: null,
+        page: null,
+        propertyId: property.id,
+        priority: 'medium',
+        blocking: false,
+        status: 'pending',
+        recommendedAction: 'Vincular un ingreso por arrendamiento',
+        ruleId: 'case-task.property-income-unreconciled.v1',
+        evidence: [],
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      });
+    }
+  }
+  for (const expense of input.propertyExpenses ?? []) {
+    const property = (input.properties ?? []).find((item) => item.id === expense.propertyId);
+    const propertyLabel = property?.label ?? 'el inmueble';
+    if (expense.eligibilityStatus === 'requires_support' && expense.expenseType === 'administration_fee') {
+      tasks.push({
+        id: `task:administration-support-missing:${expense.id}`,
+        caseId: input.caseId,
+        type: 'administration_support_missing',
+        title: `Registrar soporte de administración de ${propertyLabel}`,
+        explanation:
+          'Las cuotas de administración no necesariamente se soportan con factura. Conserva evidencia idónea del cobro y del pago.',
+        source: 'property',
+        stage: 'declaracion',
+        view: 'inmuebles',
+        entityId: null,
+        documentId: null,
+        requirementId: null,
+        candidateId: null,
+        reconciliationId: null,
+        matrixGroupId: null,
+        extractionSessionId: null,
+        profileId: null,
+        page: null,
+        propertyId: expense.propertyId,
+        propertyExpenseId: expense.id,
+        priority: 'low',
+        blocking: false,
+        status: 'pending',
+        recommendedAction: 'Adjuntar cuenta de cobro, certificado o comprobante de pago',
+        ruleId: 'case-task.administration-support-missing.v1',
+        evidence: [],
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      });
+      continue;
+    }
+    if (expense.eligibilityStatus === 'requires_allocation') {
+      tasks.push({
+        id: `task:property-expense-allocation-required:${expense.id}`,
+        caseId: input.caseId,
+        type: 'property_expense_allocation_required',
+        title: `Definir asignación del gasto en ${propertyLabel}`,
+        explanation:
+          'El inmueble tiene uso mixto: define el porcentaje o el período de la actividad generadora de renta antes de evaluar este gasto.',
+        source: 'property',
+        stage: 'declaracion',
+        view: 'inmuebles',
+        entityId: null,
+        documentId: null,
+        requirementId: null,
+        candidateId: null,
+        reconciliationId: null,
+        matrixGroupId: null,
+        extractionSessionId: null,
+        profileId: null,
+        page: null,
+        propertyId: expense.propertyId,
+        propertyExpenseId: expense.id,
+        priority: 'medium',
+        blocking: false,
+        status: 'pending',
+        recommendedAction: 'Definir el método y porcentaje de asignación',
+        ruleId: 'case-task.property-expense-allocation-required.v1',
+        evidence: [],
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      });
+      continue;
+    }
+    if (
+      expense.eligibilityStatus === 'requires_review' ||
+      (expense.eligibilityStatus === 'requires_support' && expense.expenseType !== 'administration_fee') ||
+      (expense.eligibilityStatus === 'potentially_deductible' && expense.decisionStatus === 'pending')
+    ) {
+      tasks.push({
+        id: `task:property-expense-review-required:${expense.id}`,
+        caseId: input.caseId,
+        type: 'property_expense_review_required',
+        title: `Revisar gasto de ${propertyLabel}`,
+        explanation: expense.eligibilityReasons[0] ?? 'Este gasto de inmueble requiere tu revisión.',
+        source: 'property',
+        stage: 'declaracion',
+        view: 'inmuebles',
+        entityId: null,
+        documentId: null,
+        requirementId: null,
+        candidateId: null,
+        reconciliationId: null,
+        matrixGroupId: null,
+        extractionSessionId: null,
+        profileId: null,
+        page: null,
+        propertyId: expense.propertyId,
+        propertyExpenseId: expense.id,
+        priority: expense.isExtraordinary || expense.possiblyDuplicateOfExpenseId ? 'high' : 'low',
+        blocking: false,
+        status: 'pending',
+        recommendedAction: 'Confirmar o descartar este gasto',
+        ruleId: 'case-task.property-expense-review-required.v1',
+        evidence: [],
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      });
     }
   }
 

@@ -64,6 +64,17 @@ import type {
   UploadedDocument,
   WorkflowStageId,
   WorkflowViewId,
+  TaxProperty,
+  PropertyType,
+  PropertyUse,
+  RentalActivity,
+  RentalIncome,
+  RentalIncomeSourceKind,
+  PropertyExpense,
+  PropertyExpenseType,
+  PropertyAllocationMethod,
+  PropertySupportStatus,
+  PropertyExpenseDecisionStatus,
 } from '@nexus-tax/domain';
 import {
   ACCEPTED_SOURCE_RULE_VERSION,
@@ -86,6 +97,7 @@ import {
 import { getDb, type StoredResult, type DependentsCaseContext } from './db';
 import { newId, nowIso } from './id';
 import { buildEmploymentIncomeGroup, calculateEmploymentGroupCoverage } from './taxCaseAnalysis';
+import { evaluatePropertyExpenseEligibility } from '@nexus-tax/aegis-rules';
 import {
   DEPENDENTS_ENGINE_VERSION,
   buildArticle336Input,
@@ -3588,5 +3600,370 @@ export async function setElectronicInvoicingBenefitOptedOut(
   });
   await db.electronicInvoiceReports.put({ ...report, benefitOptedOut: optedOut });
   await rebuildForm210Draft(caseId);
+}
+
+// --- Inmuebles, renta inmobiliaria y administración de propiedad
+// horizontal (Sprint 2.4, Fase G) ---
+//
+// Principio inviolable (§2 del prompt): `propiedad del inmueble != gasto
+// deducible`. Ningún gasto se cablea al Formulario 210 en esta fase (§25):
+// `TaxProperty`/`PropertyExpense` son candidatos, nunca un hecho tributario
+// aplicado — ver `docs/PROPERTY_INCOME_EXPENSES_2025.md`.
+
+export async function getTaxProperties(caseId: string): Promise<TaxProperty[]> {
+  return getDb().taxProperties.where('caseId').equals(caseId).toArray();
+}
+
+export async function getRentalActivities(caseId: string): Promise<RentalActivity[]> {
+  return getDb().rentalActivities.where('caseId').equals(caseId).toArray();
+}
+
+export async function getRentalIncomes(caseId: string): Promise<RentalIncome[]> {
+  return getDb().rentalIncomes.where('caseId').equals(caseId).toArray();
+}
+
+export async function getPropertyExpenses(caseId: string): Promise<PropertyExpense[]> {
+  return getDb().propertyExpenses.where('caseId').equals(caseId).toArray();
+}
+
+export interface SaveTaxPropertyInput {
+  label: string;
+  propertyType: PropertyType;
+  use: PropertyUse;
+  ownershipPercentage: number;
+  ownedFrom?: string | null;
+  ownedUntil?: string | null;
+  taxYear: number;
+  cadastralValue?: number | null;
+  fiscalValue?: number | null;
+  acquisitionValue?: number | null;
+  locationMasked?: string | null;
+  sourceDocumentIds?: string[];
+}
+
+/** Crea un inmueble. `use` inicia en lo que el analista elija (§20); nunca se infiere. */
+export async function createTaxProperty(
+  caseId: string,
+  input: SaveTaxPropertyInput,
+): Promise<TaxProperty> {
+  const db = getDb();
+  const timestamp = nowIso();
+  const property: TaxProperty = {
+    id: newId('property'),
+    caseId,
+    label: input.label.trim(),
+    propertyType: input.propertyType,
+    use: input.use,
+    ownershipPercentage: Math.max(0, Math.min(100, input.ownershipPercentage)),
+    ownedFrom: input.ownedFrom ?? null,
+    ownedUntil: input.ownedUntil ?? null,
+    taxYear: input.taxYear,
+    cadastralValue: input.cadastralValue ?? null,
+    fiscalValue: input.fiscalValue ?? null,
+    acquisitionValue: input.acquisitionValue ?? null,
+    locationMasked: input.locationMasked ?? null,
+    sourceDocumentIds: input.sourceDocumentIds ?? [],
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+  await db.taxProperties.add(property);
+  return property;
+}
+
+/**
+ * Edita un inmueble y recalcula en cascada la elegibilidad de todos sus
+ * gastos (§26): un cambio de uso, período o asignación puede cambiar el
+ * estado de cada `PropertyExpense` asociado.
+ */
+export async function updateTaxProperty(
+  propertyId: string,
+  changes: Partial<SaveTaxPropertyInput>,
+): Promise<TaxProperty | undefined> {
+  const db = getDb();
+  const existing = await db.taxProperties.get(propertyId);
+  if (!existing) return undefined;
+  const updated: TaxProperty = {
+    ...existing,
+    ...changes,
+    ownershipPercentage:
+      changes.ownershipPercentage !== undefined
+        ? Math.max(0, Math.min(100, changes.ownershipPercentage))
+        : existing.ownershipPercentage,
+    updatedAt: nowIso(),
+  };
+  await db.taxProperties.put(updated);
+  const expenses = await db.propertyExpenses.where('propertyId').equals(propertyId).toArray();
+  for (const expense of expenses) await recalculatePropertyExpenseEligibility(expense.id);
+  return updated;
+}
+
+/** Elimina un inmueble y todo lo que dependa de él (actividad, ingresos, gastos) — no hay hecho tributario aplicado que preservar (§25). */
+export async function deleteTaxProperty(propertyId: string): Promise<void> {
+  const db = getDb();
+  const [activities, incomes, expenses] = await Promise.all([
+    db.rentalActivities.where('propertyId').equals(propertyId).toArray(),
+    db.rentalIncomes.where('propertyId').equals(propertyId).toArray(),
+    db.propertyExpenses.where('propertyId').equals(propertyId).toArray(),
+  ]);
+  await Promise.all([
+    db.rentalActivities.bulkDelete(activities.map((item) => item.id)),
+    db.rentalIncomes.bulkDelete(incomes.map((item) => item.id)),
+    db.propertyExpenses.bulkDelete(expenses.map((item) => item.id)),
+    db.taxProperties.delete(propertyId),
+  ]);
+}
+
+export interface SaveRentalActivityInput {
+  from: string;
+  to: string;
+  monthsCovered: number;
+  notes?: string;
+}
+
+/** Registra el período real de arrendamiento/actividad (§4/§13): nunca se asumen los 12 meses del año por defecto. */
+export async function createRentalActivity(
+  caseId: string,
+  propertyId: string,
+  input: SaveRentalActivityInput,
+): Promise<RentalActivity> {
+  const db = getDb();
+  const timestamp = nowIso();
+  const activity: RentalActivity = {
+    id: newId('rental-activity'),
+    caseId,
+    propertyId,
+    from: input.from,
+    to: input.to,
+    monthsCovered: Math.max(0, Math.min(12, input.monthsCovered)),
+    notes: input.notes,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+  await db.rentalActivities.add(activity);
+  const expenses = await db.propertyExpenses.where('propertyId').equals(propertyId).toArray();
+  for (const expense of expenses) await recalculatePropertyExpenseEligibility(expense.id);
+  return activity;
+}
+
+export async function removeRentalActivity(activityId: string): Promise<void> {
+  const db = getDb();
+  const activity = await db.rentalActivities.get(activityId);
+  if (!activity) return;
+  await db.rentalActivities.delete(activityId);
+  const expenses = await db.propertyExpenses
+    .where('propertyId')
+    .equals(activity.propertyId)
+    .toArray();
+  for (const expense of expenses) await recalculatePropertyExpenseEligibility(expense.id);
+}
+
+export interface LinkRentalIncomeInput {
+  propertyId: string;
+  rentalActivityId: string | null;
+  sourceKind: RentalIncomeSourceKind;
+  /** Id del registro exógeno o del `DocumentFact`; `null` solo para `manual` (§5). */
+  sourceId: string | null;
+  amountCop: number;
+  period?: string | null;
+  notes?: string;
+}
+
+/**
+ * Vincula un ingreso al inmueble. Para `exogenous_record`/`document_fact`
+ * NUNCA crea un valor nuevo: `amountCop` es una copia de lectura de la
+ * fuente ya existente, para presentación — la fuente de verdad y
+ * cualquier suma agregada siguen viviendo en `results`/`facts` (§5/§26,
+ * evita doble conteo).
+ */
+export async function linkRentalIncome(
+  caseId: string,
+  input: LinkRentalIncomeInput,
+): Promise<RentalIncome> {
+  const db = getDb();
+  const timestamp = nowIso();
+  const income: RentalIncome = {
+    id: newId('rental-income'),
+    caseId,
+    propertyId: input.propertyId,
+    rentalActivityId: input.rentalActivityId,
+    sourceKind: input.sourceKind,
+    sourceId: input.sourceId,
+    amountCop: input.amountCop,
+    period: input.period ?? null,
+    notes: input.notes,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+  await db.rentalIncomes.add(income);
+  const expenses = await db.propertyExpenses
+    .where('propertyId')
+    .equals(input.propertyId)
+    .toArray();
+  for (const expense of expenses) await recalculatePropertyExpenseEligibility(expense.id);
+  return income;
+}
+
+export async function removeRentalIncome(incomeId: string): Promise<void> {
+  const db = getDb();
+  const income = await db.rentalIncomes.get(incomeId);
+  if (!income) return;
+  await db.rentalIncomes.delete(incomeId);
+  const expenses = await db.propertyExpenses
+    .where('propertyId')
+    .equals(income.propertyId)
+    .toArray();
+  for (const expense of expenses) await recalculatePropertyExpenseEligibility(expense.id);
+}
+
+export interface SavePropertyExpenseInput {
+  expenseType: PropertyExpenseType;
+  rentalActivityId?: string | null;
+  period?: string | null;
+  amountCop: number;
+  sourceDocumentId?: string | null;
+  evidenceDescription?: string | null;
+  supportStatus: PropertySupportStatus;
+  supportTypes?: string[];
+  allocationMethod?: PropertyAllocationMethod;
+  allocationPercentage?: number | null;
+  allocationReason?: string | null;
+  isExtraordinary?: boolean;
+  possiblyDuplicateOfExpenseId?: string | null;
+  relatedFactId?: string | null;
+}
+
+/**
+ * Crea un gasto candidato de inmueble y calcula su elegibilidad potencial
+ * de inmediato (§9). Nunca marca `decisionStatus: 'confirmed'` al crear:
+ * la confirmación siempre es una acción humana posterior explícita (§25).
+ */
+export async function createPropertyExpense(
+  caseId: string,
+  propertyId: string,
+  input: SavePropertyExpenseInput,
+): Promise<PropertyExpense> {
+  const db = getDb();
+  const timestamp = nowIso();
+  const expense: PropertyExpense = {
+    id: newId('property-expense'),
+    propertyId,
+    caseId,
+    expenseType: input.expenseType,
+    rentalActivityId: input.rentalActivityId ?? null,
+    period: input.period ?? null,
+    amountCop: input.amountCop,
+    sourceDocumentId: input.sourceDocumentId ?? null,
+    evidenceDescription: input.evidenceDescription ?? null,
+    supportStatus: input.supportStatus,
+    supportTypes: input.supportTypes ?? [],
+    allocationMethod: input.allocationMethod ?? 'unknown',
+    allocationPercentage: input.allocationPercentage ?? null,
+    allocationReason: input.allocationReason ?? null,
+    eligibilityStatus: 'requires_context',
+    eligibilityReasons: [],
+    ruleVersion: '',
+    decisionStatus: 'pending',
+    reasons: [],
+    isExtraordinary: input.isExtraordinary ?? false,
+    possiblyDuplicateOfExpenseId: input.possiblyDuplicateOfExpenseId ?? null,
+    relatedFactId: input.relatedFactId ?? null,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+  await db.propertyExpenses.add(expense);
+  const recalculated = await recalculatePropertyExpenseEligibility(expense.id);
+  return recalculated ?? expense;
+}
+
+/** Edita un gasto de inmueble y recalcula su elegibilidad (§9/§26). */
+export async function updatePropertyExpense(
+  expenseId: string,
+  changes: Partial<SavePropertyExpenseInput>,
+): Promise<PropertyExpense | undefined> {
+  const db = getDb();
+  const existing = await db.propertyExpenses.get(expenseId);
+  if (!existing) return undefined;
+  const updated: PropertyExpense = {
+    ...existing,
+    ...changes,
+    allocationPercentage:
+      changes.allocationPercentage !== undefined
+        ? changes.allocationPercentage
+        : existing.allocationPercentage,
+    updatedAt: nowIso(),
+  };
+  await db.propertyExpenses.put(updated);
+  return recalculatePropertyExpenseEligibility(expenseId);
+}
+
+/** Decisión humana explícita sobre un gasto — nunca se autoconfirma (§9/§25). */
+export async function decidePropertyExpense(
+  expenseId: string,
+  decisionStatus: PropertyExpenseDecisionStatus,
+  reasons: string[] = [],
+): Promise<PropertyExpense | undefined> {
+  const db = getDb();
+  const existing = await db.propertyExpenses.get(expenseId);
+  if (!existing) return undefined;
+  const updated: PropertyExpense = {
+    ...existing,
+    decisionStatus,
+    reasons,
+    updatedAt: nowIso(),
+  };
+  await db.propertyExpenses.put(updated);
+  return updated;
+}
+
+export async function removePropertyExpense(expenseId: string): Promise<void> {
+  await getDb().propertyExpenses.delete(expenseId);
+}
+
+/**
+ * Recalcula la elegibilidad potencial de un gasto (`evaluatePropertyExpenseEligibility`,
+ * `@nexus-tax/aegis-rules`) a partir del estado actual del inmueble, la
+ * actividad de arrendamiento y los ingresos vinculados. Nunca escribe al
+ * Formulario 210 (§25): solo actualiza `eligibilityStatus`/`eligibilityReasons`.
+ */
+export async function recalculatePropertyExpenseEligibility(
+  expenseId: string,
+): Promise<PropertyExpense | undefined> {
+  const db = getDb();
+  const expense = await db.propertyExpenses.get(expenseId);
+  if (!expense) return undefined;
+  const [property, taxCase, incomes] = await Promise.all([
+    db.taxProperties.get(expense.propertyId),
+    db.cases.get(expense.caseId),
+    db.rentalIncomes.where('propertyId').equals(expense.propertyId).toArray(),
+  ]);
+  const taxYear = taxCase?.taxYear ?? property?.taxYear ?? 2025;
+  const hasRentalPeriodDefined = expense.rentalActivityId
+    ? Boolean(await db.rentalActivities.get(expense.rentalActivityId))
+    : (await db.rentalActivities.where('propertyId').equals(expense.propertyId).count()) > 0;
+  const relevantIncomes = expense.rentalActivityId
+    ? incomes.filter((income) => income.rentalActivityId === expense.rentalActivityId)
+    : incomes;
+  const evaluation = evaluatePropertyExpenseEligibility({
+    taxYear,
+    propertyUse: property?.use ?? 'unknown',
+    expenseType: expense.expenseType,
+    hasCompatibleRentalIncome: relevantIncomes.length > 0,
+    hasRentalPeriodDefined,
+    supportStatus: expense.supportStatus,
+    supportTypes: expense.supportTypes,
+    allocationMethod: expense.allocationMethod,
+    allocationPercentage: expense.allocationPercentage,
+    isExtraordinary: expense.isExtraordinary,
+    hasPossibleDuplicate: Boolean(expense.possiblyDuplicateOfExpenseId || expense.relatedFactId),
+  });
+  const updated: PropertyExpense = {
+    ...expense,
+    eligibilityStatus: evaluation.status,
+    eligibilityReasons: [...evaluation.reasons],
+    ruleVersion: evaluation.ruleVersion,
+    updatedAt: nowIso(),
+  };
+  await db.propertyExpenses.put(updated);
+  return updated;
 }
 

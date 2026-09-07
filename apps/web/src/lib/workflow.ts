@@ -107,6 +107,7 @@ export const WORKFLOW_STAGES: readonly WorkflowStageDefinition[] = [
       { id: 'formulario-210', label: 'Borrador Formulario 210' },
       { id: 'declaraciones-anteriores', label: 'Declaraciones anteriores' },
       { id: 'beneficios-dependientes', label: 'Beneficios y deducciones' },
+      { id: 'inmuebles', label: 'Inmuebles' },
       { id: 'facturacion-electronica', label: 'Facturación electrónica' },
       { id: 'liquidacion-preliminar', label: 'Liquidación preliminar' },
       { id: 'estados', label: 'Estados' },

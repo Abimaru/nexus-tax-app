@@ -70,6 +70,18 @@ export const CaseTaskTypeSchema = z.enum([
   'evidence_ambiguous_match',
   /** Existe una expectativa de evidencia (`ExpectedTaxEvidence`) sin ningún candidato documental que la resuelva; requiere captura manual guiada. */
   'evidence_missing_expected',
+  /** Un inmueble no tiene definido su uso durante el año gravable (Sprint 2.4, Fase G). */
+  'property_use_missing',
+  /** Un inmueble arrendado no tiene definido el período de arrendamiento. */
+  'rental_period_missing',
+  /** Existe ingreso por arrendamiento sin conciliar contra la exógena/hecho documental. */
+  'property_income_unreconciled',
+  /** Falta soporte idóneo para un gasto de administración de propiedad horizontal. */
+  'administration_support_missing',
+  /** Un gasto de inmueble en uso mixto requiere asignación (porcentaje/período) antes de evaluarse. */
+  'property_expense_allocation_required',
+  /** Un gasto de inmueble requiere revisión humana (posible duplicado, cuota extraordinaria, u otra ambigüedad). */
+  'property_expense_review_required',
 ]);
 export type CaseTaskType = z.infer<typeof CaseTaskTypeSchema>;
 
@@ -100,6 +112,7 @@ export const CaseTaskSchema = z.object({
     'prior_year_return',
     'dependent',
     'electronic_invoice',
+    'property',
   ]),
   stage: WorkflowStageIdSchema,
   view: WorkflowViewIdSchema,
@@ -120,6 +133,9 @@ export const CaseTaskSchema = z.object({
   electronicInvoicePurchaseId: z.string().nullable().optional(),
   /** Reporte de facturación electrónica al que deep-linkea la tarea (Sprint 2.4, Fase D). */
   electronicInvoiceReportId: z.string().nullable().optional(),
+  /** Inmueble o gasto de inmueble al que deep-linkea la tarea (Sprint 2.4, Fase G). */
+  propertyId: z.string().nullable().optional(),
+  propertyExpenseId: z.string().nullable().optional(),
   priority: z.enum(['high', 'medium', 'low']),
   blocking: z.boolean(),
   status: CaseTaskStatusSchema,

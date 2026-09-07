@@ -299,6 +299,55 @@ export const OFFICIAL_SOURCES_2025: readonly OfficialSourceReference[] = [
       'Justificación patrimonial: aumentos de patrimonio no explicados por los ingresos declarados',
     relatedBoxNumbers: [29, 31],
   },
+  // Inmuebles, renta inmobiliaria y administración de propiedad horizontal
+  // (Sprint 2.4, Fase G).
+  {
+    id: 'et-art-107',
+    authority: 'Estatuto Tributario',
+    title:
+      'Estatuto Tributario, artículo 107 — Deducciones: relación de causalidad, necesidad y proporcionalidad',
+    url: 'https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=6533#107',
+    verifiedAt: VERIFIED_AT,
+    taxYear: null,
+    scope:
+      'Requisito general de causalidad/necesidad/proporcionalidad para cualquier costo o gasto asociado a una actividad productora de renta (incluida la renta de capital por arrendamiento)',
+    relatedBoxNumbers: [60],
+  },
+  {
+    id: 'et-art-743',
+    authority: 'Estatuto Tributario',
+    title: 'Estatuto Tributario, artículo 743 — Idoneidad de los medios de prueba',
+    url: 'https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=6533#743',
+    verifiedAt: VERIFIED_AT,
+    taxYear: null,
+    scope:
+      'La idoneidad de un soporte depende primero de lo que exija la ley para ese hecho y, en su defecto, de su conexión y valor de convicción según la sana crítica — no exige un único tipo de documento (p. ej. factura) cuando la ley no lo exige expresamente',
+    relatedBoxNumbers: [60],
+  },
+  {
+    id: 'decreto-1625-2016-art-1-3-1-13-5',
+    authority: 'Presidencia',
+    title:
+      'Decreto 1625 de 2016, artículo 1.3.1.13.5 — Cuotas de administración de propiedad horizontal',
+    url: 'https://normograma.dian.gov.co/dian/compilacion/docs/decreto_1625_2016.htm',
+    verifiedAt: VERIFIED_AT,
+    taxYear: null,
+    scope:
+      'Las cuotas de administración fijadas por la junta de copropietarios son un aporte a capital, no constituyen hecho generador de IVA ni corresponden a la venta de un bien o prestación de un servicio comercial facturable',
+    relatedBoxNumbers: [60],
+  },
+  {
+    id: 'dian-oficio-912878-2021',
+    authority: 'DIAN',
+    title:
+      'Oficio DIAN 912878 de 2021 — Facturación electrónica y cuotas de administración de propiedad horizontal',
+    url: 'https://normograma.dian.gov.co/dian/compilacion/docs/oficio_dian_912878_2021.htm',
+    verifiedAt: VERIFIED_AT,
+    taxYear: null,
+    scope:
+      'Confirma que las cuotas ordinarias/extraordinarias de administración no generan obligación de facturación electrónica por su naturaleza de expensas comunes, esenciales para el funcionamiento y conservación de bienes comunes',
+    relatedBoxNumbers: [60],
+  },
 ] as const;
 
 /**

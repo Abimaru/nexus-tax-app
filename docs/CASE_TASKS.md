@@ -119,6 +119,38 @@ estructuralmente sin certificado esperado (`card_consumption`, `bank_movement`,
 `docs/EVIDENCE_MATCHING.md` §Fase F.3 §16. Esto reduce falsos `unresolved` sin tocar el mecanismo
 de tareas.
 
+## Inmuebles, renta inmobiliaria y administración de propiedad horizontal (Sprint 2.4, Fase G)
+
+Seis tipos nuevos con `source: 'property'`, campos `propertyId`/`propertyExpenseId` para
+trazabilidad y destino `declaracion/inmuebles`, derivados en `buildCaseTasks` a partir de
+`properties`/`rentalActivities`/`rentalIncomes`/`propertyExpenses` (nunca reinterpretando las
+`eligibilityReasons` en texto libre del motor puro, para no acoplar la generación de tareas a
+cambios de copy):
+
+- `property_use_missing`: el inmueble sigue con `use: 'unknown'` — no se asume ningún tratamiento
+  hasta que el analista defina qué hizo con él durante el año.
+- `rental_period_missing`: el uso implica arrendamiento/actividad económica (`rented`, `mixed`,
+  `business_use`) pero no hay ningún `RentalActivity` registrado — nunca se asumen los 12 meses del
+  año por defecto.
+- `property_income_unreconciled`: existe período pero ningún `RentalIncome` vinculado para ese
+  inmueble.
+- `administration_support_missing`: un gasto de administración de PH tiene `supportStatus`
+  `missing`/`partially_supported`/`requires_review` — el texto de la tarea recuerda explícitamente
+  que la administración de PH nunca exige factura (cuenta de cobro, certificado de la copropiedad,
+  recibo o comprobante de pago bastan).
+- `property_expense_allocation_required`: el inmueble es de uso mixto y el gasto todavía no tiene
+  `allocationMethod`/`allocationPercentage` definidos.
+- `property_expense_review_required`: agrupa tres causas con prioridad `high` cuando hay posible
+  duplicado o cuota extraordinaria, y `low` para soporte no-administración pendiente o un gasto
+  `potentially_deductible` en espera de la decisión humana (`decisionStatus: 'pending'`). El estado
+  `requires_context` deliberadamente **no** genera una tarea propia a nivel de gasto: ya está
+  cubierto por las tres tareas de inmueble anteriores, evitando duplicar el mismo pendiente dos
+  veces.
+
+Ver `docs/PROPERTY_INCOME_EXPENSES_2025.md` para el modelo de dominio, el motor de elegibilidad y
+los guardarraíles de doble conteo. Esta fase **no** escribe ningún valor al Formulario 210 (ver
+limitación explícita documentada allí).
+
 Cuando un documento se enruta como declaración anterior o extracto bancario transaccional
 (`decideDocumentRouting`, `packages/document-intelligence/src/documentRouting.ts`), no se generan
 tareas de tipo `confirm_candidate`/`identify_product`/`associate_entity` para ese documento (no hay
