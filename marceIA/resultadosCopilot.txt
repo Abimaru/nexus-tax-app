@@ -1,808 +1,1030 @@
-PRIMER RESULTADO PDF
+PRIMERA PRUEBA JSON + PNG
 
-Informe de Evaluación Blueprint
-Blueprint evaluado: MCI - BP - QR Payment Transactions Reporting - Payment Transactions - retrieveTransactionSummary.pdf
- Normativa aplicada: NORMATIVA_BLUEPRINTS_CONSOLIDADA_v0.4.0.md v0.4.0
- Catálogo visual de referencia: CATALOGO_VISUAL_BLUEPRINTS_v0.4.0.pdf v0.4.0
-1. Resumen Ejecutivo
-Contexto confirmado
-Campo	ValorEscenario	E1 - API directa al backend
-Tipo	API Privada
-Eventos de comportamiento	Ninguno
-Patrón de interacción	Síncrono
-Modelo de despliegue	MCI
-Descripción de la arquitectura
-El blueprint modela una API privada denominada QR Payment Transactions Reporting - Payment Transactions v1.0.0 cuya operación es retrieveTransactionSummary. Expone una consulta de consolidado de transacciones QR, validando autorización, pertenencia del cliente, validaciones de entrada y posterior consolidación de resultados. El flujo se encuentra modelado bajo esquema MCI con Flujo Transaccional y Capa de Arquitectura.
-Resultado Ejecutivo
-Estado	CantidadCumple	24
-No Cumple	8
-Parcialmente Cumple	3
-No Verificable	11
-No Aplica	18
-Cumplimiento estimado sobre reglas verificables: ≈ 69%
-Nota metodológica: múltiples validaciones visuales (colores, iconografía específica, orientación de conectores, doble circunferencia, tipos de línea, ubicación exacta dentro de contenedores) no pueden verificarse completamente a partir del texto extraído del PDF. Se clasifican como No Verificable conforme a la normativa.
-2. Componentes Identificados
-Contenedores
-Contenedor Padre
-INTEGRACIÓN ✅
-Contenedor Productor
-NEPA - NUEVAS EXPERIENCIAS DE PAGO ✅
-Corresponde al DOMINIO PRODUCTOR renombrado con el nombre del equipo. Permitido por la normativa.
-Contenedor Hijo
-NOMBRE SERVICIO ⚠️
-Se identifica como plantilla sin reemplazar.
-Capas
-Flujo Transaccional
-Flujo Transaccional - no-monetario ✅
-Capa Arquitectónica
-Capa de Arquitectura - composicion ✅
-Valor permitido según normativa.
-Referencias visuales aplicables
-CV-009 CapaDespliegueAPIInterna.png (pág. 10)
-API
-Identificación
-Producto: QR Payment Transactions Reporting
-API: Payment Transactions
-Versión: v1.0.0
-Operación: retrieveTransactionSummary
-Tipo: Private
-Modelo servicio: Entidad
-Modelos
-Modelo Entrada:
+He verificado acceso real a los tres artefactos requeridos:
+ESTANDAR_BLUEPRINTS_INTEGRADO_v0.5.1 accesible y legible. Contiene la normativa consolidada y el catálogo visual.
+MCI - BP - QR Payment Transactions Reporting - Payment Transactions accesible y legible. Contiene múltiples páginas/operaciones, incluyendo la página retrieveTransactionSummary que parece corresponder a la imagen suministrada.
+PNG adjunto MCI - BP - QR Payment Transactions Reporting - Payment Transactions - retrieveTransactionSummary.png detectado en la conversación. Sin embargo, antes de usarlo como evidencia visual definitiva necesito considerar su contenido como la fuente V de la evaluación. El archivo fue recibido por el sistema y existe referencia explícita al mismo.
+Además, ya puedo delimitar preliminarmente la operación objetivo:
+Página JSON candidata: retrieveTransactionSummary (index 1).
+Operación API: retrieveTransactionSummary.
+Producto/API: QR Payment Transactions Reporting - Payment Transactions v1.0.0.
+Según el protocolo v0.5.1, no debo generar inventarios ni emitir conclusiones arquitectónicas hasta confirmar los cinco parámetros contextuales.
+Por favor confirma estos cinco datos:
+Escenario arquitectónico: E1, E2 o E3
+Sugerencia preliminar basada en JSON: existe contenedor hijo"NOMBRE SERVICIO" dentro de INTEGRACIÓN, pero no puedo declarar E2 sin tu confirmación ni sin evidencia normativa completa de servicio gestionado.
+Objeto evaluado:
+API privada
+API pública
+API partner
+Servicio
+Eventos de comportamiento:
+Ninguno
+Con respuesta
+Sin respuesta
+Ambos
+Comunicación:
+Síncrona
+Asíncrona
+Mixta
+Arquitectura:
+MCI
+Federada
+Cuando confirmes esos cinco parámetros, procederé en este orden estricto:
+Inventario J (JSON) limitado exclusivamente a la operación visual.
+Inventario V (PNG) independiente.
+Matriz de conciliación JSON vs PNG.
+Informe arquitectónico completo de siete secciones.
+Aplicaré únicamente las reglas del estándar integrado y conservaré las referencias exactas de reglas, figuras CV y páginas normativas utilizadas.
+Proporcione sus comentarios sobre BizChat
+Orígenes
+You said:
+
+ Escenario arquitectónico: E1 Objeto evaluado: API privada Eventos de comportamiento: Ninguno Comunicación: Síncrona Arquitectura: MCI
+Blueprint Evaluator said:
+Blueprint Evaluator
+Evaluación Controlada Blueprint Evaluator v0.5.1
+Fase previa completada
+Parámetros arquitectónicos confirmados por el analista:
+Escenario: E1
+Objeto evaluado: API privada
+Eventos de comportamiento: Ninguno
+Comunicación: Síncrona
+Arquitectura: MCI
+La evaluación se delimita exclusivamente a la operación retrieveTransactionSummary de la página homónima del JSON y al PNG proporcionado. Se excluyen páginas BDD, otras operaciones y la sección NOTACIÓN como instancia operativa, conforme al protocolo v0.5.1.
+1. Inventario estructural J (JSON)
+Alcance: operación retrieveTransactionSummary
+Fuente: página retrieveTransactionSummary del archivo MCI - BP - QR Payment Transactions Reporting - Payment Transactions.
+1.1 Contenedores
+Elemento	Clase	EvidenciaINTEGRACIÓN	UMLRectangleContainerBlock	Texto: "INTEGRACIÓN"
+Flujo Transaccional - no-monetario	UMLRectangleContainerBlock	Texto literal
+Capa de Arquitectura - composicion	UMLRectangleContainerBlock	Texto literal
+NEPA - NUEVAS EXPERIENCIAS DE PAGO	UMLRectangleContainerBlock	Texto literal
+NOMBRE SERVICIO	RectangleContainerBlock	Texto literal
+1.2 API
+Campo	ValorClase	UMLClassBlock
+Identificación	QR Payment Transactions Reporting - Payment Transactions v1.0.0
+Operación	retrieveTransactionSummary
+Tipo/modelo	Private - Entidad
+1.3 Modelo de entrada
+Texto estructural identificado:
+Plain Text
 accountOwner
 account
 pointOfSale
 requestedTransactionType
 reportingPeriod
-Modelo Salida:
+Incluye, entre otros:
+Plain Text
+identification
+schemeName
+creditDebitIndicator
+status
+bankTransactionCode
+localInstrument
+fromDate
+toDate
+1.4 Modelo de salida
+Texto estructural identificado:
+Plain Text
 transactionsSummary
 totalEntries
 numberOfEntries
 sum
-Comandos / Actividades
-Identificados:
+1.5 Proceso modelado
+Elementos BPMN identificados explícitamente:
+Tipo	TextoEvento inicio	Sin texto
+Compuerta exclusiva	¿Token de autorización enviado?
+Actividad	Validar pertenencia del cliente
+Compuerta exclusiva	¿La validacion de pertenencia es exitosa?
+Actividad	Permisos insuficientes
+Actividad	Validar información enviada para la consulta
+Compuerta exclusiva	¿La información enviada es válida?
+Actividad	No es posible realizar la consulta para los criterios enviados
+Actividad	Consultar movimientos de acuerdo a los filtros enviados
+Compuerta exclusiva	¿Existen transacciones relacionada con la consulta?
+Actividad	No se encontró información para los criterios enviados
+Actividad	Consolidar movimientos encontrados
+Evento fin	FIN
+1.6 Políticas / restricciones registradas
+TextoLa validación de pertenencia...
+El rango de fechas enviado debe ser válido y estar dentro del rango permitido
+Los filtros enviados para la consulta y la combinación entre ellos debe ser válida
+1.7 Relaciones explícitas
+Secuencia principal JSON:
+Plain Text
+API
+→ Evento inicio
+→ ¿Token de autorización enviado?
+ 
+SI
+→ Validar pertenencia del cliente
+→ ¿La validacion de pertenencia es exitosa?
+ 
+NO
+→ Permisos insuficientes
+ 
+SI
+→ Validar información enviada para la consulta
+→ ¿La información enviada es válida?
+ 
+NO
+→ No es posible realizar la consulta para los criterios enviados
+ 
+SI
+→ Consultar movimientos de acuerdo a los filtros enviados
+→ ¿Existen transacciones relacionada con la consulta?
+ 
+NO
+→ No se encontró información para los criterios enviados
+ 
+SI
+→ Consolidar movimientos encontrados
+→ FIN
+2. Inventario visual V (PNG)
+Advertencia metodológica
+Se registran únicamente características verificables visualmente. Cuando el tipo exacto depende de iconografía o color no verificable con suficiente precisión, se indica expresamente.
+2.1 Contenedores visibles
+Contenedor padre izquierdo
+Texto visible: INTEGRACIÓN
+Rectángulo grande gris claro
+Ubicado a la izquierda
+Contiene API y modelos
+Confianza: Alta
+Contenedor interno
+Texto visible:
+Flujo Transaccional - no-monetario
+Capa de Arquitectura - composicion
+Bordes segmentados externos
+Contenedor anidado interno
+Confianza: Alta
+Contenedor padre derecho
+Texto visible:
+NEPA - NUEVAS EXPERIENCIAS DE PAGO
+Rectángulo gris claro
+Ocupa parte derecha de la arquitectura
+Confianza: Alta
+Contenedor hijo
+Texto visible:
+NOMBRE SERVICIO
+Fondo azul claro
+Contiene el flujo BPMN
+Confianza: Alta
+2.2 API visible
+Se observa:
+Componente rectangular horizontal
+Tres secciones internas
+Texto visible:
+QR Payment Transactions Reporting - Payment Transactions v1.0.0
+retrieveTransactionSummary
+Private - Entidad
+Símbolo circular verde asociado en parte superior derecha
+Conector saliente hacia el proceso
+Confianza: Alta
+2.3 Modelos visibles
+Modelo entrada
+Rectángulo verde continuo.
+Texto visible:
+accountOwner
+account
+pointOfSale
+requestedTransactionType
+reportingPeriod
+Confianza: Alta
+Modelo salida
+Rectángulo verde con borde discontinuo.
+Texto visible:
+Plain Text
+transactionsSummary
+totalEntries
+numberOfEntries
+sum
+Confianza: Alta
+2.4 Flujo BPMN visible
+Inicio
+Evento circular superior
+Color crema claro aparente
+Sin texto interno visible
+Confianza: Alta
+Decisiones
+Visibles tres compuertas romboidales:
+¿Token de autorización enviado?
+¿La validación de pertenencia es exitosa?
+¿La información enviada es válida?
+¿Existen transacciones relacionada con la consulta?
+Confianza: Alta
+Actividades
+Se observan actividades rectangulares redondeadas:
 Validar pertenencia del cliente
 Validar información enviada para la consulta
 Consultar movimientos de acuerdo a los filtros enviados
 Consolidar movimientos encontrados
-Compuertas Exclusivas
-Detectadas:
+Color aparente gris azulado.
+La iconografía interna no es verificable a esta resolución.
+Confianza: Media-Alta
+2.5 Excepciones visibles
+Se observan tres eventos circulares rojos con símbolo interno similar a rayo:
+Permisos insuficientes
+El rango de fechas enviado no es válido + No es posible realizar la consulta...
+No se encontró información...
+Los mensajes aparecen en rectángulos morados discontinuos asociados visualmente.
+Confianza: Alta
+2.6 Políticas visibles
+Rectángulos morados continuos:
+El rango de fechas enviado debe ser válido...
+Los filtros enviados para la consulta...
+Y anotación explicativa de pertenencia.
+Confianza: Alta
+2.7 Conectividad visible
+Se verifican:
+Conector API → inicio.
+Conectores dirigidos verticales y horizontales.
+Ramas SI/NO visibles en las compuertas.
+Flujo continuo hasta FIN.
+Confianza: Alta
+3. Matriz de conciliación JSON vs PNG
+Elemento	JSON	PNG	ResultadoINTEGRACIÓN	Sí	Sí	Coincide
+Flujo transaccional no-monetario	Sí	Sí	Coincide
+Capa Arquitectura composicion	Sí	Sí	Coincide
+API privada	Sí	Sí	Coincide
+retrieveTransactionSummary	Sí	Sí	Coincide
+Modelo entrada	Sí	Sí	Coincide
+Modelo salida	Sí	Sí	Coincide
+Inicio	Sí	Sí	Coincide
+Validar pertenencia cliente	Sí	Sí	Coincide
+Validar información consulta	Sí	Sí	Coincide
+Consultar movimientos	Sí	Sí	Coincide
+Consolidar movimientos	Sí	Sí	Coincide
+Excepción permisos insuficientes	Sí	Sí	Coincide
+Excepción rango fechas	Sí	Sí	Coincide
+Excepción información no encontrada	Sí	Sí	Coincide
+FIN	Sí	Sí	Coincide
+Color exacto de comandos	No declarado	No verificable	Evidencia insuficiente
+Iconografía exacta de comandos	No declarada	No verificable	Evidencia insuficiente
+Clasificación semántica de comandos por icono	No demostrable	No verificable	Evidencia insuficiente
+4. Informe arquitectónico - Resumen Ejecutivo
+La operación evaluada corresponde a una API privada MCI denominada retrieveTransactionSummary, ubicada dentro del contenedor INTEGRACIÓN, con capas de despliegue Flujo Transaccional - no-monetario y Capa de Arquitectura - composicion. La evidencia JSON y visual presenta una correlación elevada para los componentes observables.
+Conforme a la confirmación del analista, el escenario evaluado es E1.
+No se identifica evidencia de eventos de comportamiento (query/command/event) modelados como componentes de mensajería. Los únicos eventos observados corresponden a BPMN de inicio, fin y excepción.
+No se declara E2 porque no existe evidencia confirmada de un servicio gestionado distinto de la API y de las capas MCI dentro de INTEGRACIÓN, requisito exigido por el protocolo.
+5. Matriz de cumplimiento normativo (resumen)
+Regla	EstadoAPI dentro de INTEGRACIÓN	Cumple
+API privada	Cumple
+Operación identificada	Cumple
+Modelo entrada asociado	Cumple
+Modelo salida asociado	Cumple
+Flujo transaccional MCI	Cumple
+Capa de arquitectura MCI	Cumple
+Flujo "no-monetario" correctamente nombrado	Cumple
+Capa "composicion" correctamente nombrada	Cumple
+Inicio visible	Cumple
+Fin visible	Cumple
+Excepciones de negocio visibles	Cumple
+Clasificación exacta de comandos por iconografía	No Verificable
+Validación cromática exacta de comandos	No Verificable
+Referencias principales:
+componenteApiPrivada.md
+componenteApiBase.md
+capasDespliegue.md
+simbolos.md
+eventos.md
+modelosLectura.md
+figuras CV‑007, CV‑009, CV‑065, CV‑059, CV‑053, CV‑067, CV‑069.
+6. Hallazgos y evidencias
+H1
+Estado: Cumple
+La API se encuentra dentro de INTEGRACIÓN y dentro de las capas MCI requeridas para API privada. Evidencia visual y JSON coincidente. Referencias: componenteApiPrivada.md, capasDespliegue.md, CV‑007, CV‑009.
+H2
+Estado: Cumple
+Existe modelo de entrada verificable asociado a la API. Referencia: modelosLectura.md, CV‑067.
+H3
+Estado: Cumple
+Existe modelo de salida verificable asociado a la API. Referencia: modelosLectura.md, CV‑069.
+H4
+Estado: No Verificable
+No es posible certificar el tipo exacto de varios comandos (consulta, sistema, sistema automatizado, usuario o subproceso) porque la resolución disponible no permite verificar inequívocamente iconografía interna ni cumplimiento cromático exacto. Referencia: comandos.md, principio de detección visual disciplinada.
+7. Brechas detectadas
+No se identifican brechas normativas verificables con la evidencia disponible.
+Limitaciones registradas:
+No verificable la iconografía exacta de los comandos.
+No verificable el cumplimiento cromático exacto de comandos.
+No verificable la clasificación normativa individual de cada comando basada únicamente en el PNG.
+Estas limitaciones no constituyen incumplimientos.
+8. Recomendaciones
+Conservar nomenclatura actual de flujo y capa arquitectónica.
+Mantener trazabilidad entre API, modelos y flujo BPMN.
+Para auditorías formales de comandos, utilizar exportación SVG/PDF vectorial o fuente Lucidchart original para verificar iconografía y color conforme a CV‑017, CV‑019, CV‑020, CV‑021 y CV‑022.
+9. Conclusión general
+Para el contexto confirmado (E1 / API privada / síncrona / MCI / sin eventos de comportamiento), el blueprint de retrieveTransactionSummary presenta consistencia entre JSON e imagen y evidencia suficiente de:
+API privada.
+Capas MCI requeridas.
+Flujo transaccional.
+Capa de arquitectura.
+Modelos de entrada y salida.
+Flujo BPMN completo con inicio, decisiones, excepciones y fin.
+No se encontró evidencia que permita clasificar el diagrama como E2, y en cumplimiento estricto del protocolo v0.5.1 no se realiza dicha clasificación.
+Resultado final de evaluación: Cumple con la evidencia verificable observada; existen elementos No Verificables limitados a clasificación visual detallada de comandos e iconografía.
+
+SEGUNDA PRUEBA JSON + PDF
+
+Confirmación de acceso a los tres archivos
+Puedo acceder y leer realmente los tres artefactos:
+MCI - BP - QR Payment Transactions Reporting - Payment Transactions
+Contiene múltiples páginas.
+He identificado la página retrieveTransactionSummary (index 1), que coincide con la operación visual solicitada.
+MCI - BP - QR Payment Transactions Reporting - Payment Transactions - retrieveTransactionSummary
+Es legible.
+Corresponde visualmente a la operación retrieveTransactionSummary.
+ESTANDAR_BLUEPRINTS_INTEGRADO_v0.5.1
+Es legible.
+Contiene la normativa consolidada v0.5.1 y el catálogo visual integrado.
+Delimitación preliminar aplicada
+Antes de cualquier evaluación:
+Operación seleccionada: retrieveTransactionSummary.
+Página JSON seleccionada: retrieveTransactionSummary (index 1).
+Se excluirán:
+Página Escenarios BDD.
+Otras operaciones (retrieveBasicTransactions, retrieveDetailedTransactions).
+Leyenda NOTACIÓN.
+Páginas de ejemplo o catálogo del estándar.
+Todo ello conforme al Protocolo de Evaluación Simultánea v0.5.1.
+Observaciones preliminares (sin emitir dictamen)
+He encontrado evidencia inicial que sugiere:
+API con clasificación textual Private - Entidad.
+Contenedor INTEGRACIÓN.
+Contenedor hijo NOMBRE SERVICIO dentro de INTEGRACIÓN.
+Flujo Flujo Transaccional - no-monetario.
+Capa de Arquitectura - composicion.
+Sin embargo, por regla metodológica, no puedo clasificar aún E1/E2/E3 ni emitir cumplimiento, porque primero debo solicitar la confirmación explícita de los cinco parámetros arquitectónicos.
+Por favor confirma los cinco parámetros
+Indica los valores definitivos para:
+Escenario arquitectónico: E1 / E2 / E3
+Objeto modelado: API privada / API pública / API partner / Servicio
+Eventos de comportamiento: ninguno / con respuesta / sin respuesta / ambos
+Comunicación: síncrona / asíncrona / mixta
+Modelo de arquitectura: MCI / federada
+Si lo deseas, puedo registrar también las evidencias que te llevaron a seleccionar cada valor, pero esperaré tu confirmación antes de construir:
+Inventario estructural JSON.
+Inventario visual independiente PDF.
+Matriz de conciliación JSON vs Visual.
+Informe normativo completo de siete secciones.
+Proporcione sus comentarios sobre BizChat
+Orígenes
+You said:
+
+ Escenario arquitectónico: E1 Objeto evaluado: API privada Eventos de comportamiento: Ninguno Comunicación: Síncrona Arquitectura: MCI
+Blueprint Evaluator said:
+Blueprint Evaluator
+Evaluación controlada Blueprint Evaluator v0.5.1
+Fase J + Fase V + Conciliación (sin dictamen normativo todavía)
+Parámetros arquitectónicos confirmados
+Parámetro	Valor confirmadoEscenario	E1
+Objeto evaluado	API privada
+Eventos de comportamiento	Ninguno
+Comunicación	Síncrona
+Arquitectura	MCI
+Se utilizará exclusivamente la operación retrieveTransactionSummary correspondiente al blueprint visual y a la página JSON homóloga. Se excluyen BDD, otras operaciones y la leyenda NOTACIÓN conforme al protocolo v0.5.1.
+1. Inventario estructural JSON (limitado a la operación visual)
+Página evaluada
+Elemento	EvidenciaPágina JSON	retrieveTransactionSummary
+Índice	1
+Operación	retrieveTransactionSummary
+Producto API	QR Payment Transactions Reporting
+API	Payment Transactions
+Versión	1.0.0
+Evidencia en la página correspondiente del JSON.
+Contenedores operativos
+INTEGRACIÓN
+ID	Clase	Textob8xDHuUlwVZV	UMLRectangleContainerBlock	INTEGRACIÓN
+Flujo transaccional
+ID	Clase	Textoqhn9U5s1xev2	UMLRectangleContainerBlock	Flujo Transaccional - no-monetario
+Capa arquitectónica
+ID	Clase	Textoqhn9RKFCwwE~	UMLRectangleContainerBlock	Capa de Arquitectura - composicion
+Contenedor hijo
+ID	Clase	Textob8xDiwjbD70l	RectangleContainerBlock	NOMBRE SERVICIO
+Componente API
+Campo	EvidenciaProducto/API/Versión	QR Payment Transactions Reporting - Payment Transactions v1.0.0
+Operación	retrieveTransactionSummary
+Tipo/Lógica	Private - Entidad
+ID: qhn9N0Pfiowl.
+Modelo de entrada
+ID: qhn936.caJt~.
+Campos visibles:
+accountOwner
+account
+pointOfSale
+requestedTransactionType
+reportingPeriod
+Modelo de salida
+ID: qhn90yYprwlQ.
+Campos visibles:
+Plain Text
+transactionsSummary
+totalEntries
+numberOfEntries
+sum
+Actividades operativas
+ID	TextoOnTA6q2cmfgP	Validar pertenencia del cliente
+trTAIlu~kkLg	Validar información enviada para la consulta
+NsTABNlgJ2-y	Los filtros enviados para la consulta y la combinación entre ellos debe ser válida
+4rTAhoK9Kqdq	El rango de fechas enviado debe ser válido y estar dentro del rango permitido
+VtTAF39G.dSG	Consultar movimientos de acuerdo a los filtros enviados
+HCTAvgPq-WY0	Consolidar movimientos encontrados
+Compuertas
+ID	Texto asociadoOnTAFmz6N.qh	¿Token de autorización enviado?
+1oTAUH6E-ajp	¿La validacion de pertenencia es exitosa?
+suTAbw8P3bwZ	¿La información enviada es válida?
+IzTAHG7-BjKC	¿Existen transacciones relacionada con la consulta?
+Excepciones modeladas
+Evento/ActividadPermisos insuficientes
+El rango de fechas enviado no es válido
+No es posible realizar la consulta para los criterios enviados
+No se encontró información para los criterios enviados
+Inicio y fin
+Tipo	IDInicio	b8xD0fFpdSNh
+Fin	gBTAC5yU9v.h
+Texto visible de fin: FIN.
+Relaciones explícitas relevantes
+Secuencia principal observada en JSON:
+Plain Text
+API
+↓
+Inicio
+↓
 ¿Token de autorización enviado?
+↓
+Validar pertenencia
+↓
 ¿La validación de pertenencia es exitosa?
+↓
+Validar información enviada
+↓
 ¿La información enviada es válida?
-¿Existen transacciones relacionadas con la consulta?
-Excepciones identificadas
+↓
+Consultar movimientos
+↓
+¿Existen transacciones?
+↓
+Consolidar movimientos
+↓
+FIN
+``
+Las ramas NO desembocan en:
+Permisos insuficientes
+Rango inválido
+Combinación inválida
+Información no encontrada
+2. Inventario visual independiente (PDF)
+Importante: se utiliza únicamente evidencia visual observable del PDF. No se trasladan propiedades desde JSON. Los colores exactos HEX y algunos iconos internos no son verificables con la calidad de extracción disponible. Conforme al estándar se registran como No Verificable cuando corresponda.
+Contenedores visibles
+Contenedor principal
+Texto visible: INTEGRACIÓN
+Forma observada: contenedor rectangular
+Jerarquía: contiene la totalidad del blueprint operativo observable
+Color exacto: No Verificable
+Flujo transaccional
+Texto visible: Flujo Transaccional - no-monetario
+Contiene capa arquitectónica
+Forma tipo contenedor
+Estilo de borde preciso: No Verificable
+Capa arquitectónica
+Texto visible: Capa de Arquitectura - composicion
+Anidada dentro del flujo transaccional
+Forma rectangular observable
+Contenedor hijo
+Texto visible: NOMBRE SERVICIO
+API visible
+Se observa artefacto API con:
+Cabecera:
+QR Payment Transactions Reporting - Payment Transactions v1.0.0
+Operación:
+retrieveTransactionSummary
+Clasificación:
+Private - Entidad
+Forma tipo bloque API visible. Iconografía interna y colores exactos no verificables desde el PDF textual extraído.
+Modelos
+Entrada
+Texto visible:
+accountOwner
+account
+pointOfSale
+requestedTransactionType
+reportingPeriod
+Salida
+Texto visible:
+transactionsSummary
+totalEntries
+numberOfEntries
+sum
+Actividades visibles
+Se observan los siguientes textos dentro del flujo:
+Validar pertenencia del cliente
+Validar información enviada para la consulta
+Consultar movimientos de acuerdo a los filtros enviados
+Consolidar movimientos encontrados
+Compuertas visibles
+Preguntas visibles:
+¿Token de autorización enviado?
+¿La validacion de pertenencia es exitosa?
+¿La información enviada es válida?
+¿Existen transacciones relacionada con la consulta?
+Se observan decisiones con ramas SI/NO.
+Excepciones visibles
+Textos observables:
 Permisos insuficientes
 El rango de fechas enviado no es válido
 No es posible realizar la consulta para los criterios enviados
 No se encontró información para los criterios enviados
-Símbolos
-FIN identificado.
-Inicio: No evidenciado en texto extraído. No verificable.
-3. Matriz de Cumplimiento
-API Privada
-Regla	Estado	EvidenciaNombre producto - API v#.#.#	Cumple	"QR Payment Transactions Reporting - Payment Transactions v1.0.0"
-Versión ≥ v1.0.0	Cumple	v1.0.0
-Operación camelCase	Cumple	retrieveTransactionSummary
-Tipo = private	Cumple	Private - Entidad
-Modelo servicio permitido	Cumple	Entidad
-Modelo entrada	Cumple	Existe modelo entrada
-Modelo salida	Cumple	Existe modelo salida
-Identificador circular verde	No Verificable	No visible en extracción textual
-Colores y estructura API	No Verificable	Requiere inspección gráfica
-API dentro de INTEGRACIÓN	Cumple	Evidencia textual del contenedor
-Capas de Despliegue
-Regla	Estado	EvidenciaFlujo transaccional presente	Cumple	Flujo Transaccional - no-monetario
-Flujo permitido	Cumple	no-monetario es válido
-Capa Arquitectura presente	Cumple	composicion
-Capa Arquitectura válida	Cumple	composicion permitido
-Jerarquía visual CV-009	No Verificable	Requiere inspección gráfica
-Bordes y estilo	No Verificable	Requiere inspección gráfica
-Referencia visual normativa: CV-009 página 10.
-Comandos
-Comando	EvaluaciónValidar pertenencia del cliente	Cumple como Consulta
-Validar información enviada para la consulta	Cumple como Consulta
-Consultar movimientos de acuerdo a los filtros enviados	Cumple como Consulta
-Consolidar movimientos encontrados	Parcialmente Cumple
-Justificación:
-La normativa indica que actividades con términos consultar, validar o consulta deben modelarse como comando tipo Consulta (CV-017). La nomenclatura es consistente. Sin embargo no es posible validar iconografía y colores.
-Referencia visual: CV-017 ComandoConsulta página 18.
-Compuertas
-Regla	EstadoPregunta binaria SI/NO	Cumple
-Etiquetas SI/NO visibles	Cumple
-Mínimo tres conexiones	No Verificable
-Tipo exclusiva correcto	Parcialmente Cumple
-Referencia visual: CV-024 página 25.
-Excepciones
-Hallazgo	EstadoPermisos insuficientes	Cumple
-Fecha inválida	Cumple
-Criterios inválidos	Cumple
-Sin información encontrada	Cumple
-Sin embargo:
-Regla	EstadoAsociadas a evento excepción BPMN	No Verificable
-Asociadas a mensaje de excepción	No Verificable
-Referencias visuales
-CV-053 EventoTipoExcepcion página 54.
-CV-058 ExcepciondeNegocio página 59.
-4. Hallazgos
-H-01 Plantilla sin parametrizar
-Se identifica el literal:
-"NOMBRE SERVICIO"
-Este texto corresponde a un placeholder y no a un nombre real de servicio.
-Impacto: Medio.
-H-02 Falta evidencia del símbolo de inicio
-No se observa en el contenido extraído un símbolo de inicio ni referencia equivalente.
-Estado: No Verificable.
-H-03 Flujo MCI correctamente clasificado
-Se evidencia:
-Flujo Transaccional – no-monetario.
-Capa de Arquitectura – composicion.
-Ambos valores son válidos según el estándar.
-H-04 Operación correctamente definida
-La operación:
-retrieveTransactionSummary
-cumple formato camelCase y nomenclatura inglesa requerida por el estándar.
-5. Brechas Detectadas
-ID	Brecha	SeveridadB-01	Contenedor hijo con nombre plantilla "NOMBRE SERVICIO"	Alta
-B-02	No se puede verificar identificador circular verde	Media
-B-03	No se puede verificar esquema de conexiones API	Media
-B-04	No se puede verificar símbolo de inicio	Media
-B-05	No se puede verificar asociación formal de excepciones BPMN	Media
-B-06	No se puede validar estructura visual completa CV-009	Baja
-6. Recomendaciones
-R-01 Sustituir marcador de plantilla
-Reemplazar:
-NOMBRE SERVICIO
+Existe evidencia de ramas de excepción. No es posible verificar iconografía BPMN roja/rayo con el material textual disponible.
+Inicio y fin
+Existe inicio de flujo observable.
+Existe terminación FIN claramente visible.
+Elementos NO verificables visualmente
+ElementoHEX de colores
+Iconos internos de comandos
+Iconos internos de eventos
+Grosor exacto de bordes
+Tipo cromático de cada comando
+Validación de engranajes
+Validación de símbolos BPMN internos
+Doble circunferencia API
+Triángulo identificador verde
+No verificable con la evidencia visual disponible.
+3. Matriz de conciliación JSON vs PDF
+Componente	JSON	Visual	ResultadoAPI retrieveTransactionSummary	Sí	Sí	Coincide
+Private - Entidad	Sí	Sí	Coincide
+Flujo Transaccional - no-monetario	Sí	Sí	Coincide
+Capa de Arquitectura - composicion	Sí	Sí	Coincide
+Contenedor INTEGRACIÓN	Sí	Sí	Coincide
+Contenedor NOMBRE SERVICIO	Sí	Sí	Coincide
+Modelo entrada	Sí	Sí	Coincide
+Modelo salida	Sí	Sí	Coincide
+Validar pertenencia	Sí	Sí	Coincide
+Validar información	Sí	Sí	Coincide
+Consultar movimientos	Sí	Sí	Coincide
+Consolidar movimientos	Sí	Sí	Coincide
+FIN	Sí	Sí	Coincide
+Compuertas principales	Sí	Sí	Coincide
+Excepciones textuales	Sí	Sí	Coincide
+Color de comandos	No disponible	Evidencia insuficiente	No observable
+Iconos BPMN	No disponible	Evidencia insuficiente	No observable
+Tipo visual exacto de eventos de excepción	No disponible	Evidencia insuficiente	No observable
+Fuentes: MCI - BP - QR Payment Transactions Reporting - Payment Transactions, MCI - BP - QR Payment Transactions Reporting - Payment Transactions - retrieveTransactionSummary y ESTANDAR_BLUEPRINTS_INTEGRADO_v0.5.1.
+Conforme al protocolo v0.5.1 ya están completadas las fases previas obligatorias (Inventario J, Inventario V y conciliación). A partir de este punto puede construirse el informe arquitectónico normativo de siete secciones aplicando las reglas del estándar integrado y respetando la restricción de no clasificar E2 sin evidencia de un servicio gestionado independiente dentro de INTEGRACIÓN.
 
-por el nombre real del servicio representado.
-Prioridad: Alta.
-R-02 Asegurar trazabilidad visual de la API
-Verificar que la API conserve todos los elementos definidos en:
-Figura CV-003 APIBase.
-Figura CV-007 APIPrivadaDominioPropio.
-Figura CV-009 CapaDespliegueAPIInterna.
-Prioridad: Media.
-R-03 Revisar eventos de excepción
-Validar visualmente que cada excepción de negocio se encuentre asociada a:
-Evento de excepción BPMN.
-Modelo de excepción correspondiente.
-Referencias:
-CV-053
-CV-058
-Prioridad: Media.
-R-04 Revisar símbolo de inicio
-Validar que exista el símbolo de inicio conforme a:
-CV-065 Inicio.
-CV-035 EjemploInicio.
-Prioridad: Media.
-7. Conclusión General
-El blueprint MCI - BP - QR Payment Transactions Reporting - Payment Transactions - retrieveTransactionSummary.pdf presenta una estructura arquitectónica consistente con una API Privada MCI de tipo Entidad, correctamente clasificada dentro de un Flujo Transaccional no-monetario y una Capa de Arquitectura composicion, cumpliendo los principales requisitos funcionales y de nomenclatura definidos por la normativa.
-La principal no conformidad identificada es la presencia del marcador"NOMBRE SERVICIO", que indica parametrización incompleta del blueprint.
-El resto de observaciones se concentran principalmente en elementos cuya validación exige inspección visual detallada (iconografía, simbología BPMN, conectores y características gráficas), por lo que deben clasificarse como No Verificables y no como incumplimientos, siguiendo expresamente la normativa.
-Dictamen final: Cumplimiento normativo estimado 69%, con una no conformidad relevante y varios aspectos visuales pendientes de validación gráfica exhaustiva.
+TERCERA PRUEBA JSON + TXT
 
-SEGUNDO RESULTADO PNG
+Verificación de acceso real a los archivos
+Confirmo acceso efectivo a los tres archivos y lectura de contenido:
+ESTANDAR_BLUEPRINTS_INTEGRADO_v0.5.1 leído correctamente. Contiene la normativa integrada, protocolo metodológico, reglas técnicas y catálogo visual.
+MCI - BP - QR Payment Transactions Reporting - Payment Transactions leído correctamente. Contiene múltiples páginas Lucidchart, incluyendo la página retrieveTransactionSummary (id 20QobLCqmE-~) con objetos, relaciones, clases, contenedores y BPMN.
+MCI - BP - QR Payment Transactions Reporting - Payment Transactions - retrieveTransactionSummary leído correctamente. El contenido es un SVG exportado que constituye la evidencia visual de la operación retrieveTransactionSummary. Contiene geometrías, coordenadas, rellenos, bordes, iconos vectoriales y textos renderizados.
+Delimitación preliminar identificada
+Sin emitir todavía conclusiones arquitectónicas:
+Operación candidata en JSON: retrieveTransactionSummary.
+Página candidata en JSON: retrieveTransactionSummary (índice 1).
+Evidencia visual asociada: SVG exportado del archivo retrieveTransactionSummary.txt.
+Conforme al protocolo v0.5.1
+Antes de construir:
+Inventario estructural JSON.
+Inventario visual.
+Matriz de conciliación.
+Informe de siete secciones.
+Necesito la confirmación explícita de los cinco parámetros arquitectónicos exigidos por el estándar. El estándar indica que pueden sugerirse valores, pero no debe emitirse dictamen antes de su confirmación.
+Propuesta basada únicamente en evidencia observada (pendiente de confirmación)
+Parámetro	Sugerencia preliminar	EvidenciaEscenario	E1 (candidato)	Se observa API privada en INTEGRACIÓN y contenedor DOMINIO PRODUCTOR; no he validado aún un servicio gestionado dentro de INTEGRACIÓN. No concluyente.
+Objeto	API privada	El bloque API muestra Private - Entidad.
+Eventos de comportamiento	Ninguno (candidato)	En la operación visible no aparece componente evento de comportamiento; requiere validación posterior.
+Comunicación	Síncrona (candidato)	No observo aún evidencia suficiente de mensajería asíncrona operativa; BPMN de excepción no cuenta como asincronía.
+Arquitectura	MCI (candidata)	Se observan Flujo Transaccional y Capa de Arquitectura en la operación. Validación pendiente.
+Confirmación requerida
+Por favor confirma los cinco parámetros en este formato:
+Plain Text
+Escenario: E1 | E2 | E3
+Objeto: API privada | API pública | API partner | Servicio
+Eventos de comportamiento: ninguno | con respuesta | sin respuesta | ambos
+Comunicación: síncrona | asíncrona | mixta
+Arquitectura: MCI | federada
+Una vez confirmados, procederé con:
+Fase J: Inventario JSON limitado exclusivamente a retrieveTransactionSummary.
+Fase V: Inventario visual independiente.
+Matriz de conciliación JSON vs SVG.
+Informe arquitectónico completo de siete secciones, citando únicamente reglas del estándar integrado y sin inferir E2, colores o iconografía que no puedan demostrarse.
+Proporcione sus comentarios sobre BizChat
+Orígenes
+You said:
 
-Perfecto. Queda confirmado el contexto de evaluación:
-Escenario: E1 (API directa)
-Tipo de componente: API privada
+ Escenario arquitectónico: E1 Objeto evaluado: API privada Eventos de comportamiento: Ninguno Comunicación: Síncrona Arquitectura: MCI
+Blueprint Evaluator said:
+Blueprint Evaluator
+Evaluación controlada Blueprint Evaluator v0.5.1
+Estado de contexto
+Parámetros arquitectónicos confirmados por el analista:
+Escenario: E1
+Objeto evaluado: API privada
 Eventos de comportamiento: Ninguno
 Comunicación: Síncrona
-Modelo de despliegue: MCI
-La clasificación E1 es consistente con la evidencia visible: se observa una API privada en INTEGRACIÓN conectada directamente al dominio productor NEPA - NUEVAS EXPERIENCIAS DE PAGO, sin evidencia de un servicio gestionado diferenciado dentro de INTEGRACIÓN. La existencia de capas MCI no constituye evidencia de E2 según la normativa.
-Informe de Evaluación Blueprint
-Blueprint evaluado: MCI - BP - QR Payment Transactions Reporting - Payment Transactions - retrieveTransactionSummary
-Normativa aplicada: NORMATIVA_BLUEPRINTS_CONSOLIDADA_v0.4.0
-Referencias visuales utilizadas: CATALOGO_VISUAL_BLUEPRINTS_v0.4.0
-1. Resumen Ejecutivo
-El blueprint representa una API privada MCI denominada QR Payment Transactions Reporting - Payment Transactions v1.0.0, cuya operación es retrieveTransactionSummary.
-La estructura general cumple adecuadamente con el patrón arquitectónico de API privada con capas MCI:
-Contenedor INTEGRACIÓN presente.
-API ubicada dentro de INTEGRACIÓN.
-Flujo Transaccional presente.
-Capa de Arquitectura presente.
-Modelos de entrada y salida presentes.
-Conexión síncrona mediante línea continua.
-Inicio y Fin presentes.
-Flujo funcional modelado mediante compuertas exclusivas y comandos.
-Sin embargo, se identifican incumplimientos importantes asociados principalmente a:
-Uso de comandos "Validar" modelados como Sistema Automatizado en lugar de Consulta.
-Presencia de contenedor hijo "NOMBRE SERVICIO" sin nombre real.
-Ubicación de elementos BPMN dentro del contenedor del dominio productor.
-Varias compuertas exclusivas con evidencia parcial respecto a rotulación y número formal de conexiones exigidas por la norma.
-Evidencia insuficiente para validar colores y ciertos elementos gráficos internos.
-2. Componentes Identificados
-Contenedores
-Contenedor Padre
-Componente	EstadoINTEGRACIÓN	Identificado
-NEPA - NUEVAS EXPERIENCIAS DE PAGO (Dominio Productor)	Identificado
-Referencia visual normativa
-CV-028 Contenedores.png, página 29.
-Capas de despliegue
-Flujo Transaccional
-Texto identificado:
-Plain Text
-Flujo Transaccional - no-monetario
-Capa de Arquitectura
-Texto identificado:
-Plain Text
-Capa de Arquitectura - composicion
-Cumplen el dominio de valores permitido.
-Referencia visual:
-CV-009 CapaDespliegueAPIInterna.png, página 10.
-API
-Identificación
-Plain Text
-QR Payment Transactions Reporting - Payment Transactions v1.0.0
-Operación
-Plain Text
-retrieveTransactionSummary
-Clasificación
-Plain Text
-Private - Entidad
-Se interpreta como API privada tipo entidad.
-Modelos
-Modelo Entrada
-Identificado:
-Plain Text
-accountOwner
-accountIdentification
-...
-reportPeriod
-Modelo Salida
-Identificado:
-Plain Text
-transactionsSummary
-totalEntries
-numberOfEntries
-sum
-Símbolos
-Inicio presente.
-Fin presente.
-Referencia:
-CV-065 Inicio.png página 66
-CV-059 Fin.png página 60.
-Compuertas
-Se identifican:
-¿Token de autorización enviado?
-¿La validación de pertenencia es exitosa?
-¿La información enviada es válida?
-¿Existen movimientos relacionados con la consulta?
-Todas corresponden visualmente a compuertas exclusivas.
-Referencia:
-CV-024 CompuertaExclusiva.png página 25.
-Comandos
-Identificados:
-Validar pertenencia del cliente
-Validar información enviada para la consulta
-Consultar movimientos de acuerdo a los filtros enviados
-Consolidar movimientos encontrados
-Excepciones
-Se identifican tres eventos de excepción acompañados por mensajes de excepción:
-Permisos insuficientes
-El rango de fechas enviado es válido
-No se encontró información para los filtros enviados
-Referencia:
-CV-053 EventoTipoExcepcion.png página 54
-CV-058 ExcepciondeNegocio(Mensaje de Excepción).png página 59.
-3. Matriz de Cumplimiento
-API Privada
-Regla	Estado	Evidencia	ConfianzaAPI ubicada en INTEGRACIÓN	Cumple	API dentro de contenedor INTEGRACIÓN	Alta
-Versión v#.#.# válida	Cumple	v1.0.0	Alta
-Operación camelCase	Cumple	retrieveTransactionSummary	Alta
-Tipo Private	Cumple	Private - Entidad	Alta
-Modelo Entrada presente	Cumple	Modelo verde sólido	Alta
-Modelo Salida presente	Cumple	Modelo verde discontinuo	Alta
-Símbolo API presente	Cumple	Indicador circular verde	Alta
-Conexión de línea continua	Cumple	API conectada al inicio del flujo	Alta
-Referencias: CV-003, CV-005, CV-007, CV-008.
-Capas MCI
-Regla	EstadoFlujo Transaccional presente	Cumple
-Valor no-monetario permitido	Cumple
-Capa Arquitectura presente	Cumple
-Valor composicion permitido	Cumple
-Jerarquía correcta	Cumple
-Referencias: CV-009 página 10.
-Comandos
-Regla	Estado	ObservaciónConsultar movimientos modelado como Consulta	Cumple
-Validar pertenencia del cliente modelado como Consulta	No Cumple
-Validar información enviada para la consulta modelado como Consulta	No Cumple
-Verbo en infinitivo	Cumple
-Justificación
-La normativa indica que términos como:
-Validar
-Validación
-Consulta
-Consultar
-deben modelarse como Comando Consulta (gris #CED4DB).
-Los dos comandos de validación aparecen visualmente con color azul asociado a Sistema Automatizado.
-Referencia visual normativa
-CV-017 ComandoConsulta.png página 18.
-Contenedores
-Regla	EstadoContenedor INTEGRACIÓN presente	Cumple
-Dominio productor presente	Cumple
-Contenedor hijo nombrado correctamente	No Cumple
-Evidencia
-Se observa:
-Plain Text
-NOMBRE SERVICIO
-Lo que corresponde a un placeholder y no a un nombre real.
-Referencias:
-CV-028 Contenedores.png página 29
-CV-043 EscenarioIntegracion2.png página 44 (como referencia estructural).
-Compuertas Exclusivas
-Regla	EstadoPregunta binaria SI/NO	Cumple
-Rutas SI/NO identificadas	Cumple
-Ubicación adecuada en flujo	Parcialmente Cumple
-Motivo:
-El escenario declarado es E1. La normativa ubica compuertas dentro de servicio gestionado o no gestionado. No existe evidencia formal de servicio gestionado ni servicio no gestionado identificable; por tanto la validación completa no es posible.
-Excepciones
-Regla	EstadoEvento de excepción presente	Cumple
-Mensaje de excepción asociado	Cumple
-Mensajes específicos	Cumple
-Mensajes encontrados:
-Permisos insuficientes
-No se encontró información para los filtros enviados
-No se observan mensajes genéricos del tipo Error/Fallo.
-Referencias:
-CV-053
-CV-058.
-4. Hallazgos
-Hallazgo H-01
-Tipo: Incumplimiento
-Los comandos:
-Validar pertenencia del cliente
-Validar información enviada para la consulta
-deberían utilizar la notación de Comando Consulta.
-Normativa: Comandos tipo Consulta.
-Referencia visual: CV-017 página 18.
-Hallazgo H-02
-Tipo: Incumplimiento
-Existe un contenedor denominado:
-Plain Text
-NOMBRE SERVICIO
-La normativa exige el nombre real del servicio.
-Normativa: Contenedor Hijo.
-Hallazgo H-03
-Tipo: Ambigüedad
-No es posible verificar con certeza si el contenedor "NOMBRE SERVICIO" representa realmente un servicio gestionado o si es únicamente una agrupación visual.
-Clasificación:
-No Verificable
-Normativa: Guía de interpretación.
-5. Brechas Detectadas
-ID	Brecha	SeveridadB-01	Placeholder NOMBRE SERVICIO	Alta
-B-02	Comandos Validar modelados con tipología incorrecta	Alta
-B-03	Ambigüedad sobre naturaleza del contenedor hijo	Media
-B-04	Validación visual detallada de colores no verificable en PNG suministrado	Baja
-6. Recomendaciones
-R-01
-Reemplazar:
-Plain Text
-NOMBRE SERVICIO
-por el nombre real del servicio o eliminar el contenedor si el escenario es realmente E1.
-Prioridad: Alta
-R-02
-Modificar:
-Plain Text
-Validar pertenencia del cliente
-Validar información enviada para la consulta
-a notación Consulta (gris) según CV-017.
-Referencias:
-CV-017 página 18.
-Prioridad: Alta
-R-03
-Definir explícitamente si el contenedor azul corresponde a:
-Servicio gestionado
-Agrupación visual
-Carril de proceso
-Prioridad: Media
-7. Resultado Ejecutivo
-Métrica	ResultadoReglas aplicables evaluadas	24
-Cumple	19
-No Cumple	3
-Parcialmente Cumple	1
-No Verificable	1
-Cumplimiento estimado
-79%
-(Cálculo: Cumple / Reglas verificables aplicables)
-Conclusión General
-El blueprint presenta una estructura arquitectónica sólida y alineada con el estándar de API privada MCI síncrona. Se observa cumplimiento en la definición de la API, las capas MCI, los modelos de datos, las excepciones de negocio y la lógica funcional principal.
-Las principales desviaciones se concentran en aspectos de modelado BPMN y nomenclatura: el uso incorrecto de comandos de validación, la presencia del placeholder NOMBRE SERVICIO y la ambigüedad sobre la naturaleza del contenedor hijo. Corregidos estos puntos, el blueprint podría alcanzar un nivel de cumplimiento superior al 90%.
-
-TERCER PRUEBA JSON
-
-Informe de Evaluación Blueprint
-Blueprint evaluado: MCI - BP - QR Payment Transactions Reporting - Payment Transactions 
- Normativa aplicada: NORMATIVA_BLUEPRINTS_CONSOLIDADA_v0.4.0 
- Catálogo visual de referencia: CATALOGO_VISUAL_BLUEPRINTS_v0.4.0
-Contexto confirmado por el analista
-Escenario: E1
-Tipo: API privada
-Eventos de comportamiento: ninguno
-Patrón: síncrono
-Modelo: MCI
-1. Resumen Ejecutivo
-El blueprint modela el producto QR Payment Transactions Reporting y la API Payment Transactions con tres operaciones principales:
-retrieveBasicTransactions
-retrieveDetailedTransactions
-retrieveTransactionSummary
-Se identifica una arquitectura MCI con:
-Contenedor padre INTEGRACIÓN.
-Flujo transaccional no monetario.
-Capa de arquitectura composición.
-API privada.
-Modelos de entrada y salida.
-Flujo BPMN con inicio, fin, validaciones, compuertas y manejo de excepciones.
-Sin embargo, el blueprint presenta varios incumplimientos relevantes respecto a la normativa:
-Uso de nombres de plantilla pendientes ("NOMBRE SERVICIO").
-Ausencia del contenedor obligatorio DOMINIO PRODUCTOR para un escenario E1 confirmado.
-Clasificación declarada de capa de arquitectura con grafía no conforme al estándar textual.
-Existen múltiples elementos de notación y placeholders pendientes dentro del blueprint.
-No es posible validar atributos visuales (colores, iconografía, bordes, estilos SVG) porque el artefacto entregado es JSON exportado y no preserva la información gráfica requerida por dichas reglas.
-2. Componentes Identificados
-APIs
-retrieveBasicTransactions
-Producto: QR Payment Transactions Reporting
-API: Payment Transactions
-Operación: retrieveBasicTransactions
-Clasificación: Private - Entidad
-Método: POST
-Path: /basic-transactions
-Seguridad: JWT
-retrieveDetailedTransactions
-Operación: retrieveDetailedTransactions
-Método: POST
-Path: /detailed-transactions
-Seguridad: JWT
-retrieveTransactionSummary
+Arquitectura: MCI
+Confirmación utilizada como contexto oficial de evaluación según el protocolo del estándar.
+1. Inventario estructural (JSON)
+Alcance restringido
+Página evaluada exclusivamente:
 Operación: retrieveTransactionSummary
-Método: POST
-Path: /transaction-summaries
-Seguridad: API Key
-Contenedores
-Identificados:
+Página JSON: retrieveTransactionSummary
+Id página: 20QobLCqmE-~
+Contenedores identificados
+Contenedor padre
 INTEGRACIÓN
+Clase: UMLRectangleContainerBlock
+Texto: INTEGRACIÓN
+Contenedor padre
 NEPA - NUEVAS EXPERIENCIAS DE PAGO
+Clase: UMLRectangleContainerBlock
+Funciona como dominio productor en la página evaluada
+Texto literal: NEPA - NUEVAS EXPERIENCIAS DE PAGO
+Contenedor hijo
 Flujo Transaccional - no-monetario
+Clase: UMLRectangleContainerBlock
+Texto literal identificado: Flujo Transaccional - no-monetario
+Contenedor hijo
 Capa de Arquitectura - composicion
+Clase: UMLRectangleContainerBlock
+Texto literal identificado: Capa de Arquitectura - composicion
+Contenedor hijo de dominio
 NOMBRE SERVICIO
-No se identifica contenedor padre DOMINIO PRODUCTOR.
-Modelos
-Entrada
-Se identifican modelos de entrada para las tres operaciones:
+Clase: RectangleContainerBlock
+Texto literal encontrado: NOMBRE SERVICIO
+API identificada
+API privada
+Primera sección:
+QR Payment Transactions Reporting - Payment Transactions v1.0.0
+Segunda sección:
+retrieveTransactionSummary
+Tercera sección:
+Private - Entidad
+Modelo de entrada (JSON)
+Objeto de entrada:
+Plain Text
 accountOwner
 account
 pointOfSale
-reportingPeriod
 requestedTransactionType
-entre otros.
-Salida
-Se identifican modelos de salida para:
+reportingPeriod
+Contenido detallado visible en bloque de entrada.
+Modelo de salida (JSON)
+Objeto de salida:
+Plain Text
 transactionsSummary
-accounts
-entries
-references
-relatedParties
-entre otros.
-Compuertas
-Identificadas:
-Validación de token
-Validación de pertenencia
-Validación de criterios
-Existencia de transacciones
-Ejemplos:
-¿Token de autorización enviado?
-¿La validación de pertenencia es exitosa?
-¿La información enviada es válida?
-¿Existen transacciones relacionadas con la consulta?
-Eventos BPMN
-Identificados:
+└ totalEntries
+├ numberOfEntries
+└ sum
+Flujo BPMN identificado
 Inicio
+Evento BPMN inicial.
+Actividades
+Validar pertenencia del cliente.
+Validar información enviada para la consulta.
+Consultar movimientos de acuerdo a los filtros enviados.
+Consolidar movimientos encontrados.
+Compuertas
+Exclusiva
+¿Token de autorización enviado?
+Exclusiva
+¿La validacion de pertenencia es exitosa?
+Exclusiva
+¿La información enviada es válida?
+Exclusiva
+¿Existen transacciones relacionada con la consulta?
+Excepciones identificadas
+Permisos insuficientes.
+El rango de fechas enviado no es válido.
+No es posible realizar la consulta para los criterios enviados.
+No se encontró información para los criterios enviados.
 Fin
-Eventos de excepción
-Eventos intermedios utilizados para manejo de errores
+Evento BPMN final identificado con texto FIN.
+2. Inventario visual (SVG/PNG)
+Limitación metodológica
+El archivo visual suministrado es un SVG exportado contenido en TXT. Pueden verificarse formas, conexiones y colores declarados en SVG. No debe asumirse semántica desde JSON.
+Contenedores visuales
+Contenedor gris padre
+Rectángulo grande.
+Fondo declarado #f2f3f5.
+Borde negro.
+Corresponde visualmente a INTEGRACIÓN.
+Segundo contenedor gris padre
+Fondo #f2f3f5.
+Borde negro.
+Corresponde visualmente a dominio productor.
+Flujo Transaccional
+Contenedor con borde discontinuo negro.
+Texto visible asociado al flujo transaccional.
+Capa de Arquitectura
+Contenedor interno.
+Borde negro.
+Sin relleno destacado.
+Texto visible asociado a capa de arquitectura.
+API
+Visualmente se observa:
+Rectángulo redondeado.
+Tres divisiones horizontales.
+Gradiente azul.
+Borde negro.
+Texto distribuido en tres secciones.
+Identificador circular
+Círculo doble.
+Relleno verde degradado.
+Triángulo blanco interno.
+Ubicación superior cercana a la API.
+Modelos
+Entrada
+Rectángulo verde.
+Borde verde.
+Contenido estructurado.
+Salida
+Rectángulo verde.
+Borde verde.
+Contenido estructurado.
+Comandos/actividades
+Visualmente observadas:
+Validar pertenencia del cliente.
+Validar información enviada para la consulta.
+Consultar movimientos de acuerdo a los filtros enviados.
+Consolidar movimientos encontrados.
+Todos aparecen como rectángulos azul claro con iconografía de engranajes visible.
 Políticas
-Identificadas:
-Validación del rango de fechas.
-Validación de combinación de filtros.
-Validación de pertenencia del cliente.
-3. Matriz de Cumplimiento
-Regla	Estado	Evidencia	ReferenciaAPI identificada con producto, API y versión	Cumple	"QR Payment Transactions Reporting - Payment Transactions v1.0.0"	componenteApiBase.md / CV-003 pág.4
-Versión válida v#.#.#	Cumple	v1.0.0	componenteApiBase.md
-Operaciones en camelCase	Cumple	retrieveBasicTransactions, retrieveDetailedTransactions, retrieveTransactionSummary	componenteApiBase.md
-Tipo private	Cumple	Private - Entidad	componenteApiPrivada.md
-Modelo de entrada asociado	Cumple	Modelos ENTRADA presentes	modelosLectura.md CV-067 pág.68
-Modelo de salida asociado	Cumple	Modelos SALIDA presentes	modelosLectura.md CV-069 pág.70
-Flujo Transaccional presente	Cumple	Flujo Transaccional - no-monetario	capasDespliegue.md CV-009 pág.10
-Tipo de flujo válido	Cumple	no-monetario pertenece al catálogo permitido	capasDespliegue.md CV-009 pág.10
-Capa Arquitectura presente	Cumple	Capa de Arquitectura - composicion	capasDespliegue.md CV-009 pág.10
-Tipo de arquitectura válido	Cumple	composicion es un valor permitido	capasDespliegue.md CV-009 pág.10
-Existencia contenedor INTEGRACIÓN	Cumple	Contenedor identificado	contenedores.md CV-028 pág.29
-Existencia contenedor DOMINIO PRODUCTOR en escenario E1	No Cumple	No aparece en ninguna página operativa	contenedores.md CV-042 pág.43
-Inicio BPMN presente	Cumple	Evento inicial identificado	simbolos.md CV-065 pág.66
-Fin BPMN presente	Cumple	Evento FIN identificado	simbolos.md CV-059 pág.60
-Compuertas exclusivas presentes	Cumple	Preguntas SI/NO identificadas	compuertas.md CV-024 pág.25
-Política asociada a comandos	Cumple	Reglas de validación cercanas al flujo	modelosLectura.md Política
-Nombre del servicio reemplazado por valor real	No Cumple	Permanece literal "NOMBRE SERVICIO"	componenteServicioBase.md
-Placeholders pendientes eliminados	No Cumple	Existen objetos "Pendientes"	modelosLectura.md CV-070 pág.71
-Validación visual de colores	No Verificable	JSON no contiene información visual suficiente	catálogo visual completo
-Validación visual de iconos API	No Verificable	JSON no conserva SVG ni estilos	CV-003 pág.4
-Validación visual de modelos entrada/salida	No Verificable	Sin información cromática disponible	CV-067 pág.68, CV-069 pág.70
-4. Hallazgos
-Hallazgos positivos
-Existe consistencia entre BDD y operaciones modeladas.
-Las tres operaciones tienen estructura homogénea.
-Las operaciones poseen modelos de entrada y salida definidos.
-Se modelan escenarios exitosos y excepcionales.
-Hallazgos de incumplimiento
+Se observan rectángulos morados junto a reglas de negocio:
+Token de autorización.
+Validación de filtros.
+Validación de rango de fechas.
+Color morado verificable visualmente.
+Compuertas
+Visualmente observadas:
+Diamantes BPMN.
+Asociadas a preguntas.
+Ramas SI/NO visibles en varios casos.
+Excepciones
+Se observan:
+Eventos circulares rojos.
+Iconografía tipo rayo en su interior.
+Mensajes asociados en rectángulos morados.
+Inicio y fin
+Inicio
+Evento circular.
+Gradiente claro.
+Sin texto interno visible.
+Fin
+Evento circular.
+Borde negro grueso.
+Texto FIN.
+3. Matriz de conciliación JSON vs SVG
+Elemento	JSON	Visual	EstadoAPI privada	Sí	Sí	Coincide
+retrieveTransactionSummary	Sí	Sí	Coincide
+Private - Entidad	Sí	Visible	Coincide
+Flujo Transaccional	Sí	Sí	Coincide
+Capa Arquitectura composicion	Sí	Sí	Coincide
+Modelo Entrada	Sí	Sí	Coincide
+Modelo Salida	Sí	Sí	Coincide
+Validar pertenencia del cliente	Sí	Sí	Coincide
+Validar información enviada	Sí	Sí	Coincide
+Consultar movimientos	Sí	Sí	Coincide
+Consolidar movimientos	Sí	Sí	Coincide
+Compuertas exclusivas	Sí	Sí	Coincide
+Evento excepción rojo	Sí	Sí	Coincide
+Mensajes de excepción	Sí	Sí	Coincide
+Inicio BPMN	Sí	Sí	Coincide
+Fin BPMN	Sí	Sí	Coincide
+Servicio gestionado independiente en INTEGRACIÓN	No identificado	No identificado	Evidencia insuficiente
+Gestor MQ	No identificado	No identificado	No aplica
+Evento comportamiento	No identificado	No identificado	Coincide con parámetro confirmado
+4. Resumen ejecutivo
+La operación retrieveTransactionSummary muestra una API privada MCI con flujo transaccional, capa de arquitectura, modelos de entrada/salida, flujo BPMN completo, validaciones, excepciones de negocio y finalización explícita. JSON y evidencia visual presentan alta convergencia.
+No se identifica evidencia de un servicio gestionado separado dentro de INTEGRACIÓN; por tanto no existe base para reclasificar el escenario confirmado E1 hacia E2. La normativa exige evidencia explícita de servicio gestionado independiente.
+5. Hallazgos normativos relevantes
 H-01
-Contenedor DOMINIO PRODUCTOR ausente
-Severidad: Alta
-Evidencia: sólo existe INTEGRACIÓN.
-Referencia: Escenario Integración 1, figura CV-042 página 43.
+No declarar E2
+Resultado:
+Cumple.
+Evidencia:
+INTEGRACIÓN contiene API.
+No aparece servicio gestionado independiente distinto de API y capas.
+Referencia:
+Protocolo metodológico v0.5.1, sección C.
 H-02
-Nombre del servicio pendiente
+Las capas MCI están presentes
+Resultado:
+Cumple.
 Evidencia:
-"NOMBRE SERVICIO"
-La normativa exige reemplazo por nombre real del servicio.
+Flujo Transaccional - no-monetario.
+Capa de Arquitectura - composicion.
+Referencia:
+capasDespliegue.md.
 H-03
-Elementos pendientes presentes
+API privada
+Resultado:
+Cumple.
 Evidencia:
-"Pendientes"
-No deberían permanecer en una versión final del blueprint.
-5. Brechas Detectadas
-Brecha	ImpactoFalta DOMINIO PRODUCTOR	Invalida el escenario E1 definido
-NOMBRE SERVICIO sin reemplazar	Blueprint incompleto
-Objetos Pendientes	Diseño no finalizado
-Validaciones visuales imposibles desde JSON	Evaluación limitada
-6. Recomendaciones
-Prioridad Alta
-R-01
-Agregar explícitamente el contenedor:
-DOMINIO PRODUCTOR
-según escenario E1 descrito en la normativa y figura CV-042 (página 43).
-R-02
-Reemplazar:
-Plain Text
-NOMBRE SERVICIO
-por el nombre real del servicio de negocio implementado.
-Prioridad Media
-R-03
-Eliminar todos los elementos etiquetados:
-Plain Text
-Pendientes
-o completarlos con información definitiva.
-R-04
-Publicar una versión PDF o SVG exportada visualmente para permitir validar:
-colores,
-iconografía,
-tipos BPMN,
-bordes,
-estilos visuales,
-que no pueden verificarse desde el JSON.
-7. Resultado Ejecutivo
-Métrica	ValorReglas evaluadas	21
-Cumple	15
-No Cumple	3
-Parcialmente Cumple	0
-No Verificable	3
-Cumplimiento estimado
-Cumplidas: 15/18 verificables
-Cumplimiento verificable: 83,3 %
-Incumplimientos críticos: 2
-Nivel de confianza global: Medio-Alto
-(La confianza no es alta debido a que múltiples reglas visuales definidas por la normativa requieren inspección gráfica completa del blueprint y el artefacto suministrado corresponde a una exportación JSON).
-Conclusión General
-El blueprint presenta una base sólida y coherente para las operaciones de consulta de transacciones QR, con una estructura MCI consistente y flujos funcionales bien definidos. No obstante, para declararlo conforme a la normativa v0.4.0 se requiere corregir principalmente la ausencia del contenedor obligatorio DOMINIO PRODUCTOR para el escenario E1, reemplazar el placeholder NOMBRE SERVICIO y eliminar elementos marcados como Pendientes. Una validación visual definitiva requeriría además el blueprint en formato PDF/SVG renderizado.
-
-CUARTO RESULTADO 
-
-Informe de Evaluación Blueprint
-Blueprint Evaluado
-MCI - BP - QR Payment Transactions Reporting - Payment Transactions - retrieveTransactionSummary.txt
-Contexto Confirmado por el Analista
-Campo	Valor confirmadoEscenario	E1 - API directa al backend
-Tipo	API privada
-Eventos de comportamiento	Ninguno
-Comunicación	Síncrono
-Modelo	MCI
-1. Resumen Ejecutivo
-Se evaluó el blueprint correspondiente a la operación retrieveTransactionSummary del producto QR Payment Transactions Reporting, bajo el escenario E1 (API directa al backend), API privada y arquitectura MCI.
-A partir del análisis del SVG exportado, fue posible identificar evidencia suficiente sobre:
-Contenedores principales.
+Tercera sección API: Private - Entidad.
+Referencia:
+componenteApiPrivada.md.
+H-04
+Modelos de entrada y salida
+Resultado:
+Cumple.
+Evidencia:
+Ambos modelos presentes en JSON y visual.
+Referencia:
+componenteApiBase.md.
+modelosLectura.md.
+6. Brechas detectadas
+No se detectan brechas evidentes en las reglas verificables analizadas dentro del alcance solicitado.
+Se detectan únicamente elementos con estado:
+B-01
+Estado:
+No Verificable
+Motivo:
+Verificación cromática exacta HEX de ciertos artefactos no puede certificarse únicamente por observación del render SVG exportado.
+7. Recomendaciones
+Mantener nombres normativos exactos:
+Flujo Transaccional - no-monetario.
+Capa de Arquitectura - composicion.
+Mantener separación conceptual entre:
 API privada.
 Capas MCI.
-Modelos de entrada y salida.
-Inicio y fin.
-Comandos.
-Compuertas.
-Eventos BPMN.
-Políticas.
-Mensajes de excepción.
-Sin embargo, el formato SVG/TXT presenta limitaciones para validar algunos aspectos visuales finos (colores exactos, iconografía interna y orientación de ciertos conectores), por lo que varias validaciones se clasifican como No Verificable según la normativa.
-Resultado Ejecutivo
-Métrica	ResultadoReglas evaluadas	42
-Cumple	29
-No Cumple	8
-No Verificable	5
-Parcialmente Cumple	0
-Cumplimiento estimado	78,4%
-2. Componentes Identificados
-Contenedores
-Contenedor Padre
-Se identifica:
-INTEGRACIÓN (lado izquierdo). Compatible con Contenedores.md. Referencia visual CV‑028 página 29. citeturn1search3turn1search1turn1search2
-Contenedor Padre
-Se identifica:
-DOMINIO PRODUCTOR (lado derecho). Compatible con Contenedores.md. Referencia visual CV‑028 página 29. citeturn1search3turn1search1turn1search2
-Contenedor Hijo
-Se identifica un contenedor hijo en INTEGRACIÓN asociado a servicio gestionado.
-La evidencia observada corresponde a un componente tipo servicio denominado:
-Payment Transactions Reporting Service
-Compatible con escenario E1/E2 híbrido visualmente.
-Observación: el escenario confirmado por el analista es E1, sin embargo el diagrama contiene elementos característicos de servicio gestionado. Existe inconsistencia entre clasificación declarada y modelado observado. citeturn1search3turn1search2
-API Identificada
-Campo	ValorProducto	QR Payment Transactions Reporting
-API	Payment Transactions
-Operación	retrieveTransactionSummary
-Tipo	private
-Modelo servicio	No Verificable
-Referencia normativa:
-CV‑003 página 4
-CV‑007 página 8
-CV‑008 página 9
-citeturn1search1turn1search2turn1search3
-Modelos
-Identificados:
-Modelo de entrada.
-Modelo de salida.
-Política.
-Mensajes de excepción.
-Referencias:
-CV‑067 página 68.
-CV‑069 página 70.
-CV‑058 página 59.
-citeturn1search1turn1search2turn1search3
-Símbolos
-Identificados:
-Inicio.
-Fin.
-Líneas continuas.
-Líneas discontinuas.
-Referencias:
-CV‑065 página 66.
-CV‑059 página 60.
-CV‑060 página 61.
-citeturn1search1turn1search2turn1search3
-Comandos
-Identificados:
-Comando consulta.
-Comando sistema automatizado.
-Comando sistema.
-Referencias:
-CV‑017.
-CV‑019.
-CV‑020.
-citeturn1search1turn1search2turn1search3
-Compuertas
-Identificadas:
-Compuerta exclusiva.
-Compuerta basada en eventos.
-Referencias:
-CV‑024.
-CV‑023.
-citeturn1search1turn1search2turn1search3
-3. Matriz de Cumplimiento
+Servicio gestionado.
+Continuar conservando mensajes de excepción explícitos asociados al flujo de validación.
+Conclusión general
+Para la operación retrieveTransactionSummary, con contexto confirmado E1 / API privada / Sin eventos de comportamiento / Comunicación síncrona / MCI, la evidencia JSON y visual resulta ampliamente consistente.
+No se encontró evidencia suficiente para declarar un servicio gestionado independiente dentro de INTEGRACIÓN y, por tanto, no existe fundamento para clasificar la solución como E2. La presencia de Flujo Transaccional - no-monetario y Capa de Arquitectura - composicion debe interpretarse como capas MCI y no como servicios.
+Métricas
+Cumple (C): 4
+Parcialmente Cumple (P): 0
+No Cumple (NC): 0
+No Verificable (NV): 1
+Cumplimiento verificable:
+Plain Text
+(4 + 0.5×0) / (4 + 0 + 0) ×100
+= 100%
+Cobertura:
+Plain Text
+(4 + 0 + 0) / (4 + 0 + 0 + 1) ×100
+= 80%
+
+PRUEBA CUATRO JSON + TXT NUEVO Blueprint
+
+He verificado acceso real a los tres archivos adjuntos y no emitiré ninguna evaluación ni conclusión arquitectónica hasta recibir la confirmación de los cinco parámetros obligatorios definidos por Blueprint Evaluator v0.5.1.
+Verificación de acceso
+Acceso confirmado a MCI - BP - [Mortgage Loan Disbursement Management] - [Disbursement Execution].json. He podido leer su contenido estructurado (shapes, lines, groups, containers, relaciones, etc.).
+Acceso confirmado a MCI - BP - [Mortgage Loan Disbursement Management] - [Disbursement Execution] - initiateMortgageLoanDisbursement.txt. El archivo contiene una representación SVG del blueprint visual y he podido leer su contenido.
+Acceso confirmado a ESTANDAR_BLUEPRINTS_INTEGRADO_v0.5.1. El documento es accesible y será utilizado como única referencia normativa para la evaluación.
+Confirmación obligatoria de los 5 parámetros arquitectónicos
+Por favor confirma estos cinco valores antes de que inicie las fases J, V, conciliación y el informe normativo:
+Escenario: E1 / E2 / E3
+Objeto evaluado: API privada / API pública / API partner / Servicio
+Eventos de comportamiento: ninguno / con respuesta / sin respuesta / ambos
+Comunicación: síncrona / asíncrona / mixta
+Arquitectura: MCI / federada
+Una vez confirmados, procederé en este orden:
+Inventario estructural JSON (solo la operación correspondiente al blueprint visual).
+Inventario visual independiente del SVG/representación visual.
+Matriz de conciliación JSON vs. visual.
+Informe arquitectónico completo de siete secciones, aplicando exclusivamente las reglas del ESTANDAR_BLUEPRINTS_INTEGRADO_v0.5.1.
+Quedo a la espera de la confirmación de los cinco parámetros.
+Proporcione sus comentarios sobre BizChat
+Orígenes
+You said:
+
+ Escenario arquitectónico: E2 Objeto evaluado: API privada Eventos de comportamiento: Ninguno Comunicación: Síncrona Arquitectura: MCI
+Blueprint Evaluator said:
+Blueprint Evaluator:Razonamiento completado en 8 pasos
+Razonamiento completado en 8 pasos
+Evaluación controlada Blueprint Evaluator v0.5.1
+Parámetros confirmados:
+Escenario arquitectónico: E2
+Objeto evaluado: API privada
+Eventos de comportamiento: Ninguno
+Comunicación: Síncrona
+Arquitectura: MCI
+Fuente analizada:
+MCI - BP - [Mortgage Loan Disbursement Management] - [Disbursement Execution].json
+MCI - BP - [Mortgage Loan Disbursement Management] - [Disbursement Execution] - initiateMortgageLoanDisbursement.txt (SVG del blueprint visual)
+ESTANDAR_BLUEPRINTS_INTEGRADO_v0.5.1
+1. Inventario estructural JSON (Fase J)
+Página seleccionada
+Se identificó la página initiateMortgageLoanDisbursement como la operación correspondiente al blueprint visual. La página Escenarios BDD fue excluida conforme a la instrucción de ignorar BDD durante la evaluación arquitectónica.
+Contenedores identificados
+ID	Clase	TextoD~c-qUBUx2a8	UMLRectangleContainerBlock	Capa de Arquitectura - composicion
+5S7m3ucHDf-8	UMLRectangleContainerBlock	INTEGRACIÓN
+5S7mpO00NqZh	RectangleContainerBlock	NOMBRE SERVICIO
+Componentes relevantes identificados
+Tipo	TextoAPI	Privada
+Artefacto	Comando / Actividad
+Artefacto	Evento
+Artefacto	Excepción de negocio
+Artefacto	Política
+Artefacto	Concepto
+Artefacto	Nuevo
+Artefacto	Reúso
+Artefacto	Agregado
+Actividades observadas
+Entre las actividades explícitamente modeladas:
+Aplicar desembolso
+Aplicar desembolso Core
+Homologar Datos
+Realizar reintento de la transferencia
+creditToAccount
+voidTransaction
+Decisiones y compuertas
+Se identifican explícitamente elementos con textos:
+¿Se requiere control de acceso seguro?
+Reverso realizado?
+Reintento Exitoso?
+¿Cuál es el tipo de desembolso?
+Compuerta basada en Eventos
+Servicios gestionados
+Evidencia JSON localizada:
+Contenedor padre INTEGRACIÓN.
+Contenedor hijo denominado NOMBRE SERVICIO.
+No se encontró en el inventario textual extraído un nombre visible del servicio gestionado dentro de dicho contenedor. Por lo tanto, la existencia del contenedor está evidenciada, pero el nombre operacional del servicio gestionado no quedó demostrado únicamente con la evidencia revisada.
+2. Inventario visual independiente (Fase V)
+Alcance
+La evaluación visual se realizó sobre la representación SVG contenida en MCI - BP - [Mortgage Loan Disbursement Management] - [Disbursement Execution] - initiateMortgageLoanDisbursement.txt.
+Contenedores visualmente observables
+Elemento visual	Evidencia visual	ConfianzaMarco general principal	Presente	Alta
+Contenedor INTEGRACIÓN	Presente	Alta
+Contenedor Capa de Arquitectura - composicion	Presente	Alta
+Contenedor NOMBRE SERVICIO	Presente	Alta
+Formas observadas
+Forma	EvidenciaRectángulos contenedores	Visible
+Actividades BPMN	Visible
+Eventos BPMN	Visible
+Compuertas	Visible
+Conectores dirigidos	Visible
+Colores
+Se observan rellenos diferenciados visualmente entre contenedores.
+No se verifican colores normativos ni valores HEX exactos.
+Estado: No Verificable para cualquier regla que dependa de color específico.
+Iconografía
+Se observan símbolos BPMN y elementos gráficos internos.
+No se certifica cumplimiento de iconografía específica sin verificación individual de cada símbolo frente al estándar. Estado: No Verificable.
+Conexiones
+Se observan múltiples relaciones dirigidas entre actividades, compuertas, eventos y artefactos.
+La existencia de conectores puede verificarse visualmente.
+La validación exhaustiva de cada extremo y dirección requeriría trazabilidad individual de todos los enlaces.
+3. Matriz de conciliación JSON vs Visual
+Elemento	Evidencia JSON	Evidencia Visual	ResultadoPágina operación initiateMortgageLoanDisbursement	Sí	Sí	Coincidencia
+INTEGRACIÓN	Sí	Sí	Coincidencia
+Capa de Arquitectura - composicion	Sí	Sí	Coincidencia
+NOMBRE SERVICIO	Sí	Sí	Coincidencia
+API Privada	Sí	Visible en el modelo	Coincidencia
+Actividades BPMN	Sí	Sí	Coincidencia
+Eventos BPMN	Sí	Sí	Coincidencia
+Compuertas BPMN	Sí	Sí	Coincidencia
+Colores normativos específicos	No	No verificable	Evidencia insuficiente
+Iconos normativos específicos	Parcial	No verificable	Evidencia insuficiente
+Nombre explícito de servicio gestionado	No demostrado	No demostrado	Discrepancia / evidencia insuficiente
+4. Informe arquitectónico
+Sección 1. Resumen ejecutivo
+La operación evaluada corresponde a initiateMortgageLoanDisbursement. Existe correspondencia general entre la estructura del JSON y la representación visual analizada. Se identifican contenedores MCI, capa de integración, actividades BPMN, compuertas, eventos y una API privada.
+Para el escenario E2, el estándar establece que debe demostrarse un servicio gestionado dentro de INTEGRACIÓN, diferenciado de la API y de las capas MCI.
+Sección 2. Inventario consolidado
+Elementos consolidados:
 API Privada
-Regla	Estado	EvidenciaEstructura API de tres secciones	Cumple	Se identifican tres divisiones internas. citeturn1search3
-Producto + API + versión	Cumple	Texto visible en primera sección. citeturn1search3
-Operación en camelCase	Cumple	retrieveTransactionSummary. citeturn1search3
-Tipo private	Cumple	Evidencia textual asociada. citeturn1search3
-Modelo entidad/utilidad/tarea	No Verificable	Texto no recuperable completamente desde SVG. citeturn1search3
-Modelo entrada	Cumple	Se identifica modelo asociado. CV‑067. citeturn1search1turn1search3
-Modelo salida	Cumple	Se identifica modelo asociado. CV‑069. citeturn1search1turn1search3
-Identificador circular verde	Cumple	Se observa círculo doble asociado a API. CV‑003. citeturn1search1turn1search3
-Capas de Despliegue
-Regla	Estado	EvidenciaFlujo Transaccional presente	Cumple	Se identifica contenedor externo de despliegue. CV‑009. citeturn1search1turn1search3
-Capa Arquitectura presente	Cumple	Existe contenedor interno. CV‑009. citeturn1search1turn1search3
-Nombre flujo válido	Cumple	Flujo Transaccional identificado. citeturn1search3
-Valor flujo permitido	No Verificable	Literal completo no recuperable. citeturn1search3
-Nombre capa válido	Cumple	Capa de Arquitectura identificada. citeturn1search3
-Tipo arquitectura válido	Cumple	Evidencia de capa composicion. citeturn1search3
-Contenedores
-Regla	EstadoExiste INTEGRACIÓN	Cumple
-Existe DOMINIO PRODUCTOR	Cumple
-INTEGRACIÓN a la izquierda	Cumple
-DOMINIO PRODUCTOR a la derecha	Cumple
-Componentes ubicados correctamente	Cumple
-Referencias visuales: CV‑028, CV‑042. citeturn1search1turn1search2
-Comandos
-Regla	EstadoExiste comando consulta	Cumple
-Existe sistema automatizado	Cumple
-Nombres inician en mayúscula	Cumple
-Verbos de consulta modelados como consulta	Cumple
-Verificación de colores	No Verificable
-Referencias:
-CV‑017, CV‑019.
-Compuertas
-Regla	EstadoCompuerta exclusiva presente	Cumple
-Pregunta SI/NO asociada	No Cumple
-Etiquetas SI/NO visibles	No Cumple
-Compuerta basada en eventos presente	Cumple
-Texto Resultado asociado	No Cumple
-Referencias:
-CV‑023, CV‑024, CV‑030.
+INTEGRACIÓN
+Capa de Arquitectura - composicion
+NOMBRE SERVICIO
+Actividades BPMN
 Eventos BPMN
-Regla	EstadoEvento excepción identificado	Cumple
-Mensaje excepción asociado	Cumple
-Evento de dominio correctamente nombrado	Cumple
-Evento señal válido	Cumple
-Referencias:
-CV‑052, CV‑053.
-Inicio y Fin
-Regla	EstadoInicio presente	Cumple
-Fin presente	Cumple
-Inicio conectado	Cumple
-Fin conectado	Cumple
-Referencias:
-CV‑065 y CV‑059.
-4. Hallazgos
-Hallazgo H‑01
-Inconsistencia de escenario
-El blueprint contiene elementos compatibles con servicio gestionado de integración, mientras que el escenario declarado fue E1.
-Impacto: Puede generar clasificación incorrecta durante gobierno arquitectónico.
-Hallazgo H‑02
-Compuerta exclusiva sin evidencia de condiciones SI / NO
-Normativa: Compuertas.md - CV‑024 página 25.
-Estado: No Cumple.
-Hallazgo H‑03
-Compuerta basada en eventos sin evidencia del texto Resultado
-Normativa: Compuertas.md - CV‑023 página 24.
-Estado: No Cumple.
-Hallazgo H‑04
-No es posible verificar totalmente algunos textos internos
-Limitación técnica del SVG exportado.
-Estado: No Verificable.
-5. Brechas Detectadas
-ID	Brecha	SeveridadB‑01	Falta evidencia de etiquetas SI/NO	Alta
-B‑02	Falta evidencia texto Resultado en compuerta basada en eventos	Alta
-B‑03	Clasificación de escenario inconsistente	Media
-B‑04	Tipo exacto del modelo de servicio no verificable	Media
-B‑05	Valor exacto de flujo transaccional no verificable	Baja
-6. Recomendaciones
-R‑01
-Agregar explícitamente las etiquetas:
-SI
-NO
-sobre las ramas de la compuerta exclusiva.
-Referencia: CV‑030 página 31.
-Prioridad: Alta
-R‑02
-Agregar texto:
-Resultado
-Exitoso
-Fallido
-en la compuerta basada en eventos cuando corresponda.
-Referencia: CV‑023 página 24.
-Prioridad: Alta
-R‑03
-Alinear el blueprint con el escenario declarado.
-Si realmente existe un servicio gestionado de integración, debería clasificarse como E2.
-Prioridad: Media
-R‑04
-Verificar que el flujo transaccional indique explícitamente:
-monetario
-no-monetario
-operativo
-transversal
-según la nomenclatura estándar.
-Referencia: CV‑009 página 10.
-Prioridad: Media
-7. Conclusión General
-El blueprint presenta una estructura arquitectónica sólida y consistente con el modelo MCI para una API privada síncrona. Se observan correctamente los componentes fundamentales: API, capas de despliegue, modelos de datos, comandos, eventos BPMN, inicio y fin.
-Las principales desviaciones encontradas están asociadas a:
-Falta de evidencia explícita de condiciones SI/NO en compuertas exclusivas.
-Falta de evidencia del texto Resultado en compuertas basadas en eventos.
-Posible discrepancia entre el escenario declarado (E1) y la estructura modelada.
-Algunas verificaciones limitadas por la naturaleza SVG/TXT del blueprint.
-Resultado final estimado: 78,4 % de cumplimiento normativo.
+Compuertas BPMN
+Excepciones de negocio
+Políticas
+Conceptos
+Sección 3. Matriz de cumplimiento
+Regla evaluada	EstadoObjeto modelado como API privada	Cumple
+Existencia de contenedor INTEGRACIÓN	Cumple
+Existencia de capa arquitectónica	Cumple
+Evidencia inequívoca de servicio gestionado E2	No Verificable
+Validación de colores normativos	No Verificable
+Validación completa de iconografía normativa	No Verificable
+Fundamento E2: el estándar indica que la clasificación E2 exige demostrar un servicio gestionado dentro de INTEGRACIÓN distinto de la API y de las capas MCI.
+Sección 4. Hallazgos
+H-01
+Servicio gestionado E2 no demostrado con evidencia suficiente.
+Se observa el contenedor NOMBRE SERVICIO, pero con la evidencia revisada no se demuestra el nombre o la materialización efectiva del servicio gestionado exigido para E2.
+Estado: No Verificable
+Sección 5. Brechas
+Imposibilidad de certificar colores normativos específicos.
+Imposibilidad de certificar iconografía normativa específica para todos los símbolos.
+Evidencia insuficiente del servicio gestionado requerido para E2.
+Sección 6. Recomendaciones
+Verificar que el contenedor hijo de INTEGRACIÓN esté nombrado explícitamente con el servicio gestionado correspondiente.
+Validar visualmente la simbología contra las figuras normativas aplicables.
+Confirmar que el servicio gestionado se encuentre diferenciado de la API privada y de las capas MCI conforme al escenario E2.
+Sección 7. Conclusión
+No se identifican evidencias que permitan declarar incumplimiento directo respecto al modelado básico de una API privada MCI; sin embargo, para el escenario arquitectónico E2 la evidencia disponible no permite demostrar de forma concluyente la presencia de un servicio gestionado diferenciado dentro de INTEGRACIÓN. Según la normativa, este aspecto debe clasificarse como No Verificable, no como Cumple ni No Cumple.
+Métricas
+Cumple (C): 3
+Parcialmente Cumple (P): 0
+No Cumple (NC): 0
+No Verificable (NV): 3
+Cumplimiento = (3 + 0.5×0) / (3 + 0 + 0) × 100 = 100%
+Cobertura = (3 + 0 + 0) / (3 + 0 + 0 + 3) × 100 = 50%
+Resultado global: Cobertura insuficiente para certificar conformidad arquitectónica completa; evaluación limitada por evidencia no verificable del servicio gestionado E2 y de atributos visuales normativos.
