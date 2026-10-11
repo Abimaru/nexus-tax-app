@@ -1,0 +1,7 @@
+Blueprint,Escenario_esperado,Combinacion,Estado,5_preguntas,Escenario_correcto,Padres_jerarquia,Nombre_servicio,Comandos_y_iconos,Colores,Conexiones,Hallazgos_inventados,Observaciones
+retrieveTransactionSummary,E1,JSON + PNG,Pendiente,,,,,,,,,
+retrieveTransactionSummary,E1,JSON + PDF,Pendiente,,,,,,,,,
+retrieveTransactionSummary,E1,JSON + TXT/SVG,Pendiente,,,,,,,,,
+initiateMortgageLoanDisbursement,E2,JSON + PNG,Pendiente,,,,,,,,,
+initiateMortgageLoanDisbursement,E2,JSON + PDF,Pendiente,,,,,,,,,
+initiateMortgageLoanDisbursement,E2,JSON + TXT/SVG,Pendiente,,,,,,,,,
