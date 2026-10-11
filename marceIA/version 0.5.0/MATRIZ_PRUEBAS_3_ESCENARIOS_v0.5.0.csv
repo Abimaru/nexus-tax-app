@@ -1,0 +1,10 @@
+ID,Escenario esperado,Formato visual A,Aislamiento,5 preguntas,Inventario A,Solicita JSON,Inventario B,Conciliación A/B,Dictamen con evidencia,Errores de color/icono,Observaciones
+E1-PDF,E1,PDF,chat nuevo,No probado,No probado,No probado,No probado,No probado,No probado,,
+E1-PNG,E1,PNG,chat nuevo,No probado,No probado,No probado,No probado,No probado,No probado,,
+E1-TXT-SVG,E1,TXT/SVG,chat nuevo,No probado,No probado,No probado,No probado,No probado,No probado,,
+E2-PDF,E2,PDF,chat nuevo,No probado,No probado,No probado,No probado,No probado,No probado,,
+E2-PNG,E2,PNG,chat nuevo,No probado,No probado,No probado,No probado,No probado,No probado,,
+E2-TXT-SVG,E2,TXT/SVG,chat nuevo,No probado,No probado,No probado,No probado,No probado,No probado,,
+E3-PDF,E3,PDF,chat nuevo,No probado,No probado,No probado,No probado,No probado,No probado,,
+E3-PNG,E3,PNG,chat nuevo,No probado,No probado,No probado,No probado,No probado,No probado,,
+E3-TXT-SVG,E3,TXT/SVG,chat nuevo,No probado,No probado,No probado,No probado,No probado,No probado,,

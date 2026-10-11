@@ -1,0 +1,17 @@
+Inicia una evaluación controlada de Blueprint Evaluator v0.5.1 con los tres archivos adjuntos.
+
+Primero confirma que puedes acceder realmente a cada archivo.
+
+Antes de emitir conclusiones, solicítame la confirmación de los cinco parámetros arquitectónicos.
+
+Después de confirmarlos, construye por separado:
+
+1. Inventario estructural del JSON, limitado a la operación del blueprint visual.
+2. Inventario visual del PNG, identificando formas, iconos, colores, jerarquías, conexiones y excepciones.
+3. Matriz de conciliación JSON vs. PNG, indicando coincidencias, discrepancias y evidencias insuficientes.
+
+Finalmente genera las siete secciones del informe arquitectónico, aplicando únicamente las reglas del estándar integrado.
+
+No confundas elementos de NOTACIÓN con componentes del proceso. No declares E2 sin evidencia de un servicio gestionado dentro de INTEGRACIÓN. No afirmes que un color o icono cumple si no lo has podido verificar.
+
+Conserva las referencias exactas de las reglas y figuras utilizadas.
