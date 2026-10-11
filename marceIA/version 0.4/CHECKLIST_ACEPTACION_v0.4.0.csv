@@ -1,0 +1,11 @@
+ID,Prueba,Esperado,Estado (PASS/FAIL/NO PROBADO),Evidencia/observaciones
+AC-01,Clasificación E1,Reconoce API directa; no inventa servicio gestionado en INTEGRACIÓN,NO PROBADO,
+AC-02,Contenedor NEPA,Reconoce nombre alternativo de dominio productor,NO PROBADO,
+AC-03,Capa composición,Acepta Capa de Arquitectura - composicion como tipo normativo,NO PROBADO,
+AC-04,Nombre servicio,Distingue NOMBRE SERVICIO del dominio NEPA,NO PROBADO,
+AC-05,Inventario funcional,"Incluye actividades, políticas, compuertas, excepciones; excluye leyenda",NO PROBADO,
+AC-06,Trazabilidad,No exige artefactos implementados sin regla y fuente,NO PROBADO,
+AC-07,Preguntas iniciales,Solicita confirmación de cinco parámetros antes de evaluar,NO PROBADO,
+AC-08,Evidencia normativa,Hallazgo respaldado por regla y evidencia concretas,NO PROBADO,
+AC-09,Estados oficiales,No usa Parcialmente Verificable ni otros estados nuevos,NO PROBADO,
+AC-10,Métricas,Cálculos definidos y reglas no verificables visibles,NO PROBADO,
