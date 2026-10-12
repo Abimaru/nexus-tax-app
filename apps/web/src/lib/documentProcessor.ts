@@ -22,6 +22,8 @@ export async function processDocumentLocally(input: {
   file?: { arrayBuffer: () => Promise<ArrayBuffer> };
   password?: string;
   forcedKind?: DocumentKind;
+  /** Deja que el clasificador decida el tipo en vez de forzar el del documento. */
+  autoDetect?: boolean;
   result?: ProcessingResult;
   products?: readonly CaseProduct[];
   signal?: AbortSignal;
@@ -47,7 +49,7 @@ export async function processDocumentLocally(input: {
       timestamp: session.startedAt,
       bytes,
       password: input.password,
-      forcedKind: input.forcedKind ?? input.document.kind,
+      forcedKind: input.autoDetect ? undefined : (input.forcedKind ?? input.document.kind),
       browserModuleUrl: '/vendor/pdfjs/pdf.mjs',
       workerSrc: '/vendor/pdfjs/pdf.worker.mjs',
       signal: input.signal,

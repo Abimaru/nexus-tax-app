@@ -266,7 +266,10 @@ test('flujo guiado completo del expediente', async ({ page }, testInfo) => {
   await page.getByRole('button', { name: /Procesar información/ }).click();
 
   // Organización abre en Resumen con métricas y gráficas.
-  await expect(page).toHaveURL(/\/organizacion\/resumen$/, { timeout: 20_000 });
+  await expect(page).toHaveURL(/\/organizacion\/tu-resultado$/, { timeout: 20_000 });
+  await expect(page.getByRole('button', { name: 'Continuar' })).toBeVisible({ timeout: 20_000 });
+  await page.getByRole('button', { name: 'Ver el detalle completo' }).click();
+  await expect(page).toHaveURL(/\/organizacion\/resumen$/);
   await expect(page.getByText('Registros').first()).toBeVisible({ timeout: 20_000 });
   await expect(page.getByRole('heading', { name: 'Valores reportados por entidad' })).toBeVisible();
   await expect(page.getByRole('heading', { name: /Calidad del an.lisis/ })).toBeVisible();

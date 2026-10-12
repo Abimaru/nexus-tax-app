@@ -90,7 +90,7 @@ test('salud complementaria: dos meses, uno supera el tope, se explica y confirma
   await expect(page).toHaveURL(/\/extraccion\/inspeccion$/);
   await page.getByRole('button', { name: 'Reporte' }).click();
   await page.getByRole('button', { name: /Procesar información/ }).click();
-  await expect(page).toHaveURL(/\/organizacion\/resumen$/, { timeout: 20_000 });
+  await expect(page).toHaveURL(/\/organizacion\/tu-resultado$/, { timeout: 20_000 });
 
   await selectStage(page, 'Declaración');
   await selectView(page, 'Salud complementaria');
@@ -171,7 +171,7 @@ test('salud complementaria: dependiente sin vincular queda en revisión de benef
   await expect(page).toHaveURL(/\/extraccion\/inspeccion$/);
   await page.getByRole('button', { name: 'Reporte' }).click();
   await page.getByRole('button', { name: /Procesar información/ }).click();
-  await expect(page).toHaveURL(/\/organizacion\/resumen$/, { timeout: 20_000 });
+  await expect(page).toHaveURL(/\/organizacion\/tu-resultado$/, { timeout: 20_000 });
 
   await selectStage(page, 'Declaración');
   await selectView(page, 'Salud complementaria');

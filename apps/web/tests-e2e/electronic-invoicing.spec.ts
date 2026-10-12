@@ -155,7 +155,7 @@ test('facturación electrónica: cargar, conciliar, decidir y verificar impacto 
   await expect(page).toHaveURL(/\/extraccion\/inspeccion$/);
   await page.getByRole('button', { name: 'Reporte' }).click();
   await page.getByRole('button', { name: /Procesar información/ }).click();
-  await expect(page).toHaveURL(/\/organizacion\/resumen$/, { timeout: 20_000 });
+  await expect(page).toHaveURL(/\/organizacion\/tu-resultado$/, { timeout: 20_000 });
 
   // 2. Abrir Facturación electrónica.
   await selectStage(page, 'Declaración');
@@ -268,7 +268,7 @@ test('facturación electrónica: archivo no reconocido no crea un reporte', asyn
   await expect(page).toHaveURL(/\/extraccion\/inspeccion$/);
   await page.getByRole('button', { name: 'Reporte' }).click();
   await page.getByRole('button', { name: /Procesar información/ }).click();
-  await expect(page).toHaveURL(/\/organizacion\/resumen$/, { timeout: 20_000 });
+  await expect(page).toHaveURL(/\/organizacion\/tu-resultado$/, { timeout: 20_000 });
 
   await selectStage(page, 'Declaración');
   await selectView(page, 'Facturación electrónica');

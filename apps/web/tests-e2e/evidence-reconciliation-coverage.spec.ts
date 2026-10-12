@@ -203,7 +203,7 @@ test('unifica conciliación y amplía cobertura: exact/rounding, contradicción,
   await expect(page).toHaveURL(/\/extraccion\/inspeccion$/);
   await page.getByRole('button', { name: 'Reporte' }).click();
   await page.getByRole('button', { name: /Procesar información/ }).click();
-  await expect(page).toHaveURL(/\/organizacion\/resumen$/, { timeout: 20_000 });
+  await expect(page).toHaveURL(/\/organizacion\/tu-resultado$/, { timeout: 20_000 });
 
   // 2. Cargar el certificado tributario consolidado.
   await uploadDocument(page, consolidatedPdfPath, 'consolidated_tax_certificate');
