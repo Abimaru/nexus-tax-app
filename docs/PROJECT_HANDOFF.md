@@ -2,6 +2,60 @@
 
 _Última actualización: 2026-09-08 (cierre Fase G)._
 
+## UX — Pantalla "Tu resultado" (2026-10-12)
+
+Primer paso de la mejora de facilidad de uso: tras cargar la exógena, la app abre en
+`organizacion/tu-resultado` (antes `resumen`, que pasa a "Resumen detallado"). Responde en lenguaje
+llano si probablemente debe declarar, por qué (cinco límites con barra), la fecha límite (indica si ya
+venció) y solo pregunta IVA cuando esa respuesta puede cambiar el resultado.
+
+- Lógica de redacción pura en `apps/web/src/lib/firstResult.ts` (sin reglas nuevas: reutiliza
+  `assessFilingObligation`); panel en `components/case/FirstResultPanel.tsx`.
+- Nueva vista `tu-resultado` en `WorkflowViewIdSchema`; E2E existentes actualizados a la nueva URL y
+  nuevo `first-result.spec.ts` (escritorio/móvil, sin desbordamiento).
+- Verificación local con 4 exógenas reales (no versionadas): coherente con lo esperado (2 "probablemente
+  debe declarar", 2 "falta confirmar IVA").
+- Pendiente: el banner "Siguiente paso recomendado" compite con el botón Continuar; el asistente
+  lineal de 4-5 pasos y el glosario son los siguientes incrementos.
+
+### Paso 2 del camino guiado — "Sube tus documentos" (2026-10-12)
+
+Nueva vista `organizacion/mis-documentos` (botón Continuar de "Tu resultado"). Una sola zona para
+soltar varios archivos: los PDF se leen y se clasifican solos (`autoDetect` en `processDocumentLocally`;
+sin elegir tipo, almacenamiento ni entidad) y un Excel se prueba como reporte DIAN de facturas
+electrónicas. Maneja claves de PDF (solo en memoria), repetidos y archivos no reconocidos con
+mensajes llanos. Lista "qué soportes sugiere tu exógena" agrupada por tipo (`documentIntake.ts`).
+
+- El tipo detectado solo se **adopta** con confianza alta (`applyDetectedDocumentKind`); con media se
+  dice "Parece ser…". Con 20 archivos reales, la clasificación automática acertó en predial, cesantías y
+  costos, pero hubo falsos "alta confianza" (p. ej. un extracto como intereses de vivienda): es un
+  límite del clasificador (ver Fase F), no de esta pantalla.
+- Limitación conocida: los soportes sugeridos siguen mostrando "0 de N asociados" tras subir,
+  porque la cobertura solo se marca al asociar el documento a un requisito. Siguiente incremento
+  natural: proponer esa asociación automáticamente (por tipo + entidad) con confirmación humana.
+- E2E `document-intake.spec.ts` y helpers compartidos en `tests-e2e/support.ts`.
+
+## Revisión general del proyecto — 2026-09-07
+
+Revisión de código y documentación solicitada para evaluar estado y mejoras; sin cambios
+funcionales ni revisión normativa externa. Se conserva la fecha de cierre de Fase G existente.
+
+- Verificación local: `pnpm install --frozen-lockfile`, `pnpm typecheck`, `pnpm lint`,
+  `pnpm test` (736 pruebas) y `pnpm build` finalizaron correctamente. La primera ejecución
+  de tests falló por un enlace local ausente de `form-210` a `document-intelligence`;
+  tras instalar con lockfile congelado, la suite completa pasó. PDF.js emitió avisos de
+  `standardFontDataUrl`; el build avisó sobre generación estática con edge runtime.
+- No se ejecutaron Playwright ni inspección visual en esta revisión.
+- Riesgos y pendientes: contradicción de alcance entre «no liquida» y la liquidación
+  preliminar implementada; reglas marcadas `implemented_unverified`; concentración de
+  responsabilidades en `repository.ts`, `taxCaseAnalysis.ts` y paneles extensos.
+- Siguiente paso recomendado: consolidar alcance y documentación, verificar restauración
+  completa de expedientes, y añadir el selector de fuentes existentes para ingresos de
+  inmuebles (la UI actual usa `sourceKind: 'manual'`). La conexión al F-210 requiere su
+  propio diseño y validación; no se propone activarla automáticamente.
+- Mejoras propuestas, todavía no implementadas: separar módulos por responsabilidad,
+  automatizar quality gates y medir carga de revisión con corpus sintético reproducible.
+
 ## Sprint 2.4 — Fase G: Inmuebles, renta inmobiliaria y administración de propiedad horizontal
 
 Rama `feature/sprint-2.4-properties`, creada desde `main` actualizado (post-merge de Fase F.3).
