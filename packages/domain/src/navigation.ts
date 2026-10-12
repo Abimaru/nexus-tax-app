@@ -35,6 +35,8 @@ export const WorkflowViewIdSchema = z.enum([
   'revision-documental',
   'laboratorio',
   'pendientes',
+  'tu-resultado',
+  'mis-documentos',
   'resumen',
   'entidades',
   'documentos',

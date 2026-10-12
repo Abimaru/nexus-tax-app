@@ -882,6 +882,38 @@ export async function deleteDocumentPermanently(documentId: string): Promise<voi
   });
 }
 
+/**
+ * Tras una lectura con autodetección, propone el tipo del clasificador. Solo lo ADOPTA
+ * (cambia el tipo del documento) con confianza alta, si el documento aún es «Otro documento»
+ * y el catálogo admite su extensión; con confianza media lo devuelve como simple sugerencia
+ * (`adopted: false`) para que la interfaz hable con cautela. Es orientativo: el analista
+ * puede corregirlo luego en la biblioteca.
+ */
+export async function applyDetectedDocumentKind(
+  documentId: string,
+  sessionId: string,
+): Promise<{ kind: DocumentKind; adopted: boolean } | null> {
+  const db = getDb();
+  const [document, session] = await Promise.all([
+    db.documents.get(documentId),
+    db.extractionSessions.get(sessionId),
+  ]);
+  const classification = session?.classification;
+  if (!document || document.kind !== 'other' || !classification) return null;
+  if (classification.confidence !== 'high' && classification.confidence !== 'medium') return null;
+  const kind = classification.correctedKind ?? classification.proposedKind;
+  if (kind === 'other') return null;
+  const catalog = DOCUMENT_CATALOG.find((entry) => entry.kind === kind);
+  if (!catalog?.acceptedExtensions.includes(document.extension)) return null;
+  if (classification.confidence !== 'high') return { kind, adopted: false };
+  await db.documents.update(documentId, {
+    kind,
+    category: catalog.category,
+    updatedAt: nowIso(),
+  });
+  return { kind, adopted: true };
+}
+
 export async function markDocumentObsolete(documentId: string): Promise<void> {
   const db = getDb();
   const timestamp = nowIso();
@@ -3000,31 +3032,31 @@ export async function getTaxCaseWorkspace(caseId: string) {
  */
 export async function removePriorYearReturn(id: string): Promise<void> {
   const db = getDb();
-  await db.transaction('rw', [db.priorYearReturns, db.priorYearCarryForwardCandidates], async () => {
-    const target = await db.priorYearReturns.get(id);
-    if (!target) return;
-    if (target.replaces) {
-      const previous = await db.priorYearReturns.get(target.replaces);
-      if (previous) {
-        await db.priorYearReturns.put({
-          ...previous,
-          isCurrentVersion: true,
-          replacedBy: null,
-          updatedAt: nowIso(),
-        });
+  await db.transaction(
+    'rw',
+    [db.priorYearReturns, db.priorYearCarryForwardCandidates],
+    async () => {
+      const target = await db.priorYearReturns.get(id);
+      if (!target) return;
+      if (target.replaces) {
+        const previous = await db.priorYearReturns.get(target.replaces);
+        if (previous) {
+          await db.priorYearReturns.put({
+            ...previous,
+            isCurrentVersion: true,
+            replacedBy: null,
+            updatedAt: nowIso(),
+          });
+        }
       }
-    }
-    await db.priorYearReturns.delete(id);
-    await db.priorYearCarryForwardCandidates.where('priorYearReturnId').equals(id).delete();
-  });
+      await db.priorYearReturns.delete(id);
+      await db.priorYearCarryForwardCandidates.where('priorYearReturnId').equals(id).delete();
+    },
+  );
 }
 
 export async function getPriorYearReturns(caseId: string): Promise<PriorYearTaxReturn[]> {
-  return getDb()
-    .priorYearReturns.where('caseId')
-    .equals(caseId)
-    .reverse()
-    .sortBy('taxYear');
+  return getDb().priorYearReturns.where('caseId').equals(caseId).reverse().sortBy('taxYear');
 }
 
 export async function getCurrentPriorYearReturn(
@@ -3080,7 +3112,9 @@ export async function refreshPriorYearCarryForwardCandidates(
   const existingIds = new Set(existing.map((item) => item.id));
   const newCandidates = priorReturns
     .filter((item) => item.isCurrentVersion)
-    .flatMap((item) => derivePriorYearCarryForwardCandidates(item, { existingCandidateIds: existingIds }));
+    .flatMap((item) =>
+      derivePriorYearCarryForwardCandidates(item, { existingCandidateIds: existingIds }),
+    );
   if (newCandidates.length) {
     await db.priorYearCarryForwardCandidates.bulkPut(newCandidates);
   }
@@ -3100,7 +3134,10 @@ export async function getPriorYearCarryForwardCandidates(
  */
 export async function decideCarryForwardCandidate(
   candidateId: string,
-  decision: Extract<PriorYearCarryForwardCandidate['decision'], 'confirmed' | 'corrected' | 'rejected'>,
+  decision: Extract<
+    PriorYearCarryForwardCandidate['decision'],
+    'confirmed' | 'corrected' | 'rejected'
+  >,
   finalValueCop: number | null,
 ): Promise<PriorYearCarryForwardCandidate | undefined> {
   const db = getDb();
@@ -3382,7 +3419,9 @@ export async function recalculateDependentEvaluation(
     ruleVersion: staleDueToRuleChange ? existing!.ruleVersion : DEPENDENTS_ENGINE_VERSION,
     confirmedByAnalyst: staleDueToRuleChange ? false : wasConfirmed,
     staleDueToRuleChange,
-    previousRuleVersion: staleDueToRuleChange ? existing!.ruleVersion : (existing?.previousRuleVersion ?? null),
+    previousRuleVersion: staleDueToRuleChange
+      ? existing!.ruleVersion
+      : (existing?.previousRuleVersion ?? null),
     evaluatedAt: existing?.evaluatedAt ?? timestamp,
     updatedAt: timestamp,
   };
@@ -3399,7 +3438,11 @@ export async function confirmDependentEvaluation(dependentId: string): Promise<v
   const db = getDb();
   const evaluation = await db.dependentEvaluations.where('dependentId').equals(dependentId).first();
   if (!evaluation) return;
-  await db.dependentEvaluations.put({ ...evaluation, confirmedByAnalyst: true, staleDueToRuleChange: false });
+  await db.dependentEvaluations.put({
+    ...evaluation,
+    confirmedByAnalyst: true,
+    staleDueToRuleChange: false,
+  });
 }
 
 /** Revisa nuevamente una evaluación marcada `stale_due_to_rule_change`: recalcula con la versión vigente. */
@@ -3448,7 +3491,10 @@ export async function importElectronicInvoiceReport(
 
   const previous = await db.electronicInvoiceReports.where('caseId').equals(caseId).toArray();
   await db.electronicInvoiceReports.bulkDelete(previous.map((item) => item.id));
-  const previousPurchases = await db.electronicInvoicePurchases.where('caseId').equals(caseId).toArray();
+  const previousPurchases = await db.electronicInvoicePurchases
+    .where('caseId')
+    .equals(caseId)
+    .toArray();
   await db.electronicInvoicePurchases.bulkDelete(previousPurchases.map((item) => item.id));
 
   const reportId = newId('electronic-invoice-report');
@@ -3795,10 +3841,7 @@ export async function linkRentalIncome(
     updatedAt: timestamp,
   };
   await db.rentalIncomes.add(income);
-  const expenses = await db.propertyExpenses
-    .where('propertyId')
-    .equals(input.propertyId)
-    .toArray();
+  const expenses = await db.propertyExpenses.where('propertyId').equals(input.propertyId).toArray();
   for (const expense of expenses) await recalculatePropertyExpenseEligibility(expense.id);
   return income;
 }
@@ -3966,4 +4009,3 @@ export async function recalculatePropertyExpenseEligibility(
   await db.propertyExpenses.put(updated);
   return updated;
 }
-

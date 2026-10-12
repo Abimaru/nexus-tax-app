@@ -67,6 +67,8 @@ import { FilingObligationPanel } from './FilingObligationPanel';
 import { MatrixPanel } from './MatrixPanel';
 import { ResolutionDrawer } from './ResolutionDrawer';
 import { CaseOverviewPanel } from './CaseOverviewPanel';
+import { FirstResultPanel } from './FirstResultPanel';
+import { DocumentIntakePanel } from './DocumentIntakePanel';
 import { DocumentsPanel } from './DocumentsPanel';
 import { EntitiesPanel } from './EntitiesPanel';
 import { FactsPanel } from './FactsPanel';
@@ -335,7 +337,7 @@ export function CaseWorkbench({
       });
       if (active) {
         resetWorkbench();
-        applyDestination('organizacion', 'resumen', true);
+        applyDestination('organizacion', 'tu-resultado', true);
       }
     })();
     return () => {
@@ -578,6 +580,37 @@ export function CaseWorkbench({
               />
             )}
           </ResultGate>
+        ) : null}
+
+        {stage === 'organizacion' && view === 'tu-resultado' && result ? (
+          <FirstResultPanel
+            caseId={caseId}
+            taxYear={taxCase.taxYear}
+            result={result}
+            onContinue={() => applyDestination('organizacion', 'mis-documentos')}
+            onSeeDetail={() => applyDestination('organizacion', 'resumen')}
+          />
+        ) : null}
+
+        {stage === 'organizacion' && view === 'mis-documentos' ? (
+          <DocumentIntakePanel
+            caseId={caseId}
+            taxYear={taxCase.taxYear}
+            result={result}
+            products={workspace.products}
+            requirements={result?.requirements ?? []}
+            coverages={workspace.coverages}
+            pendingReviewCount={
+              workspace.documentCandidates.filter((candidate) => candidate.status === 'pending')
+                .length
+            }
+            onContinue={() =>
+              workspace.documentCandidates.some((candidate) => candidate.status === 'pending')
+                ? applyDestination('organizacion', 'revision-documental')
+                : applyDestination('organizacion', 'pendientes')
+            }
+            onOpenLibrary={() => applyDestination('organizacion', 'documentos')}
+          />
         ) : null}
 
         {stage === 'organizacion' && view === 'resumen' ? (

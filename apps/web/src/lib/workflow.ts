@@ -68,9 +68,11 @@ export const WORKFLOW_STAGES: readonly WorkflowStageDefinition[] = [
     name: 'Organización',
     shortName: 'Organiza',
     description: 'Ordena entidades, documentos, requisitos y hechos documentales.',
-    defaultView: 'resumen',
+    defaultView: 'tu-resultado',
     views: [
-      { id: 'resumen', label: 'Resumen' },
+      { id: 'tu-resultado', label: 'Tu resultado' },
+      { id: 'mis-documentos', label: 'Sube tus documentos' },
+      { id: 'resumen', label: 'Resumen detallado' },
       { id: 'entidades', label: 'Entidades' },
       { id: 'documentos', label: 'Documentos' },
       { id: 'revision-documental', label: 'Revisión de extracción' },
@@ -309,7 +311,7 @@ export function defaultWorkflowDestination(context: WorkflowContext): {
   }
   return {
     stage: 'organizacion',
-    view: context.manualMode && !context.result ? 'documentos' : 'resumen',
+    view: context.manualMode && !context.result ? 'documentos' : 'tu-resultado',
   };
 }
 
