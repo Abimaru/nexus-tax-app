@@ -129,9 +129,14 @@ mensajes llanos. Lista "qué soportes sugiere tu exógena" agrupada por tipo (`d
   dice "Parece ser…". Con 20 archivos reales, la clasificación automática acertó en predial, cesantías y
   costos, pero hubo falsos "alta confianza" (p. ej. un extracto como intereses de vivienda): es un
   límite del clasificador (ver Fase F), no de esta pantalla.
-- Limitación conocida: los soportes sugeridos siguen mostrando "0 de N asociados" tras subir,
-  porque la cobertura solo se marca al asociar el documento a un requisito. Siguiente incremento
-  natural: proponer esa asociación automáticamente (por tipo + entidad) con confirmación humana.
+- **Asociación sugerida (2026-10-12)**: `requirementMatching.ts` (puro) propone a qué soporte de la exógena
+  corresponde cada documento (tipo + entidad). Nada se guarda sin confirmación: «Confirmar», «No es este» y
+  «Confirmar las N seguras». Reglas conservadoras: «segura» solo con tipo de confianza alta y entidad
+  coincidente; sin entidad legible solo propone si el tipo es confiable y único; si varios documentos compiten
+  por un requisito, ninguno es «segura». Usa `saveRequirementCoverage` (mismo camino que la pantalla Requisitos).
+- Límite medido con 20 documentos reales: solo se propusieron los 4 de predial (los únicos con confianza alta);
+  el resto queda para la revisión porque el clasificador no está seguro del tipo y a menudo no lee la entidad.
+  Mejorar ese recall es trabajo del clasificador/adaptadores (Fase F), no de esta pantalla.
 - E2E `document-intake.spec.ts` y helpers compartidos en `tests-e2e/support.ts`.
 
 ## Revisión general del proyecto — 2026-09-07
