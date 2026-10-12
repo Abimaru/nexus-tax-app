@@ -101,6 +101,26 @@ tests nuevos), `pnpm build`, `pnpm test:e2e` (sin cambios) — todo en verde. Ve
 `docs/SYNTHETIC_SAMPLE_CASE.md` para el detalle completo (auditoría, diseño, tabla de
 reconciliaciones, golden expectations, cómo extenderlo).
 
+## UX — Asistente guiado de cinco pasos (2026-10-12)
+
+Rama `feature/ux-guided-assistant` (apilada sobre `feature/ux-guided-flow`). El encabezado del expediente
+ahora muestra por defecto un asistente de cinco pasos (Tu exógena · Tu resultado · Tus documentos ·
+Revisar y completar · Tu borrador) con un único botón «Siguiente: …», en lugar de las seis etapas, las
+pestañas de vistas y el banner «Siguiente paso recomendado». El modo experto (seis etapas + banner) sigue
+disponible con «Ver todas las etapas (modo experto)» y se recuerda en `localStorage`
+(`nexustax.workflowMode`, preferencia por navegador).
+
+- Lógica pura en `apps/web/src/lib/guidedFlow.ts` (pasos, estado, siguiente acción, mapa vista→paso);
+  presentación en `components/case/GuidedProgress.tsx`. No cambia rutas ni reglas: agrupa las vistas
+  existentes. Las secciones no cubiertas por un paso siguen en «Más secciones de …».
+- El paso 4 sigue la cola de tareas existente (Centro de resolución) y los datos por revisar; no se
+  completa mientras haya datos por revisar o tareas bloqueantes. El paso 5 nunca se marca como terminado.
+- El modo manual limitado (sin exógena) usa la vista completa.
+- Los E2E históricos usan el modo experto vía `storageState` en `playwright.config.ts`; las pruebas del
+  asistente (`guided-assistant.spec.ts`) lo sobrescriben.
+- Pendiente: el paso 4 muestra todas las tareas abiertas (p. ej. «59 pendientes»), lo cual intimida;
+  agrupar/priorizar esa cola es el siguiente incremento natural.
+
 ## UX — Pantalla "Tu resultado" (2026-10-12)
 
 Primer paso de la mejora de facilidad de uso: tras cargar la exógena, la app abre en
