@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
   ArrowRight,
@@ -15,6 +15,8 @@ import {
 import type {
   CaseProduct,
   DocumentaryRequirement,
+  DocumentExtractionSession,
+  DocumentFactCandidate,
   UploadedDocument,
   ProcessingResult,
   RequirementCoverage,
@@ -23,11 +25,13 @@ import { PdfReadError } from '@nexus-tax/document-intelligence';
 import { Badge, Button, GlassPanel } from '@nexus-tax/ui';
 import { DOCUMENT_KIND_LABEL } from '@/lib/dossierPresentation';
 import { buildDocumentChecklist, intakeFileType } from '@/lib/documentIntake';
+import { suggestRequirementMatches } from '@/lib/requirementMatching';
 import { processDocumentLocally } from '@/lib/documentProcessor';
 import {
   addCaseDocument,
   applyDetectedDocumentKind,
   importElectronicInvoiceReport,
+  saveRequirementCoverage,
 } from '@/lib/repository';
 
 type IntakeStatus = 'working' | 'done' | 'needs_password' | 'unrecognized' | 'duplicate' | 'error';
@@ -55,6 +59,9 @@ export function DocumentIntakePanel({
   products,
   requirements,
   coverages,
+  documents,
+  sessions,
+  candidates,
   pendingReviewCount,
   onContinue,
   onOpenLibrary,
@@ -65,6 +72,9 @@ export function DocumentIntakePanel({
   products: CaseProduct[];
   requirements: readonly DocumentaryRequirement[];
   coverages: readonly RequirementCoverage[];
+  documents: readonly UploadedDocument[];
+  sessions: readonly DocumentExtractionSession[];
+  candidates: readonly DocumentFactCandidate[];
   pendingReviewCount: number;
   onContinue: () => void;
   onOpenLibrary: () => void;
@@ -74,7 +84,47 @@ export function DocumentIntakePanel({
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const registered = useRef(new Map<string, UploadedDocument>());
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+  const [confirming, setConfirming] = useState(false);
+  const [matchError, setMatchError] = useState<string | null>(null);
   const checklist = buildDocumentChecklist(requirements, coverages);
+  const suggestions = useMemo(
+    () =>
+      suggestRequirementMatches({
+        documents,
+        sessions,
+        candidates,
+        requirements,
+        coverages,
+        entities: result?.entities ?? [],
+      }).filter((item) => !dismissed.has(item.key)),
+    [documents, sessions, candidates, requirements, coverages, result?.entities, dismissed],
+  );
+  const strongSuggestions = suggestions.filter((item) => item.strength === 'strong');
+
+  async function confirmMatches(selected: typeof suggestions) {
+    setConfirming(true);
+    setMatchError(null);
+    try {
+      for (const item of selected) {
+        await saveRequirementCoverage({
+          caseId,
+          requirementId: item.requirementId,
+          documentId: item.documentId,
+          factId: null,
+          entityId: item.entityId,
+          status: 'covered',
+          relation: 'covers',
+          notes:
+            'Asociado desde «Sube tus documentos»: sugerido por NexusTax y confirmado por el usuario.',
+        });
+      }
+    } catch (caught) {
+      setMatchError(caught instanceof Error ? caught.message : 'No pudimos guardar la asociación.');
+    } finally {
+      setConfirming(false);
+    }
+  }
   const busy = items.some((item) => item.status === 'working');
 
   function patch(key: string, change: Partial<IntakeItem>) {
@@ -311,6 +361,69 @@ export function DocumentIntakePanel({
           </button>
         </div>
       </GlassPanel>
+
+      {suggestions.length > 0 ? (
+        <GlassPanel className="p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-medium text-content-strong">
+                Asociaciones que encontramos
+              </h3>
+              <p className="mt-1 text-xs text-content-muted">
+                Creemos que estos documentos soportan estos requisitos. Nada se guarda hasta que lo
+                confirmes.
+              </p>
+            </div>
+            {strongSuggestions.length > 1 ? (
+              <Button
+                onClick={() => void confirmMatches(strongSuggestions)}
+                disabled={confirming}
+                leadingIcon={<CheckCircle2 className="h-4 w-4" aria-hidden />}
+              >
+                Confirmar las {strongSuggestions.length} seguras
+              </Button>
+            ) : null}
+          </div>
+          {matchError ? <p className="mt-3 text-xs text-tone-amber">{matchError}</p> : null}
+          <ul className="mt-4 space-y-2">
+            {suggestions.map((item) => (
+              <li key={item.key} className="rounded-xl border border-overlay/10 p-3">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="flex flex-wrap items-center gap-2 text-sm text-content-strong">
+                      <span className="truncate font-medium">{item.documentFileName}</span>
+                      <Badge tone={item.strength === 'strong' ? 'emerald' : 'amber'}>
+                        {item.strength === 'strong' ? 'Segura' : 'Probable'}
+                      </Badge>
+                    </p>
+                    <p className="mt-1 text-xs text-content">
+                      Soportaría: {item.requirementName} · {item.entityName}
+                    </p>
+                    <p className="mt-0.5 text-xs text-content-muted">{item.reason}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => void confirmMatches([item])}
+                      disabled={confirming}
+                      aria-label={`Confirmar: ${item.documentFileName} soporta ${item.requirementName} de ${item.entityName}`}
+                    >
+                      Confirmar
+                    </Button>
+                    <button
+                      type="button"
+                      onClick={() => setDismissed((current) => new Set(current).add(item.key))}
+                      className="min-h-10 rounded-lg border border-overlay/12 px-3 text-sm text-content-muted hover:bg-overlay/5"
+                      aria-label={`Descartar: ${item.documentFileName} no soporta ${item.requirementName} de ${item.entityName}`}
+                    >
+                      No es este
+                    </button>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </GlassPanel>
+      ) : null}
 
       {checklist.items.length > 0 ? (
         <section aria-labelledby="que-suele-faltar">

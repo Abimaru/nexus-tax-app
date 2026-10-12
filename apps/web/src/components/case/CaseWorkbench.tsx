@@ -609,6 +609,9 @@ export function CaseWorkbench({
             products={workspace.products}
             requirements={result?.requirements ?? []}
             coverages={workspace.coverages}
+            documents={workspace.documents}
+            sessions={workspace.extractionSessions}
+            candidates={workspace.documentCandidates}
             pendingReviewCount={
               workspace.documentCandidates.filter((candidate) => candidate.status === 'pending')
                 .length
@@ -854,7 +857,11 @@ export function CaseWorkbench({
           <FilingStatesPanel draft={workspace.form210Draft} />
         ) : null}
         {stage === 'declaracion' && view === 'revision-final' ? (
-          <FinalReviewPanel draft={workspace.form210Draft} tasks={tasks} onNavigate={navigateToTask} />
+          <FinalReviewPanel
+            draft={workspace.form210Draft}
+            tasks={tasks}
+            onNavigate={navigateToTask}
+          />
         ) : null}
 
         {stage === 'exportacion' && ['resumen-final', 'exportar', 'manifiesto'].includes(view) ? (
