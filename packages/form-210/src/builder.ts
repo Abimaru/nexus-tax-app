@@ -23,6 +23,7 @@ import {
   detectDuplicatePatrimonyEntries,
   detectLiabilityWithoutAsset,
   detectMovementWithoutBalance,
+  evaluateComplementaryHealthMonthlyCap,
   evaluateCrossValidations,
   evaluatePriorYearBalance,
 } from '@nexus-tax/aegis-rules';
@@ -470,6 +471,7 @@ export function computePreliminaryLiquidation(
   },
   withholdings: Form210PreliminaryLiquidation['withholdings'] | null = null,
   dependentsAdditionalDeduction: Form210PreliminaryLiquidation['dependentsAdditionalDeduction'] = null,
+  complementaryHealthDeduction: Form210PreliminaryLiquidation['complementaryHealthDeduction'] = null,
 ): Form210PreliminaryLiquidation {
   const get = (number: number): number | null => {
     const box = boxes.find((entry) => entry.number === number);
@@ -674,6 +676,7 @@ export function computePreliminaryLiquidation(
     dependentsDeduction,
     dependentsAdditionalDeduction,
     electronicInvoicingDeduction,
+    complementaryHealthDeduction,
     individualDeductionLimits,
     priorYearBalance,
     withholdings: withholdingsConsolidation,
@@ -818,6 +821,35 @@ export function buildForm210Draft(input: Form210BuildInput): Form210Draft {
       evidence: dependentsDeduction.formula,
     };
     sourcesByBox.set(39, [...(sourcesByBox.get(39) ?? []), dependentsTrace]);
+  }
+
+  // Deducción por salud complementaria (medicina prepagada, seguros de
+  // salud — art. 387 ET, Sprint 2.4, Fase H): deducción DISTINTA de
+  // `dependentsDeduction` bajo el MISMO artículo. Recibe únicamente pagos
+  // YA validados individualmente (beneficiario, mes, soporte, exclusión
+  // de EPS/gasto médico directo); el motor puro aplica el tope MENSUAL
+  // agregado de 16 UVT (nunca 16 UVT × 12 como regla primaria) y se
+  // cablea a la casilla 39, sumado (no fusionado) con la deducción de
+  // dependientes.
+  const complementaryHealthInput = input.complementaryHealth ?? [];
+  const complementaryHealthDeduction = complementaryHealthInput.length
+    ? evaluateComplementaryHealthMonthlyCap({
+        taxYear: 2025,
+        payments: complementaryHealthInput,
+      })
+    : null;
+  if (complementaryHealthDeduction && complementaryHealthDeduction.annualEligibleCop > 0) {
+    const complementaryHealthTrace: Form210SourceTrace = {
+      type: 'calculation',
+      sourceId: 'calc:complementary-health-387',
+      recordId: null,
+      documentId: null,
+      factId: null,
+      label: 'Deducción por salud complementaria (medicina prepagada/seguros de salud, art. 387 ET)',
+      value: complementaryHealthDeduction.annualEligibleCop,
+      evidence: complementaryHealthDeduction.formula,
+    };
+    sourcesByBox.set(39, [...(sourcesByBox.get(39) ?? []), complementaryHealthTrace]);
   }
 
   // Adición por dependientes (72 UVT, art. 336 num. 3 ET). Independiente del
@@ -1170,6 +1202,7 @@ export function buildForm210Draft(input: Form210BuildInput): Form210Draft {
     input.priorYearBalance,
     withholdingsConsolidation,
     dependentsAdditionalDeduction,
+    complementaryHealthDeduction,
   );
 
   // Fase B0 (Sprint 2.4): cablear informativamente las casillas 126, 127,

@@ -40,6 +40,7 @@ export * from './electronicInvoice';
 export * from './evidenceMatching';
 export * from './numericReconciliation';
 export * from './property';
+export * from './complementaryHealth';
 
 /** Versión del contrato de dominio. Se incrementa ante cambios incompatibles. */
-export const DOMAIN_VERSION = '0.13.0';
+export const DOMAIN_VERSION = '0.14.0';

@@ -1,6 +1,105 @@
-# Handoff del proyecto — NexusTax (Sprint 2.4, Fase B0 + B + B1 + C + D + E + E.1 + F + F.1 + F.2 + F.3 + G + revisiones puntuales)
+# Handoff del proyecto — NexusTax (Sprint 2.4, Fase B0 + B + B1 + C + D + E + E.1 + F + F.1 + F.2 + F.3 + G + G.1 + H + revisiones puntuales)
 
-_Última actualización: 2026-09-08 (cierre Fase G)._
+_Última actualización: 2026-09-06 (cierre Fase H)._
+
+## Sprint 2.4 — Fase H: Salud complementaria y medicina prepagada
+
+Rama `feature/sprint-2.4-health-deductions`, creada desde `main` actualizado (post-merge de Fase G.1).
+
+Modela pagos de salud complementaria (medicina prepagada, seguros de salud, planes adicionales de
+salud) elegibles bajo el art. 387 ET, separados completamente de aportes obligatorios a EPS y
+gastos médicos directos.
+
+1. **Auditoría normativa**: texto vigente del art. 387 ET verificado literalmente — el límite de
+   16 UVT mensuales es un único tope AGREGADO compartido entre medicina prepagada (literal a) y
+   seguros de salud (literal b), no un tope separado por concepto. Nueva fuente
+   `et-art-387-par-2-salud` (cita verbatim); `et-art-387` actualizada para aclarar que regula DOS
+   deducciones distintas (dependientes y salud) bajo el mismo artículo.
+2. **`packages/domain/src/complementaryHealth.ts`** (nuevo): `ComplementaryHealthPayment` con
+   `eligibilityStatus` de ocho estados (nunca un booleano), `beneficiary` (incluye vínculo
+   explícito a un `TaxDependent` existente cuando aplica), `month`/`coveragePeriodDescription`
+   (distingue "sin período" de "período sin desglose mensual"), y marcas explícitas
+   `isMandatoryEpsContribution`/`isDirectMedicalExpense`. Nuevo `DocumentKind`
+   `complementary_health_certificate` y `ProductType` `health_plan`.
+3. **Motores puros** (`@nexus-tax/aegis-rules`): `evaluateComplementaryHealthPaymentEligibility`
+   (validación individual: duplicado → EPS/gasto directo excluidos → producto/beneficiario/mes/
+   soporte) y `evaluateComplementaryHealthMonthlyCap` (tope MENSUAL agregado de 16 UVT — el
+   equivalente anual de 192 UVT se deriva en código, nunca es la regla primaria; reparto
+   proporcional cuando varios proveedores comparten mes). 21 tests.
+4. **Adaptador documental** `co.complementary-health.generic` (2 reglas independientes, nunca
+   `mensual × 12`, nunca promueve póliza/identificación/teléfono/resolución/porcentaje). 7 tests.
+5. **Persistencia**: Dexie v17 (1 tabla nueva, aditiva); repositorio con CRUD completo +
+   `recalculateComplementaryHealthCap` (recalcula TODOS los pagos del expediente cada vez, porque
+   el tope depende del total agregado por mes entre proveedores).
+6. **6 tipos de tarea nuevos** (`source: 'complementary_health'`, ver `docs/CASE_TASKS.md`).
+7. **Integración con Formulario 210**: cableada a la casilla 39 (misma casilla que dependientes),
+   SUMADA (no fusionada) con `dependentsDeduction` — ninguna casilla nueva inventada; el límite
+   cedular del 40 %/1.340 UVT se aplica una sola vez, sobre R40 ya consolidada.
+8. **UI `ComplementaryHealthPanel`**: flujo guiado proveedor → beneficiario → mes/período → valor →
+   soporte; modo avanzado explica el tope mes a mes con lenguaje simple, reutilizando el cálculo
+   real del builder (nunca recalculado en la UI).
+9. **E2E** (`complementary-health.spec.ts`, 2 escenarios con capturas desktop/móvil): dos meses
+   (uno bajo el tope, otro que lo supera) con confirmación y persistencia; dependiente sin vincular
+   queda en revisión de beneficiario.
+10. **Golden synthetic case extendido** (§23): medicina prepagada del contribuyente en dos meses +
+    seguro de salud del dependiente ya registrado, vinculado explícitamente. Ver
+    `docs/SYNTHETIC_SAMPLE_CASE.md`.
+
+**Quality gate**: `check:encoding`, `pnpm -r typecheck`, `pnpm -r lint`, `pnpm -r test` (domain 43,
+aegis-rules 212, document-intelligence 189, exogenous-parser 87, form-210 96, web 189 = 816 tests
+en todos los paquetes), `pnpm build`, `pnpm test:e2e` (17/17) — todo en verde. Ver
+`docs/COMPLEMENTARY_HEALTH_2025.md` para el detalle completo (auditoría, modelo, motores,
+integración con dependientes/Form 210, guardarraíles, limitaciones).
+
+**Limitaciones explícitas para una futura fase**: la numeración exacta del artículo reglamentario
+del Decreto 1625 de 2016 (requisito de entidad vigilada) no se verificó contra el normograma
+oficial; el reparto proporcional del tope entre varios proveedores del mismo mes es una decisión
+de diseño razonable pero no está explícitamente prescrita por el art. 387 ET; la UI no ofrece
+todavía un selector para vincular un pago a un registro exógeno o hecho documental existente (solo
+entrada manual, igual que `RentalIncome` en Fase G).
+
+## Sprint 2.4 — Fase G.1: Realistic Synthetic Tax Case
+
+Rama `feature/sprint-2.4-realistic-sample`, creada desde `main` actualizado (post-merge de Fase G).
+
+Reemplaza el sample mínimo de humo (`samples/generate-sample.mjs`, un único archivo exógeno sin
+relación con ninguna fase posterior a Sprint 2.3) por un "golden synthetic case": un expediente
+AG 2025 completamente ficticio, coherente entre exógena, documentos, declaración anterior AG 2024,
+facturación electrónica, dependiente e inmueble.
+
+1. **Auditoría**: el sample anterior no está referenciado por ningún test/E2E, no representa
+   ninguna fase de Sprint 2.4 y no tiene ninguna expectativa de reconciliación verificable. No
+   existe ningún mecanismo de UI "Cargar caso de ejemplo" en la aplicación.
+2. **`apps/web/src/lib/goldenCase.ts`** (nuevo): perfil ficticio, generador del libro exógeno
+   (formato "Persona que reporta"), 6 documentos textuales (Form 220, certificado tributario
+   consolidado, cesantías, vivienda, predial, administración PH), texto de declaración anterior
+   AG 2024, generador del reporte DIAN de facturación electrónica, e inputs de dependiente e
+   inmueble. Ningún dato proviene de un expediente real.
+3. **Tabla de reconciliaciones deliberada (§7)**: exact_match, rounding_match, minor_difference,
+   contradicción semántica (demostrada directamente contra el gate, no emergente de los
+   documentos), document_only (vivienda), exógena-only (aportes a pensión, acción "capturar
+   manualmente"), y una ambigüedad realista (dos entidades con el mismo valor).
+4. **`apps/web/src/lib/goldenCase.test.ts`** (nuevo, 24 tests): ejercita el pipeline REAL
+   (`processWorkbookFile`, `extractCandidates`/`classifyDocument`, `suggestExogenousMatches`,
+   `detectSemanticContradiction`, `importElectronicInvoiceReport`, `evaluatePropertyExpenseEligibility`,
+   `extractPriorYearForm210`, dependientes) — no un mock. Incluye guardarraíl permanente de
+   privacidad (§19): ningún identificador del benchmark real (`1130641532`/`1130671777`) puede
+   aparecer en el caso sintético.
+5. **Golden expectations**: constantes nombradas (no un snapshot gigante), verificadas contra el
+   pipeline real: exógena coherente, FE sin doble conteo (neto = Tope 5 exacto), base del 1%
+   derivada por el motor (nunca hardcodeada), CUFE únicos, carry-forward AG2024→AG2025 coherente,
+   Human Review Burden modesto (techo `< 20`, deliberadamente lejos de las ~88 decisiones del
+   benchmark real).
+6. **Sin integración con el Formulario 210 más allá de lo ya soportado**: el inmueble no aparece
+   cableado a ninguna casilla, respetando la limitación explícita de Fase G.
+7. **Sin E2E nuevo**: no existe mecanismo "Cargar caso de ejemplo" en la UI (§18 del prompt es
+   condicional a que exista), así que la validación equivalente la da la suite de coherencia
+   de 24 tests contra el pipeline real.
+
+**Quality gate**: `check:encoding`, `pnpm -r typecheck`, `pnpm -r lint`, `pnpm -r test` (+24
+tests nuevos), `pnpm build`, `pnpm test:e2e` (sin cambios) — todo en verde. Ver
+`docs/SYNTHETIC_SAMPLE_CASE.md` para el detalle completo (auditoría, diseño, tabla de
+reconciliaciones, golden expectations, cómo extenderlo).
 
 ## UX — Pantalla "Tu resultado" (2026-10-12)
 

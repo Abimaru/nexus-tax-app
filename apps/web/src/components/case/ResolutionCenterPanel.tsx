@@ -28,6 +28,7 @@ const TASK_SOURCE: Record<CaseTask['source'], string> = {
   dependent: 'Dependiente económico',
   electronic_invoice: 'Facturación electrónica',
   property: 'Inmueble',
+  complementary_health: 'Salud complementaria',
 };
 
 function target(task: CaseTask): { objectType: TaxResolutionObjectType; objectId: string } | null {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type {
+  ComplementaryHealthPayment,
   DependentEvaluation,
   DocumentExtractionSession,
   DocumentFact,
@@ -1033,5 +1034,177 @@ describe('expediente tributario derivado', () => {
     expect(withInterestCandidate).not.toContainEqual(
       expect.objectContaining({ type: 'evidence_missing_expected', documentId: document.id }),
     );
+  });
+});
+
+describe('tareas de salud complementaria (Sprint 2.4, Fase H)', () => {
+  const timestamp = '2026-09-08T00:00:00.000Z';
+
+  function payment(overrides: Partial<ComplementaryHealthPayment> = {}): ComplementaryHealthPayment {
+    return {
+      id: 'health:1',
+      caseId: 'case:1',
+      providerName: 'Medicina Prepagada Sintética SAS',
+      providerTaxIdMasked: null,
+      productType: 'prepaid_medicine',
+      beneficiary: 'taxpayer',
+      beneficiaryDependentId: null,
+      taxYear: 2025,
+      month: 1,
+      coveragePeriodDescription: null,
+      amountPaidCop: 300_000,
+      eligibleAmountCop: 300_000,
+      sourceDocumentId: null,
+      evidenceDescription: null,
+      supportStatus: 'sufficient',
+      supportTypes: ['prepaid_medicine_certificate'],
+      isMandatoryEpsContribution: false,
+      isDirectMedicalExpense: false,
+      eligibilityStatus: 'eligible',
+      eligibilityReasons: [],
+      ruleVersion: 'co.complementary-health.eligibility.2025.v1',
+      decisionStatus: 'pending',
+      reasons: [],
+      possiblyDuplicateOfPaymentId: null,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      ...overrides,
+    };
+  }
+
+  it('beneficiario sin definir genera complementary_health_beneficiary_missing', () => {
+    const tasks = buildCaseTasks({
+      caseId: 'case:1',
+      documents: [],
+      coverages: [],
+      candidates: [],
+      reconciliations: [],
+      vatResponsibility: false,
+      complementaryHealthPayments: [
+        payment({ eligibilityStatus: 'requires_beneficiary_review' }),
+      ],
+      now: timestamp,
+    });
+    expect(tasks.some((task) => task.type === 'complementary_health_beneficiary_missing')).toBe(true);
+  });
+
+  it('mes desconocido SIN período de cobertura genera complementary_health_period_missing', () => {
+    const tasks = buildCaseTasks({
+      caseId: 'case:1',
+      documents: [],
+      coverages: [],
+      candidates: [],
+      reconciliations: [],
+      vatResponsibility: false,
+      complementaryHealthPayments: [
+        payment({ month: null, eligibilityStatus: 'requires_monthly_breakdown', coveragePeriodDescription: null }),
+      ],
+      now: timestamp,
+    });
+    expect(tasks.some((task) => task.type === 'complementary_health_period_missing')).toBe(true);
+    expect(
+      tasks.some((task) => task.type === 'complementary_health_monthly_breakdown_required'),
+    ).toBe(false);
+  });
+
+  it('mes desconocido CON período de cobertura genera complementary_health_monthly_breakdown_required', () => {
+    const tasks = buildCaseTasks({
+      caseId: 'case:1',
+      documents: [],
+      coverages: [],
+      candidates: [],
+      reconciliations: [],
+      vatResponsibility: false,
+      complementaryHealthPayments: [
+        payment({
+          month: null,
+          eligibilityStatus: 'requires_monthly_breakdown',
+          coveragePeriodDescription: 'Enero-Diciembre 2025',
+        }),
+      ],
+      now: timestamp,
+    });
+    expect(
+      tasks.some((task) => task.type === 'complementary_health_monthly_breakdown_required'),
+    ).toBe(true);
+    expect(tasks.some((task) => task.type === 'complementary_health_period_missing')).toBe(false);
+  });
+
+  it('soporte faltante genera complementary_health_support_missing', () => {
+    const tasks = buildCaseTasks({
+      caseId: 'case:1',
+      documents: [],
+      coverages: [],
+      candidates: [],
+      reconciliations: [],
+      vatResponsibility: false,
+      complementaryHealthPayments: [payment({ eligibilityStatus: 'requires_support' })],
+      now: timestamp,
+    });
+    expect(tasks.some((task) => task.type === 'complementary_health_support_missing')).toBe(true);
+  });
+
+  it('pago elegible pendiente de decisión humana genera complementary_health_review_required, con prioridad alta si es posible duplicado', () => {
+    const pendingTasks = buildCaseTasks({
+      caseId: 'case:1',
+      documents: [],
+      coverages: [],
+      candidates: [],
+      reconciliations: [],
+      vatResponsibility: false,
+      complementaryHealthPayments: [payment({ eligibilityStatus: 'eligible', decisionStatus: 'pending' })],
+      now: timestamp,
+    });
+    const reviewTask = pendingTasks.find((task) => task.type === 'complementary_health_review_required');
+    expect(reviewTask).toBeDefined();
+    expect(reviewTask?.priority).toBe('low');
+
+    const duplicateTasks = buildCaseTasks({
+      caseId: 'case:1',
+      documents: [],
+      coverages: [],
+      candidates: [],
+      reconciliations: [],
+      vatResponsibility: false,
+      complementaryHealthPayments: [
+        payment({
+          eligibilityStatus: 'requires_review',
+          possiblyDuplicateOfPaymentId: 'health:other',
+        }),
+      ],
+      now: timestamp,
+    });
+    const duplicateReviewTask = duplicateTasks.find(
+      (task) => task.type === 'complementary_health_review_required',
+    );
+    expect(duplicateReviewTask?.priority).toBe('high');
+  });
+
+  it('pago confirmado sin ninguna condición pendiente no genera ninguna tarea', () => {
+    const tasks = buildCaseTasks({
+      caseId: 'case:1',
+      documents: [],
+      coverages: [],
+      candidates: [],
+      reconciliations: [],
+      vatResponsibility: false,
+      complementaryHealthPayments: [payment({ eligibilityStatus: 'eligible', decisionStatus: 'confirmed' })],
+      now: timestamp,
+    });
+    expect(tasks.some((task) => task.source === 'complementary_health')).toBe(false);
+  });
+
+  it('pago not_applicable (EPS/gasto médico directo) nunca genera tarea', () => {
+    const tasks = buildCaseTasks({
+      caseId: 'case:1',
+      documents: [],
+      coverages: [],
+      candidates: [],
+      reconciliations: [],
+      vatResponsibility: false,
+      complementaryHealthPayments: [payment({ eligibilityStatus: 'not_applicable' })],
+      now: timestamp,
+    });
+    expect(tasks.some((task) => task.source === 'complementary_health')).toBe(false);
   });
 });

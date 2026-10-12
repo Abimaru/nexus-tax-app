@@ -14,6 +14,9 @@ Documento índice del borrador trazable AG 2025.
 - [Inmuebles y administración de PH (Sprint 2.4, Fase G)](./PROPERTY_INCOME_EXPENSES_2025.md) —
   **deliberadamente sin cablear a ninguna casilla todavía**, ver limitación explícita en ese
   documento.
+- [Salud complementaria y medicina prepagada (Sprint 2.4, Fase H)](./COMPLEMENTARY_HEALTH_2025.md) —
+  cableada a la casilla 39, sumada (no fusionada) con la deducción de dependientes del mismo
+  artículo.
 - [Cierre](./CASE_CLOSURE.md)
 
 Desde Sprint 2.3.2 R31, R37 y R40 derivan de sus operandos; un interés de

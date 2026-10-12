@@ -29,6 +29,7 @@ import type {
   RentalActivity,
   RentalIncome,
   PropertyExpense,
+  ComplementaryHealthPayment,
   UploadedDocument,
   TaxResolutionDecision,
 } from '@nexus-tax/domain';
@@ -114,6 +115,7 @@ class NexusTaxDatabase extends Dexie {
   rentalActivities!: Table<RentalActivity, string>;
   rentalIncomes!: Table<RentalIncome, string>;
   propertyExpenses!: Table<PropertyExpense, string>;
+  complementaryHealthPayments!: Table<ComplementaryHealthPayment, string>;
 
   constructor() {
     super('nexustax');
@@ -488,6 +490,53 @@ class NexusTaxDatabase extends Dexie {
       rentalIncomes: 'id, caseId, propertyId, rentalActivityId, sourceKind, updatedAt',
       propertyExpenses:
         'id, caseId, propertyId, expenseType, eligibilityStatus, decisionStatus, updatedAt',
+    });
+    // Sprint 2.4 (Fase H): pagos de salud complementaria y medicina
+    // prepagada. Aditivo; ninguna tabla previa se modifica. El tope
+    // mensual agregado (16 UVT, art. 387 ET) se calcula en
+    // `evaluateComplementaryHealthMonthlyCap` a partir de los pagos
+    // persistidos aquí — esta tabla nunca guarda un total ya limitado.
+    this.version(17).stores({
+      cases: 'id, updatedAt, taxYear, status',
+      documents: 'id, caseId, uploadedAt, sha256, status, kind, *entityIds',
+      results: 'caseId, updatedAt',
+      filingInputs: 'caseId, updatedAt',
+      analyses: 'caseId, updatedAt, ruleVersion',
+      documentBlobs: 'documentId, caseId, storedAt',
+      products: 'id, caseId, entityId, type, status',
+      coverages: 'id, caseId, requirementId, documentId, factId, entityId, status',
+      facts: 'id, caseId, documentId, entityId, productId, category, reviewStatus, updatedAt',
+      reconciliations: 'id, caseId, status, *factIds, *exogenousRecordIds, updatedAt',
+      employmentGroups: 'id, caseId, coverage, updatedAt',
+      navigationStates: 'caseId, lastStage, recommendedStage, updatedAt',
+      acceptedSources: 'id, caseId, exogenousRecordId, requirementId, status, updatedAt',
+      requirementSourceDecisions: 'id, caseId, requirementId, status, updatedAt',
+      extractionSessions: 'id, caseId, documentId, status, updatedAt',
+      documentCandidates:
+        'id, caseId, documentId, extractionSessionId, status, moneyParserVersion, updatedAt',
+      caseTasks: 'id, caseId, status, priority, stage, type, updatedAt',
+      documentProfiles: 'id, documentKind, status, updatedAt',
+      extractionFeedback:
+        'id, documentId, extractionSessionId, candidateId, applicability, createdAt',
+      resolutionDecisions: 'id, caseId, objectType, objectId, type, decidedAt',
+      form210Drafts: 'id, caseId, taxYear, generatedAt',
+      priorYearReturns: 'id, caseId, taxYear, status, identityMatch, isCurrentVersion, updatedAt',
+      priorYearCarryForwardCandidates:
+        'id, caseId, priorYearReturnId, sourceBoxNumber, targetBoxNumber, decision, updatedAt',
+      taxDependents: 'id, caseId, status, relationship, updatedAt',
+      dependentSupports: 'id, caseId, dependentId, type, createdAt',
+      dependentEvaluations: 'id, caseId, dependentId, status, staleDueToRuleChange, evaluatedAt',
+      dependentsCaseContext: 'caseId, updatedAt',
+      electronicInvoiceReports: 'id, caseId, taxYear, processingStatus, importedAt',
+      electronicInvoicePurchases:
+        'id, reportId, caseId, normalizedCufe, cufeStatus, paymentMethodCategory, benefitDecision, createdAt',
+      taxProperties: 'id, caseId, use, taxYear, updatedAt',
+      rentalActivities: 'id, caseId, propertyId, updatedAt',
+      rentalIncomes: 'id, caseId, propertyId, rentalActivityId, sourceKind, updatedAt',
+      propertyExpenses:
+        'id, caseId, propertyId, expenseType, eligibilityStatus, decisionStatus, updatedAt',
+      complementaryHealthPayments:
+        'id, caseId, beneficiary, beneficiaryDependentId, month, taxYear, eligibilityStatus, decisionStatus, updatedAt',
     });
   }
 }

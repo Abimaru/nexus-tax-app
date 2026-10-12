@@ -95,6 +95,17 @@ const DEFINITIONS: readonly ClassifierDefinition[] = [
     ['ganancia ocasional', 4],
     ['premio pagado', 3],
   ]),
+  // Sprint 2.4, Fase H (§12): certificado de medicina prepagada, seguro
+  // de salud o plan adicional de salud. Vocabulario sintético
+  // estructural — nunca derivado de un documento real.
+  definition('complementary_health_certificate', [
+    ['medicina prepagada', 5],
+    ['seguro(?:s)? de salud', 4],
+    ['plan(?:es)? adicional(?:es)? de salud', 4],
+    ['certificado.*(?:medicina prepagada|seguro de salud)', 3],
+    ['entidad vigilada', 2],
+    ['superintendencia (?:nacional de salud|financiera)', 2],
+  ]),
   definition('prior_year_return', [
     ['declaracion de renta', 4],
     ['formulario 210', 5],

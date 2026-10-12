@@ -26,6 +26,7 @@ export const PRODUCT_LABEL: Record<ProductType, string> = {
   property: 'Inmueble',
   employment_income: 'Ingreso laboral',
   prize: 'Premio',
+  health_plan: 'Plan de salud',
   other: 'Otro',
   unidentified: 'Producto por identificar',
 };

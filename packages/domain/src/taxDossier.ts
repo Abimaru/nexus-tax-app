@@ -18,6 +18,8 @@ export const ProductTypeSchema = z.enum([
   'property',
   'employment_income',
   'prize',
+  /** Medicina prepagada, seguro de salud o plan adicional de salud (Sprint 2.4, Fase H). */
+  'health_plan',
   'other',
   'unidentified',
 ]);

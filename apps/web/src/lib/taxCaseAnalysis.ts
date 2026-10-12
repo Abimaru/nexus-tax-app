@@ -22,6 +22,7 @@ import type {
   RentalActivity,
   RentalIncome,
   PropertyExpense,
+  ComplementaryHealthPayment,
   UploadedDocument,
   CaseProduct,
   CaseNavigationState,
@@ -269,6 +270,7 @@ export function buildCaseTasks(input: {
   rentalActivities?: readonly RentalActivity[];
   rentalIncomes?: readonly RentalIncome[];
   propertyExpenses?: readonly PropertyExpense[];
+  complementaryHealthPayments?: readonly ComplementaryHealthPayment[];
   now?: string;
 }): CaseTask[] {
   const timestamp = input.now ?? new Date().toISOString();
@@ -1652,6 +1654,158 @@ export function buildCaseTasks(input: {
         createdAt: timestamp,
         updatedAt: timestamp,
       });
+    }
+  }
+
+  // Sprint 2.4, Fase H (§20): tareas de salud complementaria. Solo
+  // accionables por pago — nunca una tarea por cada mes. Prioridad:
+  // beneficiario → período → detalle mensual → soporte → revisión. No se
+  // genera ninguna tarea para `not_applicable` (aporte EPS o gasto médico
+  // directo, §9/§10) ni se re-deriva desde `eligibilityReasons` (§9):
+  // siempre desde el estado explícito del pago.
+  for (const payment of input.complementaryHealthPayments ?? []) {
+    const providerLabel = payment.providerName || 'este proveedor';
+    if (payment.eligibilityStatus === 'requires_beneficiary_review') {
+        tasks.push({
+          id: `task:complementary-health-beneficiary-missing:${payment.id}`,
+          caseId: input.caseId,
+          type: 'complementary_health_beneficiary_missing',
+          title: `Definir el beneficiario del pago a ${providerLabel}`,
+          explanation:
+            '¿Quién estaba cubierto por este pago? Si es un dependiente, debe vincularse a uno ya registrado en el expediente.',
+          source: 'complementary_health',
+          stage: 'declaracion',
+          view: 'salud-complementaria',
+          entityId: null,
+          documentId: null,
+          requirementId: null,
+          candidateId: null,
+          reconciliationId: null,
+          matrixGroupId: null,
+          extractionSessionId: null,
+          profileId: null,
+          page: null,
+          complementaryHealthPaymentId: payment.id,
+          priority: 'medium',
+          blocking: false,
+          status: 'pending',
+          recommendedAction: 'Elegir o vincular el beneficiario',
+          ruleId: 'case-task.complementary-health-beneficiary-missing.v1',
+          evidence: [],
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        });
+        continue;
+    }
+    if (payment.eligibilityStatus === 'requires_monthly_breakdown') {
+        const hasCoveragePeriod = Boolean(payment.coveragePeriodDescription);
+        tasks.push({
+          id: `task:complementary-health-${hasCoveragePeriod ? 'monthly-breakdown-required' : 'period-missing'}:${payment.id}`,
+          caseId: input.caseId,
+          type: hasCoveragePeriod
+            ? 'complementary_health_monthly_breakdown_required'
+            : 'complementary_health_period_missing',
+          title: hasCoveragePeriod
+            ? `Detallar los meses del certificado de ${providerLabel}`
+            : `Definir el período del pago a ${providerLabel}`,
+          explanation: hasCoveragePeriod
+            ? 'El límite del art. 387 ET es mensual: recupera los meses cubiertos o los pagos mensuales antes de considerar este certificado (nunca se divide el total entre 12).'
+            : 'Falta saber en qué mes o período se realizó este pago; el límite del art. 387 ET es mensual y nunca se asume automáticamente.',
+          source: 'complementary_health',
+          stage: 'declaracion',
+          view: 'salud-complementaria',
+          entityId: null,
+          documentId: null,
+          requirementId: null,
+          candidateId: null,
+          reconciliationId: null,
+          matrixGroupId: null,
+          extractionSessionId: null,
+          profileId: null,
+          page: null,
+          complementaryHealthPaymentId: payment.id,
+          priority: 'medium',
+          blocking: false,
+          status: 'pending',
+          recommendedAction: hasCoveragePeriod
+            ? 'Registrar el detalle mensual del certificado'
+            : 'Registrar el mes o período del pago',
+          ruleId: hasCoveragePeriod
+            ? 'case-task.complementary-health-monthly-breakdown-required.v1'
+            : 'case-task.complementary-health-period-missing.v1',
+          evidence: [],
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        });
+        continue;
+    }
+    if (payment.eligibilityStatus === 'requires_support') {
+        tasks.push({
+          id: `task:complementary-health-support-missing:${payment.id}`,
+          caseId: input.caseId,
+          type: 'complementary_health_support_missing',
+          title: `Registrar soporte del pago a ${providerLabel}`,
+          explanation:
+            'Falta un certificado o comprobante emitido por la empresa de medicina prepagada, la aseguradora o la entidad vigilada correspondiente.',
+          source: 'complementary_health',
+          stage: 'declaracion',
+          view: 'salud-complementaria',
+          entityId: null,
+          documentId: null,
+          requirementId: null,
+          candidateId: null,
+          reconciliationId: null,
+          matrixGroupId: null,
+          extractionSessionId: null,
+          profileId: null,
+          page: null,
+          complementaryHealthPaymentId: payment.id,
+          priority: 'low',
+          blocking: false,
+          status: 'pending',
+          recommendedAction: 'Adjuntar el certificado o comprobante correspondiente',
+          ruleId: 'case-task.complementary-health-support-missing.v1',
+          evidence: [],
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        });
+        continue;
+    }
+    if (
+        payment.eligibilityStatus === 'requires_review' ||
+        (payment.eligibilityStatus === 'eligible' && payment.decisionStatus === 'pending') ||
+        (payment.eligibilityStatus === 'cap_applied' && payment.decisionStatus === 'pending') ||
+        (payment.eligibilityStatus === 'partially_eligible' && payment.decisionStatus === 'pending')
+    ) {
+        tasks.push({
+          id: `task:complementary-health-review-required:${payment.id}`,
+          caseId: input.caseId,
+          type: 'complementary_health_review_required',
+          title: `Revisar pago de salud complementaria de ${providerLabel}`,
+          explanation:
+            payment.eligibilityReasons[0] ?? 'Este pago de salud complementaria requiere tu revisión.',
+          source: 'complementary_health',
+          stage: 'declaracion',
+          view: 'salud-complementaria',
+          entityId: null,
+          documentId: null,
+          requirementId: null,
+          candidateId: null,
+          reconciliationId: null,
+          matrixGroupId: null,
+          extractionSessionId: null,
+          profileId: null,
+          page: null,
+          complementaryHealthPaymentId: payment.id,
+          priority: payment.possiblyDuplicateOfPaymentId ? 'high' : 'low',
+          blocking: false,
+          status: 'pending',
+          recommendedAction: 'Confirmar o descartar este pago',
+          ruleId: 'case-task.complementary-health-review-required.v1',
+          evidence: [],
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        });
     }
   }
 

@@ -24,6 +24,7 @@ protejan la compatibilidad.
 | `co.property-tax.generic`          | avalúo, impuesto y participación                                        |
 | `co.annual-cost-report.generic`    | intereses/rendimientos, retención, GMF, total informativo (Fase F.3)    |
 | `co.property-administration.generic` | cuota extraordinaria, total anual, cuota mensual, saldo, pagos (Fase G) |
+| `co.complementary-health.generic`  | pago mensual, total del certificado de medicina prepagada/seguros de salud (Fase H) |
 | `co.generic-label-value`           | pares concepto–valor no cubiertos; confianza baja                       |
 
 El certificado financiero es multipropósito: una sola lectura genera grupos
@@ -97,6 +98,18 @@ sea la cuenta de cobro, el certificado de la copropiedad, un recibo o un comprob
 pago — nunca una factura electrónica. Ver `docs/PROPERTY_INCOME_EXPENSES_2025.md` para el detalle
 normativo completo y cómo este candidato documental se conecta con `PropertyExpense` y el motor de
 elegibilidad puro.
+
+### `co.complementary-health.generic` (Sprint 2.4, Fase H)
+
+Reconoce certificados de medicina prepagada, seguros de salud o planes adicionales de salud
+(`complementary_health_certificate`). Dos reglas independientes, **nunca** derivadas una de otra
+(`mensual × 12` está explícitamente prohibido): `monthly-payment` y `annual-total`. Evita promover
+número de póliza, identificación, teléfono, resolución o porcentaje como candidatos monetarios: al
+no existir una regla para esas etiquetas, esas líneas nunca generan un candidato. No exige factura
+electrónica como único soporte: el certificado o comprobante emitido por la entidad vigilada
+(Superintendencia Nacional de Salud o Superintendencia Financiera de Colombia) es idóneo. Ver
+`docs/COMPLEMENTARY_HEALTH_2025.md` para el detalle normativo completo y el motor del tope mensual
+agregado (16 UVT, art. 387 ET).
 
 ## Reglas de extensión
 

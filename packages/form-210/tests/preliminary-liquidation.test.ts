@@ -387,6 +387,59 @@ describe('liquidación privada preliminar (Fase K)', () => {
     expect(liq.dependentsDeduction!.ruleSourceId).toBe('et-art-387');
   });
 
+  it('cablea la deducción por salud complementaria a la casilla 39, SUMADA (no fusionada) con dependientes (Fase H)', () => {
+    const draft = buildForm210Draft({
+      caseId: 'case-health',
+      taxYear: 2025,
+      records: [employmentRecord('rec-1', 60_000_000)],
+      facts: [],
+      dependents: [{ id: 'dep-1', kind: 'child_minor', monthsClaimed: 12 }],
+      complementaryHealth: [{ id: 'health-1', month: 1, amountPaidCop: 300_000 }],
+    });
+    const box39 = draft.boxes.find((box) => box.number === 39)!;
+    // 6.000.000 (dependientes) + 300.000 (salud, bajo el tope) = 6.300.000.
+    expect(box39.suggestedValue).toBe(6_300_000);
+    expect(box39.sources.map((source) => source.sourceId)).toEqual(
+      expect.arrayContaining(['calc:dependents-387', 'calc:complementary-health-387']),
+    );
+    const liq = draft.preliminaryLiquidation!;
+    expect(liq.complementaryHealthDeduction).not.toBeNull();
+    expect(liq.complementaryHealthDeduction!.annualEligibleCop).toBe(300_000);
+    expect(liq.complementaryHealthDeduction!.ruleSourceIds).toContain('et-art-387-par-2-salud');
+    // Ambas deducciones del art. 387 (dependientes y salud) siguen siendo
+    // independientes entre sí, nunca fusionadas en un único candidato.
+    expect(liq.dependentsDeduction!.appliedDeductionCop).toBe(6_000_000);
+  });
+
+  it('el tope mensual agregado de 16 UVT recorta la deducción de salud complementaria antes de sumarse a R39 (Fase H)', () => {
+    const monthlyCapCop = Math.round(16 * UVT_2025);
+    const draft = buildForm210Draft({
+      caseId: 'case-health-cap',
+      taxYear: 2025,
+      records: [employmentRecord('rec-1', 60_000_000)],
+      facts: [],
+      complementaryHealth: [
+        { id: 'health-1', month: 1, amountPaidCop: monthlyCapCop + 500_000 },
+      ],
+    });
+    const liq = draft.preliminaryLiquidation!;
+    expect(liq.complementaryHealthDeduction!.annualEligibleCop).toBe(monthlyCapCop);
+    expect(liq.complementaryHealthDeduction!.months[0]?.capApplied).toBe(true);
+    const box39 = draft.boxes.find((box) => box.number === 39)!;
+    expect(box39.suggestedValue).toBe(monthlyCapCop);
+  });
+
+  it('sin pagos de salud complementaria, complementaryHealthDeduction es null y no aporta a R39', () => {
+    const draft = buildForm210Draft({
+      caseId: 'case-health-empty',
+      taxYear: 2025,
+      records: [employmentRecord('rec-1', 60_000_000)],
+      facts: [],
+    });
+    const liq = draft.preliminaryLiquidation!;
+    expect(liq.complementaryHealthDeduction).toBeNull();
+  });
+
   it('ya no limita a cuatro dependientes: el art. 387 no fija número máximo (Fase C)', () => {
     // Corrección de auditoría (Sprint 2.4, Fase C): el warning de "solo los
     // primeros 4" se eliminó porque no reflejaba la norma (ver
