@@ -17,6 +17,17 @@ export default defineConfig({
   use: {
     baseURL,
     trace: 'on-first-retry',
+    // Los E2E históricos recorren las seis etapas: usan el modo experto. Las pruebas del
+    // asistente guiado lo sobrescriben con `test.use({ storageState: GUIDED_STORAGE })`.
+    storageState: {
+      cookies: [],
+      origins: [
+        {
+          origin: baseURL,
+          localStorage: [{ name: 'nexustax.workflowMode', value: 'expert' }],
+        },
+      ],
+    },
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: externalBaseUrl

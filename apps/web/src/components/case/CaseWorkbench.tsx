@@ -89,6 +89,10 @@ import { ElectronicInvoicingPanel } from './ElectronicInvoicingPanel';
 import { PropertiesPanel } from './PropertiesPanel';
 import { ComplementaryHealthPanel } from './ComplementaryHealthPanel';
 import { ContextualNavigation, WorkflowStepper } from './WorkflowNavigation';
+import { GuidedProgress } from './GuidedProgress';
+import { buildGuidedSteps } from '@/lib/guidedFlow';
+
+const WORKFLOW_MODE_KEY = 'nexustax.workflowMode';
 import {
   BasicCaseDataPanel,
   CalendarCapabilityPanel,
@@ -273,6 +277,34 @@ export function CaseWorkbench({
   const recommendation = useMemo(
     () => recommendedWorkflowAction(workflowContext),
     [workflowContext],
+  );
+  // Modo guiado (cinco pasos) por defecto; el experto conserva las seis etapas. Es una
+  // preferencia de este navegador, así que un fallo del almacenamiento no debe romper nada.
+  const [workflowMode, setWorkflowMode] = useState<'guided' | 'expert'>('guided');
+  useEffect(() => {
+    try {
+      if (window.localStorage.getItem(WORKFLOW_MODE_KEY) === 'expert') setWorkflowMode('expert');
+    } catch {
+      /* sin almacenamiento: se mantiene el modo guiado */
+    }
+  }, []);
+  function changeWorkflowMode(next: 'guided' | 'expert') {
+    setWorkflowMode(next);
+    try {
+      window.localStorage.setItem(WORKFLOW_MODE_KEY, next);
+    } catch {
+      /* preferencia no persistida */
+    }
+  }
+  // El modo manual limitado no tiene los pasos de resultado ni borrador: usa la vista completa.
+  const guided = workflowMode === 'guided' && !(workflowContext.manualMode && !result);
+  const guidedSteps = useMemo(
+    () =>
+      buildGuidedSteps(
+        { ...workflowContext, hasInvoiceReport: Boolean(electronicInvoiceReport) },
+        { stage, view },
+      ),
+    [workflowContext, electronicInvoiceReport, stage, view],
   );
   const stageDefinition = WORKFLOW_STAGES.find((item) => item.id === stage)!;
   const visibleViews = availableViews(stageDefinition, workflowContext);
@@ -505,28 +537,57 @@ export function CaseWorkbench({
             {taxCase.taxYear}
           </p>
         </div>
-        <Badge tone={result ? 'emerald' : workflowContext.manualMode ? 'amber' : 'cyan'}>
-          {result
-            ? 'Fuente procesada'
-            : workflowContext.manualMode
-              ? 'Modo manual limitado'
-              : 'Sin fuente'}
-        </Badge>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge tone={result ? 'emerald' : workflowContext.manualMode ? 'amber' : 'cyan'}>
+            {result
+              ? 'Fuente procesada'
+              : workflowContext.manualMode
+                ? 'Modo manual limitado'
+                : 'Sin fuente'}
+          </Badge>
+          {!(workflowContext.manualMode && !result) ? (
+            <button
+              type="button"
+              onClick={() => changeWorkflowMode(guided ? 'expert' : 'guided')}
+              aria-pressed={!guided}
+              className="min-h-9 rounded-lg border border-overlay/15 px-3 text-xs text-content-muted hover:bg-overlay/5"
+            >
+              {guided ? 'Ver todas las etapas (modo experto)' : 'Volver al modo guiado'}
+            </button>
+          ) : null}
+        </div>
       </header>
 
-      <WorkflowStepper stages={stages} activeStage={stage} onSelect={selectStage} />
-      <ContextualNavigation views={visibleViews} activeView={view} onSelect={selectView} />
-      <WorkflowGuidancePanel
-        action={recommendation}
-        activeStage={stage}
-        stages={stages}
-        progress={progress}
-        onNavigate={(nextStage, nextView) =>
-          recommendation.targetTaskId
-            ? navigateToTask(nextStage, nextView, recommendation.targetTaskId)
-            : applyDestination(nextStage, nextView)
-        }
-      />
+      {guided ? (
+        <>
+          <GuidedProgress
+            steps={guidedSteps}
+            onSelect={(step) => applyDestination(step.destination.stage, step.destination.view)}
+          />
+          <details className="mt-3 text-sm">
+            <summary className="cursor-pointer text-xs text-tone-cyan">
+              Más secciones de «{stageDefinition.name}»
+            </summary>
+            <ContextualNavigation views={visibleViews} activeView={view} onSelect={selectView} />
+          </details>
+        </>
+      ) : (
+        <>
+          <WorkflowStepper stages={stages} activeStage={stage} onSelect={selectStage} />
+          <ContextualNavigation views={visibleViews} activeView={view} onSelect={selectView} />
+          <WorkflowGuidancePanel
+            action={recommendation}
+            activeStage={stage}
+            stages={stages}
+            progress={progress}
+            onNavigate={(nextStage, nextView) =>
+              recommendation.targetTaskId
+                ? navigateToTask(nextStage, nextView, recommendation.targetTaskId)
+                : applyDestination(nextStage, nextView)
+            }
+          />
+        </>
+      )}
 
       <div ref={contentRef} tabIndex={-1} className="mt-6 focus:outline-none">
         {activeTaskId && view !== 'pendientes' ? (
