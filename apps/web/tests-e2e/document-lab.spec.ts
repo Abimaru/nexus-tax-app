@@ -147,7 +147,7 @@ test('un PDF sin texto se lee y se diagnostica como escaneado, no se rechaza', a
   await page.getByRole('button', { name: 'Reporte' }).click();
   await page.getByRole('button', { name: /Procesar información/ }).click();
 
-  await expect(page).toHaveURL(/\/organizacion\/resumen$/, { timeout: 20_000 });
+  await expect(page).toHaveURL(/\/organizacion\/tu-resultado$/, { timeout: 20_000 });
 
   await selectView(page, 'Documentos');
   await expect(page).toHaveURL(/\/organizacion\/documentos$/);
@@ -210,7 +210,7 @@ test('el laboratorio documental diagnostica, ejecuta OCR real y crea un candidat
   await expect(page).toHaveURL(/\/extraccion\/inspeccion$/);
   await page.getByRole('button', { name: 'Reporte' }).click();
   await page.getByRole('button', { name: /Procesar información/ }).click();
-  await expect(page).toHaveURL(/\/organizacion\/resumen$/, { timeout: 20_000 });
+  await expect(page).toHaveURL(/\/organizacion\/tu-resultado$/, { timeout: 20_000 });
 
   await selectView(page, 'Documentos');
   await page.setInputFiles('#case-document-file', textPdfPath);

@@ -149,7 +149,7 @@ test('declaraciones anteriores: carga, identidad, arrastre de anticipo y evoluci
   await expect(page).toHaveURL(/\/extraccion\/inspeccion$/);
   await page.getByRole('button', { name: 'Reporte' }).click();
   await page.getByRole('button', { name: /Procesar información/ }).click();
-  await expect(page).toHaveURL(/\/organizacion\/resumen$/, { timeout: 20_000 });
+  await expect(page).toHaveURL(/\/organizacion\/tu-resultado$/, { timeout: 20_000 });
 
   await selectStage(page, 'Declaración');
   await selectView(page, 'Declaraciones anteriores');
@@ -258,7 +258,7 @@ test('declaraciones anteriores: bloquea el uso cuando la identidad no coincide',
   await expect(page).toHaveURL(/\/extraccion\/inspeccion$/);
   await page.getByRole('button', { name: 'Reporte' }).click();
   await page.getByRole('button', { name: /Procesar información/ }).click();
-  await expect(page).toHaveURL(/\/organizacion\/resumen$/, { timeout: 20_000 });
+  await expect(page).toHaveURL(/\/organizacion\/tu-resultado$/, { timeout: 20_000 });
 
   await selectStage(page, 'Declaración');
   await selectView(page, 'Declaraciones anteriores');

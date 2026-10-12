@@ -85,7 +85,7 @@ test('dependientes económicos: agregar, evaluar, R138/R139 y máximo de cuatro'
   await expect(page).toHaveURL(/\/extraccion\/inspeccion$/);
   await page.getByRole('button', { name: 'Reporte' }).click();
   await page.getByRole('button', { name: /Procesar información/ }).click();
-  await expect(page).toHaveURL(/\/organizacion\/resumen$/, { timeout: 20_000 });
+  await expect(page).toHaveURL(/\/organizacion\/tu-resultado$/, { timeout: 20_000 });
 
   await selectStage(page, 'Declaración');
   await selectView(page, 'Beneficios y deducciones');
@@ -156,7 +156,7 @@ test('dependientes económicos: "No tengo dependientes" cierra el estado del exp
   await expect(page).toHaveURL(/\/extraccion\/inspeccion$/);
   await page.getByRole('button', { name: 'Reporte' }).click();
   await page.getByRole('button', { name: /Procesar información/ }).click();
-  await expect(page).toHaveURL(/\/organizacion\/resumen$/, { timeout: 20_000 });
+  await expect(page).toHaveURL(/\/organizacion\/tu-resultado$/, { timeout: 20_000 });
 
   await selectStage(page, 'Declaración');
   await selectView(page, 'Beneficios y deducciones');
