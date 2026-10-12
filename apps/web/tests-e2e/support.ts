@@ -36,6 +36,15 @@ export function makeSample(income: number): string {
     [null, null, null, null, 'Compras', 1_000_000],
     [null, null, null, null, 'Consignaciones', 1_000_000],
     [
+      '900111222',
+      'Banco Ficticio S.A.',
+      '1234567890',
+      'Persona Sintética E2E',
+      'Saldo cuenta bancaria',
+      1_250_000,
+      'R29 Patrimonio Bruto',
+    ],
+    [
       '800333444',
       'Empresa Empleadora SAS',
       '1234567890',

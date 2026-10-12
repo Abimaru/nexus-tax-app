@@ -44,3 +44,62 @@ test('Sube tus documentos: reconoce un PDF solo, avisa repetidos y explica un Ex
   ).toBe(false);
   await page.screenshot({ path: testInfo.outputPath('mis-documentos-movil.png'), fullPage: true });
 });
+
+test('Sube tus documentos: propone asociar el PDF al soporte de su entidad y solo guarda al confirmar', async ({
+  page,
+}, testInfo) => {
+  const pdf = makeTextPdf(
+    [
+      'Banco Ficticio S.A.',
+      'Certificado de saldos',
+      'Cuenta de ahorros sintética',
+      'Saldo al 31 de diciembre: $ 1250000',
+    ],
+    'saldo-banco-ficticio.pdf',
+  );
+  await loadCase(page, makeSample(80_000_000));
+  await page.getByRole('button', { name: 'Continuar', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Suma tus documentos' })).toBeVisible();
+
+  // Antes de subir no hay asociaciones propuestas y el soporte está pendiente.
+  await expect(page.getByRole('heading', { name: 'Asociaciones que encontramos' })).toHaveCount(0);
+  await expect(page.getByText(/0 de \d+ asociados/)).toBeVisible();
+
+  await page.setInputFiles('#intake-files', pdf);
+  await expect(page.getByRole('heading', { name: 'Asociaciones que encontramos' })).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(
+    page.getByText(/Soportaría: Certificado de saldos · .*BANCO FICTICIO/i),
+  ).toBeVisible();
+  // Sin confirmar, nada cambia.
+  await expect(page.getByText(/0 de \d+ asociados/)).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('asociaciones-desktop.png'), fullPage: true });
+
+  await page.getByRole('button', { name: /^Confirmar: / }).click();
+  await expect(page.getByRole('heading', { name: 'Asociaciones que encontramos' })).toHaveCount(0);
+  await expect(page.getByText(/1 de \d+ asociados/)).toBeVisible();
+  await expect(page.getByText('Completo').first()).toBeVisible();
+
+  // Persiste tras recargar.
+  await page.reload();
+  await expect(page.getByText(/1 de \d+ asociados/)).toBeVisible({ timeout: 20_000 });
+});
+
+test('Sube tus documentos: «No es este» descarta la sugerencia sin guardar nada', async ({
+  page,
+}) => {
+  const pdf = makeTextPdf(
+    ['Banco Ficticio S.A.', 'Certificado de saldos', 'Saldo al 31 de diciembre: $ 1250000'],
+    'otro-saldo.pdf',
+  );
+  await loadCase(page, makeSample(80_000_000));
+  await page.getByRole('button', { name: 'Continuar', exact: true }).click();
+  await page.setInputFiles('#intake-files', pdf);
+  await expect(page.getByRole('heading', { name: 'Asociaciones que encontramos' })).toBeVisible({
+    timeout: 30_000,
+  });
+  await page.getByRole('button', { name: /^Descartar: / }).click();
+  await expect(page.getByRole('heading', { name: 'Asociaciones que encontramos' })).toHaveCount(0);
+  await expect(page.getByText(/0 de \d+ asociados/)).toBeVisible();
+});
