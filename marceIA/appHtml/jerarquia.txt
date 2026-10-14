@@ -1,0 +1,19 @@
+Escenario integracion 1: api al backend
+INTEGRACIÓN
+ └─ Flujo Transaccional - nombre-flujo-transaccional
+     └─ Capa de Arquitectura - nombre-capa-arquitectura
+         └─ API
+└─ DOMINIO PRODUCTOR
+     └─ NOMBRE SERVICIO
+         └─ Evento Inicio
+
+Escenario integracion 2: api al servicio integracion
+INTEGRACIÓN
+ └─ Flujo Transaccional - nombre-flujo-transaccional
+     └─ Capa de Arquitectura - nombre-capa-arquitectura
+         └─ API
+ └─ DOMINIO PRODUCTOR   
+    └─ Flujo Transaccional - nombre-flujo-transaccional
+        └─ Capa de Arquitectura - nombre-capa-arquitectura
+            └─ NOMBRE SERVICIO
+            └─ Evento Inicio

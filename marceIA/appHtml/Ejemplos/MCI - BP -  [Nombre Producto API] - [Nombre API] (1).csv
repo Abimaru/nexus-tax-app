@@ -1,0 +1,169 @@
+Id,Name,Shape Library,Page ID,Contained By,Group,Line Source,Line Destination,Source Arrow,Destination Arrow,Status,Text Area 1,Text Area 2,Text Area 3,Text Area 4,Text Area 5,Text Area 6,Text Area 7,Text Area 8,Text Area 9,Text Area 10,Text Area 11,Text Area 12,Text Area 13,Text Area 14,Text Area 15,Text Area 16,Text Area 17,Text Area 18,Text Area 19,Text Area 20,Text Area 21,Text Area 22,Text Area 23,Comments,Notes,Shape ID,entrada,salida
+1,Document,,,,,,,,,Draft,MCI - BP -  [Nombre Producto API] - [Nombre API],,,,,,,,,,,,,,,,,,,,,,,,,07f68af1-e131-47a1-b679-fb6190421d65,,
+2,Page,,,,,,,,,,Escenarios BDD,,,,,,,,,,,,,,,,,,,,,,,,,KLbWZxhT5HMn,,
+3,Data Cell,Value Stream,2,,,,,,,,Producto API:,API:,Versión: x.x.x,Descripción:,,,,,,,,,,,,,,,,,,,,,,oYQoZjumg1I2,,
+4,Table,Tables,2,,,,,,,,nombreOperacion1,,HTTP RESPONSE  STATUS CODE,"NOMBRE EJEMPLO
+(Identificador del ejemplo)",ESCENARIO Todos los escenarios deben ser diferentes,DADO Condiciones del escenario,CUANDO Evento que desencadena la ejecució,ENTONCES Resultado funcional esperado,EXCEPCIÓN DE NEGOCIO  Mensaje que complementa la,,,,,,,,,,,,,,,,,8yDPK._1wQJK,,
+5,Table,Tables,2,,,,,,,,nombreOperacion2,,HTTP RESPONSE  STATUS CODE,"NOMBRE EJEMPLO
+(Identificador del ejemplo)",ESCENARIO Todos los escenarios deben ser diferentes,DADO Condiciones del escenario,CUANDO Evento que desencadena la ejecució,ENTONCES Resultado funcional esperado,EXCEPCIÓN DE NEGOCIO  Mensaje que complementa la,,,,,,,,,,,,,,,,,oMRPf6SsugCO,,
+6,Page,,,,,,,,,,API-ServicioIntegracion,,,,,,,,,,,,,,,,,,,,,,,,,3V8CzShf_yf6,,
+7,Rectangle container,UML,6,,,,,,,,DOMINIO PRODUCTOR,,,,,,,,,,,,,,,,,,,,,,,,,3V8Cu4zuIYsW,,
+8,Rectangle container,UML,6,,,,,,,,INTEGRACIÓN,,,,,,,,,,,,,,,,,,,,,,,,,3V8CDpt.uow1,,
+9,Rectangle container,Flowchart Shapes/Containers,6,8|13|14,,,,,,,,NOMBRE SERVICIO,,,,,,,,,,,,,,,,,,,,,,,,3V8CAPK-~x3Q,,
+10,Start Event,BPMN 2.0,6,8|9|13|14,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,3V8CPph.MCnl,,
+11,Block,Standard,6,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,3V8C6OnFDbl-,,
+12,Task,BPMN 2.0,6,8|9|13|14,,,,,,,Consultar Producto,,,,,,,,,,,,,,,,,,,,,,,,,3V8C8Xt.4HCV,,
+13,Rectangle container,UML,6,8,30,,,,,,Flujo Transaccional - nombre-flujo-transaccional,,,,,,,,,,,,,,,,,,,,,,,,,3V8Ch~iLb~lK,,
+14,Rectangle container,UML,6,8|13,30,,,,,,Capa de Arquitectura  - nombre-capa-arquitectura,,,,,,,,,,,,,,,,,,,,,,,,,3V8C8EyywoX.,,
+15,Task,BPMN 2.0,6,8|9|13|14,,,,,,,Consultar Producto 2,,,,,,,,,,,,,,,,,,,,,,,,,3V8C7bM2tDkr,,
+16,Class,UML,6,8|19|20,32,,,,,,Nombre Producto -  Nombre API vX.0.0,nombreOperacion1,Tipo - Clasificacion,,,,,,,,,,,,,,,,,,,,,,,3V8Chgws.rtC,,
+17,Call Activity,BPMN 2.0,6,8,32,,,,,,Modelo Datos Entrada,,,,,,,,,,,,,,,,,,,,,,,,,3V8C-s18.GNs,,
+18,Call Activity,BPMN 2.0,6,8,32,,,,,,Modelo Datos Salida,,,,,,,,,,,,,,,,,,,,,,,,,3V8CaIIErMJw,,
+19,Rectangle container,UML,6,8,33,,,,,,Flujo Transaccional - nombre-flujo-transaccional-1,,,,,,,,,,,,,,,,,,,,,,,,,3V8COUeJts.x,,
+20,Rectangle container,UML,6,8|19,33,,,,,,Capa de Arquitectura  - nombre-capa-de-arquitectura-1,,,,,,,,,,,,,,,,,,,,,,,,,3V8Cs4xrfKWu,,
+21,Intermediate Event,BPMN 2.0,6,8|19|20,31,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,3V8CHB4E0Jgx,,
+22,Class,UML,6,7,34,,,,,,Desembolso Online,LAA_DisbOnline,,,,,,,,,,,,,,,,,,,,,,,,qY8CsykCDymS,,
+23,Call Activity,BPMN 2.0,6,7,,,,,,,"initialData{
+	function
+	requestNum
+	obligationId
+}
+disbursement{
+	numDisbursements
+	disb_n{
+		applGMF_n
+		reasNoGMF_n
+		disbType_n
+		bnfName_n
+		bnfLName_n
+		bnfIdType_n
+		bnfIdNum_n
+		Office_n
+		disbAmt_n
+	}
+}",,,,,,,,,,,,,,,,,,,,,,,,,qY8CbMtV1Nu3,,
+24,Call Activity,BPMN 2.0,6,7,,,,,,,"executeFinacleScript_CustomData{
+	DisbStatus
+	RequestNumber
+	ObligationId
+	TranId
+	RESULT_MSG
+	DisbWarningCode
+	DisbWarningMsg
+}",,,,,,,,,,,,,,,,,,,,,,,,,qY8CKXX.sn~G,,
+25,Line,,6,,,16,10,None,Arrow,,,,,,,,,,,,,,,,,,,,,,,,,,,3V8CC-VppI6M,,
+26,Line,,6,,,10,12,None,Arrow,,,,,,,,,,,,,,,,,,,,,,,,,,,3V8CTxMIG5Di,,
+27,Line,,6,,,12,15,None,Arrow,,,,,,,,,,,,,,,,,,,,,,,,,,,8W8C3hFMtinJ,,
+28,Line,,6,,35,,,CircleOpen,Generalization,,,,,,,,,,,,,,,,,,,,,,,,,,,zY8C6iaqcAID,,
+29,Line,,6,,35,,,CircleOpen,Generalization,,,,,,,,,,,,,,,,,,,,,,,,,,,zY8CZX9hpa_D,,
+30,Group 1,,6,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,3V8Cx71UeTos,,
+31,Group 2,,6,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,3V8C86RZbcAq,,
+32,Group 3,,6,,31,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,3V8CtCQCSgoa,,
+33,Group 4,,6,,31,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,3V8Cg..ODZj8,,
+34,Group 5,,6,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,qY8CQcwxNFpw,,
+35,Group 6,,6,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,zY8C0RBOi6BE,,
+36,Page,,,,,,,,,,API-Backend,,,,,,,,,,,,,,,,,,,,,,,,,oq-CWYhpGcdn,,
+37,Rectangle container,UML,36,,,,,,,,DOMINIO PRODUCTOR,,,,,,,,,,,,,,,,,,,,,,,,,oq-C1FNSxAxI,,
+38,Rectangle container,UML,36,,,,,,,,INTEGRACIÓN,,,,,,,,,,,,,,,,,,,,,,,,,oq-CrTW7TUGm,,
+39,Rectangle container,Flowchart Shapes/Containers,36,37,,,,,,,,NOMBRE SERVICIO,,,,,,,,,,,,,,,,,,,,,,,,oq-CiWxdZb79,,
+40,Start Event,BPMN 2.0,36,37|39,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,oq-CR0mVSNaZ,,
+41,Block,Standard,36,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,oq-CxA.sMbV9,,
+42,Task,BPMN 2.0,36,37|39,,,,,,,Consultar Producto,,,,,,,,,,,,,,,,,,,,,,,,,oq-Cj_N-VTs2,,
+43,Task,BPMN 2.0,36,37|39,,,,,,,Consultar Producto 2,,,,,,,,,,,,,,,,,,,,,,,,,oq-C3bFluI5u,,
+44,Class,UML,36,38|47|48,60,,,,,,Nombre Producto -  Nombre API vX.0.0,nombreOperacion1,Tipo - Clasificacion,,,,,,,,,,,,,,,,,,,,,,,oq-Cd0Z5G4yz,,
+45,Call Activity,BPMN 2.0,36,38,60,,,,,,Modelo Datos Entrada,,,,,,,,,,,,,,,,,,,,,,,,,oq-CcNu93NH0,,
+46,Call Activity,BPMN 2.0,36,38,60,,,,,,Modelo Datos Salida,,,,,,,,,,,,,,,,,,,,,,,,,oq-CFpNv835R,,
+47,Rectangle container,UML,36,38,61,,,,,,Flujo Transaccional - nombre-flujo-transaccional-1,,,,,,,,,,,,,,,,,,,,,,,,,oq-ChUP5sfap,,
+48,Rectangle container,UML,36,38|47,61,,,,,,Capa de Arquitectura  - nombre-capa-de-arquitectura-1,,,,,,,,,,,,,,,,,,,,,,,,,oq-C3OO8j8Tp,,
+49,Intermediate Event,BPMN 2.0,36,38|47|48,59,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,oq-CK-XMaA.w,,
+50,Class,UML,36,38,62,,,,,,Real Time Payments Keys Information - Customer Keys v2.0.0,POST/listKeys,Entidad,,,,,,,,,,,,,,,,,,,,,,,fs-CiXlUSexA,,
+51,Call Activity,BPMN 2.0,36,38,,,,,,,"requestInformation
+	id
+	consumer
+	type
+	geolocation
+		ipAddress
+	callback
+		type
+		urlCallback
+		urlAuthorization
+customerInformation
+	identification
+		type
+		number
+	product
+		type
+		number",,,,,,,,,,,,,,,,,,,,,,,,,fs-CTcWlXw8X,,
+52,Intermediate Event,BPMN 2.0,36,38,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,fs-COeplP554,,
+53,Call Activity,BPMN 2.0,36,38,,,,,,,"requestInformation*
+	status*
+   	description*",,,,,,,,,,,,,,,,,,,,,,,,,fs-CDUyjTKUi,,
+54,Line,,36,,,44,40,None,Arrow,,,,,,,,,,,,,,,,,,,,,,,,,,,oq-ClnIy_txV,,
+55,Line,,36,,,40,42,None,Arrow,,,,,,,,,,,,,,,,,,,,,,,,,,,oq-C7.uAuRzr,,
+56,Line,,36,,,42,43,None,Arrow,,,,,,,,,,,,,,,,,,,,,,,,,,,oq-CiB7R3Q25,,
+57,Line,,36,,,50,43,CircleOpen,Generalization,,,,,,,,,,,,,,,,,,,,,,,,,,,fs-ChHpNpmLj,,
+58,Line,,36,,,43,50,CircleOpen,Generalization,,,,,,,,,,,,,,,,,,,,,,,,,,,fs-C1_Isbr.z,,
+59,Group 1,,36,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,oq-C4n-bKzVj,,
+60,Group 2,,36,,59,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,oq-C8dnMzkAY,,
+61,Group 3,,36,,59,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,oq-Cp-LhdURC,,
+62,Group 4,,36,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,fs-Cxe3RJpo~,,
+63,Page,,,,,,,,,, ,,,,,,,,,,,,,,,,,,,,,,,,,5S7mo.81mgSU,,
+64,Rectangle container,UML,63,,,,,,,,DOMINIO PRODUCTOR,,,,,,,,,,,,,,,,,,,,,,,,,5S7mysVmnhkc,,
+65,Rectangle container,UML,63,,,,,,,,INTEGRACIÓN,,,,,,,,,,,,,,,,,,,,,,,,,5S7m3ucHDf-8,,
+66,Rectangle container,UML,63,,,,,,,,SISTEMAS EXTERNOS,,,,,,,,,,,,,,,,,,,,,,,,,5S7mQB1b.tSi,,
+67,Rectangle container,Flowchart Shapes/Containers,63,64,,,,,,,,NOMBRE SERVICIO,,,,,,,,,,,,,,,,,,,,,,,,5S7mpO00NqZh,,
+68,Group,BPMN 2.0,63,66,,,,,,,Sistema Externo,,,,,,,,,,,,,,,,,,,,,,,,,5S7mpwmVgIk0,,
+69,Block,Standard,63,,119,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,5S7mG_COBi3J,,
+70,Group,BPMN 2.0,63,,119,,,,,, ,,,,,,,,,,,,,,,,,,,,,,,,,5S7m~9ZojkXD,,
+71,Group,BPMN 2.0,63,,119,,,,,, ,,,,,,,,,,,,,,,,,,,,,,,,,5S7miKvGj9A7,,
+72,Call Activity,BPMN 2.0,63,,119,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,5S7m~VFzJW9i,,
+73,Task,BPMN 2.0,63,,119,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,5S7mGm~sphSi,,
+74,Call Activity,BPMN 2.0,63,,119,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,5S7mt8YiPb9v,,
+75,Call Activity,BPMN 2.0,63,,119,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,5S7muWUYauQ-,,
+76,Block,Standard,63,,119,,,,,,NOTACIÓN,,,,,,,,,,,,,,,,,,,,,,,,,5S7m51DcWbMr,,
+77,Block,Standard,63,,119,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,5S7mBcWzN6mY,,
+78,Block,Standard,63,,119,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,5S7mYUNkmjt8,,
+79,Block,Standard,63,,119,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,5S7mnmpyPPqa,,
+80,Intermediate Event,BPMN 2.0,63,,119,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,5S7ml5Kfe5Wv,,
+81,Block,Standard,63,,119,,,,,,API,,,,,,,,,,,,,,,,,,,,,,,,,5S7mlSbENLaC,,
+82,Block,Standard,63,,119,,,,,,Reúso,,,,,,,,,,,,,,,,,,,,,,,,,5S7mXX83E992,,
+83,Block,Standard,63,,119,,,,,,Nuevo,,,,,,,,,,,,,,,,,,,,,,,,,5S7mK3Xrgbrx,,
+84,Block,Standard,63,,119,,,,,,Modificación,,,,,,,,,,,,,,,,,,,,,,,,,5S7mI-dZvZl0,,
+85,Block,Standard,63,,119,,,,,,Comando / Actividad,,,,,,,,,,,,,,,,,,,,,,,,,5S7mzG_ld6kN,,
+86,Block,Standard,63,,119,,,,,,Sistema Externo,,,,,,,,,,,,,,,,,,,,,,,,,5S7mZHLbZmvH,,
+87,Block,Standard,63,,119,,,,,,Evento,,,,,,,,,,,,,,,,,,,,,,,,,5S7mpZ9wQH71,,
+88,Block,Standard,63,,119,,,,,,Modelo de Lectura,,,,,,,,,,,,,,,,,,,,,,,,,5S7mJPaQb2Tj,,
+89,Block,Standard,63,,119,,,,,,Política,,,,,,,,,,,,,,,,,,,,,,,,,5S7m3KN8AkII,,
+90,Block,Standard,63,,119,,,,,,Concepto,,,,,,,,,,,,,,,,,,,,,,,,,5S7mMfRhoBoP,,
+91,Block,Standard,63,,119,,,,,,Agregado,,,,,,,,,,,,,,,,,,,,,,,,,5S7m0wdCA-sP,,
+92,Block,Standard,63,,119,,,,,,Pública o Partner,,,,,,,,,,,,,,,,,,,,,,,,,5S7mkHnCDrkG,,
+93,Block,Standard,63,,119,,,,,,Privada,,,,,,,,,,,,,,,,,,,,,,,,,5S7m_dmcVwbg,,
+94,Block,Standard,63,,119,,,,,,Pendientes,,,,,,,,,,,,,,,,,,,,,,,,,5S7mxvYBdW6z,,
+95,Block,Standard,63,,119,,,,,,PR,,,,,,,,,,,,,,,,,,,,,,,,,5S7m7Xt8gawV,,
+96,Block,Standard,63,,119,,,,,,P,,,,,,,,,,,,,,,,,,,,,,,,,5S7mcLPS6Ajs,,
+97,Call Activity,BPMN 2.0,63,,119,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,5S7m8iJxlkwP,,
+98,Intermediate Event,BPMN 2.0,63,,119,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,5S7m0BSHJ~mr,,
+99,End Event,BPMN 2.0,63,,119,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,5S7mpdlZOBp4,,
+100,Block,Standard,63,,119,,,,,,Excepción de negocio,,,,,,,,,,,,,,,,,,,,,,,,,5S7mn6.Nho5N,,
+101,Call Activity,BPMN 2.0,63,,119,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,5S7mf.LBSg9Q,,
+102,Call Activity,BPMN 2.0,63,,119,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,5S7mWsiy2wQp,,
+103,Block,Standard,63,,119,,,,,,Excepción de negocio,,,,,,,,,,,,,,,,,,,,,,,,,5S7mX9d4~y_o,,
+104,Block,Standard,63,,119,,,,,,Modelo de Salida,,,,,,,,,,,,,,,,,,,,,,,,,5S7m~o12UNz3,,
+105,Task,BPMN 2.0,63,,119,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,5S7mElVihcFA,,
+106,Block,Standard,63,,119,,,,,,Consulta,,,,,,,,,,,,,,,,,,,,,,,,,5S7mSY5egQX7,,
+107,Class,UML,63,65,120,,,,,,Nombre Servicio,nombreFuncionalMetodo,Clasificación lógica,,,,,,,,,,,,,,,,,,,,,,,5S7mT.gJDf1y,,
+108,Call Activity,BPMN 2.0,63,65,120,,,,,,Modelo Datos Entrada,,,,,,,,,,,,,,,,,,,,,,,,,5S7me1G2F0nw,,
+109,Call Activity,BPMN 2.0,63,65,120,,,,,,Modelo Datos Salida,,,,,,,,,,,,,,,,,,,,,,,,,5S7mql1cFvkG,,
+110,Class,UML,63,64,121,,,,,,Nombre Servicio,nombreFuncionalMetodo,Clasificación lógica,,,,,,,,,,,,,,,,,,,,,,,5S7mBh_1j.sc,,
+111,Call Activity,BPMN 2.0,63,64,,,,,,,Modelo de Lectura,,,,,,,,,,,,,,,,,,,,,,,,,5S7mr0kxoQ6O,,
+112,Call Activity,BPMN 2.0,63,64,,,,,,,Modelo de Salida,,,,,,,,,,,,,,,,,,,,,,,,,5S7mrnOgteAf,,
+113,Class,UML,63,66|68,122,,,,,,Nombre Servicio,nombreFuncionalMetodo,Clasificación lógica,,,,,,,,,,,,,,,,,,,,,,,5S7mx3NCE-Bz,,
+114,Call Activity,BPMN 2.0,63,66,,,,,,,Modelo de Lectura,,,,,,,,,,,,,,,,,,,,,,,,,5S7miUMHJ9NX,,
+115,Call Activity,BPMN 2.0,63,66,,,,,,,Modelo de Salida,,,,,,,,,,,,,,,,,,,,,,,,,5S7mNjzx8sqE,,
+116,Start Event,BPMN 2.0,63,64|67,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,CT7mumnYh7Y0,,
+117,Data Cell,Value Stream,63,,,,,,,,Descripción Operación:,Método:,Seguridad:,,,,,,,,,,,,,,,,,,,,,,,EZQoKP-RPy2W,,
+118,Line,,63,,,107,116,None,Arrow,,,,,,,,,,,,,,,,,,,,,,,,,,,CT7m~s~dsMDg,,
+119,Group 1,,63,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,6S7mugqSp5mc,,
+120,Group 2,,63,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,6S7mnX9idMAZ,,
+121,Group 3,,63,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,6S7m2YjdaJq9,,
+122,Group 4,,63,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,6S7myjFW70fy,,
