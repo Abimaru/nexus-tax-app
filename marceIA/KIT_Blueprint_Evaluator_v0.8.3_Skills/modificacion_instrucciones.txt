@@ -1,0 +1,9 @@
+## Modalidades de presentación del informe
+
+Por defecto, entrega un informe ejecutivo breve, formal y comprensible para analistas. Incluye escenario declarado y observado, descripción funcional, resultado general, tabla resumida de cumplimiento, hasta cinco hallazgos, hasta tres recomendaciones y limitaciones relevantes.
+
+El resumen no reduce el alcance de las reglas evaluadas. Conserva la trazabilidad y diferencia Cumple, No Cumple, Parcialmente Cumple, No Verificable y No Aplica.
+
+Cuando el usuario solicite «Informe técnico completo» o «Ampliar informe», presenta las siete secciones del estándar de reporte, matriz requisito–instancia, evidencias por ID, conflictos normativos y métricas de cobertura.
+
+La solicitud de mayor o menor detalle no modifica el dictamen ni la normativa aplicada.

@@ -1,0 +1,28 @@
+Realiza la evaluación del blueprint utilizando las instrucciones del agente, las Skills instaladas, la normativa corporativa vigente y los archivos de Evidence Studio proporcionados.
+
+**Para esta evaluación, presenta primero un INFORME EJECUTIVO BREVE**, con lenguaje formal, claro y comprensible para un analista funcional o técnico.
+
+El informe debe incluir:
+
+1. **Escenario de integración:** E1, E2, E3 o No Determinable, con una explicación de máximo tres líneas. Distingue el escenario declarado del escenario observado cuando no coincidan.
+2. **Descripción del blueprint:** explica brevemente qué operación se modela, cuál es la API o servicio principal y cómo se relaciona con los dominios.
+3. **Resultado general:** Cumple, No Cumple, Cumple Parcialmente o No Verificable, indicando el alcance realmente evaluado.
+4. **Resumen de cumplimiento:** tabla compacta con escenario, contenedores, componentes, nomenclatura, conexiones, eventos y capas cuando apliquen.
+5. **Hallazgos principales:** máximo cinco, priorizados por impacto, indicando el componente afectado y la regla normativa correspondiente.
+6. **Recomendaciones:** máximo tres acciones concretas que permitan corregir o completar la evaluación.
+7. **Limitaciones:** indica brevemente las validaciones pendientes por falta de evidencia, especialmente iconos, colores o conexiones visuales.
+
+**Condiciones obligatorias:**
+
+- Ejecuta el procedimiento normativo con el mismo rigor que en un informe técnico completo.
+- No cambies ni omitas reglas por solicitar un resumen.
+- No inventes componentes, incumplimientos o verificaciones.
+- Si la normativa está disponible mediante una Skill o un Markdown adjunto, úsala como fuente de requisitos; el PDF y JSON de Evidence Studio son evidencia del blueprint.
+- Conserva la trazabilidad de los hallazgos para una ampliación posterior.
+- Evita explicaciones excesivamente técnicas, tablas extensas y repetir información.
+- No presentes reglas No Verificables como Cumple.
+- No afirmes que el blueprint está aprobado oficialmente.
+
+Finaliza el informe en un máximo aproximado de 600 palabras.
+
+Si posteriormente solicito **«Ampliar informe técnico»**, entrega el análisis completo con las siete secciones, matriz requisito–instancia, identificadores, evidencias, conflictos y métricas, sin cambiar el dictamen por el simple cambio de formato.
