@@ -57,6 +57,21 @@ En E3, DOMINIO PRODUCTOR debe contener **un componente de servicio no gestionado
 
 Las respuestas del analista seleccionan el **contexto normativo a evaluar**, pero no prueban la ubicación, tipo ni conectividad de figuras. Si el escenario declarado es E2 y la única evidencia de servicio principal es un hijo de DOMINIO PRODUCTOR, evaluar E2 y reportar discrepancia estructural; no declarar E2 por llamadas a múltiples APIs, orquestación o capa MCI. Si la evidencia apunta a E1, indicarlo como **candidato alternativo**, sin reemplazar la declaración del analista. La clasificación visual del evento Inicio y de la línea continua queda `No Verificable` cuando Evidence Studio no la demuestra.
 
+### D-09. Identificación del dominio productor con nombre personalizado
+
+Cuando un escenario requiera la existencia del contenedor DOMINIO PRODUCTOR, puede utilizarse el nombre real del equipo, capacidad, producto o dominio de negocio responsable del backend.
+
+Si existen exactamente dos dominios principales y uno de ellos es INTEGRACIÓN, el segundo dominio podrá considerarse candidato a DOMINIO PRODUCTOR cuando:
+
+- Contenga el servicio principal evaluado; o
+- Contenga el BPMN principal asociado al servicio.
+
+La diferencia de nombre respecto a "DOMINIO PRODUCTOR" no constituye incumplimiento por sí sola.
+
+Si la evidencia estructural muestra que el servicio principal reside dentro de dicho dominio y no existe evidencia contradictoria, el requisito deberá evaluarse como Cumple.
+
+Solo se clasificará como No Verificable cuando existan múltiples dominios candidatos o la evidencia no permita determinar cuál es el productor.
+
 ---
 
 ## Contenedores, escenarios y sistemas externos
