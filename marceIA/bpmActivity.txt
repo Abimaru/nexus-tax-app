@@ -1,0 +1,65 @@
+5. Recomendación técnica
+El proceso de enriquecimiento debería incorporar una clasificación semántica para cada BPMNActivity, por ejemplo:
+JSON
+{
+"id": "8S4un242Bhat",
+"class": "BPMNActivity",
+"semanticRole": "processActivity",
+"classificationSource": "textualRules",
+"classificationConfidence": "high",
+"classificationEvidence": [
+"locatedInMainProcessChild",
+"startsWithInfinitiveVerb",
+"containsFunctionalObject",
+"notDataStructure",
+"notBusinessRule",
+"notErrorMessage"
+]
+}
+Para un modelo:
+JSON
+{
+"id": "8S4uBGIxaDnu",
+"class": "BPMNActivity",
+"semanticRole": "dataModel",
+"classificationSource": "structuredContent",
+"classificationConfidence": "high",
+"classificationEvidence": [
+"containsStructuredFields",
+"requestSchemaPattern"
+]
+}
+Para una regla:
+JSON
+{
+"semanticRole": "businessRule",
+"classificationEvidence": [
+"declarativeCondition",
+"noExecutableAction"
+]
+}
+Valores recomendados para semanticRole:
+processActivity
+inputModel
+outputModel
+dataModel
+businessRule
+errorMessage
+definition
+pendingNote
+unclassified
+
+
+Ejemplos actividades funcionales:
+Actualizar estado de la cuenta existe del cliente en base de datos.
+Consultar información personal detallada del cliente.
+Validar correspondencia de identidad (Token IDOR).
+Solicitar creación del cliente en la billetera especificada.
+Validar parametrización de la billetera.
+Validar existencia del cliente dentro del producto cuenta global para la billetera enviada.
+Eliminar restricción de la cuenta existente para la billetera solicitada.
+Consultar datos de contacto del cliente.
+Consultar estado de la cuenta en la billetera.
+Generar token requerido para ejecutar pruebas.
+Validar solicitud de registro en billetera en el motor de fraudes.
+Almacenar datos del cliente creado en base de datos
