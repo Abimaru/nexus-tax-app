@@ -1,1118 +1,554 @@
-REQUERIMIENTO DE MEJORA DEL HTML GENERADOR DEL JSON ENRIQUECIDO
-Blueprint Evidence Studio
+Listo, Marcela. Con el grupo final ya se puede identificar el inconveniente con bastante precisión.
 
-1. OBJETIVO
+Diagnóstico principal
 
-Ajustar el HTML que genera el JSON enriquecido para que:
+El escenario estructuralmente correcto es E1, no E2 ni NO_DETERMINABLE.
 
-1. Conserve y exponga todas las clasificaciones declaradas en `customData` del JSON original.
-2. Identifique y relacione modelos de entrada y salida con API, servicios y eventos de integración.
-3. Distinga componentes principales, consumidos, externos y pertenecientes a otros dominios.
-4. Identifique las actividades funcionales del flujo sin depender de que su nombre comience con un verbo en infinitivo.
-5. Evalúe por separado la nomenclatura de las actividades funcionales.
-6. Identifique comunicaciones bidireccionales entre actividades automatizadas y API o servicios.
-7. Quede preparado para futuras clasificaciones de figuras mediante `customData.KEY`, sin requerir cambios estructurales cada vez que se añada un nuevo KEY.
-8. Conserve separadas:
-   - la evidencia declarada en el JSON original;
-   - la clasificación inferida por el enriquecedor;
-   - la evaluación normativa que posteriormente realizará el agente.
+La cadena de evidencia es:
 
-El JSON enriquecido debe permitir que el agente de validación tome decisiones sin consultar el JSON original y sin utilizar proximidad, coordenadas, colores, apariencia visual, alineación o interpretación manual del diagrama.
+Plain Text
+API principal
+Customer Payment Keys Information - Merchant Keys v1.0.0
+ID: 20QoG0YPgPqR
+↓ conexión 20QoFTDVNX-.
+Evento BPMN tipoFigura
+ID: 20Qo_MC7n0CG
+↓ contenido en
+Hijo principal ms_retrieve_keys
+ID: 20QoxCoCdtvE
+↓ parentId
+NUEVAS EXPERIENCIAS DE PAGO
+ID: 20QoN3lLcXy.
 
+El hijo ms_retrieve_keys está contenido directamente en NUEVAS EXPERIENCIAS DE PAGO, que por las reglas debe reconocerse como el dominio productor personalizado. Por tanto, corresponde a E1: API directa al backend.
 
-2. PRINCIPIO GENERAL DE TRAZABILIDAD
+El problema no es que falte evidencia para distinguir E1/E2. La evidencia sí está en el JSON, pero convive con información precalculada, redundante y contradictoria que facilita que el modo automático tome un atajo incorrecto.
 
-Toda figura del JSON original debe conservar en el JSON enriquecido:
+Inconveniente crítico 1: el JSON contiene una conclusión incorrecta muy explícita
 
-- id;
-- class;
-- textos originales;
-- customData completo;
-- referencias a grupos;
-- referencias a contenedores;
-- conexiones entrantes;
-- conexiones salientes;
-- ruta jerárquica;
-- fuente de cada dato;
-- clasificaciones declaradas;
-- clasificaciones inferidas;
-- confianza de las inferencias;
-- evidencia utilizada;
-- advertencias o contradicciones.
+Dentro del JSON aparece:
 
-No eliminar ni resumir los elementos de `customData`.
-
-Ejemplo:
-
-{
-  "id": "FIGURE_ID",
-  "class": "BPMNActivity",
-  "texts": [
-    {
-      "label": "Text",
-      "value": "Consultar información del cliente"
-    }
-  ],
-  "customData": [
-    {
-      "key": "ACTIVIDAD_AUTOMATIZADA",
-      "value": ""
-    }
-  ],
-  "groupReferences": [],
-  "containerReferences": [
-    "CONTAINER_ID"
-  ],
-  "incomingConnectionIds": [],
-  "outgoingConnectionIds": [],
-  "hierarchyPath": [
-    "CORE GLOBAL ACCOUNT",
-    "user_ms"
-  ]
+JSON
+"evaluationContext": {
+"scenario": {
+"candidate": "NO_DETERMINABLE",
+"evidenceLevel": "insufficient",
+"visualConfirmation": "pending",
+"support": [],
+"reason": "Sin conexión API → BPMNEvent con dominio destino reconocible"
+}
 }
 
+Esta conclusión precalculada es incorrecta porque el mismo JSON sí contiene esta conexión:
 
-3. SOPORTE GENÉRICO DE CUSTOMDATA.KEY
-
-Actualmente algunos modelos tienen:
-
-- ENTRADA;
-- SALIDA.
-
-A futuro otras figuras tendrán KEY para diferenciar, por ejemplo:
-
-- evento de inicio;
-- evento de fin;
-- evento de excepción;
-- modelo de entrada;
-- modelo de salida;
-- definición;
-- política;
-- excepción;
-- actividad automatizada;
-- actividad de sistema;
-- actividad de consulta;
-- otros tipos todavía no definidos.
-
-El HTML no debe codificar únicamente ENTRADA y SALIDA.
-
-Debe conservar cualquier KEY recibido y generar una interpretación normalizada mediante un catálogo configurable.
-
-Añadir una sección de configuración:
-
+JSON
 {
-  "semanticKeyCatalog": {
-    "catalogVersion": "1.0.0",
-    "mappings": [
-      {
-        "sourceKey": "ENTRADA",
-        "normalizedRole": "inputModel",
-        "category": "dataModel"
-      },
-      {
-        "sourceKey": "SALIDA",
-        "normalizedRole": "outputModel",
-        "category": "dataModel"
-      }
-    ],
-    "unmappedKeys": []
-  }
+"id": "20QoFTDVNX-.",
+"originId": "20QoG0YPgPqR",
+"destinationId": "20Qo_MC7n0CG",
+"originName": "Customer Payment Keys Information - Merchant Keys v1.0.0 | RetrieveAvailableKeys | Entidad",
+"destinationName": "tipoFigura",
+"originPath": "INTEGRACIÓN > Flujo Transaccional - No monetario > Capa de Arquitectura - Composición > Customer Payment Keys Information...",
+"destinationPath": "NUEVAS EXPERIENCIAS DE PAGO > ms_retrieve_keys > tipoFigura",
+"fromDomain": "INTEGRACIÓN",
+"toDomain": "NUEVAS EXPERIENCIAS DE PAGO",
+"isCrossDomain": true
 }
 
-Cuando se reciba un KEY desconocido:
+Además, la jerarquía confirma que tipoFigura está dentro de ms_retrieve_keys y que este hijo pertenece a NUEVAS EXPERIENCIAS DE PAGO.
 
-1. Conservarlo sin modificar.
-2. No descartarlo.
-3. No inventar su significado.
-4. Añadirlo a `unmappedKeys`.
-5. Clasificar la figura como `declaredKeyUnmapped` si no existe una correspondencia configurada.
-6. Permitir añadir posteriormente su equivalencia sin cambiar la estructura del JSON enriquecido.
+Tus instrucciones ya dicen correctamente:
 
-Ejemplo:
+“No copies NO_DETERMINABLE ni conclusiones precalculadas del exportador sin contrastarlas con parentId, rutas, roles y conexiones.”
 
-{
-  "declaredSemantics": {
-    "source": "customData",
-    "keys": [
-      {
-        "key": "NUEVO_KEY",
-        "value": "",
-        "mapped": false,
-        "normalizedRole": null,
-        "category": null
-      }
-    ],
-    "hasUnmappedKeys": true
-  }
+La skill repite la misma prohibición y el procedimiento establece que los diagnósticos derivados deben ocupar el último lugar de precedencia.
+
+¿Por qué falla principalmente en automático?
+
+Porque evaluationContext.scenario tiene una forma muy atractiva para un modelo que busca responder rápido:
+
+Se llama literalmente scenario.
+Contiene un candidate.
+Incluye un reason.
+Ya presenta una conclusión redactada.
+Aparece acompañada de un supuesto nivel de evidencia.
+El JSON es extremadamente largo, por lo que reconstruir la evidencia original cuesta más que adoptar el resumen preparado.
+
+El razonamiento profundo continúa revisando la jerarquía y descubre que el diagnóstico precalculado contradice los datos. El automático puede considerar que el problema ya fue resuelto por el exportador.
+
+Recomendación
+
+La mejor solución es no incluir esa conclusión dentro de la evidencia entregada al agente, porque el exportador no es quien determina normativamente el escenario.
+
+Eliminar:
+
+JSON
+"evaluationContext": {
+"scenario": {
+...
+}
 }
 
+Si necesitas conservarlo para depuración, muévelo a una sección claramente no normativa:
 
-4. SEPARACIÓN ENTRE CLASIFICACIÓN DECLARADA E INFERIDA
-
-Cada figura debe tener dos secciones independientes:
-
-- `declaredSemantics`: contenido procedente de `customData`;
-- `inferredSemantics`: clasificación calculada por el enriquecedor.
-
-Ejemplo:
-
-{
-  "declaredSemantics": {
-    "source": "customData",
-    "keys": [
-      {
-        "key": "ENTRADA",
-        "value": "",
-        "mapped": true,
-        "normalizedRole": "inputModel",
-        "category": "dataModel"
-      }
-    ]
-  },
-  "inferredSemantics": {
-    "semanticRole": "inputModel",
-    "classificationSource": "declaredCustomData",
-    "classificationConfidence": "high",
-    "classificationScore": 1.0,
-    "classificationEvidence": [
-      "customData:ENTRADA"
-    ],
-    "excludedRoles": [],
-    "reviewRequired": false
-  }
+JSON
+"exporterDiagnostics": {
+"nonNormative": true,
+"mustNotBeUsedForScenarioInference": true,
+"scenarioDetectionAttempt": {
+"candidate": "NO_DETERMINABLE",
+"reason": "..."
+}
 }
 
-Si existe KEY declarado, este debe tener prioridad sobre la inferencia textual.
+Aun así, mi recomendación real es no enviárselo al agente durante la validación.
 
-Si la inferencia contradice el KEY:
+Inconveniente crítico 2: mainServiceContainers contradice la jerarquía
 
-{
-  "semanticConsistency": {
-    "status": "contradictory",
-    "declaredRole": "inputModel",
-    "inferredRole": "processActivity",
-    "reviewRequired": true
-  }
+El JSON también contiene:
+
+JSON
+"objects": {
+"mainServiceContainers": []
 }
 
-No sobrescribir la clasificación declarada con la inferida.
+Pero la jerarquía y la matriz sí reconocen:
 
-
-5. CATÁLOGO NORMALIZADO DE ROLES SEMÁNTICOS
-
-El JSON enriquecido debe admitir, como mínimo, los siguientes roles normalizados:
-
-Figuras BPMN:
-
-- startEvent;
-- endEvent;
-- exceptionEvent;
-- intermediateEvent;
-- processActivity;
-- automatedActivity;
-- systemActivity;
-- queryActivity;
-- businessRule;
-- errorMessage;
-- exceptionMessage;
-- pendingNote;
-- definition;
-- policy;
-- unclassified.
-
-Modelos:
-
-- inputModel;
-- outputModel;
-- dataModel;
-- readModel;
-- bidirectionalModel;
-- unclassifiedModel.
-
-Componentes:
-
-- mainApi;
-- mainService;
-- consumedInternalApi;
-- consumedInternalService;
-- externalApi;
-- externalService;
-- domainEvent;
-- otherDomainEvent;
-- externalEvent;
-- integrationEvent;
-- unknownComponent.
-
-Estos nombres son roles normalizados internos del JSON enriquecido.
-
-Los KEY definitivos del JSON original todavía no están definidos. Por tanto, el HTML debe permitir configurar la equivalencia entre cada KEY futuro y estos roles normalizados.
-
-
-6. CLASIFICACIÓN DE COMPONENTES
-
-Crear una colección `componentSemantics` para todas las API, servicios y eventos de integración candidatos.
-
-Ejemplo:
-
+JSON
 {
-  "componentSemantics": [
-    {
-      "id": "COMPONENT_ID",
-      "name": "Virtual Account Opening - Virtual Account v2.1.0",
-      "operation": "initiateVirtualAccount",
-      "technicalType": "api",
-      "normativeRole": "mainApi",
-      "domainRelation": "modeledDomain",
-      "classificationSource": "structuralRules",
-      "classificationConfidence": "high",
-      "classificationScore": 0.95,
-      "classificationEvidence": [
-        "locatedInIntegration",
-        "connectedToMainFlow",
-        "operationMatchesPage"
-      ],
-      "reviewRequired": false
-    }
-  ]
+"id": "20QoxCoCdtvE",
+"label": "ms_retrieve_keys",
+"role": "servicio-principal",
+"parentId": "20QoN3lLcXy."
 }
 
-Valores de `technicalType`:
+Y en resultMatrix se informa:
 
-- api;
-- service;
-- integrationEvent;
-- auxiliaryExternalSystem;
-- unknown.
-
-Valores de `normativeRole`:
-
-- mainApi;
-- mainService;
-- consumedInternalApi;
-- consumedInternalService;
-- externalApi;
-- externalService;
-- domainEvent;
-- otherDomainEvent;
-- externalEvent;
-- unknown.
-
-Valores de `domainRelation`:
-
-- modeledDomain;
-- otherBankDomain;
-- externalDomain;
-- unknown.
-
-El contenedor hijo del flujo, por ejemplo `user_ms`, no debe quedar obligado a tener modelos de entrada y salida por el solo hecho de ser el contenedor hijo.
-
-Solo una API o un servicio identificado como componente principal debe tener la obligación de modelos de entrada y salida.
-
-
-7. ASOCIACIÓN DE MODELOS DE ENTRADA Y SALIDA
-
-Mantener la colección `modelAssociations`, pero ampliarla para procesar:
-
-- grupos directos;
-- grupos anidados;
-- referencias semánticas explícitas;
-- customData;
-- futuras relaciones declaradas;
-- modelos asociados a API;
-- modelos asociados a servicios;
-- modelos asociados a eventos de integración.
-
-Ejemplo:
-
+JSON
 {
-  "modelAssociations": [
-    {
-      "componentId": "COMPONENT_ID",
-      "componentType": "api",
-      "normativeRole": "mainApi",
-      "domainRelation": "modeledDomain",
-      "componentName": "Virtual Account Opening - Virtual Account v2.1.0",
-      "operation": "initiateVirtualAccount",
-      "associationPath": {
-        "directGroupId": "GROUP_ID",
-        "outerGroupId": null,
-        "nestedGroupIds": []
-      },
-      "inputModels": [
-        {
-          "id": "INPUT_MODEL_ID",
-          "name": "AccountOpeningRequest",
-          "direction": "input",
-          "directionSource": "customData:ENTRADA",
-          "associationSource": "sharedGroup"
-        }
-      ],
-      "outputModels": [
-        {
-          "id": "OUTPUT_MODEL_ID",
-          "name": "AccountRequestAcknowledgement",
-          "direction": "output",
-          "directionSource": "customData:SALIDA",
-          "associationSource": "sharedGroup"
-        }
-      ],
-      "associationEvidence": [
-        "sharedGroup:GROUP_ID",
-        "customData:ENTRADA",
-        "customData:SALIDA"
-      ],
-      "associationStatus": "confirmed",
-      "classificationConfidence": "high",
-      "reviewRequired": false
-    }
-  ]
+"id": "20QoxCoCdtvE",
+"type": "Servicio principal",
+"label": "ms_retrieve_keys",
+"path": "NUEVAS EXPERIENCIAS DE PAGO"
 }
 
+Por tanto, el mismo archivo comunica dos cosas incompatibles:
 
-8. ASOCIACIÓN MEDIANTE GRUPOS ANIDADOS
+Plain Text
+Jerarquía:
+Sí existe un contenedor de servicio principal.
+ 
+evaluationContext.objects:
+No existen contenedores de servicio principal.
 
-El HTML debe poder asociar modelos cuando:
+Eso explica por qué un modo puede encontrar ms_retrieve_keys y otro puede quedarse con el arreglo vacío.
 
-1. Un grupo exterior contiene una única API, servicio o evento candidato.
-2. Ese grupo exterior contiene un grupo interior.
-3. El grupo interior contiene modelos de entrada y salida.
-4. Los modelos tienen dirección declarada en `customData`.
-5. No existen otros componentes candidatos que generen ambigüedad.
+Recomendación
 
-Ejemplo:
+Corregir la generación de mainServiceContainers para que incluya, como mínimo:
 
+JSON
+"mainServiceContainers": [
 {
-  "associationPath": {
-    "directGroupId": null,
-    "outerGroupId": "OUTER_GROUP_ID",
-    "nestedGroupIds": [
-      "INNER_GROUP_ID"
-    ],
-    "depth": 1
-  },
-  "associationStatus": "confirmed",
-  "associationMethod": "nestedGroupAndCustomData"
+"id": "20QoxCoCdtvE",
+"name": "ms_retrieve_keys",
+"role": "servicio-principal",
+"parentId": "20QoN3lLcXy.",
+"parentName": "NUEVAS EXPERIENCIAS DE PAGO",
+"path": "NUEVAS EXPERIENCIAS DE PAGO > ms_retrieve_keys"
+}
+]
+
+O eliminar evaluationContext.objects si no es una fuente completamente confiable.
+
+Inconveniente importante 3: existe contradicción en la ubicación de la API principal
+
+Para la API 20QoG0YPgPqR, el JSON declara:
+
+JSON
+"sourceDiff": [
+{
+"id": "20QoG0YPgPqR",
+"json": ["20Qo7gOlA.J_"],
+"csv": [
+"20Qo7gOlA.J_",
+"Rj0eK9I.Lm5R",
+"Rj0e8cSp-3rr"
+],
+"extra": [
+"Rj0eK9I.Lm5R",
+"Rj0e8cSp-3rr"
+]
+}
+]
+
+Es decir:
+
+La fuente JSON ubica la API directamente en INTEGRACIÓN.
+El CSV también la relaciona con Flujo Transaccional y Capa de Arquitectura.
+La jerarquía consolidada termina asignándole como parentId la capa de arquitectura.
+El campo parentSource queda como "solo CSV".
+
+Esto afecta E12-002, que exige que la API principal esté directamente en INTEGRACIÓN.
+
+Pero no debería cambiar E1 por E2
+
+La contradicción afecta la evaluación de la ubicación directa de la API, pero no cambia el padre del hijo principal:
+
+Plain Text
+ms_retrieve_keys
+→ parentId: NUEVAS EXPERIENCIAS DE PAGO
+→ escenario E1
+
+El procedimiento ya exige separar:
+
+inferencia del escenario;
+evaluación de conformidad de cada regla.
+
+Por lo tanto:
+
+Escenario: E1.
+E12-002: posiblemente No verificable, con calificador Evidencia contradictoria, dependiendo de cómo normativamente debas tratar la asociación a las capas.
+No corresponde cambiar a E2 por esta contradicción.
+Recomendación para el exportador
+
+No uses como parentId una pertenencia secundaria obtenida solo del CSV cuando la fuente JSON declara como padre a INTEGRACIÓN.
+
+Sería más estable representar:
+
+JSON
+{
+"id": "20QoG0YPgPqR",
+"parentId": "20Qo7gOlA.J_",
+"parentSource": "JSON",
+"semanticAssociations": [
+{
+"type": "DEPLOYMENT_FLOW",
+"targetId": "Rj0e8cSp-3rr"
+},
+{
+"type": "ARCHITECTURE_LAYER",
+"targetId": "Rj0eK9I.Lm5R"
+}
+]
 }
 
-Esta mejora debe permitir generar asociaciones normalizadas para componentes como:
+Así no se mezcla:
 
-- Customer Contact Information;
-- Customer Personal Data.
+padre estructural;
+pertenencia amplia al dominio;
+asociación de despliegue;
+capa relacionada.
 
-No asociar modelos mediante grupos anidados si el grupo exterior contiene más de un componente candidato y no existe una referencia que permita determinar a cuál pertenece cada modelo.
+Tu procedimiento dice precisamente que contención, pertenencia al dominio y asociación de capas son relaciones distintas.
 
+Inconveniente importante 4: falta una regla mecánica para seleccionar la API principal
 
-9. SEPARACIÓN ENTRE MODELO, DIRECCIÓN Y ASOCIACIÓN
+El JSON registra tres candidatos en modeledApiCandidates:
 
-Para cada figura candidata a modelo, registrar por separado:
+Tuu6zLGT6g_i
+f~M7q-4SN9RA
+20QoG0YPgPqR
 
-1. Si es un modelo de datos.
-2. Si es de entrada o salida.
-3. A qué componente está asociado.
+Pero el tercero es el que representa la API principal del blueprint porque:
 
-Ejemplo:
+corresponde al nombre fuente Customer Payment Keys Information - Merchant Keys;
+su operación es RetrieveAvailableKeys;
+tiene una conexión orientada hacia un evento contenido en ms_retrieve_keys;
+esa conexión atraviesa de INTEGRACIÓN al dominio productor;
+los otros candidatos están conectados a actividades intermedias del flujo y funcionan como componentes invocados.
 
+Sin embargo, el procedimiento dice “identificar la API principal”, pero no contiene una secuencia tan mecánica como:
+
+Plain Text
+Entre los candidatos API, seleccionar como API principal aquel que:
+ 
+1. tenga una conexión saliente orientada hacia un elemento BPMN;
+2. cuyo destino pertenezca al hijo reconocido como servicio principal;
+3. represente la operación descrita por el blueprint;
+4. no esté conectado únicamente a una actividad interna como API invocada.
+
+Eso le deja más trabajo interpretativo al modelo.
+
+Texto recomendado para 00-procedimiento.md
+
+Agregar dentro de “Inferencia normativa obligatoria”:
+
+Markdown
+#### Identificación determinista de la API principal
+ 
+Para E1/E2, identificar primero todas las API candidatas.
+ 
+Seleccionar como API principal la API cuya conexión saliente orientada
+ingresa al flujo del servicio principal modelado.
+ 
+Aplicar este orden:
+ 
+1. Identificar conexiones cuyo origen sea una API candidata.
+2. Identificar el destino BPMN de cada conexión.
+3. Resolver el hijo que contiene cada destino.
+4. Considerar API principal la que introduce la ejecución en el hijo
+que representa al servicio principal del blueprint.
+5. Las API conectadas a actividades internas de invocación no son la
+API principal; clasificarlas como invocadas cuando la evidencia lo permita.
+6. No escoger la API principal por posición en arreglos, cantidad de
+conexiones, ubicación en capas, nombre más parecido ni por aparecer
+en evaluationContext.objects.modeledApiCandidates.
+7. Si existe más de una API que introduce ejecución en hijos candidatos,
+registrar específicamente los candidatos y la relación pendiente.
+
+Esto reduce la diferencia entre automático y profundo.
+
+Inconveniente importante 5: el JSON repite demasiadas veces la misma información
+
+El archivo contiene la misma evidencia en múltiples lugares:
+
+hierarchy.mainTree
+hierarchy.secondary
+sourceReconciliation
+shapes
+connections
+structuredConnections
+evaluationContext.connections
+resultMatrix
+limitations
+
+La conexión de la API principal, por ejemplo, aparece en:
+
+connections
+structuredConnections
+evaluationContext.connections
+
+Y la ubicación de los componentes aparece en:
+
+hierarchy.mainTree
+secondary
+containerReferences
+csvContainerReferences
+originPath ydestinationPath
+resultMatrix.path
+
+Esto no solo aumenta el tamaño. También hace que una contradicción tenga más posibilidades de dominar la interpretación.
+
+El modelo automático puede:
+
+Encontrar primero NO_DETERMINABLE.
+Encontrar mainServiceContainers: [].
+Encontrar varios candidatos API.
+Ver que el subtipo Inicio no está certificado.
+Concluir que no puede determinar el escenario.
+
+El profundo sigue más allá y reconstruye la evidencia original.
+
+Recomendación
+
+Entrega al agente un JSON reducido con cuatro secciones normativas:
+
+JSON
 {
-  "id": "MODEL_ID",
-  "semanticRole": "dataModel",
-  "modelDirection": "unknown",
-  "associatedComponentIds": [],
-  "modelAssessment": {
-    "isDataModel": {
-      "status": "confirmed",
-      "source": "structuredContent",
-      "confidence": "medium"
-    },
-    "direction": {
-      "status": "notVerified",
-      "source": "missingCustomData",
-      "confidence": "low"
-    },
-    "association": {
-      "status": "notVerified",
-      "source": "noGroupOrReference",
-      "confidence": "low"
-    }
-  }
+"metadata": {},
+"components": [],
+"hierarchy": [],
+"connections": []
 }
 
-Valores de `modelDirection`:
+Y, si es necesario:
 
-- input;
-- output;
-- bidirectional;
-- unknown.
-
-No inferir dirección solamente por:
-
-- Request;
-- Response;
-- Acknowledgement;
-- Input;
-- Output;
-- orden dentro de un grupo;
-- lista de campos;
-- proximidad;
-- coordenadas;
-- posición;
-- ubicación general en INTEGRACIÓN;
-- ubicación general en SISTEMAS EXTERNOS.
-
-
-10. ESTADO DE LAS ASOCIACIONES
-
-Normalizar `associationStatus`:
-
-- confirmed;
-- partial;
-- ambiguous;
-- notVerified;
-- contradictory.
-
-Añadir:
-
+JSON
 {
-  "requiredDirections": [
-    "input",
-    "output"
-  ],
-  "confirmedDirections": [
-    "output"
-  ],
-  "missingDirections": [
-    "input"
-  ],
-  "associationStatus": "partial",
-  "absenceAssessment": {
-    "input": "notFoundInAvailableEvidence",
-    "output": "confirmed"
-  }
+"sourceConflicts": []
 }
 
-Valores de ausencia:
+Secciones como estas deberían quedar fuera de la entrada normativa:
 
-- confirmed;
-- notFoundInAvailableEvidence;
-- confirmedAbsent;
-- notApplicable;
-- unknown.
+Plain Text
+evaluationContext
+resultMatrix
+visualCandidates
+visualMatches
+graphics
+svg.colors
+diagnósticos precalculados
 
-No interpretar `notFoundInAvailableEvidence` como incumplimiento automático.
+No porque sean inútiles, sino porque sirven para depuración del exportador, no para establecer el escenario.
 
+Inconveniente 6: el algoritmo mezcla “encontrar el hijo” con “certificar Inicio”
 
-11. OBLIGATORIEDAD DE MODELOS
+La conclusión precalculada dice:
 
-Añadir a cada componente:
+Plain Text
+Sin conexión API → BPMNEvent con dominio destino reconocible
 
+Pero sí existe una conexión de API a BPMNEvent. Lo que realmente falta es la certificación de que ese evento sea Inicio.
+
+Son dos afirmaciones diferentes:
+
+Plain Text
+A. Existe conexión API → evento BPMN dentro del hijo.
+B. El evento destino está certificado como Inicio.
+
+En este caso:
+
+A está demostrado.
+B no está demostrado.
+
+El procedimiento y la skill ya dicen que la ausencia del subtipo Inicio no debe impedir distinguir E1/E2. Solo debe afectar la regla específica de conexión.
+
+La evaluación correcta sería:
+
+Plain Text
+Escenario: E1
+ 
+Evidencia del escenario:
+API principal → evento BPMN → hijo ms_retrieve_keys
+→ dominio productor NUEVAS EXPERIENCIAS DE PAGO.
+ 
+E12-003:
+No verificable, porque el destino es BPMNEvent,
+pero el subtipo Inicio no está certificado.
+
+El diagnóstico del exportador está colapsando ambas condiciones y concluye incorrectamente que no hay conexión utilizable.
+
+Qué está haciendo probablemente cada modo
+Razonamiento profundo
+
+Reconstruye:
+
+Plain Text
+20QoG0YPgPqR
+→ conexión 20QoFTDVNX-.
+→ 20Qo_MC7n0CG
+→ parentId 20QoxCoCdtvE
+→ parentId 20QoN3lLcXy.
+→ dominio productor personalizado
+→ E1
+Automático
+
+Probablemente toma esta ruta corta:
+
+Plain Text
+evaluationContext.scenario.candidate
+→ NO_DETERMINABLE
+ 
+objects.mainServiceContainers
+→ vacío
+ 
+subtipo Inicio
+→ no certificado
+ 
+Conclusión
+→ escenario no determinable u otra interpretación
+
+También podría dejarse influir por:
+
+Plain Text
+API principal
+→ ubicada en Flujo Transaccional
+→ Capa de Arquitectura
+→ INTEGRACIÓN
+
+y confundir la ubicación de la API con la ubicación del hijo principal, dando lugar a E2. Pero tus reglas dicen claramente que E1/E2 depende del padre del hijo, no de las capas ni de dónde está la API principal dentro de INTEGRACIÓN.
+
+Cambios prioritarios que recomiendo
+Prioridad 1: modificar el JSON
+
+Eliminar de la entrada del agente:
+
+JSON
+evaluationContext.scenario
+evaluationContext.objects.mainServiceContainers
+resultMatrix
+visualCandidates
+graphics
+svg
+
+O separar toda esa información en otro archivo de diagnóstico.
+
+Prioridad 2: corregir la consolidación de jerarquía
+
+No asignar una capa como parentId cuando solo es una asociación de despliegue.
+
+Separar:
+
+JSON
 {
-  "modelRequirement": {
-    "applies": true,
-    "reason": "mainApi",
-    "requiredInput": true,
-    "requiredOutput": true,
-    "responseMode": "requestResponse",
-    "domainRelation": "modeledDomain"
-  }
+"structuralParentId": "20Qo7gOlA.J_",
+"deploymentFlowId": "Rj0e8cSp-3rr",
+"architectureLayerId": "Rj0eK9I.Lm5R"
 }
-
-Aplicar estos criterios:
-
-A. API principal:
-
-- modelo de entrada obligatorio;
-- modelo de salida obligatorio.
-
-B. Servicio principal:
-
-- modelo de entrada obligatorio;
-- modelo de salida obligatorio.
-
-C. Contenedor hijo:
-
-- no requiere modelos por ser contenedor hijo;
-- no evaluar `user_ms` como incumplimiento por carecer de modelos;
-- solo requerir modelos si además existe un componente de servicio marcado expresamente como principal.
-
-D. Eventos propios del dominio con respuesta:
-
-- modelo de entrada obligatorio;
-- modelo de salida obligatorio.
-
-E. Eventos propios del dominio sin respuesta:
-
-- modelo de entrada obligatorio;
-- modelo de salida opcional.
-
-F. API o servicio consumido:
-
-- registrar los modelos cuando existan;
-- no generar incumplimiento si no existen;
-- su ausencia no es obligatoria para la regla de modelos.
-
-G. API, servicio o evento externo:
-
-- registrar los modelos cuando existan;
-- no generar incumplimiento si no existen.
-
-H. API, servicio o evento de otro dominio bancario:
-
-- registrar los modelos cuando existan;
-- no generar incumplimiento si no existen.
-
-I. Componente cuyo dominio o rol sea desconocido:
-
-- no concluir incumplimiento;
-- indicar que la obligatoriedad no es verificable cuando la clasificación pueda modificar el resultado.
-
-
-12. EVENTOS CON Y SIN RESPUESTA
-
-Para eventos de integración, añadir:
-
-{
-  "eventSemantics": {
-    "eventType": "command",
-    "responseMode": "withResponse",
-    "responseModeSource": "topicStructure",
-    "inputRequired": true,
-    "outputRequired": true,
-    "classificationConfidence": "high",
-    "reviewRequired": false
-  }
-}
-
-Valores de `eventType`:
-
-- query;
-- command;
-- event;
-- unknown.
-
-Valores de `responseMode`:
-
-- withResponse;
-- withoutResponse;
-- unknown.
-
-Criterios iniciales:
-
-- Query: withResponse.
-- Command con tópico de petición y tópico de respuesta: withResponse.
-- Command con un único tópico operativo: withoutResponse.
-- Event: withoutResponse.
-- Si no puede determinarse el tipo o los tópicos: unknown.
-
-
-13. IDENTIFICACIÓN DE ACTIVIDADES FUNCIONALES
-
-Crear o mantener una colección `activitySemantics`.
-
-La clasificación como actividad funcional no debe depender obligatoriamente de que el texto comience con un verbo en infinitivo.
-
-Esto es necesario porque la regla normativa posterior comprobará precisamente la nomenclatura. Una actividad mal nombrada debe seguir siendo identificada como actividad funcional para que pueda ser marcada como incumplimiento.
-
-Ejemplo:
-
-{
-  "activitySemantics": [
-    {
-      "id": "ACTIVITY_ID",
-      "name": "Consulta de información del cliente",
-      "semanticRole": "processActivity",
-      "activityType": "unknown",
-      "classificationSource": "flowAndSemanticRules",
-      "classificationConfidence": "high",
-      "classificationScore": 0.91,
-      "classificationEvidence": [
-        "class:BPMNActivity",
-        "insideMainChild",
-        "participatesInProcessFlow",
-        "hasIncomingConnection",
-        "hasOutgoingConnection",
-        "notStructuredContent",
-        "notInputOrOutputModel",
-        "notBusinessRule",
-        "notErrorMessage"
-      ],
-      "excludedRoles": [
-        "inputModel",
-        "outputModel",
-        "dataModel",
-        "businessRule",
-        "errorMessage",
-        "definition",
-        "policy",
-        "pendingNote"
-      ],
-      "reviewRequired": false
-    }
-  ]
-}
-
-
-14. CRITERIOS PARA IDENTIFICAR UNA ACTIVIDAD FUNCIONAL
-
-Utilizar una combinación de señales.
-
-Señales estructurales:
-
-- class = BPMNActivity;
-- pertenece al contenedor hijo principal;
-- pertenece al flujo principal;
-- tiene texto no vacío;
-- participa en el flujo;
-- tiene al menos una conexión entrante o saliente;
-- está conectada con eventos BPMN, compuertas, otras actividades, API, servicios, eventos de integración o auxiliares;
-- no pertenece a la leyenda o notación.
-
-Señales semánticas:
-
-- representa una acción ejecutable;
-- tiene objeto, propósito o resultado funcional;
-- no enumera campos;
-- no tiene customData ENTRADA o SALIDA;
-- no es una regla declarativa;
-- no es una política;
-- no es un mensaje de error;
-- no es una excepción textual;
-- no es una definición;
-- no es una pregunta;
-- no es una nota pendiente.
-
-No utilizar `startsWithInfinitiveVerb` como requisito excluyente para determinar `processActivity`.
-
-
-15. CLASIFICACIÓN FUTURA DEL TIPO DE ACTIVIDAD
-
-Preparar `activityType` para recibir la clasificación futura procedente de `customData.KEY`.
-
-Valores iniciales:
-
-- automated;
-- system;
-- query;
-- manual;
-- unknown.
-
-Mientras no exista un KEY declarado:
-
-- se puede inferir el tipo;
-- la inferencia debe quedar registrada como inferida;
-- no debe presentarse como evidencia declarada;
-- debe incluir confianza y evidencia.
-
-Ejemplo futuro:
-
-{
-  "declaredSemantics": {
-    "keys": [
-      {
-        "key": "ACTIVIDAD_AUTOMATIZADA",
-        "mapped": true,
-        "normalizedRole": "automatedActivity",
-        "category": "activity"
-      }
-    ]
-  },
-  "activityType": "automated",
-  "activityTypeSource": "customData",
-  "activityTypeConfidence": "high"
-}
-
-
-16. DISTINCIÓN ENTRE ACTIVIDAD AUTOMATIZADA, DE CONSULTA Y DE SISTEMA
-
-No clasificar una actividad por el verbo utilizado en su nombre.
-
-En particular:
-
-- una actividad automatizada puede comenzar con “Consultar”;
-- una actividad automatizada puede comenzar con “Validar”;
-- una actividad de consulta no se determina por contener la palabra “Consultar”;
-- el verbo no demuestra el tipo de actividad.
-
-La clasificación debe depender principalmente del componente con el que se comunica.
-
-A. Actividad automatizada:
-
-Una actividad puede inferirse como automatizada cuando:
-
-- tiene comunicación bidireccional con una API o servicio; o
-- tiene comunicación bidireccional con un auxiliar de Sistema Externo que contiene inequívocamente una API o servicio; o
-- tiene un KEY futuro que la declare como automatizada.
-
-B. Actividad de consulta:
-
-Una actividad puede clasificarse como de consulta únicamente cuando:
-
-- existe KEY que la declare como tal; o
-- existe una inferencia estructural suficientemente sustentada;
-- se comunica con componentes que no son API, servicios ni eventos de integración;
-- no tiene comunicación bidireccional con API o servicios.
-
-No clasificarla como consulta únicamente porque el texto comience con “Consultar”.
-
-C. Actividad de sistema:
-
-Una actividad puede clasificarse como de sistema únicamente cuando:
-
-- existe KEY que la declare como tal; o
-- existe una inferencia estructural suficientemente sustentada;
-- se comunica con componentes internos que no son API, servicios ni eventos de integración;
-- no tiene comunicación bidireccional con API o servicios.
-
-Cuando no pueda distinguirse entre actividad de consulta y actividad de sistema:
-
-- usar `activityType: unknown`;
-- registrar las señales encontradas;
-- utilizar `reviewRequired: true`;
-- no inventar la clasificación.
-
-
-17. COMUNICACIÓN BIDIRECCIONAL
-
-Crear una colección `interactionSemantics`.
-
-Ejemplo directo:
-
-{
-  "interactionSemantics": [
-    {
-      "activityId": "ACTIVITY_ID",
-      "targetId": "API_ID",
-      "targetTechnicalType": "api",
-      "targetNormativeRole": "consumedInternalApi",
-      "interactionPath": "direct",
-      "outboundConnectionIds": [
-        "CONNECTION_1"
-      ],
-      "inboundConnectionIds": [
-        "CONNECTION_2"
-      ],
-      "isBidirectional": true,
-      "interactionStatus": "confirmed",
-      "classificationEvidence": [
-        "activityToComponentConnection",
-        "componentToActivityConnection"
-      ],
-      "reviewRequired": false
-    }
-  ]
-}
-
-La bidireccionalidad requiere dos objetos de conexión JSON distintos:
-
-- actividad hacia API o servicio;
-- API o servicio hacia actividad.
-
-No inferir bidireccionalidad por una única conexión, proximidad o apariencia visual.
-
-
-18. COMUNICACIÓN MEDIANTE SISTEMA EXTERNO AUXILIAR
-
-Cuando una API o servicio esté encapsulado en un auxiliar de Sistema Externo, permitir:
-
-- actividad hacia auxiliar;
-- auxiliar hacia actividad.
-
-Ejemplo:
-
-{
-  "activityId": "ACTIVITY_ID",
-  "targetId": "AUXILIARY_ID",
-  "targetTechnicalType": "auxiliaryExternalSystem",
-  "interactionPath": "viaAuxiliary",
-  "containedComponentIds": [
-    "API_ID"
-  ],
-  "containedComponentTypes": [
-    "api"
-  ],
-  "outboundConnectionIds": [
-    "CONNECTION_1"
-  ],
-  "inboundConnectionIds": [
-    "CONNECTION_2"
-  ],
-  "isBidirectional": true,
-  "interactionStatus": "confirmed",
-  "representsApiOrServiceInteraction": true
-}
-
-Solo afirmar que el auxiliar representa la comunicación con una API o servicio cuando la contención esté demostrada.
-
-Una conexión con un auxiliar no demuestra por sí sola que una API, servicio o evento pertenece a ese auxiliar.
-
-
-19. TRATAMIENTO DE EVENTOS EN LAS INTERACCIONES
-
-Las actividades funcionales no deben tener comunicación directa con eventos de integración.
-
-Si existe una conexión directa confirmada entre una actividad y un evento de integración:
-
-{
-  "interactionStatus": "invalidActivityToIntegrationEvent",
-  "isBidirectional": false,
-  "reviewRequired": false
-}
-
-Los eventos de integración se deben relacionar mediante la notación BPMN o el mecanismo normativo definido para ellos, no mediante la misma regla de comunicación de actividades automatizadas con API o servicios.
-
-
-20. AUXILIARES QUE CONTIENEN EVENTOS
-
-Cuando una actividad esté conectada con un auxiliar de Sistema Externo:
-
-A. Si el auxiliar contiene inequívocamente una API o servicio:
-
-- evaluar bidireccionalidad;
-- la interacción puede corresponder a una actividad automatizada.
-
-B. Si el auxiliar contiene únicamente eventos de integración confirmados:
-
-- no tratar la interacción como comunicación válida de una actividad automatizada con API o servicio;
-- registrar la inconsistencia.
-
-C. Si el auxiliar contiene API o servicios y eventos, pero no puede asociarse la conexión a un componente concreto:
-
-- `interactionStatus: ambiguous`;
-- `reviewRequired: true`.
-
-D. Si no puede determinarse qué contiene el auxiliar:
-
-- `interactionStatus: notVerified`;
-- no concluir cumplimiento ni incumplimiento;
-- conservar la causa de la incertidumbre.
-
-Ejemplo:
-
-{
-  "activityId": "ACTIVITY_ID",
-  "targetId": "AUXILIARY_ID",
-  "targetTechnicalType": "auxiliaryExternalSystem",
-  "containedComponentTypes": [
-    "unknown"
-  ],
-  "interactionStatus": "notVerified",
-  "ambiguityReason": "Auxiliary content type is not semantically classified",
-  "reviewRequired": true
-}
-
-
-21. EVALUACIÓN DE NOMENCLATURA DE ACTIVIDADES
-
-Añadir una evaluación independiente:
-
-{
-  "namingAssessment": {
-    "text": "Consultar datos de contacto del cliente",
-    "startsWithInfinitiveVerb": true,
-    "detectedVerb": "Consultar",
-    "verbForm": "infinitive",
-    "hasFunctionalObject": true,
-    "functionalObject": "datos de contacto del cliente",
-    "assessmentStatus": "valid",
-    "assessmentEvidence": [
-      "initialVerb:Consultar",
-      "verbForm:infinitive",
-      "functionalObjectPresent"
-    ],
-    "recommendedName": null
-  }
-}
-
-Valores de `assessmentStatus`:
-
-- valid;
-- invalid;
-- notVerified;
-- notApplicable.
-
-Ejemplo de actividad funcional con nombre incorrecto:
-
-{
-  "name": "Validación de identidad del cliente",
-  "semanticRole": "processActivity",
-  "namingAssessment": {
-    "startsWithInfinitiveVerb": false,
-    "detectedVerb": null,
-    "verbForm": null,
-    "hasFunctionalObject": true,
-    "functionalObject": "identidad del cliente",
-    "assessmentStatus": "invalid",
-    "recommendedName": "Validar la identidad del cliente"
-  }
-}
-
-La actividad debe permanecer dentro de la población evaluable aunque no comience con infinitivo.
-
-
-22. NIVELES DE CONFIANZA
-
-Usar:
-
-- high;
-- medium;
-- low.
-
-High:
-
-- existe evidencia declarada; o
-- existe evidencia estructural y semántica suficiente;
-- no existen contradicciones;
-- `reviewRequired: false`.
-
-Medium:
-
-- existe evidencia favorable;
-- falta una señal relevante;
-- la clasificación puede necesitar revisión.
-
-Low:
-
-- texto vacío;
-- figura aislada;
-- clasificación basada en una señal débil;
-- evidencia insuficiente.
-
-Las clasificaciones de confianza baja no deben utilizarse automáticamente para producir incumplimientos.
-
-
-23. ADVERTENCIAS SEMÁNTICAS
-
-Añadir `semanticWarnings` para registrar:
-
-- KEY sin equivalencia;
-- contradicción entre KEY e inferencia;
-- modelo sin dirección;
-- modelo sin componente asociado;
-- grupo con varios componentes candidatos;
-- actividad sin tipo;
-- auxiliar con contenido desconocido;
-- conexión con extremos sin clasificar;
-- posible actividad conectada directamente a evento;
-- clasificación de confianza media o baja;
-- ausencia no confirmada.
-
-Ejemplo:
-
-{
-  "semanticWarnings": [
-    {
-      "code": "UNMAPPED_CUSTOM_DATA_KEY",
-      "figureId": "FIGURE_ID",
-      "key": "NUEVO_KEY",
-      "severity": "warning",
-      "reviewRequired": true
-    }
-  ]
-}
-
-
-24. RESUMEN SEMÁNTICO
-
-Ampliar `semanticSummary`:
-
-{
-  "semanticSummary": {
-    "activitiesTotal": 64,
-    "processActivities": 12,
-    "automatedActivities": 4,
-    "systemActivities": 0,
-    "queryActivities": 0,
-    "activitiesUnknownType": 8,
-    "inputModels": 4,
-    "outputModels": 5,
-    "undirectedDataModels": 2,
-    "modelAssociationsConfirmed": 5,
-    "modelAssociationsPartial": 1,
-    "modelAssociationsAmbiguous": 0,
-    "modelAssociationsNotVerified": 1,
-    "bidirectionalInteractionsConfirmed": 5,
-    "invalidActivityEventInteractions": 0,
-    "unmappedCustomDataKeys": 0
-  }
-}
-
-Los contadores deben salir de las colecciones detalladas y ser consistentes con ellas.
-
-
-25. ESTRUCTURA FINAL ESPERADA POR PÁGINA
-
-Cada página del JSON enriquecido debe incluir, como mínimo:
-
-{
-  "page": {},
-  "hierarchy": {},
-  "groups": [],
-  "shapes": [],
-  "connections": [],
-  "structuredConnections": [],
-  "semanticKeyCatalog": {},
-  "componentSemantics": [],
-  "modelSemantics": [],
-  "modelAssociations": [],
-  "activitySemantics": [],
-  "eventSemantics": [],
-  "interactionSemantics": [],
-  "semanticWarnings": [],
-  "semanticSummary": {},
-  "evaluationContext": {},
-  "limitations": []
-}
-
-
-26. CRITERIOS DE ACEPTACIÓN PARA EL BLUEPRINT ACTUAL
-
-Modelos:
-
-1. Debe conservar los KEY ENTRADA y SALIDA.
-2. Debe identificar los modelos como inputModel y outputModel.
-3. La API principal `Virtual Account Opening - Virtual Account v2.1.0 / initiateVirtualAccount` debe tener entrada y salida confirmadas.
-4. `Customer Contact Information / contactByIdentification` debe tener entrada y salida asociadas mediante grupo anidado.
-5. `Customer Personal Data / retrieve-detail-information` debe tener entrada y salida asociadas mediante grupo anidado.
-6. `Fraud Evaluation / Transactional Risk Assessment` no debe recibir una asociación confirmada mientras no exista evidencia de dirección y asociación de sus modelos.
-7. `Accounts / GET/accounts/{id}` debe permanecer como asociación parcial mientras solo tenga modelo de salida confirmado.
-8. Las API externas `Users` deben conservar sus modelos asociados.
-9. `user_ms` no debe marcarse como incumplimiento por no tener modelos.
-10. Las API y servicios consumidos, externos o de otros dominios pueden tener modelos asociados, pero su ausencia no es obligatoria.
-11. Cada componente debe tener `technicalType`, `normativeRole` y `domainRelation`.
-12. Cada asociación debe distinguir existencia, dirección, asociación y obligatoriedad.
-
-Actividades:
-
-1. Deben identificarse las 12 actividades funcionales actuales.
-2. La identificación no debe depender obligatoriamente de que comiencen con infinitivo.
-3. Las 12 deben quedar relacionadas con `CORE GLOBAL ACCOUNT > user_ms`.
-4. Deben registrarse sus conexiones entrantes y salientes.
-5. Deben excluirse modelos, reglas, mensajes, políticas, definiciones, preguntas, pendientes y figuras vacías.
-6. La evaluación del infinitivo debe quedar en `namingAssessment`.
-7. Si en otro blueprint una actividad funcional no comienza con infinitivo, debe seguir siendo identificada y obtener `assessmentStatus: invalid`.
-8. Una actividad no debe clasificarse como consulta por contener el verbo “Consultar”.
-9. Una actividad no debe clasificarse como automatizada únicamente por contener “Consultar” o “Validar”.
-10. La actividad automatizada debe identificarse por KEY declarado o por comunicación bidireccional confirmada con API o servicio.
-11. Las actividades de consulta y sistema no deben requerir comunicación bidireccional con API o servicios.
-12. Si no puede distinguirse entre actividad de consulta y sistema, debe usarse `activityType: unknown`.
-13. No se debe aceptar conexión directa entre actividad y evento de integración como interacción válida de actividad automatizada.
-14. Si un auxiliar encapsula componentes no clasificados, el resultado debe quedar `notVerified`.
-15. Todos los futuros KEY deben conservarse aunque todavía no estén mapeados.
-
-
-27. PRINCIPIOS QUE NO DEBEN CAMBIAR
-
-El HTML no debe:
-
-- inferir relaciones por proximidad;
-- inferir relaciones por coordenadas;
-- inferir relaciones por alineación;
-- inferir relaciones por color;
-- inferir relaciones por iconografía no certificada;
-- inferir pertenencia a un auxiliar por una conexión;
-- inferir dirección de modelos por nombres;
-- inferir tipo de actividad por el verbo;
-- convertir falta de evidencia en ausencia confirmada;
-- sobrescribir los KEY del JSON original;
-- mezclar evidencia declarada con inferencia;
-- presentar una inferencia como dato declarado.
-
-El JSON enriquecido debe ser autocontenido, trazable y compatible con los KEY actuales y futuros.
+Prioridad 3: agregar selección determinista de API principal
+
+Incluir el bloque propuesto anteriormente en 00-procedimiento.md.
+
+Prioridad 4: fortalecer las instrucciones del agente
+
+Añadir en INSTRUCCIONES-AGENTE:
+
+Markdown
+Para inferir E1/E2, no leas ni uses evaluationContext, resultMatrix,
+limitations, visualCandidates ni diagnósticos calculados hasta terminar
+la reconstrucción con hierarchy.mainTree y structuredConnections.
+ 
+Primero identifica:
+ 
+1. API principal.
+2. Conexión saliente de la API principal.
+3. Destino BPMN.
+4. Hijo que contiene el destino.
+5. Padre estructural del hijo.
+ 
+Después aplica:
+ 
+- padre del hijo = DOMINIO PRODUCTOR o equivalente personalizado: E1;
+- padre del hijo = INTEGRACIÓN: E2.
+ 
+La ubicación de la API en Flujo Transaccional o Capa de Arquitectura
+no indica E2. E1/E2 depende exclusivamente de la pertenencia del hijo
+principal.
+ 
+Si el destino está clasificado como BPMNEvent pero no como Inicio,
+conserva el escenario estructural y marca únicamente E12-003 como
+No verificable.
+ 
+Si un resumen derivado declara NO_DETERMINABLE, pero la cadena
+API → destino → hijo → padre puede reconstruirse, ignora el resumen
+y usa la cadena estructural.
+Prioridad 5: agregar una comprobación de cierre
+Markdown
+Antes de declarar E2 o NO_DETERMINABLE, registra internamente:
+ 
+- apiPrincipalId;
+- connectionId;
+- destinationId;
+- mainChildId;
+- mainChildParentId;
+- mainChildParentName.
+ 
+No se permite declarar E2 sin una ruta donde mainChildParentName
+corresponda a INTEGRACIÓN.
+ 
+No se permite declarar NO_DETERMINABLE si los seis valores anteriores
+pueden obtenerse de la evidencia original.
+
+Esta comprobación es especialmente útil para el modo automático porque obliga al agente a completar la cadena mínima.
+
+Conclusión
+
+Tus reglas ya contienen casi toda la protección necesaria. El inconveniente principal está en el JSON enriquecido, porque presenta como si fueran evidencia confiable varias conclusiones derivadas que contradicen la evidencia original:
+
+scenario.candidate = NO_DETERMINABLE
+mainServiceContainers = []
+“Sin conexión API → BPMNEvent”
+Jerarquía consolidada que mezcla padre estructural con capas asociadas
+Repetición excesiva de evidencia en múltiples secciones
+
+El escenario correcto para este caso es:
+
+Plain Text
+E1 - API directa al backend
+
+porque el hijo principal ms_retrieve_keys pertenece al dominio productor personalizado NUEVAS EXPERIENCIAS DE PAGO. La API principal está conectada a un evento BPMN dentro de ese hijo. La falta de certificación de que ese evento sea Inicio afecta E12-003, pero no impide inferir E1.
+
+Ajuste principal realizado en el análisis
+
+Separé la inferencia estructural del escenario de las reglas de conformidad. Esa separación muestra que el JSON contiene evidencia suficiente para E1, aunque todavía existan contradicciones o datos no verificables en reglas específicas.

@@ -1,0 +1,676 @@
+Ok, pero entonces mi agente no solamente esta diseñado para indicar el escenario sino para revisar todas las reglas de mi agente y finalmente indicarme de las 64 reglas cuales cumple, cuales no, cuales no aplica, cuales estan en no verificable. Podrias indicarme entonces que se debe mejorar en el JSON que me lo provee una app html y que debo mejorar en mi agente que corresponde a todos los archivos q te cargue excepto el JSON.
+
+Copilot said:
+Sí. El objetivo no es optimizar solamente E1/E2, sino garantizar una evaluación consistente de las 64 reglas. Voy a separar las mejoras entre el contrato de evidencia producido por la app HTML y el motor normativo del agente, cuidando que un dato ausente no termine clasificado erróneamente como incumplimiento.
+
+
+Razonado para 7s
+Sí, y esa precisión cambia el enfoque. No debemos convertir la app HTML en un “clasificador de escenarios” ni en un “evaluador de las 64 reglas”. La app debe producir evidencia técnica completa, consistente y trazable; el agente debe aplicar las reglas y producir los cuatro estados normativos.
+
+La división correcta sería:
+
+
+
+App HTML
+Extrae, reconcilia y estructura hechos del blueprint
+No decide cumplimiento ni escenario
+ 
+                    ↓
+ 
+Agente
+Inventaría componentes
+Interpreta el escenario
+Determina aplicabilidad
+Evalúa las 64 reglas
+Consolida Cumple / No cumple / No verificable / No aplica
+1. Qué debe mejorar en el JSON generado por la app HTML
+A. Separar hechos originales, inferencias técnicas y diagnósticos
+Actualmente el JSON mezcla:
+
+Evidencia extraída de JSON, CSV y SVG.
+Relaciones consolidadas por la app.
+Clasificaciones tentativas.
+Resúmenes y diagnósticos.
+Conclusiones como NO_DETERMINABLE.
+Información visual que las reglas prohíben utilizar.
+Esa mezcla puede afectar no solo el escenario, sino también reglas como:
+
+GEN-001 a GEN-007
+API-001 a API-010
+SRV-001 a SRV-006
+EXT-001 a EXT-004
+FT-001 a CA-004
+E12-002 y E12-003
+MOD-001
+ACT-001
+El procedimiento dice que los diagnósticos del exportador son auxiliares y que la precedencia corresponde a jerarquía, clasificación, conexiones y semántica original.
+sharepoint
+
+Estructura recomendada
+
+
+{
+  "metadata": {},
+  "evidence": {
+    "components": [],
+    "containers": [],
+    "memberships": [],
+    "connections": [],
+    "associations": [],
+    "semanticAttributes": []
+  },
+  "reconciliation": {
+    "conflicts": [],
+    "unresolvedItems": [],
+    "coverage": {}
+  },
+  "diagnostics": {
+    "nonNormative": true,
+    "items": []
+  }
+}
+El agente debería trabajar principalmente con evidence y consultar reconciliation para identificar contradicciones o limitaciones.
+
+diagnostics no debería participar en la evaluación normativa.
+
+B. Eliminar del JSON las conclusiones normativas precalculadas
+De la entrada entregada al agente eliminaría:
+
+
+
+"evaluationContext": {
+  "scenario": {
+    "candidate": "NO_DETERMINABLE",
+    "evidenceLevel": "insufficient",
+    "reason": "..."
+  }
+}
+También evitaría valores como:
+
+
+
+"status": "Dato identificado"
+o:
+
+
+
+"status": "Ubicación no confirmada"
+si parecen representar un estado de evaluación.
+
+La app puede indicar el estado técnico de extracción, pero debe usar nombres que no se confundan con resultados normativos:
+
+
+
+{
+  "extractionStatus": "EXTRACTED",
+  "sourceCoverage": "PARTIAL",
+  "relationResolution": "UNRESOLVED"
+}
+Nunca debería generar:
+
+Cumple
+No cumple
+No aplica
+No verificable
+NO_DETERMINABLE
+“escenario candidato”
+Esos estados pertenecen al agente.
+
+C. Crear un inventario único de componentes
+Actualmente la misma figura se repite en:
+
+hierarchy.mainTree
+shapes
+resultMatrix
+evaluationContext.objects
+rutas de conexiones
+otras estructuras derivadas
+Esto provoca que el agente tenga que comparar distintas versiones del mismo elemento.
+
+La app debería producir una única colección maestra:
+
+
+
+{
+  "components": [
+    {
+      "id": "20QoG0YPgPqR",
+      "class": "UMLClassBlock",
+      "label": "Customer Payment Keys Information - Merchant Keys v1.0.0",
+      "textSections": [
+        {
+          "section": 1,
+          "text": "Customer Payment Keys Information - Merchant Keys v1.0.0"
+        },
+        {
+          "section": 2,
+          "text": "RetrieveAvailableKeys"
+        },
+        {
+          "section": 3,
+          "text": "Entidad"
+        }
+      ],
+      "declaredSemantics": {},
+      "sources": ["JSON", "CSV"]
+    }
+  ]
+}
+Después, las relaciones deben apuntar a esos IDs sin volver a copiar todo el componente.
+
+Esto mejora la evaluación de API-001 a API-008, SRV-001 a SRV-004 y EVT-001 a EVT-006, porque el agente recibe las secciones explícitamente y no tiene que segmentarlas desde una cadena concatenada. Las reglas distinguen cuidadosamente estructura, nombre, versión, camelCase, idioma, tipo y modelo, por lo que conviene que la app conserve cada sección por separado.
+sharepoint
+
+D. Separar padre estructural de asociaciones secundarias
+Este es uno de los cambios más importantes.
+
+Actualmente aparecen:
+
+
+
+{
+  "parentId": "Rj0eK9I.Lm5R",
+  "otherParentIds": [
+    "20Qo7gOlA.J_",
+    "Rj0e8cSp-3rr"
+  ],
+  "parentSource": "solo CSV"
+}
+Pero las reglas distinguen relaciones diferentes:
+
+Contención estructural inmediata.
+Pertenencia al dominio.
+Asociación con Flujo Transaccional.
+Asociación con Capa de Arquitectura.
+Contención dentro de un auxiliar.
+Asociación de modelos.
+Pertenencia al flujo BPMN.
+No deben representarse todas como padres.
+
+Modelo recomendado
+
+
+{
+  "structuralParent": {
+    "id": "20Qo7gOlA.J_",
+    "relation": "DIRECT_CONTAINMENT",
+    "source": "JSON"
+  },
+  "domainMembership": {
+    "id": "20Qo7gOlA.J_",
+    "source": "JSON"
+  },
+  "deploymentAssociations": [
+    {
+      "type": "TRANSACTION_FLOW",
+      "targetId": "Rj0e8cSp-3rr",
+      "source": "CSV"
+    },
+    {
+      "type": "ARCHITECTURE_LAYER",
+      "targetId": "Rj0eK9I.Lm5R",
+      "source": "CSV"
+    }
+  ]
+}
+Así el agente puede evaluar por separado:
+
+API-009: ubicación.
+E12-002: API directamente en INTEGRACIÓN.
+FT-004: Flujo Transaccional obligatorio.
+CA-004: Capa de Arquitectura obligatoria.
+FT-001 a FT-003: nombre y valor de la capa.
+CA-001 a CA-003: nombre y valor de la capa.
+Hoy esas reglas pueden contaminarse entre sí porque la capa aparece como si fuera padre.
+
+E. Estandarizar las relaciones de contención
+En lugar de depender simultáneamente de:
+
+parentId
+otherParentIds
+containerReferences
+csvContainerReferences
+contains
+path
+hierarchy.secondary
+la app debería emitir relaciones explícitas:
+
+
+
+{
+  "memberships": [
+    {
+      "childId": "20QoxCoCdtvE",
+      "containerId": "20QoN3lLcXy.",
+      "relation": "DIRECT_CONTAINMENT",
+      "source": ["JSON", "CSV"],
+      "status": "CONFIRMED"
+    },
+    {
+      "childId": "20Qo_MC7n0CG",
+      "containerId": "20QoxCoCdtvE",
+      "relation": "DIRECT_CONTAINMENT",
+      "source": ["JSON", "CSV"],
+      "status": "CONFIRMED"
+    }
+  ]
+}
+Si dos fuentes se contradicen:
+
+
+
+{
+  "status": "CONFLICTING",
+  "claims": [
+    {
+      "source": "JSON",
+      "containerId": "20Qo7gOlA.J_"
+    },
+    {
+      "source": "CSV",
+      "containerId": "Rj0eK9I.Lm5R"
+    }
+  ]
+}
+La app no debería escoger silenciosamente un padre ganador. El procedimiento establece que dos fuentes explícitas incompatibles generan Evidencia contradictoria, no una selección silenciosa.
+sharepoint
+
+F. Entregar conexiones una sola vez y con orientación semántica
+Actualmente aparecen tanto connections como structuredConnections y luego nuevamente evaluationContext.connections.
+
+Debería existir una sola lista:
+
+
+
+{
+  "connections": [
+    {
+      "id": "20QoFTDVNX-.",
+      "originId": "20QoG0YPgPqR",
+      "destinationId": "20Qo_MC7n0CG",
+      "orientationStatus": "CONFIRMED",
+      "label": null,
+      "source": "JSON",
+      "originContainerChain": [
+        "20Qo7gOlA.J_"
+      ],
+      "destinationContainerChain": [
+        "20QoN3lLcXy.",
+        "20QoxCoCdtvE"
+      ]
+    }
+  ]
+}
+Para cada conexión es importante entregar:
+
+origen;
+destino;
+orientación;
+etiqueta;
+fuente;
+tipo de relación, si está explícitamente disponible;
+cadena de contención de cada extremo;
+si la conexión está completa o tiene un extremo sin resolver.
+Eso mejora:
+
+E12-003
+E3-003
+API-010
+SRV-006
+EXT-002
+EVT-013
+GW-001
+Importante
+No debería usarse:
+
+
+
+"style": "Generalization"
+como sustituto de un significado funcional, salvo que la fuente original certifique la semántica. La app puede conservar el estilo técnico, pero debería separarlo:
+
+
+
+{
+  "semanticDirection": "A_TO_B",
+  "sourceLineStyle": "Generalization",
+  "functionalMeaning": null
+}
+G. Certificar subtipos por instancia cuando la fuente lo permita
+El JSON identifica muchas figuras solo como:
+
+
+
+{
+  "class": "BPMNEvent",
+  "role": "evento"
+}
+Pero varias reglas requieren distinguir:
+
+Inicio.
+Fin.
+Señal de envío.
+Señal de recepción.
+Evento BPMN interno.
+Evento de integración Query, Command o Event.
+Si la fuente original tiene propiedades capaces de demostrar esos subtipos, la app debe extraerlas:
+
+
+
+{
+  "id": "20Qo_MC7n0CG",
+  "componentType": "BPMN_EVENT",
+  "bpmnSubtype": {
+    "value": "START",
+    "status": "DECLARED",
+    "source": "JSON.customData.eventType"
+  }
+}
+Si no puede certificarlo:
+
+
+
+{
+  "bpmnSubtype": {
+    "value": null,
+    "status": "NOT_PROVIDED",
+    "source": null
+  }
+}
+No debería traducir FIN automáticamente a subtipo END si solo es un texto, salvo que la fuente lo certifique.
+
+Esto afecta especialmente:
+
+GEN-007
+E12-003
+E3-003
+EVT-013
+Las reglas exigen que Inicio, Fin y señales se identifiquen explícitamente, no por posición, iconografía o conexiones.
+sharepoint
+
+H. Separar actividades de modelos y anotaciones
+El JSON usa repetidamente:
+
+
+
+"role": "actividad-o-modelo"
+Ese valor es demasiado amplio para las reglas.
+
+Por ejemplo, estas figuras terminan como actividades o modelos:
+
+Actividades funcionales reales.
+Estructuras extensas de campos.
+Mensajes de error.
+Políticas.
+Anotaciones.
+Textos de callback.
+Modelos de entrada y salida.
+Eso afecta:
+
+ACT-001
+MOD-001
+GEN-005
+API-010
+SRV-006
+EXT-002
+GW-001
+Recomendación
+La app debería entregar una clasificación técnica progresiva:
+
+
+
+{
+  "semanticType": {
+    "value": "PROCESS_ACTIVITY",
+    "status": "DECLARED",
+    "source": "customData"
+  }
+}
+O, si solo existe evidencia parcial:
+
+
+
+{
+  "semanticType": {
+    "value": null,
+    "candidates": [
+      "PROCESS_ACTIVITY",
+      "DATA_MODEL",
+      "ANNOTATION"
+    ],
+    "status": "AMBIGUOUS",
+    "evidence": [
+      "BPMNActivity class",
+      "No semantic customData"
+    ]
+  }
+}
+La app no tiene que decidir normativamente si cumple ACT-001, pero sí debe evitar aplanar actividades y modelos bajo una misma etiqueta definitiva.
+
+I. Extraer customData y semántica por instancia
+Tus reglas dependen de valores explícitos como:
+
+API o servicio.
+Actividad automatizada, consulta o sistema.
+Modelo ENTRADA o SALIDA.
+Evento Query, Command o Event.
+Inicio o Fin.
+Señal de envío o recepción.
+Gestor de colas.
+Rol principal o invocado.
+El procedimiento indica que campos vacíos, nulos o no reconocidos significan no informado, no clasificación negativa.
+sharepoint
+
+El JSON debería preservar:
+
+
+
+{
+  "semanticAttributes": [
+    {
+      "componentId": "...",
+      "attribute": "activityType",
+      "rawValue": "",
+      "normalizedValue": null,
+      "status": "NOT_PROVIDED",
+      "source": "JSON.customData.activityType"
+    }
+  ]
+}
+Debe diferenciar:
+
+NOT_PROVIDED
+DECLARED
+UNRECOGNIZED
+CONFLICTING
+INFERRED
+NOT_AVAILABLE_IN_SOURCE
+Esto ayudará al agente a escoger correctamente entre No cumple y No verificable.
+
+J. Generar asociaciones explícitas entre componentes y capas
+La sola contención física no siempre demuestra qué capa pertenece a qué componente.
+
+El JSON debería generar:
+
+
+
+{
+  "associations": [
+    {
+      "type": "DEPLOYMENT",
+      "componentId": "20QoG0YPgPqR",
+      "structureId": "Rj0e8cSp-3rr",
+      "structureType": "TRANSACTION_FLOW",
+      "status": "CONFIRMED",
+      "source": "CSV"
+    },
+    {
+      "type": "DEPLOYMENT",
+      "componentId": "20QoG0YPgPqR",
+      "structureId": "Rj0eK9I.Lm5R",
+      "structureType": "ARCHITECTURE_LAYER",
+      "status": "CONFIRMED",
+      "source": "CSV"
+    }
+  ]
+}
+Esto es esencial porque las reglas prohíben usar las capas de un componente para cubrir otro.
+
+K. Generar asociaciones explícitas de modelos
+Para MOD-001, la app debería entregar:
+
+
+
+{
+  "modelAssociations": [
+    {
+      "componentId": "20QoG0YPgPqR",
+      "modelId": "20QoRceQKMUw",
+      "direction": "INPUT",
+      "status": "CONFIRMED",
+      "source": "JSON"
+    },
+    {
+      "componentId": "20QoG0YPgPqR",
+      "modelId": "20QoWFjre2-7",
+      "direction": "OUTPUT",
+      "status": "CONFIRMED",
+      "source": "JSON"
+    }
+  ]
+}
+Actualmente existan muchas figuras con contenido parecido a modelos, pero aparecen simplemente como BPMNActivity bajo INTEGRACIÓN. Eso puede causar:
+
+falsas actividades;
+modelos sin asociación;
+asociaciones por proximidad;
+MOD-001 en No verificable;
+ACT-001 evaluando textos que no son actividades.
+La app debe certificar dirección y asociación solo cuando tenga evidencia.
+
+L. Marcar claramente la notación y excluirla del inventario operativo
+El archivo contiene numerosos objetos A.mf... que parecen pertenecer a la leyenda o notación, pero muchos presentan:
+
+
+
+"notationCandidate": false
+Algunos textos son:
+
+API
+Privada
+Pública o Partner
+Evento
+Política
+Sistema Externo
+Modelo de Salida
+Consulta
+Recepción Evento de Señal
+Esos elementos podrían contaminar:
+
+inventario de API;
+eventos;
+modelos;
+auxiliares;
+actividades;
+señales;
+escenarios.
+La app sí detecta legendFound: true, pero no está excluyendo consistentemente los elementos de notación.
+
+Debe generar:
+
+
+
+{
+  "scope": "LEGEND"
+}
+o:
+
+
+
+{
+  "operational": false,
+  "exclusionReason": "LEGEND_ELEMENT"
+}
+El agente debería recibir separados:
+
+
+
+{
+  "operationalComponents": [],
+  "legendComponents": []
+}
+Este es uno de los cambios de mayor impacto para la evaluación completa.
+
+M. Definir completitud del inventario por familia
+Para poder marcar No cumple por ausencia, el agente necesita saber si la app pudo revisar la totalidad de la población relevante.
+
+No basta con poner:
+
+
+
+"unassignedCount": 52
+La app debería informar:
+
+
+
+{
+  "inventoryCoverage": {
+    "components": "COMPLETE",
+    "connections": "COMPLETE",
+    "containment": "PARTIAL",
+    "bpmnSubtypes": "PARTIAL",
+    "customData": "COMPLETE",
+    "modelAssociations": "PARTIAL",
+    "deploymentAssociations": "COMPLETE"
+  }
+}
+Porque:
+
+Si conexiones es COMPLETE, la ausencia de una conexión obligatoria puede convertirse en No cumple.
+Si conexiones es PARTIAL, la ausencia normalmente conduce a No verificable.
+Si los subtipos BPMN son parciales, Inicio o señal no se deben considerar ausentes.
+Si las asociaciones de modelos son parciales, un modelo no asociado no demuestra incumplimiento.
+Esta distinción es fundamental para tus cuatro estados.
+
+N. Mantener los conflictos, pero no resolverlos arbitrariamente
+La sección sourceDiff es útil. No debería eliminarse, pero sí normalizarse:
+
+
+
+{
+  "conflicts": [
+    {
+      "entityId": "20QoG0YPgPqR",
+      "attribute": "directParent",
+      "claims": [
+        {
+          "source": "JSON",
+          "value": "20Qo7gOlA.J_"
+        },
+        {
+          "source": "CSV",
+          "value": "Rj0eK9I.Lm5R"
+        }
+      ],
+      "resolution": null
+    }
+  ]
+}
+La app no debe transformar esta contradicción en un único parentId. Esta contradicción puede producir No verificable, con calificador Evidencia contradictoria, en las reglas afectadas.
+
+O. Reducir el ruido visual
+Para la evaluación de las 64 reglas, estas secciones deberían excluirse del JSON enviado al agente:
+
+
+
+graphics
+visualCandidates
+visualMatches
+svg.colors
+coordenadas
+bounds
+fills
+strokes
+gearCandidates
+Tus reglas prohíben inferir por color, forma, iconografía, coordenadas y proximidad. Incluir esa información aumenta tokens y abre caminos de inferencia no autorizados.
+
+Puede mantenerse en otro archivo de depuración de la app.
