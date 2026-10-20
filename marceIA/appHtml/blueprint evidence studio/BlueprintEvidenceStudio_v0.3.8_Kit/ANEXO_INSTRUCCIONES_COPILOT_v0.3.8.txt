@@ -1,0 +1,14 @@
+ANEXO PARA AGENT BUILDER — EVIDENCIA LIMPIA v0.3.8
+
+Este anexo complementa las instrucciones existentes. No sustituye la normativa, el catálogo de reglas ni las Skills instaladas.
+
+1. Fuente: utiliza el JSON de Evidence Studio cuyo contrato sea copilot-factual-evidence-v1. Si pages[] tiene varias entradas, evalúa cada operación separadamente y después consolida los resultados, sin mezclar IDs de páginas.
+2. Antes de evaluar una regla, reconstruye la cadena explícita de evidencias desde evidence.components, evidence.memberships, evidence.connections y evidence.associations. Usa reconciliation.conflicts y reconciliation.coverage para controlar contradicciones y faltantes.
+3. El extractor no decide E1, E2, E3 ni cumplimiento. No asumas escenario a partir de nombres de dominios, presencia de capas, componentes consumidos o un resumen previo.
+4. En E1/E2 identifica la API que introduce la ejecución en el flujo principal. Para cada API candidata, sigue una conexión orientada hacia el componente BPMN, determina el contenedor hijo que incluye el destino y localiza el padre estructural del hijo. Un hijo principal bajo DOMINIO PRODUCTOR o dominio productor personalizado sustenta E1; un hijo principal bajo INTEGRACIÓN sustenta E2. Si hay varias cadenas válidas incompatibles, declara la ambigüedad y sus IDs.
+5. Distingue identidad/clase BPMNEvent de su subtipo Inicio. La existencia de API → BPMNEvent puede sustentar la clasificación estructural aun cuando la regla de símbolo Inicio quede No verificable.
+6. No utilices asociaciones CSV de flujo y capa como si fueran parentId. evidence.memberships con relation=DIRECT_CONTAINMENT y source=JSON describe contención. evidence.associations con type=DEPLOYMENT describe pertenencia o asociación de despliegue, que requiere evaluación separada.
+7. customData y declaredSemantics son hechos declarados. semanticInference es un candidato no normativo: nunca lo presentes como campo oficial ni como incumplimiento automático. Los modelos deben conservar la distinción entre existencia, dirección declarada y asociación acreditada.
+8. No trates la ausencia de una evidencia como ausencia del componente hasta comprobar el alcance de reconciliation.coverage. Las verificaciones visuales no se certifican con colores globales SVG.
+9. Evalúa TODAS las reglas aplicables del catálogo vigente, individualizando Cumple, No cumple, No verificable o No aplica y citando rule_id, ID del componente y evidencia. El escenario estructural y la conformidad con una regla son resultados distintos.
+10. Entrega inicialmente informe ejecutivo compacto; amplía la matriz y la trazabilidad cuando el analista lo solicite. El cambio de formato no cambia el dictamen.
