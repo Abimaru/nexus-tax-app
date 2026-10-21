@@ -1,554 +1,471 @@
-Listo, Marcela. Con el grupo final ya se puede identificar el inconveniente con bastante precisión.
+Pero hoy en el JSON ya se identificaban conexiones de forma correcta8 hacia gestores, eventos de integracion, apis, etc.. Quisiera que lo q funciona no se pierda pero se ajuste lo q el JSON debe tener para q el agente no se confunda al idnriticar el esceanrio.
 
-Diagnóstico principal
+Dime entonces que debo decirle a la app HTML q mejore 
 
-El escenario estructuralmente correcto es E1, no E2 ni NO_DETERMINABLE.
+Copilot said:
 
-La cadena de evidencia es:
+Razonado para 1s
+Entiendo. No hay que rediseñar todo el JSON ni tocar la lógica de conexiones que ya funciona. El cambio debe ser puntual: corregir la representación de la contención para que el agente distinga sin ambigüedad entre padre directo y ancestros al identificar el escenario.
 
-Plain Text
-API principal
-Customer Payment Keys Information - Merchant Keys v1.0.0
-ID: 20QoG0YPgPqR
-↓ conexión 20QoFTDVNX-.
-Evento BPMN tipoFigura
-ID: 20Qo_MC7n0CG
-↓ contenido en
-Hijo principal ms_retrieve_keys
-ID: 20QoxCoCdtvE
-↓ parentId
-NUEVAS EXPERIENCIAS DE PAGO
-ID: 20QoN3lLcXy.
+En el blueprint_evidence_COPILOT_NMD_-_BP_-__Collections_Bill_Payments-Pay_Bill_U (1), las conexiones hacia APIs, servicios, eventos y gestores pueden mantenerse. El problema identificado está en memberships: 55 componentes aparecen con más de un DIRECT_CONTAINMENT, aunque structuralParent sí señala un único padre inmediato.
 
-El hijo ms_retrieve_keys está contenido directamente en NUEVAS EXPERIENCIAS DE PAGO, que por las reglas debe reconocerse como el dominio productor personalizado. Por tanto, corresponde a E1: API directa al backend.
+Puedes entregarle a la aplicación HTML esta solicitud:
 
-El problema no es que falte evidencia para distinguir E1/E2. La evidencia sí está en el JSON, pero convive con información precalculada, redundante y contradictoria que facilita que el modo automático tome un atajo incorrecto.
+Solicitud de mejora para la aplicación HTML
 
-Inconveniente crítico 1: el JSON contiene una conclusión incorrecta muy explícita
 
-Dentro del JSON aparece:
-
-JSON
-"evaluationContext": {
-"scenario": {
-"candidate": "NO_DETERMINABLE",
-"evidenceLevel": "insufficient",
-"visualConfirmation": "pending",
-"support": [],
-"reason": "Sin conexión API → BPMNEvent con dominio destino reconocible"
-}
-}
-
-Esta conclusión precalculada es incorrecta porque el mismo JSON sí contiene esta conexión:
-
-JSON
-{
-"id": "20QoFTDVNX-.",
-"originId": "20QoG0YPgPqR",
-"destinationId": "20Qo_MC7n0CG",
-"originName": "Customer Payment Keys Information - Merchant Keys v1.0.0 | RetrieveAvailableKeys | Entidad",
-"destinationName": "tipoFigura",
-"originPath": "INTEGRACIÓN > Flujo Transaccional - No monetario > Capa de Arquitectura - Composición > Customer Payment Keys Information...",
-"destinationPath": "NUEVAS EXPERIENCIAS DE PAGO > ms_retrieve_keys > tipoFigura",
-"fromDomain": "INTEGRACIÓN",
-"toDomain": "NUEVAS EXPERIENCIAS DE PAGO",
-"isCrossDomain": true
-}
-
-Además, la jerarquía confirma que tipoFigura está dentro de ms_retrieve_keys y que este hijo pertenece a NUEVAS EXPERIENCIAS DE PAGO.
-
-Tus instrucciones ya dicen correctamente:
-
-“No copies NO_DETERMINABLE ni conclusiones precalculadas del exportador sin contrastarlas con parentId, rutas, roles y conexiones.”
-
-La skill repite la misma prohibición y el procedimiento establece que los diagnósticos derivados deben ocupar el último lugar de precedencia.
-
-¿Por qué falla principalmente en automático?
-
-Porque evaluationContext.scenario tiene una forma muy atractiva para un modelo que busca responder rápido:
-
-Se llama literalmente scenario.
-Contiene un candidate.
-Incluye un reason.
-Ya presenta una conclusión redactada.
-Aparece acompañada de un supuesto nivel de evidencia.
-El JSON es extremadamente largo, por lo que reconstruir la evidencia original cuesta más que adoptar el resumen preparado.
-
-El razonamiento profundo continúa revisando la jerarquía y descubre que el diagnóstico precalculado contradice los datos. El automático puede considerar que el problema ya fue resuelto por el exportador.
-
-Recomendación
-
-La mejor solución es no incluir esa conclusión dentro de la evidencia entregada al agente, porque el exportador no es quien determina normativamente el escenario.
-
-Eliminar:
-
-JSON
-"evaluationContext": {
-"scenario": {
-...
-}
-}
-
-Si necesitas conservarlo para depuración, muévelo a una sección claramente no normativa:
-
-JSON
-"exporterDiagnostics": {
-"nonNormative": true,
-"mustNotBeUsedForScenarioInference": true,
-"scenarioDetectionAttempt": {
-"candidate": "NO_DETERMINABLE",
-"reason": "..."
-}
-}
-
-Aun así, mi recomendación real es no enviárselo al agente durante la validación.
-
-Inconveniente crítico 2: mainServiceContainers contradice la jerarquía
-
-El JSON también contiene:
-
-JSON
-"objects": {
-"mainServiceContainers": []
-}
-
-Pero la jerarquía y la matriz sí reconocen:
-
-JSON
-{
-"id": "20QoxCoCdtvE",
-"label": "ms_retrieve_keys",
-"role": "servicio-principal",
-"parentId": "20QoN3lLcXy."
-}
-
-Y en resultMatrix se informa:
-
-JSON
-{
-"id": "20QoxCoCdtvE",
-"type": "Servicio principal",
-"label": "ms_retrieve_keys",
-"path": "NUEVAS EXPERIENCIAS DE PAGO"
-}
-
-Por tanto, el mismo archivo comunica dos cosas incompatibles:
-
-Plain Text
-Jerarquía:
-Sí existe un contenedor de servicio principal.
- 
-evaluationContext.objects:
-No existen contenedores de servicio principal.
-
-Eso explica por qué un modo puede encontrar ms_retrieve_keys y otro puede quedarse con el arreglo vacío.
-
-Recomendación
-
-Corregir la generación de mainServiceContainers para que incluya, como mínimo:
-
-JSON
-"mainServiceContainers": [
-{
-"id": "20QoxCoCdtvE",
-"name": "ms_retrieve_keys",
-"role": "servicio-principal",
-"parentId": "20QoN3lLcXy.",
-"parentName": "NUEVAS EXPERIENCIAS DE PAGO",
-"path": "NUEVAS EXPERIENCIAS DE PAGO > ms_retrieve_keys"
-}
+Ajustar la generación del JSON enriquecido sin eliminar ni modificar
+la evidencia de componentes, conexiones y extremos que actualmente funciona.
+ 
+El objetivo no es identificar ni declarar el escenario E1, E2 o E3.
+La identificación del escenario seguirá siendo responsabilidad del agente.
+ 
+La aplicación debe mejorar únicamente la evidencia estructural de contención
+para distinguir claramente:
+ 
+1. contenedores raíz;
+2. padre directo de cada componente;
+3. ancestros de cada componente;
+4. contenedores hijos;
+5. ubicación estructural de la API o servicio principal;
+6. ubicación del BPMNEvent conectado con el componente principal.
+ 
+REQUERIMIENTOS
+ 
+1. Conservar lo que actualmente funciona
+ 
+No eliminar ni cambiar:
+ 
+- components;
+- connections;
+- endpoints;
+- CircleOpen;
+- Generalization;
+- connectedTo;
+- componentClass;
+- customData;
+- eventos de integración;
+- gestores de colas;
+- APIs;
+- servicios;
+- modelos;
+- tópicos;
+- detalles de despliegue;
+- asociaciones ya certificadas.
+ 
+Conservar la lógica actual que permite identificar conexiones entre:
+ 
+- comandos y APIs;
+- comandos y servicios;
+- eventos BPMN y eventos de integración;
+- servicios y gestores de colas;
+- eventos BPMN y gestores de colas;
+- gestores conectados entre sí.
+ 
+Los cambios de contención no deben alterar IDs, nombres, conexiones,
+extremos ni estilos ya exportados.
+ 
+2. Reservar DIRECT_CONTAINMENT para un único padre inmediato
+ 
+Cada componente podrá tener como máximo una relación:
+ 
+relation = DIRECT_CONTAINMENT
+ 
+La relación deberá señalar exclusivamente el padre inmediato del componente
+y coincidir con:
+ 
+component.structuralParent.id
+ 
+No generar DIRECT_CONTAINMENT para todos los elementos incluidos en
+containerChainIds.
+ 
+Ejemplo correcto:
+ 
+Recaudos
+└── msDebitAccountPayment
+    └── Validar factura
+ 
+Para Validar factura:
+ 
+structuralParent.id = msDebitAccountPayment
+ 
+memberships debe contener únicamente:
+ 
+Validar factura
+→ DIRECT_CONTAINMENT
+→ msDebitAccountPayment
+ 
+Recaudos no debe aparecer como padre directo de Validar factura porque es
+un ancestro.
+ 
+3. Mantener los ancestros separados
+ 
+containerChainIds debe conservar la cadena completa desde el contenedor raíz
+hasta el padre inmediato.
+ 
+Ejemplo:
+ 
+containerChainIds = [
+  Recaudos,
+  msDebitAccountPayment
 ]
-
-O eliminar evaluationContext.objects si no es una fuente completamente confiable.
-
-Inconveniente importante 3: existe contradicción en la ubicación de la API principal
-
-Para la API 20QoG0YPgPqR, el JSON declara:
-
-JSON
-"sourceDiff": [
+ 
+Interpretación:
+ 
+- Recaudos es el contenedor raíz o ancestro;
+- msDebitAccountPayment es el padre inmediato.
+ 
+Si se necesita representar ancestros dentro de memberships, utilizar:
+ 
+relation = ANCESTOR_CONTAINMENT
+ 
+Nunca utilizar DIRECT_CONTAINMENT para un ancestro.
+ 
+4. Reconciliar las fuentes de contención
+ 
+Antes de generar el JSON, comprobar para cada componente:
+ 
+- structuralParent.id;
+- el único DIRECT_CONTAINMENT;
+- el último elemento de containerChainIds.
+ 
+Los tres deben señalar el mismo padre inmediato cuando existan.
+ 
+Si coinciden, retornar:
+ 
+structuralParent.status = CERTIFIED
+ 
+Si no coinciden, no publicar varias relaciones directas como válidas.
+Retornar la inconsistencia dentro de reconciliation.unresolvedItems.
+ 
+Ejemplo:
+ 
 {
-"id": "20QoG0YPgPqR",
-"json": ["20Qo7gOlA.J_"],
-"csv": [
-"20Qo7gOlA.J_",
-"Rj0eK9I.Lm5R",
-"Rj0e8cSp-3rr"
-],
-"extra": [
-"Rj0eK9I.Lm5R",
-"Rj0e8cSp-3rr"
-]
+  "code": "DIRECT_PARENT_CONFLICT",
+  "componentId": "...",
+  "structuralParentId": "...",
+  "membershipParentIds": ["..."],
+  "reviewRequired": true
 }
-]
-
-Es decir:
-
-La fuente JSON ubica la API directamente en INTEGRACIÓN.
-El CSV también la relaciona con Flujo Transaccional y Capa de Arquitectura.
-La jerarquía consolidada termina asignándole como parentId la capa de arquitectura.
-El campo parentSource queda como "solo CSV".
-
-Esto afecta E12-002, que exige que la API principal esté directamente en INTEGRACIÓN.
-
-Pero no debería cambiar E1 por E2
-
-La contradicción afecta la evaluación de la ubicación directa de la API, pero no cambia el padre del hijo principal:
-
-Plain Text
-ms_retrieve_keys
-→ parentId: NUEVAS EXPERIENCIAS DE PAGO
-→ escenario E1
-
-El procedimiento ya exige separar:
-
-inferencia del escenario;
-evaluación de conformidad de cada regla.
-
-Por lo tanto:
-
-Escenario: E1.
-E12-002: posiblemente No verificable, con calificador Evidencia contradictoria, dependiendo de cómo normativamente debas tratar la asociación a las capas.
-No corresponde cambiar a E2 por esta contradicción.
-Recomendación para el exportador
-
-No uses como parentId una pertenencia secundaria obtenida solo del CSV cuando la fuente JSON declara como padre a INTEGRACIÓN.
-
-Sería más estable representar:
-
-JSON
+ 
+5. Identificar los contenedores raíz sin declarar el escenario
+ 
+Generar un inventario de contenedores raíz.
+ 
+Para cada contenedor retornar:
+ 
+- id;
+- name;
+- isRoot;
+- parentId;
+- declaredRole, solo si está disponible explícitamente;
+- roleSource;
+- roleStatus.
+ 
+Roles permitidos:
+ 
+- INTEGRATION;
+- PRODUCER_DOMAIN;
+- EXTERNAL_SYSTEMS;
+- UNCLASSIFIED.
+ 
+INTEGRACIÓN puede reconocerse por su nombre literal.
+ 
+SISTEMAS EXTERNOS puede reconocerse por su nombre literal.
+ 
+DOMINIO PRODUCTOR puede tener un nombre personalizado. Su rol solo debe
+retornarse como PRODUCER_DOMAIN si proviene de una propiedad explícita,
+customData o configuración confiable.
+ 
+No clasificar automáticamente cualquier nombre diferente de INTEGRACIÓN
+como PRODUCER_DOMAIN.
+ 
+No incluir:
+ 
+- scenario;
+- identifiedScenario;
+- scenarioResolution;
+- E1;
+- E2;
+- E3;
+- Cumple;
+- No cumple.
+ 
+6. Identificar contenedores hijos
+ 
+Generar un inventario de contenedores hijos con:
+ 
+- id;
+- name;
+- directParentId;
+- rootContainerId;
+- containerChainIds;
+- directParentStatus;
+- containsBpmnFlow.
+ 
+Ejemplo:
+ 
 {
-"id": "20QoG0YPgPqR",
-"parentId": "20Qo7gOlA.J_",
-"parentSource": "JSON",
-"semanticAssociations": [
-{
-"type": "DEPLOYMENT_FLOW",
-"targetId": "Rj0e8cSp-3rr"
-},
-{
-"type": "ARCHITECTURE_LAYER",
-"targetId": "Rj0eK9I.Lm5R"
+  "id": "20QoxCoCdtvE",
+  "name": "msDebitAccountPayment",
+  "directParentId": "20QoN3lLcXy.",
+  "rootContainerId": "20QoN3lLcXy.",
+  "containerChainIds": [
+    "20QoN3lLcXy."
+  ],
+  "directParentStatus": "CERTIFIED",
+  "containsBpmnFlow": true
 }
-]
-}
-
-Así no se mezcla:
-
-padre estructural;
-pertenencia amplia al dominio;
-asociación de despliegue;
-capa relacionada.
-
-Tu procedimiento dice precisamente que contención, pertenencia al dominio y asociación de capas son relaciones distintas.
-
-Inconveniente importante 4: falta una regla mecánica para seleccionar la API principal
-
-El JSON registra tres candidatos en modeledApiCandidates:
-
-Tuu6zLGT6g_i
-f~M7q-4SN9RA
-20QoG0YPgPqR
-
-Pero el tercero es el que representa la API principal del blueprint porque:
-
-corresponde al nombre fuente Customer Payment Keys Information - Merchant Keys;
-su operación es RetrieveAvailableKeys;
-tiene una conexión orientada hacia un evento contenido en ms_retrieve_keys;
-esa conexión atraviesa de INTEGRACIÓN al dominio productor;
-los otros candidatos están conectados a actividades intermedias del flujo y funcionan como componentes invocados.
-
-Sin embargo, el procedimiento dice “identificar la API principal”, pero no contiene una secuencia tan mecánica como:
-
-Plain Text
-Entre los candidatos API, seleccionar como API principal aquel que:
- 
-1. tenga una conexión saliente orientada hacia un elemento BPMN;
-2. cuyo destino pertenezca al hijo reconocido como servicio principal;
-3. represente la operación descrita por el blueprint;
-4. no esté conectado únicamente a una actividad interna como API invocada.
-
-Eso le deja más trabajo interpretativo al modelo.
-
-Texto recomendado para 00-procedimiento.md
-
-Agregar dentro de “Inferencia normativa obligatoria”:
-
-Markdown
-#### Identificación determinista de la API principal
- 
-Para E1/E2, identificar primero todas las API candidatas.
- 
-Seleccionar como API principal la API cuya conexión saliente orientada
-ingresa al flujo del servicio principal modelado.
- 
-Aplicar este orden:
- 
-1. Identificar conexiones cuyo origen sea una API candidata.
-2. Identificar el destino BPMN de cada conexión.
-3. Resolver el hijo que contiene cada destino.
-4. Considerar API principal la que introduce la ejecución en el hijo
-que representa al servicio principal del blueprint.
-5. Las API conectadas a actividades internas de invocación no son la
-API principal; clasificarlas como invocadas cuando la evidencia lo permita.
-6. No escoger la API principal por posición en arreglos, cantidad de
-conexiones, ubicación en capas, nombre más parecido ni por aparecer
-en evaluationContext.objects.modeledApiCandidates.
-7. Si existe más de una API que introduce ejecución en hijos candidatos,
-registrar específicamente los candidatos y la relación pendiente.
-
-Esto reduce la diferencia entre automático y profundo.
-
-Inconveniente importante 5: el JSON repite demasiadas veces la misma información
-
-El archivo contiene la misma evidencia en múltiples lugares:
-
-hierarchy.mainTree
-hierarchy.secondary
-sourceReconciliation
-shapes
-connections
-structuredConnections
-evaluationContext.connections
-resultMatrix
-limitations
-
-La conexión de la API principal, por ejemplo, aparece en:
-
-connections
-structuredConnections
-evaluationContext.connections
-
-Y la ubicación de los componentes aparece en:
-
-hierarchy.mainTree
-secondary
-containerReferences
-csvContainerReferences
-originPath ydestinationPath
-resultMatrix.path
-
-Esto no solo aumenta el tamaño. También hace que una contradicción tenga más posibilidades de dominar la interpretación.
-
-El modelo automático puede:
-
-Encontrar primero NO_DETERMINABLE.
-Encontrar mainServiceContainers: [].
-Encontrar varios candidatos API.
-Ver que el subtipo Inicio no está certificado.
-Concluir que no puede determinar el escenario.
-
-El profundo sigue más allá y reconstruye la evidencia original.
-
-Recomendación
-
-Entrega al agente un JSON reducido con cuatro secciones normativas:
-
-JSON
+ 
+7. Conservar la identificación de conexiones
+ 
+No reemplazar el arreglo connections actual.
+ 
+Mantener para cada conexión:
+ 
+- id;
+- endpoints;
+- style;
+- connectedTo;
+- CircleOpen;
+- Generalization;
+- componentes conectados.
+ 
+Si se generan logicalOriginId y logicalDestinationId:
+ 
+- logicalOriginId debe derivarse de CircleOpen.connectedTo;
+- logicalDestinationId debe derivarse de Generalization.connectedTo;
+- directionStatus debe ser CERTIFIED solo si ambos extremos están disponibles.
+ 
+No determinar dirección mediante:
+ 
+- coordenadas;
+- proximidad;
+- orden del arreglo;
+- posición visual.
+ 
+8. Generar una ruta estructural neutral para el componente principal
+ 
+Puede añadirse una vista derivada que facilite reconstruir la estructura,
+pero sin indicar el escenario.
+ 
+Nombre sugerido:
+ 
+principalInteractionPaths
+ 
+Campos:
+ 
 {
-"metadata": {},
-"components": [],
-"hierarchy": [],
-"connections": []
+  "principalComponentId": "...",
+  "principalComponentType": "API | SERVICE",
+  "connectionId": "...",
+  "bpmnEventId": "...",
+  "bpmnEventDirectParentId": "...",
+  "childContainerId": "...",
+  "childDirectParentId": "...",
+  "childRootContainerId": "...",
+  "pathStatus": "CERTIFIED | PARTIAL | CONTRADICTORY",
+  "evidenceSources": [...]
 }
-
-Y, si es necesario:
-
-JSON
+ 
+Esta ruta solo debe consolidar hechos demostrados:
+ 
+componente principal
+→ conexión
+→ BPMNEvent
+→ contenedor hijo
+→ padre directo del hijo
+→ contenedor raíz
+ 
+No debe incluir la conclusión E1, E2 o E3.
+ 
+9. Identificar el componente principal sin declarar el escenario
+ 
+Conservar o generar la identificación de la API o servicio principal.
+ 
+Campos recomendados:
+ 
+- id;
+- name;
+- componentType;
+- directParentId;
+- rootContainerId;
+- principalStatus;
+- principalEvidence.
+ 
+principalStatus únicamente certifica que el componente fue identificado como
+principal por su conexión con el flujo BPMN.
+ 
+No determina el escenario.
+ 
+Si existen varios candidatos y no es posible resolverlos, utilizar:
+ 
+principalStatus = UNRESOLVED
+ 
+No seleccionar por posición, tamaño o proximidad visual.
+ 
+10. Asociar el detalle de despliegue con su propietario
+ 
+Conservar cada Flujo Transaccional y Capa de Arquitectura como componente.
+ 
+Añadir o fortalecer una asociación explícita con el componente propietario:
+ 
 {
-"sourceConflicts": []
+  "ownerComponentId": "...",
+  "ownerComponentType": "API | SERVICE | INTEGRATION_EVENT |
+                         QUEUE_MANAGER | CHILD_CONTAINER",
+  "deploymentType": "MCI | FEDERATED",
+  "transactionFlowId": "...",
+  "architectureLayerId": "...",
+  "associationStatus": "CERTIFIED | PARTIAL | UNRESOLVED",
+  "associationSource": "..."
 }
+ 
+No asociar detalles por proximidad visual.
+ 
+La asociación debe permitir diferenciar:
+ 
+- detalle de despliegue de la API principal;
+- detalle de despliegue de un servicio;
+- detalle de despliegue de un evento;
+- detalle de despliegue de un gestor;
+- detalle de despliegue de un contenedor hijo.
+ 
+No evaluar si el nombramiento cumple la norma. El HTML solo debe exportar el
+nombre, el propietario y la relación demostrada.
+ 
+11. Identificar el BPMNEvent dentro del hijo
+ 
+Cada BPMNEvent debe retornar:
+ 
+- id;
+- componentClass = BPMNEvent;
+- directParentId;
+- rootContainerId;
+- containerChainIds;
+- directParentStatus;
+- connectionIds.
+ 
+No es obligatorio clasificar Inicio, Fin, throw o catch si el origen no lo
+certifica.
+ 
+No inferir subtipos a partir del SVG.
+ 
+12. Agregar cobertura de contención
+ 
+Actualizar coverage.directContainment.
+ 
+Usar:
+ 
+COMPLETE_AND_RECONCILED
+ 
+cuando:
+ 
+- cada componente aplicable tenga máximo un padre directo;
+- structuralParent coincida con DIRECT_CONTAINMENT;
+- el último elemento de containerChainIds coincida con el padre inmediato;
+- no existan ciclos.
+ 
+Utilizar:
+ 
+PARTIAL
+ 
+si hay elementos sin padre o con relaciones no resueltas.
+ 
+Agregar los problemas concretos en:
+ 
+containmentReconciliation.unresolvedItems
+ 
+No usar una advertencia global sin identificar los componentes afectados.
+ 
+13. Validaciones obligatorias antes de descargar el JSON
+ 
+Comprobar:
+ 
+- máximo un DIRECT_CONTAINMENT por childId;
+- coincidencia entre structuralParent y DIRECT_CONTAINMENT;
+- coincidencia entre structuralParent y el último containerChainId;
+- ancestros no publicados como padres directos;
+- ausencia de ciclos;
+- IDs referenciados existentes;
+- conexiones conservadas sin modificar sus extremos;
+- CircleOpen y Generalization conservados;
+- ningún escenario declarado por la aplicación.
+ 
+14. Compatibilidad
+ 
+Mantener los campos actuales para no afectar las validaciones existentes.
+ 
+Los nuevos campos deben ser aditivos, excepto por la corrección de las
+membresías DIRECT_CONTAINMENT incorrectas.
+ 
+No cambiar IDs existentes.
+ 
+No eliminar componentes.
+ 
+No consolidar dos componentes diferentes en uno.
+ 
+No modificar nombres extraídos.
+ 
+No modificar conexiones certificadas.
+ 
+No alterar eventos, APIs, servicios, gestores, tópicos ni modelos que ya
+se identifican correctamente.
+Lo más importante para el desarrollador
+Si necesitas resumirlo aún más para el equipo técnico, las instrucciones centrales son estas:
 
-Secciones como estas deberían quedar fuera de la entrada normativa:
 
-Plain Text
-evaluationContext
-resultMatrix
-visualCandidates
-visualMatches
-graphics
-svg.colors
-diagnósticos precalculados
 
-No porque sean inútiles, sino porque sirven para depuración del exportador, no para establecer el escenario.
+1. No modificar la lógica actual de componentes y conexiones.
+ 
+2. Corregir memberships para que cada componente tenga un solo
+   DIRECT_CONTAINMENT y este coincida con structuralParent.id.
+ 
+3. Mantener los niveles superiores exclusivamente en containerChainIds
+   o marcarlos como ANCESTOR_CONTAINMENT.
+ 
+4. Generar un inventario neutral de contenedores raíz e hijos.
+ 
+5. Generar una ruta neutral:
+   API/servicio principal → conexión → BPMNEvent → hijo → padre del hijo.
+ 
+6. Asociar explícitamente cada detalle de despliegue con su propietario.
+ 
+7. No retornar E1, E2, E3 ni estados de cumplimiento.
+Cambio específico que corrige tu caso
+En el JSON actual, la aplicación probablemente está haciendo algo equivalente a:
 
-Inconveniente 6: el algoritmo mezcla “encontrar el hijo” con “certificar Inicio”
 
-La conclusión precalculada dice:
 
-Plain Text
-Sin conexión API → BPMNEvent con dominio destino reconocible
-
-Pero sí existe una conexión de API a BPMNEvent. Lo que realmente falta es la certificación de que ese evento sea Inicio.
-
-Son dos afirmaciones diferentes:
-
-Plain Text
-A. Existe conexión API → evento BPMN dentro del hijo.
-B. El evento destino está certificado como Inicio.
-
-En este caso:
-
-A está demostrado.
-B no está demostrado.
-
-El procedimiento y la skill ya dicen que la ausencia del subtipo Inicio no debe impedir distinguir E1/E2. Solo debe afectar la regla específica de conexión.
-
-La evaluación correcta sería:
-
-Plain Text
-Escenario: E1
- 
-Evidencia del escenario:
-API principal → evento BPMN → hijo ms_retrieve_keys
-→ dominio productor NUEVAS EXPERIENCIAS DE PAGO.
- 
-E12-003:
-No verificable, porque el destino es BPMNEvent,
-pero el subtipo Inicio no está certificado.
-
-El diagnóstico del exportador está colapsando ambas condiciones y concluye incorrectamente que no hay conexión utilizable.
-
-Qué está haciendo probablemente cada modo
-Razonamiento profundo
-
-Reconstruye:
-
-Plain Text
-20QoG0YPgPqR
-→ conexión 20QoFTDVNX-.
-→ 20Qo_MC7n0CG
-→ parentId 20QoxCoCdtvE
-→ parentId 20QoN3lLcXy.
-→ dominio productor personalizado
-→ E1
-Automático
-
-Probablemente toma esta ruta corta:
-
-Plain Text
-evaluationContext.scenario.candidate
-→ NO_DETERMINABLE
- 
-objects.mainServiceContainers
-→ vacío
- 
-subtipo Inicio
-→ no certificado
- 
-Conclusión
-→ escenario no determinable u otra interpretación
-
-También podría dejarse influir por:
-
-Plain Text
-API principal
-→ ubicada en Flujo Transaccional
-→ Capa de Arquitectura
-→ INTEGRACIÓN
-
-y confundir la ubicación de la API con la ubicación del hijo principal, dando lugar a E2. Pero tus reglas dicen claramente que E1/E2 depende del padre del hijo, no de las capas ni de dónde está la API principal dentro de INTEGRACIÓN.
-
-Cambios prioritarios que recomiendo
-Prioridad 1: modificar el JSON
-
-Eliminar de la entrada del agente:
-
-JSON
-evaluationContext.scenario
-evaluationContext.objects.mainServiceContainers
-resultMatrix
-visualCandidates
-graphics
-svg
-
-O separar toda esa información en otro archivo de diagnóstico.
-
-Prioridad 2: corregir la consolidación de jerarquía
-
-No asignar una capa como parentId cuando solo es una asociación de despliegue.
-
-Separar:
-
-JSON
-{
-"structuralParentId": "20Qo7gOlA.J_",
-"deploymentFlowId": "Rj0e8cSp-3rr",
-"architectureLayerId": "Rj0eK9I.Lm5R"
+for (const containerId of component.containerChainIds) {
+  memberships.push({
+    childId: component.id,
+    containerId,
+    relation: "DIRECT_CONTAINMENT"
+  });
 }
-Prioridad 3: agregar selección determinista de API principal
+Debe cambiarse por:
 
-Incluir el bloque propuesto anteriormente en 00-procedimiento.md.
 
-Prioridad 4: fortalecer las instrucciones del agente
 
-Añadir en INSTRUCCIONES-AGENTE:
+const directParentId = component.structuralParent?.id;
+ 
+if (directParentId) {
+  memberships.push({
+    childId: component.id,
+    containerId: directParentId,
+    relation: "DIRECT_CONTAINMENT",
+    source: component.structuralParent.source ?? "JSON"
+  });
+}
+containerChainIds debe conservarse como cadena de ancestros, pero no convertirse completa en relaciones directas.
 
-Markdown
-Para inferir E1/E2, no leas ni uses evaluationContext, resultMatrix,
-limitations, visualCandidates ni diagnósticos calculados hasta terminar
-la reconstrucción con hierarchy.mainTree y structuredConnections.
- 
-Primero identifica:
- 
-1. API principal.
-2. Conexión saliente de la API principal.
-3. Destino BPMN.
-4. Hijo que contiene el destino.
-5. Padre estructural del hijo.
- 
-Después aplica:
- 
-- padre del hijo = DOMINIO PRODUCTOR o equivalente personalizado: E1;
-- padre del hijo = INTEGRACIÓN: E2.
- 
-La ubicación de la API en Flujo Transaccional o Capa de Arquitectura
-no indica E2. E1/E2 depende exclusivamente de la pertenencia del hijo
-principal.
- 
-Si el destino está clasificado como BPMNEvent pero no como Inicio,
-conserva el escenario estructural y marca únicamente E12-003 como
-No verificable.
- 
-Si un resumen derivado declara NO_DETERMINABLE, pero la cadena
-API → destino → hijo → padre puede reconstruirse, ignora el resumen
-y usa la cadena estructural.
-Prioridad 5: agregar una comprobación de cierre
-Markdown
-Antes de declarar E2 o NO_DETERMINABLE, registra internamente:
- 
-- apiPrincipalId;
-- connectionId;
-- destinationId;
-- mainChildId;
-- mainChildParentId;
-- mainChildParentName.
- 
-No se permite declarar E2 sin una ruta donde mainChildParentName
-corresponda a INTEGRACIÓN.
- 
-No se permite declarar NO_DETERMINABLE si los seis valores anteriores
-pueden obtenerse de la evidencia original.
+Resultado esperado
+Con este ajuste:
 
-Esta comprobación es especialmente útil para el modo automático porque obliga al agente a completar la cadena mínima.
-
-Conclusión
-
-Tus reglas ya contienen casi toda la protección necesaria. El inconveniente principal está en el JSON enriquecido, porque presenta como si fueran evidencia confiable varias conclusiones derivadas que contradicen la evidencia original:
-
-scenario.candidate = NO_DETERMINABLE
-mainServiceContainers = []
-“Sin conexión API → BPMNEvent”
-Jerarquía consolidada que mezcla padre estructural con capas asociadas
-Repetición excesiva de evidencia en múltiples secciones
-
-El escenario correcto para este caso es:
-
-Plain Text
-E1 - API directa al backend
-
-porque el hijo principal ms_retrieve_keys pertenece al dominio productor personalizado NUEVAS EXPERIENCIAS DE PAGO. La API principal está conectada a un evento BPMN dentro de ese hijo. La falta de certificación de que ese evento sea Inicio afecta E12-003, pero no impide inferir E1.
-
-Ajuste principal realizado en el análisis
-
-Separé la inferencia estructural del escenario de las reglas de conformidad. Esa separación muestra que el JSON contiene evidencia suficiente para E1, aunque todavía existan contradicciones o datos no verificables en reglas específicas.
+Las conexiones ya identificadas seguirán funcionando.
+Los gestores, eventos de integración, APIs y servicios conservarán sus IDs y relaciones.
+El agente podrá identificar el escenario a partir de evidencia estructural.
+GEN-007 no quedará indefinida por padres directos duplicados.
+E12-004 no volverá a contaminarse con inconsistencias de componentes internos.
+El HTML continuará siendo neutral y no decidirá el escenario.
