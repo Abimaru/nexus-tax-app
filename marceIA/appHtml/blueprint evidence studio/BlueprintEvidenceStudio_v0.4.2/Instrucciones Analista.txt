@@ -1,0 +1,56 @@
+# Certificación funcional — Blueprint Evidence Studio v0.4.2
+
+**Objetivo:** determinar si la Skill v11.1 interpreta correctamente la evidencia producida por Evidence Studio, utilizando razonamiento automático y profundo.
+
+## Preparación
+
+1. Instalar la Skill `validar-blueprint-integracion-v11.1.zip` en el agente de Copilot.
+2. Generar el JSON y PDF con Evidence Studio v0.4.2 a partir del blueprint original.
+3. Crear una conversación nueva por cada prueba.
+4. Responder los cinco parámetros iniciales del agente con los valores reales del blueprint, sin aceptar inferencias del agente como datos del analista.
+5. Mantener exactamente los mismos archivos y parámetros entre ambas modalidades de razonamiento.
+
+## Prueba A — Razonamiento automático
+
+Evalúa el blueprint adjunto conforme a la Skill v11.1.
+
+Utiliza el JSON enriquecido como fuente de evidencia estructural y el PDF para contrastar elementos visuales cuando corresponda.
+
+Primero identifica la API o servicio principal, la conexión que inicia la lógica, el contenedor hijo, su padre inmediato, su dominio raíz y las capas de despliegue asociadas.
+
+Diferencia la identificación del escenario de la evaluación individual de las reglas.
+
+No conviertas `NOT_DECLARED`, `UNRESOLVED`, `apiOrService` o `bpmnStartSubtypeCertified: false` en incumplimientos automáticos.
+
+Emite el informe conforme al procedimiento de la Skill, incluyendo sus 41 reglas y la evidencia por cada resultado.
+
+## Prueba B — Razonamiento profundo
+
+Repite exactamente la Prueba A en una conversación nueva, utilizando los mismos archivos y las mismas cinco respuestas.
+
+Desarrolla una reconstrucción independiente de las jerarquías y conexiones antes de determinar el escenario.
+
+Compara las relaciones explícitas con las derivadas, conserva las ambigüedades y evita atribuir una pareja Flujo/Capa por descarte.
+
+Emite el mismo formato de informe y matriz de 41 reglas.
+
+## Comprobaciones manuales
+
+- ¿Identificó el escenario esperado?
+- ¿Reconoció correctamente los contenedores padre arquitectónicos?
+- ¿Distinguió el padre inmediato y el dominio raíz?
+- ¿Identificó la API principal y el servicio hijo?
+- ¿Conservó la conexión API → BPMNEvent y sus IDs?
+- ¿Separó los flujos y capas de cada componente?
+- ¿Distinguió APIs de servicios `ms-` inferidos?
+- ¿Excluyó los símbolos de NOTACIÓN como instancias operativas?
+- ¿Identificó modelos de entrada y salida?
+- ¿Entregó exactamente 41 resultados, sin inventar reglas?
+- ¿Justificó los No Verificables con información faltante concreta?
+- ¿Coinciden el resumen ejecutivo, la matriz y el dictamen final?
+
+## Evidencia de regreso
+
+Entregar el informe completo de ambas pruebas, los archivos JSON y PDF generados, la modalidad de razonamiento utilizada, las cinco respuestas suministradas y las discrepancias observadas.
+
+No ajustar manualmente el JSON durante la certificación.
