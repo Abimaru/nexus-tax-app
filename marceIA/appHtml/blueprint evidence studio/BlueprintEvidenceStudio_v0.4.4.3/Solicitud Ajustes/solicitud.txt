@@ -1,0 +1,19 @@
+Te voy a suministrar los siguientes archivos para que me ayudes a analizarlos y revisar que ajustes se le pueden hacer al JSON enriquecido. El ultimo que generamos esta muchisimo mejor, sin embargo hoy se definieron unas reglas que cambian un poco la forma de determinar el contenedor padre: INTEGRACION, DOMINIO PRODUCTOR y SISTEMAS EXTERNOS; lo cual influye tambien en el escenario de integración que debes diagnosticar. Creeria que la mayoria de casos el escenario quedaria como una hipotesis ya que no podemos verificar de momento que hay un event bpmn de inicio y no porque no se pueda determinar el contenedor padre.
+
+Hice un ejercicio con un blueprint que representa el escenario 2 para revisar como era el comportamiento de las asociaciones y pudimos obtener unas conclusiones. Estas se encuentran en lo ultimo del archivo word y en la pestaña conclusiones el excel.El excel solo tiene el analisis para el contenedor padre de la pagina nombreOperacion1
+
+Los archivos son:
+- JSON original del blueprint que representa el E2 y un flujo de negocio.
+- Archivo excel: Contenedor_Padre_Integracion con las conclusiones y hallazgos para el contenedor padre integracion.
+- JSON enriquecido con la ultima version 4.4.2 de ese E2
+- Archivo en word con la explicacion de los cambios para contenedores padre y determinacion Escenarios: Definicion_contenedores_escenarios_y_agrupaciones.docx
+
+
+Por ultimo quisiera que esta nueva version adicional a solicitar el JSON y el SVG tambien incluyas dos campos obligatorios:
+- id blueprint
+- nombre blueprint
+
+Y que el nombre al descargar el JSON enriquecido como resultado sea: nombre blueprint sin espacios - ENRIQUECIDO.
+Por ejemplo: 
+Nombre Original: NMD - BP -  Collections_Bill_Payments-Pay_Bill U
+Nombre esperado: NMD-BP-Collections_Bill_Payments-Pay_BillU-ENRIQUECIDO.json
