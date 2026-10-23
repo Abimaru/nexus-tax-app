@@ -1,0 +1,631 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Blueprint Evidence Studio v0.4.5.0</title><style>:root{font-family:Inter,Segoe UI,sans-serif;color:#172033;background:#f3f6fa}body{margin:0}header,main,footer{max-width:1100px;margin:auto;padding:24px}header{background:#13213c;color:white;max-width:none}header>div{max-width:1100px;margin:auto}.card{background:white;border:1px solid #d8e0eb;border-radius:12px;padding:20px;margin:18px 0;box-shadow:0 4px 18px #15213a12}.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}label{display:block;font-weight:650;margin:8px 0}input,button{font:inherit}input[type=text],input:not([type]){width:100%;box-sizing:border-box;padding:8px}button{border:0;border-radius:8px;padding:10px 15px;background:#1769aa;color:white;cursor:pointer;margin:4px}button.secondary{background:#46566f}.status{padding:12px;border-radius:8px;background:#e7edf5}.status.error{background:#ffe4e4;color:#8b1515}.metrics{display:flex;gap:12px;flex-wrap:wrap}.metric{background:#eef5ff;padding:12px 16px;border-radius:8px}.muted{color:#647087;font-size:.92rem}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:8px;border-bottom:1px solid #e1e6ee}pre{white-space:pre-wrap;max-height:420px;overflow:auto}@media(max-width:700px){.grid{grid-template-columns:1fr}}@media print{.no-print{display:none}body{background:white}.card{box-shadow:none}}</style></head><body><header><div><h1>Blueprint Evidence Studio v0.4.5.0</h1><p>Extracción factual, multipágina y no normativa</p></div></header><main><section class="card no-print"><h2>Fuentes</h2><div class="grid"><div><label>ID Blueprint *</label><input id="blueprintId" maxlength="120"><label>Nombre Blueprint *</label><input id="blueprintName" maxlength="180"><label>JSON Lucidchart</label><input id="jsonFile" type="file" accept=".json,application/json"></div><div><label>Agregar SVG (máximo 10)</label><input id="svgFiles" type="file" accept=".svg,image/svg+xml" multiple><div id="svgList" class="muted">Sin SVG.</div><div id="pageSelection"></div></div></div><p class="muted">Los SVG se emparejan por <code>lucid:page-tab-id</code>, nunca por orden.</p><button id="analyze">Analizar</button><button id="clear" class="secondary">Limpiar</button></section><div id="status" class="status">Seleccione un JSON.</div><section id="results" class="card" hidden><h2>Resultado factual</h2><div id="metrics" class="metrics"></div><h3>Páginas</h3><table><thead><tr><th>Operación</th><th>Tipo</th><th>Escenario</th><th>Figuras</th><th>Conexiones</th><th>Asociaciones</th><th>Incidencias</th></tr></thead><tbody id="pages"></tbody></table><details><summary>Detalles técnicos</summary><pre id="technical"></pre></details><div class="no-print"><button id="downloadCopilot">Descargar JSON enriquecido</button><button id="downloadDiagnostic" class="secondary">Descargar diagnóstico</button><button id="print" class="secondary">Imprimir / PDF</button></div></section></main><footer>Blueprint Evidence Studio v0.4.5.0 · contrato factual no normativo</footer><script>(() => {
+  // src/lucidchart.js
+  function normalizeDocument(input, sourceName = null) {
+    if (!input || typeof input !== "object" || !Array.isArray(input.pages)) throw new TypeError("Lucidchart JSON must contain pages[]");
+    return {
+      id: input.id ?? null,
+      title: input.title ?? null,
+      sourceName,
+      pages: input.pages.map((page, index) => normalizePage(page, index)),
+      raw: input
+    };
+  }
+  function normalizePage(page, index = 0) {
+    const items = page.items && !Array.isArray(page.items) ? page.items : {};
+    const legacy = Array.isArray(page.items) ? page.items : [];
+    const rawShapes = Array.isArray(items.shapes) ? items.shapes : legacy.filter((x) => x?.type === "shape");
+    const rawLines = Array.isArray(items.lines) ? items.lines : legacy.filter((x) => x?.type === "line");
+    const shapes = rawShapes.filter(Boolean), lines = rawLines.filter(Boolean);
+    return {
+      id: page.id ?? null,
+      title: page.title ?? "",
+      index: page.index ?? index,
+      shapes,
+      lines,
+      groups: Array.isArray(items.groups) ? items.groups : [],
+      layers: Array.isArray(items.layers) ? items.layers : [],
+      customData: Array.isArray(page.customData) ? page.customData : [],
+      raw: page,
+      normalizationIssues: [
+        ...rawShapes.flatMap((x, i) => x ? [] : [{ code: "NULL_SHAPE", index: i }]),
+        ...rawLines.flatMap((x, i) => x ? [] : [{ code: "NULL_LINE", index: i }])
+      ]
+    };
+  }
+  var shapeText = (shape) => (shape?.textAreas ?? []).map((x) => x.text ?? x.value ?? "").filter(Boolean).join(" | ");
+  var normalizeLabel = (value) => String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim().toUpperCase();
+  var isNotationLabel = (value) => normalizeLabel(value) === "NOTACION";
+  function shapeKind(shape) {
+    if (!shape) return "MISSING_REFERENCE";
+    const label = normalizeLabel(shapeText(shape));
+    if (/^FLUJO TRANSACCIONAL\b/.test(label)) return "TRANSACTION_FLOW";
+    if (/^CAPA DE ARQUITECTURA\b/.test(label)) return "ARCHITECTURE_LAYER";
+    if (["INTEGRACION", "SISTEMA EXTERNO", "SISTEMAS EXTERNOS", "SISTEMA EXTERNO (OPCIONAL)", "SISTEMAS EXTERNOS (OPCIONAL)", "DOMINIO PRODUCTOR"].includes(label)) return "ARCHITECTURAL_DOMAIN";
+    if (isNotationLabel(label)) return "OTHER";
+    if (shape.class === "UMLRectangleContainerBlock" && shape.contains) return "ARCHITECTURAL_DOMAIN_UNCLASSIFIED";
+    if (shape.class === "RectangleContainerBlock") return "CHILD_CONTAINER";
+    if (shape.class === "UMLClassBlock") return "API_OR_SERVICE";
+    if (shape.class === "UMLActiveClassBlock") return "QUEUE_MANAGER";
+    if (shape.class === "BPMNEvent") return "BPMN_EVENT";
+    if (shape.class === "BPMNActivity") return "BPMN_ACTIVITY";
+    return "OTHER";
+  }
+
+  // src/containment.js
+  var RESERVED_EXACT = /* @__PURE__ */ new Map([["INTEGRACION", "INTEGRATION"], ["SISTEMA EXTERNO", "EXTERNAL_SYSTEM"], ["SISTEMAS EXTERNOS", "EXTERNAL_SYSTEM"], ["SISTEMA EXTERNO (OPCIONAL)", "EXTERNAL_SYSTEM"], ["SISTEMAS EXTERNOS (OPCIONAL)", "EXTERNAL_SYSTEM"], ["DOMINIO PRODUCTOR", "PRODUCER"]]);
+  var RESERVED_VARIANT = /^(INTEGRACION|SISTEMAS? EXTERNOS?|DOMINIO PRODUCTOR)(?:\b|\s*[-(])/;
+  function reconstructContainment(page) {
+    const byId = new Map(page.shapes.map((s) => [s.id, s]));
+    const duplicateIds = page.shapes.map((s) => s.id).filter((id, i, all) => id == null || all.indexOf(id) !== i).map((id) => ({ code: id == null ? "MISSING_ID" : "DUPLICATE_ID", id, status: "CONFLICTING" }));
+    const claims = /* @__PURE__ */ new Map(), missingReferences = [];
+    for (const parent of page.shapes) for (const childId of parent.contains?.shapes ?? []) {
+      if (!byId.has(childId)) {
+        missingReferences.push({ parentId: parent.id, childId, source: "JSON.contains" });
+        continue;
+      }
+      if (!claims.has(childId)) claims.set(childId, /* @__PURE__ */ new Set());
+      claims.get(childId).add(parent.id);
+    }
+    const children = /* @__PURE__ */ new Map();
+    for (const [child, parents] of claims) for (const parent of parents) {
+      if (!children.has(parent)) children.set(parent, /* @__PURE__ */ new Set());
+      children.get(parent).add(child);
+    }
+    const reachability = /* @__PURE__ */ new Map();
+    for (const id of byId.keys()) {
+      const found = /* @__PURE__ */ new Set(), stack = [...children.get(id) ?? []];
+      while (stack.length) {
+        const next = stack.pop();
+        if (found.has(next)) continue;
+        found.add(next);
+        stack.push(...children.get(next) ?? []);
+      }
+      reachability.set(id, found);
+    }
+    const reaches = (from, target) => from === target || reachability.get(from)?.has(target) === true;
+    const directParent = /* @__PURE__ */ new Map(), issues = [];
+    for (const shape of page.shapes) {
+      const all = [...claims.get(shape.id) ?? []], cyclic = all.some((parent) => reaches(shape.id, parent));
+      const immediate = all.filter((parent) => !all.some((other) => other !== parent && reaches(parent, other)));
+      if (!cyclic && immediate.length === 1) directParent.set(shape.id, immediate[0]);
+      else if (cyclic || immediate.length > 1) issues.push({ code: cyclic ? "CONTAINMENT_CYCLE" : "DIRECT_PARENT_CONFLICT", componentId: shape.id, claimedContainerIds: all, immediateCandidateIds: immediate, status: "CONFLICTING", evidence: "JSON.contains" });
+    }
+    const chainFor = (id) => {
+      const chain = [], seen = /* @__PURE__ */ new Set([id]);
+      let cursor = id;
+      while (directParent.has(cursor)) {
+        const parent = directParent.get(cursor);
+        if (seen.has(parent)) break;
+        seen.add(parent);
+        chain.unshift(parent);
+        cursor = parent;
+      }
+      return chain;
+    };
+    const structuralRoots = page.shapes.filter((s) => !directParent.has(s.id));
+    const notationContainers = page.shapes.filter((s) => isNotationLabel(shapeText(s))), notationIds = new Set(notationContainers.map((s) => s.id));
+    const addDescendants = (id) => {
+      for (const child of children.get(id) ?? []) if (!notationIds.has(child)) {
+        notationIds.add(child);
+        addDescendants(child);
+      }
+    };
+    notationContainers.forEach((s) => addDescendants(s.id));
+    for (const group of page.groups) if ((group.members ?? []).some((id) => notationIds.has(id))) for (const id of group.members ?? []) notationIds.add(id);
+    const structuralRootSet = new Set(structuralRoots.map((s) => s.id));
+    const isDomainContainer = (s) => {
+      const label = normalizeLabel(shapeText(s)), declared = (s?.customData ?? []).some((x) => /^(DOMAIN_ROLE|ARCHITECTURAL_ROLE|ROL_DOMINIO)$/i.test(x.key)), hasContent = (s?.contains?.shapes?.length ?? 0) + (s?.contains?.groups?.length ?? 0) + (s?.contains?.lines?.length ?? 0) > 0;
+      return s?.class === "UMLRectangleContainerBlock" && s.contains && hasContent && label && !["FEDERADO", "NOTACION"].includes(label) && !["TRANSACTION_FLOW", "ARCHITECTURE_LAYER"].includes(shapeKind(s)) && (structuralRootSet.has(s.id) || RESERVED_EXACT.has(label) || declared);
+    };
+    const domains = page.shapes.filter(isDomainContainer), domainIds = new Set(domains.map((s) => s.id)), domainInfo = /* @__PURE__ */ new Map();
+    for (const domain of domains) {
+      const name = normalizeLabel(shapeText(domain)), declaredRole = normalizeLabel((domain.customData ?? []).find((x) => /^(DOMAIN_ROLE|ARCHITECTURAL_ROLE|ROL_DOMINIO)$/i.test(x.key))?.value), nestedDomainIds = [...reachability.get(domain.id) ?? []].filter((id) => domainIds.has(id));
+      let role = RESERVED_EXACT.get(name) ?? (declaredRole === "PRODUCER" ? "PRODUCER" : null), roleSource = role ? RESERVED_EXACT.has(name) ? "DECLARED_DOMAIN_NAME" : "DECLARED_CUSTOM_DATA" : null, roleStatus = role ? "RESOLVED" : "UNRESOLVED", conflicts = [];
+      if (!role && RESERVED_VARIANT.test(name)) {
+        roleStatus = "ROLE_UNRESOLVED_RESERVED_NAME_VARIANT";
+        conflicts.push({ code: "ROLE_UNRESOLVED_RESERVED_NAME_VARIANT", name: shapeText(domain), status: "CONFLICTING" });
+      } else if (!role && nestedDomainIds.length) {
+        roleStatus = "CONFLICTING_NESTED_ARCHITECTURAL_DOMAIN";
+        conflicts.push({ code: "NESTED_ARCHITECTURAL_DOMAIN", nestedDomainIds, status: "CONFLICTING" });
+      } else if (!role) {
+        roleStatus = "NO_DETERMINADO";
+      }
+      domainInfo.set(domain.id, { role, roleSource, roleStatus, conflicts, nestedDomainIds });
+    }
+    const components = page.shapes.map((shape) => {
+      const chain = chainFor(shape.id), ownIssue = issues.find((x) => x.componentId === shape.id), hierarchyIssue = [shape.id, ...chain].map((id) => issues.find((x) => x.componentId === id)).find(Boolean), structuralRootId = hierarchyIssue ? null : chain[0] ?? shape.id, candidateDomainId = [...chain, ...domainIds.has(shape.id) ? [shape.id] : []].reverse().find((id) => domainIds.has(id)) ?? null, domainId = hierarchyIssue ? null : candidateDomainId, info = domainInfo.get(domainId), parentId = directParent.get(shape.id) ?? null, root = byId.get(structuralRootId), domain = byId.get(domainId);
+      const structuralParent = ownIssue ? { id: null, name: null, type: null, source: "JSON.contains", status: "CONFLICTING", candidateIds: ownIssue.immediateCandidateIds ?? ownIssue.claimedContainerIds ?? [] } : { id: parentId, name: parentId ? shapeText(byId.get(parentId)) : null, type: parentId ? shapeKind(byId.get(parentId)) : null, source: parentId ? "JSON.contains" : null, status: parentId ? "RESOLVED" : "NOT_DECLARED", candidateIds: [] };
+      const rootContainer = { id: structuralRootId, name: root ? shapeText(root) : null, type: root ? shapeKind(root) : null, source: structuralRootId ? "derived:direct-containment-chain" : null, status: hierarchyIssue ? "CONFLICTING" : structuralRootId ? "RESOLVED" : "UNRESOLVED" };
+      const architecturalDomain = { id: domainId, name: domain ? shapeText(domain) : null, lucidchartClass: domain?.class ?? null, source: info?.roleSource ?? (domainId ? "JSON.contains+architectural-container" : null), roleSource: info?.roleSource ?? null, status: hierarchyIssue ? "CONFLICTING" : info?.roleStatus ?? "UNRESOLVED", conflicts: structuredClone(hierarchyIssue ? [hierarchyIssue] : info?.conflicts ?? []) };
+      return { id: shape.id, type: shapeKind(shape), name: shapeText(shape), structuralParent, containerChainIds: chain, rootContainer, architecturalDomain, domainRole: info?.role ?? null, evidenceSources: { structuralParent: structuralParent.source, containerChain: "derived:JSON.contains", rootContainer: rootContainer.source, architecturalDomain: architecturalDomain.source, domainRole: info?.roleSource ?? null }, structuralParentId: structuralParent.id, structuralParentStatus: structuralParent.status, structuralRootId, rootContainerId: structuralRootId, architecturalDomainId: domainId, explicitDomainRole: info?.role ?? null, rootRoleSource: info?.roleSource ?? null, rootRoleStatus: architecturalDomain.status, domainConflicts: structuredClone(architecturalDomain.conflicts), notation: notationIds.has(shape.id) };
+    });
+    const direct = [...directParent].map(([childId, containerId]) => ({ childId, containerId, relation: "DIRECT_CONTAINMENT", source: "JSON.contains", status: "RESOLVED" }));
+    const ancestors = components.flatMap((c) => c.containerChainIds.filter((id) => id !== c.structuralParentId).map((containerId) => ({ childId: c.id, containerId, relation: "ANCESTOR_CONTAINMENT", source: "derived:direct-chain", status: "DERIVED" })));
+    const rootContainers = domains.map((s) => {
+      const c = components.find((c2) => c2.id === s.id), info = domainInfo.get(s.id);
+      return { id: s.id, name: shapeText(s), lucidchartClass: s.class, structuralParent: structuredClone(c?.structuralParent ?? null), containerChainIds: c?.containerChainIds ?? [], rootContainer: structuredClone(c?.rootContainer ?? null), architecturalDomain: structuredClone(c?.architecturalDomain ?? null), domainRole: c?.domainRole ?? null, evidenceSources: structuredClone(c?.evidenceSources ?? {}), structuralRootId: c?.structuralRootId ?? null, structuralParentId: c?.structuralParentId ?? null, architecturalDomainId: c?.architecturalDomainId ?? null, role: c?.domainRole ?? null, roleSource: c?.domainRole ? info.roleSource : null, roleStatus: c?.rootRoleStatus ?? info.roleStatus, nestedDomainIds: info.nestedDomainIds, conflicts: [...info.conflicts, ...issues.filter((x) => x.componentId === s.id)] };
+    });
+    return { byId, directParent, chainFor, components, structuralRootIds: structuralRoots.map((s) => s.id), notationIds, rootContainers, relations: [...direct, ...ancestors], issues: [...duplicateIds, ...page.normalizationIssues, ...issues, ...rootContainers.flatMap((x) => x.conflicts.map((c) => ({ ...c, containerId: x.id })))], missingReferences };
+  }
+
+  // src/roles.js
+  function connectionOrientation(connection) {
+    const a = connection.endpoint1 ?? {}, b = connection.endpoint2 ?? {};
+    if (a.style === "None" && b.style === "Arrow") return { originId: a.connectedTo ?? null, destinationId: b.connectedTo ?? null, status: "VERIFIED_BY_TERMINATIONS", basis: "None->Arrow" };
+    if (a.style === "CircleOpen" && b.style === "Generalization") return { originId: a.connectedTo ?? null, destinationId: b.connectedTo ?? null, status: "VERIFIED_BY_TERMINATIONS", basis: "CircleOpen->Generalization" };
+    if (b.style === "CircleOpen" && a.style === "Generalization") return { originId: b.connectedTo ?? null, destinationId: a.connectedTo ?? null, status: "VERIFIED_BY_TERMINATIONS", basis: "CircleOpen->Generalization" };
+    return { originId: null, destinationId: null, status: "AMBIGUOUS", basis: `${a.style ?? "?"}<->${b.style ?? "?"}`, endpointIds: [a.connectedTo ?? null, b.connectedTo ?? null] };
+  }
+  var childFor = (eventStructure, containment) => [...eventStructure?.containerChainIds ?? []].reverse().find((id) => shapeKind(containment.byId.get(id)) === "CHILD_CONTAINER") ?? null;
+  function resolveDomainRolesFromStructure(page, containment, connections) {
+    const components = new Map(containment.components.map((x) => [x.id, x])), producerCandidates = /* @__PURE__ */ new Map();
+    for (const connection of connections) {
+      const o = connectionOrientation(connection.raw ?? connection);
+      if (o.status !== "VERIFIED_BY_TERMINATIONS") continue;
+      const source = containment.byId.get(o.originId), event = containment.byId.get(o.destinationId);
+      if (shapeKind(source) !== "API_OR_SERVICE" || shapeKind(event) !== "BPMN_EVENT") continue;
+      const ss = components.get(source.id), es = components.get(event.id), childId = childFor(es, containment);
+      if (!childId || ss?.containerChainIds?.includes(childId)) continue;
+      const sourceRole = ss?.domainRole, destinationRole = es?.domainRole, destinationId = es?.architecturalDomainId;
+      if (!destinationId || destinationRole === "EXTERNAL_SYSTEM") continue;
+      if (sourceRole === "INTEGRATION" && destinationRole == null || sourceRole == null && ss.architecturalDomainId === destinationId && destinationRole == null) {
+        if (!producerCandidates.has(destinationId)) producerCandidates.set(destinationId, []);
+        producerCandidates.get(destinationId).push({ connectionId: connection.id, componentId: source.id, eventId: event.id, childId });
+      }
+    }
+    if (producerCandidates.size !== 1) return { producerDomainId: null, candidates: [...producerCandidates].map(([domainId, evidence2]) => ({ domainId, evidence: evidence2 })), status: producerCandidates.size > 1 ? "CONFLICTING_MULTIPLE_PRODUCERS" : "NO_DETERMINADO" };
+    const [producerDomainId, evidence] = [...producerCandidates][0];
+    for (const c of containment.components) if (c.architecturalDomainId === producerDomainId && c.domainRole == null) {
+      c.domainRole = c.explicitDomainRole = "PRODUCER";
+      c.rootRoleSource = c.evidenceSources.domainRole = "STRUCTURAL_CHILD_EVENT_MAIN_PATH";
+      c.rootRoleStatus = c.architecturalDomain.status = "INFERRED_BY_OPERATION_STRUCTURE";
+      c.architecturalDomain.roleSource = "STRUCTURAL_CHILD_EVENT_MAIN_PATH";
+    }
+    for (const r of containment.rootContainers) {
+      if (r.id === producerDomainId) {
+        r.domainRole = r.role = "PRODUCER";
+        r.roleSource = "STRUCTURAL_CHILD_EVENT_MAIN_PATH";
+        r.roleStatus = "INFERRED_BY_OPERATION_STRUCTURE";
+        r.architecturalDomain.roleSource = "STRUCTURAL_CHILD_EVENT_MAIN_PATH";
+        r.architecturalDomain.status = "INFERRED_BY_OPERATION_STRUCTURE";
+      } else if (r.role == null && r.roleStatus === "NO_DETERMINADO") {
+        r.domainRole = r.role = "EXTERNAL_SYSTEM";
+        r.roleSource = "SCENARIO_REMAINDER_AFTER_UNIQUE_PRODUCER";
+        r.roleStatus = "INFERRED_BY_OPERATION_STRUCTURE";
+      }
+    }
+    for (const c of containment.components) {
+      const root = containment.rootContainers.find((r) => r.id === c.architecturalDomainId);
+      if (root && c.domainRole == null && root.role) {
+        c.domainRole = c.explicitDomainRole = root.role;
+        c.rootRoleSource = root.roleSource;
+        c.rootRoleStatus = root.roleStatus;
+        c.evidenceSources.domainRole = root.roleSource;
+      }
+    }
+    return { producerDomainId, candidates: [{ domainId: producerDomainId, evidence }], status: "RESOLVED_UNIQUE_PRODUCER", method: "STRUCTURAL_CHILD_EVENT_MAIN_PATH" };
+  }
+  function deriveArchitecturalRoleCandidates(page, containment, classifications, connections, pageClassification = { kind: "UNRESOLVED", legendShapeIds: [] }) {
+    const classById = new Map(classifications.map((x) => [x.id, x])), componentById = new Map(containment.components.map((x) => [x.id, x])), legendIds = new Set(pageClassification.legendShapeIds ?? []), results = [];
+    for (const connection of connections) {
+      const orientation = connectionOrientation(connection.raw ?? connection);
+      let source = containment.byId.get(orientation.originId), event = containment.byId.get(orientation.destinationId);
+      if (orientation.status === "AMBIGUOUS") {
+        const ends = orientation.endpointIds ?? [], uml = ends.find((id) => shapeKind(containment.byId.get(id)) === "API_OR_SERVICE"), bpmn = ends.find((id) => shapeKind(containment.byId.get(id)) === "BPMN_EVENT");
+        source = containment.byId.get(uml);
+        event = containment.byId.get(bpmn);
+      }
+      if (shapeKind(source) !== "API_OR_SERVICE" || shapeKind(event) !== "BPMN_EVENT") continue;
+      const classification = classById.get(source.id), functional = classification?.functionalClassification;
+      if (functional?.eventClassification || legendIds.has(source.id) || legendIds.has(event.id)) continue;
+      const sourceStructure = componentById.get(source.id), eventStructure = componentById.get(event.id);
+      if (sourceStructure?.notation || eventStructure?.notation) continue;
+      const childId = childFor(eventStructure, containment);
+      const sourceRole = sourceStructure?.domainRole ?? null, destinationRole = eventStructure?.domainRole ?? null;
+      let scenarioHypothesis = null, roleCandidate = null, support = "DOMAIN_CONTEXT_INSUFFICIENT";
+      if (sourceRole === "INTEGRATION" && destinationRole === "INTEGRATION") {
+        scenarioHypothesis = "E2";
+        roleCandidate = "mainApi";
+        support = "REQUIRED_DOMAINS_RESOLVED";
+      } else if (sourceRole === "INTEGRATION" && destinationRole === "PRODUCER") {
+        scenarioHypothesis = "E1";
+        roleCandidate = "mainApi";
+        support = "REQUIRED_DOMAINS_RESOLVED";
+      } else if (sourceRole === "PRODUCER" && destinationRole === "PRODUCER" && sourceStructure.architecturalDomainId === eventStructure.architecturalDomainId) {
+        scenarioHypothesis = "E3";
+        roleCandidate = "mainService";
+        support = "REQUIRED_DOMAINS_RESOLVED";
+      }
+      const contradictions = [];
+      if (orientation.status === "AMBIGUOUS") contradictions.push("CONNECTION_ORIENTATION_UNRESOLVED");
+      if (childId && (source.id === childId || sourceStructure?.containerChainIds?.includes(childId))) contradictions.push("MAIN_COMPONENT_INSIDE_CHILD_CONTAINER");
+      if (roleCandidate === "mainApi" && classification?.inference?.some((x) => x.candidate === "service" && x.basis === "title-prefix")) contradictions.push("SERVICE_NAMING_SIGNAL_CONFLICTS_WITH_MAIN_API_TOPOLOGY");
+      contradictions.push(...(sourceStructure?.domainConflicts ?? []).map((x) => x.code), ...(eventStructure?.domainConflicts ?? []).map((x) => x.code));
+      const essentialsResolved = orientation.status === "VERIFIED_BY_TERMINATIONS" && childId && roleCandidate && scenarioHypothesis && !contradictions.length;
+      const operation = classification?.sections?.operation ?? null, child = containment.byId.get(childId);
+      const eventText = (event.textAreas ?? []).map((x) => x.text ?? "").join(" "), startDeclared = /\b(INICIO|START)\b/i.test(eventText) || (event.customData ?? []).some((x) => /START|INICIO/i.test(`${x.key} ${x.value}`));
+      results.push({ pageName: page.title, pageKind: pageClassification.kind, componentId: source.id, mainComponentName: classification?.sections?.title ?? null, mainComponentOperation: operation, mainChildServiceName: child ? (child.textAreas ?? []).map((x) => x.text ?? "").filter(Boolean).join(" | ") : null, lucidchartType: source.class, functionalClassification: structuredClone(functional ?? null), namingSignals: (classification?.evidence ?? []).filter((x) => x.source === "title-prefix"), inferredArchitecturalType: roleCandidate === "mainService" ? "service" : roleCandidate === "mainApi" ? "api" : null, roleCandidate, scenarioHypothesis, status: essentialsResolved ? "INFERRED" : orientation.status === "AMBIGUOUS" || contradictions.length ? "AMBIGUOUS" : roleCandidate ? "CANDIDATE" : "UNRESOLVED", sourceRootDomainId: sourceStructure?.architecturalDomainId ?? null, sourceRootDomainRole: sourceRole, sourceRootDomainRoleSource: sourceStructure?.rootRoleSource ?? null, destinationRootDomainId: eventStructure?.architecturalDomainId ?? null, destinationRootDomainRole: destinationRole, destinationRootDomainRoleSource: eventStructure?.rootRoleSource ?? null, sourceContainerChainIds: sourceStructure?.containerChainIds ?? [], destinationContainerChainIds: eventStructure?.containerChainIds ?? [], connection: { id: connection.id, endpoint1: structuredClone(connection.endpoint1), endpoint2: structuredClone(connection.endpoint2), orientation }, event: { id: event.id, lucidchartType: event.class, subtype: startDeclared ? "START" : null, subtypeStatus: startDeclared ? "CERTIFIED_BY_EXPLICIT_EVENT_EVIDENCE" : "UNVERIFIED_START_EVENT" }, destinationChildContainerId: childId, bddEvidenceUsed: false, support, contradictions, nonNormative: true });
+    }
+    const groups = /* @__PURE__ */ new Map();
+    for (const r of results.filter((x) => x.destinationChildContainerId && x.scenarioHypothesis)) {
+      const k = `${r.destinationChildContainerId}|${r.scenarioHypothesis}`;
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k).push(r);
+    }
+    for (const group of groups.values()) if (group.length > 1) for (const r of group) {
+      r.status = "AMBIGUOUS";
+      if (!r.contradictions.includes("MULTIPLE_STRUCTURAL_CANDIDATES")) r.contradictions.push("MULTIPLE_STRUCTURAL_CANDIDATES");
+      r.otherCandidateComponentIds = group.filter((x) => x !== r).map((x) => x.componentId);
+    }
+    return results;
+  }
+  var unresolved = (page, conflicts, evidence = [], alternatives = []) => ({ pageName: page.title, scenario: null, status: "NO_DETERMINADO", mainComponentId: null, mainRole: null, evidence, conflicts, alternativeCandidateIds: alternatives, inferenceUsed: false, normativeEvaluation: null, nonNormative: true });
+  function identifyStructuralScenario(page, candidates, pageClassification = { kind: "UNRESOLVED" }) {
+    if (["TEMPLATE_OR_LEGEND", "BDD_OR_REQUIREMENTS"].includes(pageClassification.kind)) return unresolved(page, ["PAGE_NOT_OPERATIONAL"]);
+    const inferred = candidates.filter((x2) => x2.status === "INFERRED"), hypotheses = candidates.filter((x2) => x2.roleCandidate && x2.scenarioHypothesis);
+    if (inferred.length > 1) return unresolved(page, ["MULTIPLE_STRUCTURAL_CANDIDATES"], inferred.map((x2) => ({ componentId: x2.componentId, connectionId: x2.connection.id, eventId: x2.event.id, childContainerId: x2.destinationChildContainerId, scenarioHypothesis: x2.scenarioHypothesis })), inferred.map((x2) => x2.componentId));
+    if (inferred.length === 0) {
+      const relevant = hypotheses.length ? hypotheses : candidates, conflicts = [...new Set(relevant.flatMap((x2) => x2.contradictions))];
+      return unresolved(page, conflicts.length ? conflicts : ["NO_COMPLETE_STRUCTURAL_ROLE_CANDIDATE"], relevant.map((x2) => ({ componentId: x2.componentId, connectionId: x2.connection.id, eventId: x2.event.id, childContainerId: x2.destinationChildContainerId, scenarioHypothesis: x2.scenarioHypothesis, status: x2.status })), relevant.map((x2) => x2.componentId));
+    }
+    const x = inferred[0];
+    return { pageName: page.title, scenario: x.scenarioHypothesis, status: x.event.subtypeStatus === "CERTIFIED_BY_EXPLICIT_EVENT_EVIDENCE" ? "CONFIRMADO" : "HIPOTESIS", mainComponentId: x.componentId, mainComponentName: x.mainComponentName, mainComponentOperation: x.mainComponentOperation, mainChildServiceId: x.destinationChildContainerId, mainChildServiceName: x.mainChildServiceName, mainRole: x.roleCandidate, connection: x.connection, event: x.event, sourceRootDomainId: x.sourceRootDomainId, sourceRootDomainRole: x.sourceRootDomainRole, destinationRootDomainId: x.destinationRootDomainId, destinationRootDomainRole: x.destinationRootDomainRole, evidence: [{ source: "JSON.line.endpoints", id: x.connection.id }, { source: "JSON.contains", containerChainIds: x.destinationContainerChainIds }, { source: x.sourceRootDomainRoleSource, domainId: x.sourceRootDomainId }, { source: x.destinationRootDomainRoleSource, domainId: x.destinationRootDomainId }], conflicts: [], alternativeCandidateIds: [], inferenceUsed: [x.sourceRootDomainRoleSource, x.destinationRootDomainRoleSource].some((s) => s && s !== "DECLARED_DOMAIN_NAME"), normativeEvaluation: null, nonNormative: true };
+  }
+
+  // src/connections.js
+  function reconstructConnections(page, containment, classifications = []) {
+    const byId = containment.byId;
+    const connections = page.lines.map((line) => ({
+      id: line.id,
+      endpoint1: structuredClone(line.endpoint1 ?? null),
+      endpoint2: structuredClone(line.endpoint2 ?? null),
+      originId: line.endpoint1?.connectedTo ?? null,
+      destinationId: line.endpoint2?.connectedTo ?? null,
+      originStyle: line.endpoint1?.style ?? null,
+      destinationStyle: line.endpoint2?.style ?? null,
+      textAreas: structuredClone(line.textAreas ?? []),
+      customData: structuredClone(line.customData ?? []),
+      raw: structuredClone(line),
+      status: !line.endpoint1?.connectedTo || !line.endpoint2?.connectedTo ? "PARTIAL" : !byId.has(line.endpoint1.connectedTo) || !byId.has(line.endpoint2.connectedTo) ? "MISSING_ENDPOINT_REFERENCE" : "DECLARED"
+    }));
+    const principalInteractionPaths = [];
+    const classificationById = new Map(classifications.map((x) => [x.id, x]));
+    for (const c of connections) {
+      const orientation = connectionOrientation(c.raw);
+      const pairs = orientation.status === "AMBIGUOUS" ? [[c.originId, c.destinationId], [c.destinationId, c.originId]].filter(([a, b]) => shapeKind(byId.get(a)) === "API_OR_SERVICE" && shapeKind(byId.get(b)) === "BPMN_EVENT") : [[orientation.originId, orientation.destinationId]];
+      for (const [candidateId, eventId] of pairs) {
+        if (shapeKind(byId.get(candidateId)) !== "API_OR_SERVICE" || shapeKind(byId.get(eventId)) !== "BPMN_EVENT") continue;
+        if (classificationById.get(candidateId)?.functionalClassification?.eventClassification) continue;
+        const chain = containment.chainFor(eventId);
+        const childId = [...chain].reverse().find((id) => shapeKind(byId.get(id)) === "CHILD_CONTAINER") ?? null;
+        const rootId = containment.components.find((x) => x.id === eventId)?.architecturalDomainId ?? null;
+        principalInteractionPaths.push({ candidateComponentId: candidateId, connectionId: c.id, bpmnEventId: eventId, childContainerId: childId, rootContainerId: rootId, orientation, source: "JSON.line.endpoints+containment", status: orientation.status === "AMBIGUOUS" ? "AMBIGUOUS" : childId && rootId ? "RESOLVED" : "PARTIAL" });
+      }
+    }
+    return { connections, principalInteractionPaths };
+  }
+
+  // src/groups.js
+  function reconstructGroups(page) {
+    const shapeIds = new Set(page.shapes.map((x) => x.id)), groupsById = new Map(page.groups.map((x) => [x.id, x])), parents = /* @__PURE__ */ new Map(), missingMembers = [], memberships = /* @__PURE__ */ new Map();
+    for (const group of page.groups) for (const memberId of group.members ?? []) {
+      if (!shapeIds.has(memberId) && !groupsById.has(memberId)) missingMembers.push({ groupId: group.id, memberId, code: "GROUP_MEMBER_MISSING", status: "UNRESOLVED" });
+      if (groupsById.has(memberId)) {
+        if (!parents.has(memberId)) parents.set(memberId, /* @__PURE__ */ new Set());
+        parents.get(memberId).add(group.id);
+      }
+      if (shapeIds.has(memberId)) {
+        if (!memberships.has(memberId)) memberships.set(memberId, /* @__PURE__ */ new Set());
+        memberships.get(memberId).add(group.id);
+      }
+    }
+    const ancestors = (id) => {
+      const out = [], seen = /* @__PURE__ */ new Set(), queue = [...parents.get(id) ?? []];
+      while (queue.length) {
+        const next = queue.shift();
+        if (seen.has(next)) continue;
+        seen.add(next);
+        out.push(next);
+        queue.push(...parents.get(next) ?? []);
+      }
+      return out;
+    };
+    const descendantShapes = (id) => {
+      const out = /* @__PURE__ */ new Set(), seen = /* @__PURE__ */ new Set(), stack = [id];
+      while (stack.length) {
+        const next = stack.pop();
+        if (seen.has(next)) continue;
+        seen.add(next);
+        for (const member of groupsById.get(next)?.members ?? []) {
+          if (shapeIds.has(member)) out.add(member);
+          else if (groupsById.has(member)) stack.push(member);
+        }
+      }
+      return [...out];
+    };
+    const groups = page.groups.map((group) => {
+      const parentIds = [...parents.get(group.id) ?? []], componentIds = descendantShapes(group.id);
+      return { id: group.id, directMemberIds: [...group.members ?? []], childGroupIds: (group.members ?? []).filter((id) => groupsById.has(id)), parentGroupId: parentIds.length === 1 ? parentIds[0] : null, parentGroupIds: parentIds, ancestorGroupIds: ancestors(group.id), relatedComponentIds: componentIds, source: "JSON.items.groups", status: parentIds.length > 1 ? "CONFLICTING_MULTIPLE_PARENTS" : missingMembers.some((x) => x.groupId === group.id) ? "PARTIAL" : "RESOLVED", conflicts: [...parentIds.length > 1 ? [{ code: "MULTIPLE_GROUP_PARENTS", parentGroupIds: parentIds }] : [], ...missingMembers.filter((x) => x.groupId === group.id)] };
+    });
+    const componentMemberships = page.shapes.map((shape) => {
+      const direct = [...memberships.get(shape.id) ?? []], ancestor = [...new Set(direct.flatMap(ancestors))];
+      return { componentId: shape.id, directGroupIds: direct, ancestorGroupIds: ancestor, multipleMembership: direct.length > 1, source: "JSON.items.groups", status: direct.length ? "RESOLVED" : "NOT_GROUPED" };
+    });
+    const relations = [...groups.flatMap((g) => g.directMemberIds.map((memberId) => ({ relation: "GROUP_MEMBERSHIP", groupId: g.id, memberId, source: "JSON.items.groups", status: shapeIds.has(memberId) || groupsById.has(memberId) ? "RESOLVED" : "UNRESOLVED" })))];
+    return { groups, componentMemberships, relations, issues: missingMembers, groupsById, descendantShapes };
+  }
+  function groupDeploymentAssociations(page, groupGraph) {
+    const byShape = new Map(page.shapes.map((x) => [x.id, x])), byGroup = new Map(groupGraph.groups.map((x) => [x.id, x])), out = [];
+    for (const pairGroup of groupGraph.groups) {
+      const directShapes = pairGroup.directMemberIds.map((id) => byShape.get(id)).filter(Boolean), flows = directShapes.filter((x) => shapeKind(x) === "TRANSACTION_FLOW"), layers = directShapes.filter((x) => shapeKind(x) === "ARCHITECTURE_LAYER");
+      if (flows.length !== 1 || layers.length !== 1) continue;
+      const parentIds = pairGroup.parentGroupIds, eligible = [];
+      for (const parentId of parentIds) {
+        const parent = byGroup.get(parentId);
+        for (const siblingId of parent?.childGroupIds ?? []) {
+          if (siblingId === pairGroup.id) continue;
+          const sibling = byGroup.get(siblingId), ids = sibling?.relatedComponentIds ?? [], components = ids.map((id) => byShape.get(id)).filter((x) => shapeKind(x) === "API_OR_SERVICE" || shapeKind(x) === "QUEUE_MANAGER"), models = ids.map((id) => byShape.get(id)).filter((x) => /MODELO/i.test(shapeText(x)));
+          for (const component of components) eligible.push({ componentId: component.id, componentGroupId: siblingId, modelIds: models.map((x) => x.id), superiorGroupId: parentId });
+        }
+      }
+      const unique = [...new Map(eligible.map((x) => [x.componentId, x])).values()];
+      out.push({ pairGroupId: pairGroup.id, flowId: flows[0].id, layerId: layers[0].id, resolvedComponentId: unique.length === 1 ? unique[0].componentId : null, superiorGroupId: unique.length === 1 ? unique[0].superiorGroupId : null, componentGroupId: unique.length === 1 ? unique[0].componentGroupId : null, modelIds: unique.length === 1 ? unique[0].modelIds : [], candidateComponents: unique, evidence: [{ source: "JSON.items.groups", pairGroupId: pairGroup.id, parentGroupIds: parentIds }], relation: "DEPLOYMENT_ASSOCIATION", status: unique.length === 1 ? "RESOLVED_BY_EXPLICIT_SUPERIOR_GROUP" : unique.length > 1 ? "AMBIGUOUS_MULTIPLE_COMPONENTS" : "PENDING_NO_COMMON_SUPERIOR_GROUP", nonNormative: true });
+    }
+    return out;
+  }
+
+  // src/deployment.js
+  function deriveDeploymentAssociations(page, containment, groupGraph) {
+    const pairs = /* @__PURE__ */ new Map(), add = (flow, layer, source, pairGroupId = null) => {
+      const key = `${flow.id}|${layer.id}`;
+      if (!pairs.has(key)) pairs.set(key, { flow, layer, sources: [], pairGroupId });
+      const p = pairs.get(key);
+      p.sources.push(source);
+      if (pairGroupId) p.pairGroupId = pairGroupId;
+    };
+    for (const flow of page.shapes.filter((s) => shapeKind(s) === "TRANSACTION_FLOW")) {
+      const children = new Set(flow.contains?.shapes ?? []);
+      for (const layer of page.shapes.filter((s) => shapeKind(s) === "ARCHITECTURE_LAYER" && children.has(s.id))) add(flow, layer, "JSON.contains");
+    }
+    const grouped = groupGraph ? groupDeploymentAssociations(page, groupGraph) : [];
+    for (const a of grouped) {
+      const flow = containment.byId.get(a.flowId), layer = containment.byId.get(a.layerId);
+      if (flow && layer) add(flow, layer, "JSON.items.groups", a.pairGroupId);
+    }
+    return [...pairs.values()].map(({ flow, layer, sources, pairGroupId }) => {
+      const containedIds = [...new Set(layer.contains?.shapes ?? [])], candidates = containedIds.map((id) => containment.byId.get(id)).filter((s) => s && ["API_OR_SERVICE", "QUEUE_MANAGER", "CHILD_CONTAINER", "BPMN_EVENT"].includes(shapeKind(s)) && !containment.notationIds.has(s.id)), association = grouped.find((x) => x.flowId === flow.id && x.layerId === layer.id), resolved = association?.resolvedComponentId ?? null;
+      return { flow: { id: flow.id }, layer: { id: layer.id }, rootDomainId: containment.components.find((c) => c.id === flow.id)?.architecturalDomainId ?? null, pairGroupId, flowContainedComponentIds: [...new Set(flow.contains?.shapes ?? [])], layerContainedComponentIds: containedIds, flowLayerRelationship: { relation: sources.includes("JSON.contains") ? "DIRECT_CONTAINMENT" : "GROUP_MEMBERSHIP", source: sources, declared: sources.includes("JSON.contains") }, containedComponentIds: containedIds, relatedCandidates: candidates.map((s) => ({ id: s.id, type: shapeKind(s) })), resolvedOwnerId: resolved, associatedComponentId: resolved, superiorGroupId: association?.superiorGroupId ?? null, intermediateGroupIds: [association?.componentGroupId, association?.pairGroupId].filter(Boolean), modelIds: association?.modelIds ?? [], relationship: resolved ? "DEPLOYMENT_ASSOCIATION" : "STRUCTURAL_PAIR_WITH_ASSOCIATION_UNVERIFIED", evidence: [{ source: "JSON.contains", path: [flow.id, layer.id], candidateIds: candidates.map((s) => s.id) }, ...association?.evidence ?? []], status: association?.status ?? "PENDING_NO_COMMON_SUPERIOR_GROUP", ownershipStatus: resolved ? "RESOLVED_BY_GROUP_ASSOCIATION" : "PENDING", certification: "NON_NORMATIVE" };
+    });
+  }
+
+  // src/classifier.js
+  function componentSections(shape) {
+    const areas = shape?.textAreas ?? [];
+    const get = (label) => areas.find((x) => x.label === label)?.text ?? null;
+    return { title: get("Title") ?? get("Text") ?? areas[0]?.text ?? null, operation: get("Text1") ?? areas[1]?.text ?? null, thirdSection: get("Text2") ?? areas[2]?.text ?? null, original: structuredClone(areas) };
+  }
+  function functionalClassification(thirdSection) {
+    const value = normalizeLabel(thirdSection);
+    const service = value.match(/\b(ENTIDAD|UTILIDAD|TAREA)\b/)?.[1] ?? null;
+    const exposure = value.match(/\b(PRIVATE|PUBLIC|PARTNER|PRIVADA|PUBLICA)\b/)?.[1] ?? null;
+    const event = value.match(/\b(QUERY|COMMAND|EVENT)\b/)?.[1] ?? null;
+    return { raw: thirdSection ?? null, serviceModel: service?.toLowerCase() ?? null, exposure: exposure?.toLowerCase() ?? null, eventClassification: event?.toLowerCase() ?? null, source: "textAreas.Text2" };
+  }
+  function classifyShape(shape) {
+    if (!shape) return { technicalType: null, evidence: [], architecturalRoleCandidate: null, status: "MISSING_REFERENCE" };
+    const sections = componentSections(shape);
+    const title = normalizeLabel(sections.title);
+    const evidence = [{ source: "JSON.class", value: shape.class }];
+    const inference = [];
+    let technicalType = null, status2 = "UNRESOLVED", role = null;
+    if (shape.class === "BPMNEvent") {
+      technicalType = "bpmnEvent";
+      status2 = "IDENTIFIED";
+    } else if (shape.class === "BPMNGateway") {
+      technicalType = "bpmnGateway";
+      status2 = "IDENTIFIED";
+    } else if (shape.class === "BPMNActivity") {
+      technicalType = "bpmnActivity";
+      status2 = "IDENTIFIED";
+    } else if (shape.class === "UMLActiveClassBlock") {
+      technicalType = "queueManager";
+      status2 = "IDENTIFIED";
+    } else if (shape.class === "RectangleContainerBlock") {
+      technicalType = "childContainer";
+      status2 = "IDENTIFIED";
+    } else if (shape.class === "UMLClassBlock") {
+      technicalType = "umlClassComponent";
+      status2 = "CLASS_IDENTIFIED_ROLE_UNRESOLVED";
+      const functional = functionalClassification(sections.thirdSection);
+      if (functional.serviceModel || functional.exposure || functional.eventClassification) {
+        evidence.push({ source: functional.source, value: sections.thirdSection, strength: "FUNCTIONAL_CLASSIFICATION_ONLY" });
+        if (functional.serviceModel) inference.push({ candidate: "service", basis: "serviceModel", status: "UNCONFIRMED" });
+        if (functional.exposure) inference.push({ candidate: "api", basis: "exposure", status: "UNCONFIRMED" });
+        if (functional.eventClassification) inference.push({ candidate: "integrationEvent", basis: "eventClassification", status: "UNCONFIRMED" });
+      }
+      const rawTitle = String(sections.title ?? "").trim();
+      if (/^ms[-_ ](?=\S)/i.test(rawTitle) || /^ms(?=[A-Z])/.test(rawTitle)) {
+        evidence.push({ source: "title-prefix", value: sections.title, strength: "CONVENTIONAL_SIGNAL", confidence: "MEDIUM" });
+        inference.push({ candidate: "service", basis: "title-prefix", status: "UNCONFIRMED", confidence: "MEDIUM" });
+      }
+      role = "principal-or-consumed-candidate";
+    }
+    return { technicalType, functionalClassification: functionalClassification(sections.thirdSection), evidence, inference, architecturalRoleCandidate: role, status: status2, sections };
+  }
+
+  // src/version.js
+  var VERSION = "0.4.5.0";
+  var COPILOT_CONTRACT = `copilot-factual-v${VERSION}`;
+  var DIAGNOSTIC_CONTRACT = `diagnostic-v${VERSION}`;
+
+  // src/page-classifier.js
+  var PLACEHOLDER = /^(NOMBRE SERVICIO|NOMBRE FUNCIONAL|NOMBREFUNCIONALMETODO|CLASIFICACION LOGICA|NOMBRE PRODUCTO|NOMBRE API)(?:\b|$)/;
+  var isPlaceholderShape = (shape) => (shape?.textAreas ?? []).some((area) => PLACEHOLDER.test(normalizeLabel(area.text ?? area.value)));
+  var isPlaceholderTitle = (shape) => PLACEHOLDER.test(normalizeLabel((shape?.textAreas ?? []).find((x) => x.label === "Title")?.text ?? shape?.textAreas?.[0]?.text));
+  function classifyPage(page, containment, connections) {
+    const legendShapeIds = new Set(containment.notationIds);
+    const placeholderShapeIds = page.shapes.filter(isPlaceholderShape).map((x) => x.id);
+    const operationalPathIds = [];
+    for (const connection of connections) {
+      const orientation = connectionOrientation(connection.raw ?? connection);
+      if (orientation.status !== "VERIFIED_BY_TERMINATIONS") continue;
+      const source = containment.byId.get(orientation.originId), destination = containment.byId.get(orientation.destinationId);
+      if (shapeKind(source) === "API_OR_SERVICE" && shapeKind(destination) === "BPMN_EVENT" && !containment.notationIds.has(source.id) && !containment.notationIds.has(destination.id) && !isPlaceholderTitle(source)) operationalPathIds.push(connection.id);
+    }
+    const containsLegend = legendShapeIds.size > 0;
+    const hasOperationalStructure = operationalPathIds.length > 0;
+    const kind = /BDD/i.test(page.title) ? "BDD_OR_REQUIREMENTS" : hasOperationalStructure ? containsLegend ? "MIXED" : "OPERATIONAL" : containsLegend || placeholderShapeIds.length ? "TEMPLATE_OR_LEGEND" : "UNRESOLVED";
+    if (!hasOperationalStructure) placeholderShapeIds.forEach((id) => legendShapeIds.add(id));
+    return { kind, containsNotationLegend: containment.notationIds.size > 0, legendShapeIds: [...legendShapeIds], placeholderShapeIds, operationalPathIds, evidence: { pageTitle: page.title, shapeCount: page.shapes.length, groupCount: page.groups.length, connectionCount: page.lines.length }, nonNormative: true };
+  }
+
+  // src/exporter.js
+  function analyzeBlueprint(input, options = {}) {
+    const document2 = normalizeDocument(input, options.sourceName);
+    const pages = document2.pages.map((page) => {
+      const containment = reconstructContainment(page);
+      const classifications = page.shapes.map((shape) => ({ id: shape.id, ...classifyShape(shape) }));
+      const connectionData = reconstructConnections(page, containment, classifications);
+      const groupStructure = reconstructGroups(page);
+      const domainResolution = resolveDomainRolesFromStructure(page, containment, connectionData.connections);
+      const pageClassification = classifyPage(page, containment, connectionData.connections);
+      const architecturalRoleCandidates = deriveArchitecturalRoleCandidates(page, containment, classifications, connectionData.connections, pageClassification);
+      const structuralScenario = identifyStructuralScenario(page, architecturalRoleCandidates, pageClassification);
+      return {
+        page: { id: page.id, title: page.title, index: page.index },
+        counts: { shapes: page.shapes.length, connections: page.lines.length, groups: page.groups.length },
+        classifications,
+        pageClassification,
+        domainResolution,
+        architecturalRoleCandidates,
+        structuralScenario,
+        architecturalStructure: {
+          structuralRootIds: containment.structuralRootIds,
+          rootContainers: containment.rootContainers,
+          components: containment.components,
+          relations: containment.relations,
+          childContainers: containment.components.filter((x) => x.type === "CHILD_CONTAINER"),
+          groupStructure: { groups: groupStructure.groups, componentMemberships: groupStructure.componentMemberships, relations: groupStructure.relations, issues: groupStructure.issues },
+          deploymentPairs: deriveDeploymentAssociations(page, containment, groupStructure),
+          principalInteractionPaths: connectionData.principalInteractionPaths,
+          issues: [...containment.issues, ...containment.missingReferences]
+        },
+        evidence: {
+          shapes: structuredClone(page.shapes),
+          lines: structuredClone(page.lines),
+          groups: structuredClone(page.groups),
+          layers: structuredClone(page.layers),
+          connections: connectionData.connections
+        }
+      };
+    });
+    return { tool: "Blueprint Evidence Studio", contract: COPILOT_CONTRACT, version: VERSION, nonNormative: true, metadata: { sourceName: options.sourceName ?? null, blueprintId: options.blueprintId ?? null, blueprintName: options.blueprintName ?? null, normalizedBlueprintName: options.normalizedBlueprintName ?? null, selectedPageIds: options.selectedPageIds ?? document2.pages.map((x) => x.id), omittedPages: document2.pages.filter((x) => options.selectedPageIds && !options.selectedPageIds.includes(x.id)).map((x) => ({ id: x.id, title: x.title, reason: "NOT_SELECTED_BY_ANALYST" })), pageCount: pages.length }, pages };
+  }
+  function diagnosticExport(factual2) {
+    return { ...structuredClone(factual2), contract: DIAGNOSTIC_CONTRACT, diagnostics: { generatedAt: (/* @__PURE__ */ new Date()).toISOString(), unresolvedCount: factual2.pages.reduce((n, p) => n + p.architecturalStructure.issues.length, 0) } };
+  }
+
+  // ui/app.js
+  var $ = (id) => document.getElementById(id);
+  var factual = null;
+  var generation = 0;
+  var completedGeneration = 0;
+  var svgFiles = [];
+  var status = (m, e = false) => {
+    $("status").textContent = m;
+    $("status").className = "status" + (e ? " error" : "");
+  };
+  var escapeHtml = (x) => String(x ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot", "'": "&#39;" })[c]);
+  var normalizeBlueprintName = (value) => {
+    const clean = String(value ?? "").trim().replace(/\s+/g, "").replace(/[^\p{L}\p{N}_-]/gu, "").slice(0, 140);
+    if (!clean) throw new Error("Nombre Blueprint inv\xE1lido.");
+    return clean;
+  };
+  var download = (data, name) => {
+    const a = document.createElement("a"), url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+    a.href = url;
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 500);
+  };
+  var svgPageId = (text) => text.match(/lucid:page-tab-id=["']([^"']+)/)?.[1] ?? null;
+  async function analyzeFiles(jsonFile, svgs = [], metadata = {}) {
+    if (!metadata.blueprintId?.trim() || !metadata.blueprintName?.trim()) throw new Error("ID Blueprint y Nombre Blueprint son obligatorios.");
+    if (svgs.length > 10) throw new Error("Solo se permiten hasta 10 SVG.");
+    const input = JSON.parse((await jsonFile.text()).replace(/^\uFEFF/, "")), seen = /* @__PURE__ */ new Set(), svgEvidence = [];
+    for (const file of svgs) {
+      const pageId = svgPageId(await file.text());
+      let s = "MATCHED_BY_PAGE_ID";
+      if (!pageId) s = "SVG_WITHOUT_PAGE_ID";
+      else if (!input.pages?.some((p) => p.id === pageId)) s = "SVG_WITHOUT_MATCHING_PAGE";
+      else if (seen.has(pageId)) s = "DUPLICATE_PAGE_SVG";
+      if (pageId) seen.add(pageId);
+      svgEvidence.push({ fileName: file.name, pageId, status: s });
+    }
+    for (const page of input.pages ?? []) if (!seen.has(page.id)) svgEvidence.push({ fileName: null, pageId: page.id, status: "PAGE_WITHOUT_SVG" });
+    const normalizedBlueprintName = normalizeBlueprintName(metadata.blueprintName), result = analyzeBlueprint(input, { sourceName: jsonFile.name, blueprintId: metadata.blueprintId.trim(), blueprintName: metadata.blueprintName.trim(), normalizedBlueprintName, selectedPageIds: metadata.selectedPageIds });
+    result.metadata.svgEvidence = svgEvidence;
+    return result;
+  }
+  function render(r) {
+    factual = r;
+    $("results").hidden = false;
+    const t = r.pages.reduce((a, p) => ({ s: a.s + p.counts.shapes, c: a.c + p.counts.connections }), { s: 0, c: 0 });
+    $("metrics").innerHTML = `<div class="metric"><b>${r.pages.length}</b><br>P\xE1ginas</div><div class="metric"><b>${t.s}</b><br>Figuras</div><div class="metric"><b>${t.c}</b><br>Conexiones</div>`;
+    $("pages").innerHTML = r.pages.map((p) => `<tr><td>${escapeHtml(p.page.title)}</td><td>${p.pageClassification.kind}</td><td>${p.structuralScenario.scenario ?? "\u2014"} / ${p.structuralScenario.status}</td><td>${p.counts.shapes}</td><td>${p.counts.connections}</td><td>${p.architecturalStructure.deploymentPairs.filter((x) => x.associatedComponentId).length}</td><td>${p.architecturalStructure.issues.length}</td></tr>`).join("");
+    $("technical").textContent = JSON.stringify(r.pages.map((p) => ({ page: p.page, domains: p.architecturalStructure.rootContainers, groups: p.architecturalStructure.groupStructure.groups, deployment: p.architecturalStructure.deploymentPairs, warnings: p.architecturalStructure.issues })), null, 2);
+    status(`An\xE1lisis v${VERSION} completado.`);
+  }
+  async function loadPages() {
+    const f = $("jsonFile").files[0];
+    if (!f) {
+      $("pageSelection").innerHTML = "";
+      return;
+    }
+    try {
+      const d = JSON.parse((await f.text()).replace(/^\uFEFF/, ""));
+      $("pageSelection").innerHTML = "<p><b>P\xE1ginas/operaciones</b></p>" + d.pages.map((p) => `<label><input class="pageChoice" type="checkbox" value="${escapeHtml(p.id)}" ${!/BDD/i.test(p.title) && p.title.trim() ? "checked" : ""}> ${escapeHtml(p.title || "(sin nombre)")}</label>`).join("");
+    } catch (e) {
+      status(e.message, true);
+    }
+  }
+  $("jsonFile").addEventListener("change", loadPages);
+  $("svgFiles").addEventListener("change", () => {
+    for (const f of $("svgFiles").files) svgFiles.push(f);
+    if (svgFiles.length > 10) svgFiles = svgFiles.slice(0, 10);
+    $("svgList").textContent = svgFiles.length ? svgFiles.map((x) => x.name).join(", ") : "Sin SVG.";
+  });
+  $("analyze").onclick = async () => {
+    const current = ++generation;
+    try {
+      const f = $("jsonFile").files[0];
+      if (!f) throw new Error("Seleccione un JSON.");
+      render(await analyzeFiles(f, svgFiles, { blueprintId: $("blueprintId").value, blueprintName: $("blueprintName").value, selectedPageIds: [...document.querySelectorAll(".pageChoice:checked")].map((x) => x.value) }));
+    } catch (e) {
+      factual = null;
+      status(e.message, true);
+      $("results").hidden = true;
+    } finally {
+      completedGeneration = current;
+    }
+  };
+  $("clear").onclick = () => {
+    factual = null;
+    svgFiles = [];
+    for (const id of ["jsonFile", "svgFiles", "blueprintId", "blueprintName"]) $(id).value = "";
+    $("svgList").textContent = "Sin SVG.";
+    $("pageSelection").innerHTML = "";
+    $("results").hidden = true;
+    $("metrics").innerHTML = "";
+    $("pages").innerHTML = "";
+    $("technical").textContent = "";
+    status("Seleccione un JSON.");
+    generation++;
+    completedGeneration = generation;
+  };
+  $("downloadCopilot").onclick = () => factual && download(factual, `${factual.metadata.normalizedBlueprintName}-ENRIQUECIDO.json`);
+  $("downloadDiagnostic").onclick = () => factual && download(diagnosticExport(factual), `${factual.metadata.normalizedBlueprintName}-DIAGNOSTICO.json`);
+  $("print").onclick = () => window.print();
+  window.__BES__ = { VERSION, analyzeFiles, getResult: () => factual, getGeneration: () => completedGeneration, getSvgCount: () => svgFiles.length };
+})();
+</script></body></html>
