@@ -1,0 +1,48 @@
+Este fue el resultado de probar la nueva version del studio 4.5 y la skill:
+
+6. Detalle por estado
+
+Reglas que cumplen, 13
+CNT-001: contenedores padre requeridos.
+CNT-003: contenido permitido en INTEGRACIÓN.
+CNT-006: exclusividad de padre directo.
+GW-001: caminos alternos de los gateways.
+API-001: nombramiento y versión de API.
+API-002: operación de API.
+CA-001: existencia y nombramiento de Capa.
+FT-001: existencia y nombramiento de Flujo.
+MOD-001: modelos de entrada y salida.
+COM-001: nombramiento de comandos.
+COM-004: conexión comando con gestor de colas.
+MQ-001: identificación y nombramiento del gestor.
+MQ-002: ubicación del gestor.
+
+Reglas no verificables, 13
+CNT-002: depende de la certificación del escenario.
+API-003: falta tipo de exposición certificado.
+API-004: faltan tipo, MCI y asociaciones exclusivas.
+SRV-001, SRV-002 y SRV-003: roles de servicio no certificados.
+CA-002: propietario de la Capa no resuelto.
+FT-002: propietario del Flujo no resuelto.
+E2-001: BPMNEvent de Inicio no certificado.
+COM-003: rol del servicio invocado no certificado.
+MQ-003: MCI del gestor en INTEGRACIÓN no acreditado.
+MQ-004: asociación Capa/Flujo del gestor pendiente.
+MQ-005: rol de 0235 - CI8 como servicio invocado no certificado.
+
+Reglas que no aplican, 15
+CNT-004 y CNT-005.
+EXT-001 y EXT-002.
+EVT-001 a EVT-008.
+E1-001 y E3-001.
+COM-002.
+
+Sin embargo tambien se tienen las siguientes anotaciones:
+- Porque la figura tQ7mFTFbJ1SW que corresponde a la API principal dentro del E2 no quedó configurada como api principal? . Por regla deberia ser en el E1, cuando se garantiza la conexion entre el componente inicial y el evento del hijo del dominio productor, dicho componente en cuestion deberia ser considerada como API principal. Para el E2, cuando se garantiza la conexion entre el el componente inicial y el evento del hijo de integración, dicho componente en cuestion deberia ser considerada como API principal. En cambio para E3, cuando se garantiza la conexion entre el componente inicial y el evento del hijo del dominio productor, dicho componente en cuestion deberia ser considerada como servicio principal. 
+
+- La regla MQ 004 quedo como no verificable porque el gestor de colas CQMGRIBMICORP01 no se le pudo validar si tiene asociado una capa y un flujo. Sin embargo en el JSON original esto si se evidencia en que el flujo (4Oc~UAg.ChZ2) tiene como miembro a la capa (4Oc~STvzS7WZ) y al gestor (4Oc~oPj98AFn). A su vez el flujo pertenece al un grupo (4Oc~Xod2f2AN) que contiene al flujo mismo y la capa (4Oc~STvzS7WZ). Cual es la razon para determinar que no se pudo validar la contencion, el json enriquecido no fue explicito? Que se deberia ajustar en estos casos donde si hay una contencion explicita para que el gestor quede asociado con su capa y flujo?
+
+Texto sugerido para el HTML
+La contención está demostrada: el Flujo contiene la Capa y la Capa contiene CQMGRIBMICORP01. El estado No verificable no se debe a falta de contención, sino a que el propietario normativo del par Capa/Flujo permanece sin resolver. El catálogo debe aclarar si la cadena Flujo → Capa → gestor es suficiente o si exige además una asociación de despliegue independiente.
+
+- Se debe clasificar a todas las figuras de momento que tengan la figura BPMNGroup como sistema externo auxiliar.
