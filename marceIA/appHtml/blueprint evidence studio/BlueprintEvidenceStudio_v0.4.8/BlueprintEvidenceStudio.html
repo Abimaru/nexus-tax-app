@@ -154,10 +154,22 @@
       const label = normalizeLabel(shapeText(s)), declared = customDataEntries(s).some((x) => /^(DOMAIN_ROLE|ARCHITECTURAL_ROLE|ROL_DOMINIO)$/i.test(String(x.key ?? ""))), hasContent = (s?.contains?.shapes?.length ?? 0) + (s?.contains?.groups?.length ?? 0) + (s?.contains?.lines?.length ?? 0) > 0;
       return s?.class === "UMLRectangleContainerBlock" && s.contains && (hasContent || RESERVED_EXACT.has(label)) && label && !["FEDERADO", "NOTACION"].includes(label) && !["TRANSACTION_FLOW", "ARCHITECTURE_LAYER"].includes(shapeKind(s)) && (structuralRootSet.has(s.id) || RESERVED_EXACT.has(label) || declared);
     };
-    const domains = page.shapes.filter(isDomainContainer), domainIds = new Set(domains.map((s) => s.id)), domainInfo = /* @__PURE__ */ new Map();
+    const countClass = (s, cls) => (s.contains?.shapes ?? []).filter((id) => byId.get(id)?.class === cls).length;
+    const qualifyingChildren = page.shapes.filter((s) => s.class === "RectangleContainerBlock" && countClass(s, "BPMNGateway") > 0 && countClass(s, "BPMNActivity") > 0);
+    const childCandidateIds = qualifyingChildren.filter((s) => !qualifyingChildren.some((o) => o.id !== s.id && reachability.get(s.id)?.has(o.id))).map((s) => s.id);
+    const mainChildId = childCandidateIds.length === 1 ? childCandidateIds[0] : null;
+    const promoted = /* @__PURE__ */ new Map(), isTextBlock = (s) => ["MinimalTextBlock", "AutoGrowTextBlock"].includes(s?.class);
+    for (const rect of page.shapes) {
+      if (rect.class !== "RectangleContainerBlock" || directParent.has(rect.id) || childCandidateIds.includes(rect.id) || notationIds.has(rect.id)) continue;
+      const reserved = [...new Set((rect.contains?.shapes ?? []).map((id) => byId.get(id)).filter((x) => isTextBlock(x) && directParent.get(x.id) === rect.id).map((x) => RESERVED_EXACT.get(normalizeLabel(shapeText(x)))).filter(Boolean))];
+      if (reserved.length === 1) promoted.set(rect.id, { kind: "LOOSE_TEXT_NAME", role: reserved[0] });
+      else if (mainChildId && reachability.get(rect.id)?.has(mainChildId)) promoted.set(rect.id, { kind: "WRAPS_MAIN_CHILD", role: null });
+    }
+    const domains = page.shapes.filter((s) => isDomainContainer(s) || promoted.has(s.id)), domainIds = new Set(domains.map((s) => s.id)), domainInfo = /* @__PURE__ */ new Map();
     for (const domain of domains) {
       const name = normalizeLabel(shapeText(domain)), declaredRole = normalizeLabel(customDataEntries(domain).find((x) => /^(DOMAIN_ROLE|ARCHITECTURAL_ROLE|ROL_DOMINIO)$/i.test(String(x.key ?? "")))?.value), nestedDomainIds = [...reachability.get(domain.id) ?? []].filter((id) => domainIds.has(id));
-      let role = RESERVED_EXACT.get(name) ?? (declaredRole === "PRODUCER" ? "PRODUCER" : null), roleSource = role ? RESERVED_EXACT.has(name) ? "DECLARED_DOMAIN_NAME" : "DECLARED_CUSTOM_DATA" : null, roleStatus = role ? "RESOLVED" : "UNRESOLVED", conflicts = [];
+      const promo = promoted.get(domain.id);
+      let role = promo?.role ?? RESERVED_EXACT.get(name) ?? (declaredRole === "PRODUCER" ? "PRODUCER" : null), roleSource = role ? promo?.role ? "LOOSE_TEXT_NAME" : RESERVED_EXACT.has(name) ? "DECLARED_DOMAIN_NAME" : "DECLARED_CUSTOM_DATA" : null, roleStatus = role ? "RESOLVED" : "UNRESOLVED", conflicts = [];
       if (!role && RESERVED_VARIANT.test(name)) {
         roleStatus = "ROLE_UNRESOLVED_RESERVED_NAME_VARIANT";
         conflicts.push({ code: "ROLE_UNRESOLVED_RESERVED_NAME_VARIANT", name: shapeText(domain), status: "CONFLICTING" });
@@ -182,7 +194,7 @@
       const c = components.find((c2) => c2.id === s.id), info = domainInfo.get(s.id);
       return { id: s.id, name: shapeText(s), lucidchartClass: s.class, structuralParent: structuredClone(c?.structuralParent ?? null), containerChainIds: c?.containerChainIds ?? [], rootContainer: structuredClone(c?.rootContainer ?? null), architecturalDomain: structuredClone(c?.architecturalDomain ?? null), domainRole: c?.domainRole ?? null, evidenceSources: structuredClone(c?.evidenceSources ?? {}), structuralRootId: c?.structuralRootId ?? null, structuralParentId: c?.structuralParentId ?? null, architecturalDomainId: c?.architecturalDomainId ?? null, role: c?.domainRole ?? null, roleSource: c?.domainRole ? info.roleSource : null, roleStatus: c?.rootRoleStatus ?? info.roleStatus, nestedDomainIds: info.nestedDomainIds, conflicts: [...info.conflicts, ...issues.filter((x) => x.componentId === s.id)] };
     });
-    return { byId, directParent, chainFor, components, structuralRootIds: structuralRoots.map((s) => s.id), notationIds, rootContainers, relations: [...direct, ...ancestors], issues: [...duplicateIds, ...page.normalizationIssues, ...issues, ...rootContainers.flatMap((x) => x.conflicts.map((c) => ({ ...c, containerId: x.id })))], missingReferences };
+    return { byId, directParent, chainFor, components, childAnalysis: { candidateIds: childCandidateIds, mainChildId, promoted: Object.fromEntries(promoted) }, structuralRootIds: structuralRoots.map((s) => s.id), notationIds, rootContainers, relations: [...direct, ...ancestors], issues: [...duplicateIds, ...page.normalizationIssues, ...issues, ...rootContainers.flatMap((x) => x.conflicts.map((c) => ({ ...c, containerId: x.id })))], missingReferences };
   }
 
   // src/classifier.js
@@ -352,6 +364,7 @@
       }
       const contradictions = [];
       if (orientation.status === "AMBIGUOUS") contradictions.push("CONNECTION_ORIENTATION_UNRESOLVED");
+      if (childId && destinationRole === "EXTERNAL_SYSTEM") contradictions.push("CHILD_INSIDE_EXTERNAL_SYSTEM");
       if (childId && (source.id === childId || sourceStructure?.containerChainIds?.includes(childId))) contradictions.push("MAIN_COMPONENT_INSIDE_CHILD_CONTAINER");
       if (roleCandidate === "mainApi" && classification?.inference?.some(hasServiceNamingBasis)) contradictions.push("SERVICE_NAMING_SIGNAL_CONFLICTS_WITH_MAIN_API_TOPOLOGY");
       contradictions.push(...(sourceStructure?.domainConflicts ?? []).map((x) => x.code), ...(eventStructure?.domainConflicts ?? []).map((x) => x.code));
@@ -587,7 +600,7 @@
     if (hits.length === 1) return { type: hits[0].type, rule: hits[0].rule, status: hits[0].rule === "SERVICE_BY_MS_NAMING" ? "INFERRED_BY_APPROVED_NAMING_CONVENTION" : "INFERRED_BY_ANALYST_RULE", evidence, contradictions: [] };
     return null;
   }
-  function architecturalType(shape, classification, role, umlRule) {
+  function architecturalType(shape, classification, role, umlRule, containerType) {
     if (role?.status === "INFERRED" && role.inferredArchitecturalType) return role.inferredArchitecturalType === "service" ? "SERVICIO" : "API";
     if (role?.status === "AMBIGUOUS") return null;
     if (shape.class === "UMLActiveClassBlock") return "GESTOR_COLAS";
@@ -596,7 +609,7 @@
       const name = cleanName(shape)?.trim();
       return name && !placeholder.test(name) ? "SISTEMA_EXTERNO_AUXILIAR" : null;
     }
-    if (classification?.technicalType === "childContainer") return "SERVICIO_HIJO";
+    if (containerType !== void 0) return containerType;
     if (umlRule) return umlRule.type;
     const kind = shape.type;
     if (kind === "TRANSACTION_FLOW") return "FLUJO";
@@ -604,9 +617,22 @@
     if (/MODELO/i.test(cleanName(shape) ?? "")) return "MODELO";
     return null;
   }
+  function containerRuleFor(shape, { domainIds, promoted, candidateIds, mainChildId, countClass }) {
+    if (domainIds.has(shape.id)) {
+      const promo = promoted[shape.id];
+      return { type: "CONTENEDOR_PADRE", inference: promo ? { status: "INFERRED_BY_ANALYST_RULE", rule: promo.kind === "LOOSE_TEXT_NAME" ? "PARENT_BY_LOOSE_TEXT_NAME" : "PARENT_BY_WRAPPING_MAIN_CHILD", evidence: [{ source: "JSON.contains", kind: promo.kind }], contradictions: [] } : null };
+    }
+    if (shape.class !== "RectangleContainerBlock") return null;
+    const candidate = candidateIds.includes(shape.id);
+    if (!candidate && shape.id !== mainChildId) return { type: "CONTENEDOR_NO_DETERMINADO", inference: null };
+    if (!candidate) return { type: "SERVICIO_HIJO", inference: null };
+    const ambiguous = candidateIds.length > 1, evidence = [{ source: "JSON.contains", gateways: countClass(shape, "BPMNGateway"), activities: countClass(shape, "BPMNActivity") }];
+    return { type: "SERVICIO_HIJO", inference: ambiguous ? { status: "AMBIGUOUS", rule: "CHILD_BY_GATEWAYS_AND_ACTIVITIES", evidence, contradictions: ["MULTIPLE_CHILD_CANDIDATES"] } : { status: "INFERRED_BY_ANALYST_RULE", rule: "CHILD_BY_GATEWAYS_AND_ACTIVITIES", evidence, contradictions: [] } };
+  }
   function compactPage(full) {
     const structures = new Map(full.architecturalStructure.components.map((x) => [x.id, x])), classes = new Map(full.classifications.map((x) => [x.id, x])), roles = new Map(full.architecturalRoleCandidates.map((x) => [x.componentId, x])), connections = full.evidence.connections;
     const deployments = full.architecturalStructure.deploymentPairs;
+    const childInfo = full.architecturalStructure.childAnalysis ?? { candidateIds: [], promoted: {} }, domainIds = new Set(full.architecturalStructure.rootContainers.map((r) => r.id)), shapeById = new Map(full.evidence.shapes.map((x) => [x.id, x])), countClass = (s, cls) => (s.contains?.shapes ?? []).filter((id) => shapeById.get(id)?.class === cls).length;
     const apiMarkers = detectApiMarkers(full.evidence.shapes, full.architecturalStructure.groupStructure.groups, connections), certainMarkerEvents = /* @__PURE__ */ new Set();
     const components = full.evidence.shapes.map((shape) => {
       const structure = structures.get(shape.id), classification = classes.get(shape.id), role = roles.get(shape.id);
@@ -615,9 +641,10 @@
       const componentDeployments = deployments.filter((x) => x.associatedComponentId === shape.id || x.directAssociations?.some((a) => a.componentId === shape.id)).map((x) => ({ flowId: x.flow.id, layerId: x.layer.id, status: x.status, source: x.associationSource, evidence: x.evidence, conflicts: x.conflicts ?? [] }));
       const umlRule = shape.class === "UMLClassBlock" ? classifyUmlComponent(classification, apiMarkers.get(shape.id)) : null;
       if (umlRule?.rule === "API_BY_EMPTY_BPMN_EVENT_GROUP") apiMarkers.get(shape.id).eventIds.forEach((id) => certainMarkerEvents.add(id));
-      const type = architecturalType({ ...shape, type: structure?.type }, classification, role, umlRule);
+      const containerRule = containerRuleFor(shape, { domainIds, promoted: childInfo.promoted, candidateIds: childInfo.candidateIds, mainChildId: full.structuralScenario.mainChildServiceId, countClass });
+      const type = architecturalType({ ...shape, type: structure?.type }, classification, role, umlRule, containerRule ? containerRule.type : void 0);
       const architecturalRole = role?.status === "INFERRED" && (role.roleCandidate === "mainApi" || role.roleCandidate === "mainService") ? "PRINCIPAL" : structure?.type === "CHILD_CONTAINER" && full.structuralScenario.mainChildServiceId === shape.id ? "HIJO_PRINCIPAL" : ["API", "SERVICIO"].includes(type) && (umlRule?.type === type || incoming.length > 0 && outgoing.length === 0) ? "INVOCADO" : null;
-      const result = { id: shape.id, name: cleanName(shape), architecturalType: type, lucidchartType: shape.class ?? null, role: architecturalRole, operation: classification?.sections?.operation ?? null, textAreas: structuredClone(shape.textAreas ?? []), structuralParent: structuredClone(structure?.structuralParent ?? null), containerChainIds: structure?.containerChainIds ?? [], rootContainer: structuredClone(structure?.rootContainer ?? null), architecturalDomain: structuredClone(structure?.architecturalDomain ?? null), domainRole: structure?.domainRole ?? null, possibleDomainRoles: structure?.domainRole ? [] : structure?.possibleDomainRoles ?? [], connections: componentConnections, deploymentAssociations: componentDeployments, inference: role ? { status: role.status, evidence: [{ source: "JSON.line.endpoints", id: role.connection.id }, { source: "JSON.contains", containerChainIds: role.destinationContainerChainIds }, ...umlRule?.rule === "API_BY_EMPTY_BPMN_EVENT_GROUP" ? umlRule.evidence.filter((e) => e.source === "JSON.items.groups") : []], contradictions: role.contradictions } : umlRule ? { status: umlRule.status, rule: umlRule.rule, evidence: umlRule.evidence, contradictions: umlRule.contradictions } : classification?.inference?.length ? { status: "INFERRED_BY_APPROVED_NAMING_CONVENTION", evidence: classification.evidence.filter((x) => x.source === "title-prefix" || x.source === "title-suffix"), contradictions: [] } : null, containedComponentIds: shape.class === "BPMNGroup" ? [...shape.contains?.shapes ?? []] : void 0 };
+      const result = { id: shape.id, name: cleanName(shape), architecturalType: type, lucidchartType: shape.class ?? null, role: architecturalRole, operation: classification?.sections?.operation ?? null, textAreas: structuredClone(shape.textAreas ?? []), structuralParent: structuredClone(structure?.structuralParent ?? null), containerChainIds: structure?.containerChainIds ?? [], rootContainer: structuredClone(structure?.rootContainer ?? null), architecturalDomain: structuredClone(structure?.architecturalDomain ?? null), domainRole: structure?.domainRole ?? null, possibleDomainRoles: structure?.domainRole ? [] : structure?.possibleDomainRoles ?? [], connections: componentConnections, deploymentAssociations: componentDeployments, inference: role ? { status: role.status, evidence: [{ source: "JSON.line.endpoints", id: role.connection.id }, { source: "JSON.contains", containerChainIds: role.destinationContainerChainIds }, ...umlRule?.rule === "API_BY_EMPTY_BPMN_EVENT_GROUP" ? umlRule.evidence.filter((e) => e.source === "JSON.items.groups") : []], contradictions: role.contradictions } : umlRule ? { status: umlRule.status, rule: umlRule.rule, evidence: umlRule.evidence, contradictions: umlRule.contradictions } : containerRule?.inference ? containerRule.inference : classification?.inference?.length ? { status: "INFERRED_BY_APPROVED_NAMING_CONVENTION", evidence: classification.evidence.filter((x) => x.source === "title-prefix" || x.source === "title-suffix"), contradictions: [] } : null, containedComponentIds: shape.class === "BPMNGroup" ? [...shape.contains?.shapes ?? []] : void 0 };
       if (Object.hasOwn(shape, "customData")) result.customData = structuredClone(shape.customData);
       return result;
     });
@@ -643,6 +670,25 @@
       const architecturalRoleCandidates = deriveArchitecturalRoleCandidates(page, containment, classifications, connectionData.connections, pageClassification);
       const structuralScenario = identifyStructuralScenario(page, architecturalRoleCandidates, pageClassification);
       if (domainResolution.status === "CONFLICTING_MULTIPLE_PRODUCERS" && !structuralScenario.conflicts.includes(domainResolution.status)) structuralScenario.conflicts.push(domainResolution.status);
+      if (structuralScenario.scenario === "E3" && ["HIPOTESIS", "CONFIRMADO"].includes(structuralScenario.status) && structuralScenario.sourceRootDomainId) {
+        const mark = (x) => {
+          x.roleSource = "E3_ELIMINATION";
+          x.roleStatus = "INFERRED_BY_ELIMINATION";
+        };
+        for (const r of containment.rootContainers.filter((r2) => r2.id !== structuralScenario.sourceRootDomainId && !r2.role && r2.id !== containment.components.find((c) => c.id === structuralScenario.mainChildServiceId)?.architecturalDomainId)) {
+          r.domainRole = r.role = "EXTERNAL_SYSTEM";
+          mark(r);
+          r.architecturalDomain.roleSource = "E3_ELIMINATION";
+          r.architecturalDomain.status = "INFERRED_BY_ELIMINATION";
+          for (const c of containment.components) if (c.architecturalDomainId === r.id && c.domainRole == null) {
+            c.domainRole = c.explicitDomainRole = "EXTERNAL_SYSTEM";
+            c.possibleDomainRoles = [];
+            c.rootRoleSource = c.evidenceSources.domainRole = "E3_ELIMINATION";
+            c.rootRoleStatus = c.architecturalDomain.status = "INFERRED_BY_ELIMINATION";
+            c.architecturalDomain.roleSource = "E3_ELIMINATION";
+          }
+        }
+      }
       return {
         page: { id: page.id, title: page.title, index: page.index },
         counts: { shapes: page.shapes.length, connections: page.lines.length, groups: page.groups.length },
@@ -657,6 +703,7 @@
           components: containment.components,
           relations: containment.relations,
           childContainers: containment.components.filter((x) => x.type === "CHILD_CONTAINER"),
+          childAnalysis: containment.childAnalysis,
           groupStructure: { groups: groupStructure.groups, componentMemberships: groupStructure.componentMemberships, relations: groupStructure.relations, issues: groupStructure.issues },
           deploymentPairs: deriveDeploymentAssociations(page, containment, groupStructure),
           principalInteractionPaths: connectionData.principalInteractionPaths,

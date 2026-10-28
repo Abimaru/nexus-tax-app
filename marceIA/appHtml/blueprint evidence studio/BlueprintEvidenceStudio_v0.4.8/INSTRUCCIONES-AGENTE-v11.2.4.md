@@ -17,13 +17,19 @@ Para usar con la Skill `validar-blueprint-integracion` v11.2.4 (37 reglas) y el 
 
 ## Tipo de componente
 
-- Usa `architecturalType` tal como lo entrega el JSON. No lo corrijas ni lo deduzcas por nombre, color, posición o cercanía. Valores: `API`, `SERVICIO`, `EVENTO_INTEGRACION`, `EVENTO` (evento BPMN), `GESTOR_COLAS`, `SERVICIO_HIJO`, `SISTEMA_EXTERNO_AUXILIAR`, `FLUJO`, `CAPA`, `MODELO` y `null`.
+- Usa `architecturalType` tal como lo entrega el JSON. No lo corrijas ni lo deduzcas por nombre, color, posición o cercanía. Valores: `API`, `SERVICIO`, `EVENTO_INTEGRACION`, `EVENTO` (evento BPMN), `GESTOR_COLAS`, `SERVICIO_HIJO`, `CONTENEDOR_PADRE`, `CONTENEDOR_NO_DETERMINADO`, `SISTEMA_EXTERNO_AUXILIAR`, `FLUJO`, `CAPA`, `MODELO` y `null`.
 - El Studio determina el tipo de los componentes UML así (el detalle está en `inference.rule` y `inference.evidence`):
   - **API invocada** (`API_BY_EMPTY_BPMN_EVENT_GROUP`): el bloque está agrupado con un BPMN Event vacío y sin líneas, en el mismo grupo o en el grupo padre de su subgrupo. Ese evento es el marcador visual de la API.
   - **Servicio invocado** (`SERVICE_BY_MS_NAMING`): el nombre inicia o termina con `ms` y el bloque no tiene ese marcador.
   - **Evento de integración** (`INTEGRATION_EVENT_BY_THIRD_SECTION`): la tercera sección declara tipo (empresarial o aplicación) o clasificación (event, query o command). No es una API.
   - **API o servicio principal**: lo confirma la estructura del escenario (`role: PRINCIPAL`).
 - `role: INVOCADO` indica una API o un servicio invocado, no principal.
+- Contenedores (`inference.rule` indica cómo se determinó):
+  - **Hijo** (`SERVICIO_HIJO`, `CHILD_BY_GATEWAYS_AND_ACTIVITIES`): el rectángulo más interno con al menos una compuerta y al menos una actividad. Debe haber uno solo por página; si hay más, cada uno trae `AMBIGUOUS` y `MULTIPLE_CHILD_CANDIDATES`, y no debes elegir. `role: HIJO_PRINCIPAL` solo cuando el escenario lo confirma. Un hijo sin nombre visible es un hijo sin nombre, no un hijo distinto.
+  - **Contenedor padre** (`CONTENEDOR_PADRE`, rol en `domainRole`): un dominio con nombre literal (`INTEGRACIÓN`, `SISTEMAS EXTERNOS`, `DOMINIO PRODUCTOR`); un rectángulo plano que lleva como texto directo ese nombre (`PARENT_BY_LOOSE_TEXT_NAME`); o un rectángulo plano que envuelve al hijo (`PARENT_BY_WRAPPING_MAIN_CHILD`), cuyo rol de productor se infiere por estructura y es hipótesis. Los dominios INTEGRACIÓN pueden repetirse.
+  - **Ubicación del hijo:** en E1 y E3 va en el dominio productor; en E2 va en INTEGRACIÓN. Un sistema externo no puede contener al hijo (`CHILD_INSIDE_EXTERNAL_SYSTEM`): explícalo como conflicto.
+  - **Dominios sin nombre literal:** en E1 y E2 sin hijo quedan sin rol (`possibleDomainRoles`); no los clasifiques tú. Solo en E3 el Studio marca como sistemas externos, por descarte (`roleSource: E3_ELIMINATION`), los dominios sin nombre literal ni hijo.
+  - `CONTENEDOR_NO_DETERMINADO` es un rectángulo que no es hijo ni padre: no le asignes tipo.
 - `architecturalType: null` significa **tipo no determinado**. No lo trates como API, servicio ni evento, y no lo clasifiques tú: aplica lo que cada regla establece cuando falta evidencia y deja el dato pendiente.
 - `inference.status: AMBIGUOUS` con `contradictions` indica señales en conflicto (por ejemplo, marcador y nombre `ms` a la vez). Explica el conflicto y no elijas un tipo.
 - El marcador de una API (el BPMN Event vacío agrupado con ella) no se entrega como figura aparte: solo cuenta la API. Sus identificadores pueden aparecer en `inference.evidence` (`eventIds`), también en las APIs principales; no los busques entre los componentes ni los cuentes como eventos del flujo.
