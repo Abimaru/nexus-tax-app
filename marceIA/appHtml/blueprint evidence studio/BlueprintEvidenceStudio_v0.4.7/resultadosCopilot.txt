@@ -1,0 +1,445 @@
+BLUEPRINT 1: MCI - BP - Currency Exchange Transaction Pricing - Currency Receiving
+
+Quedan registradas las tres respuestas como DECLARADO_POR_ANALISTA para esta página: API principal MCI, hijo principal MCI y exposición private. Con esto puedo cerrar el dictamen completo sin más preguntas.
+Razonado para 12s
+Validación del blueprint
+He registrado las respuestas de la analista para la página executeTransactionCurrencyExchange:
+API principal Currency Exchange Transaction Pricing - Currency Receiving v2.0.0: MCI = Sí.
+Hijo principal Currency Exchange Transaction Pricing - Currency Receiving: MCI = Sí.
+Exposición de la API principal: private.
+Estas declaraciones determinan la aplicabilidad de API-004 y SRV-004, pero no sustituyen la evidencia gráfica necesaria para demostrar asociaciones de despliegue.
+1. Resultado ejecutivo
+Archivo: MCI-BP-CurrencyExchangeTransactionPricing-CurrencyReceiving-ENRIQUECIDO (1).json
+ Contrato: copilot-factual-v0.4.6.1
+ Página evaluada: executeTransactionCurrencyExchange
+ Clasificación: MIXED
+ Patrón estructural: candidato E2
+ Estado del escenario: HIPOTESIS
+ Contenido de leyenda excluido: 51 componentes
+ Contenido operativo evaluado: 48 componentes y 20 conexiones.
+Consolidado
+Estado	CantidadCumple	15
+No cumple	4
+No verificable	6
+No aplica	12
+Total	37
+Porcentaje de cumplimiento
+1515+4+6×100=60%\frac{15}{15+4+6}\times 100 = \mathbf{60\%}15+4+615​×100=60%
+Los 12 resultados No aplica se excluyen del denominador.
+2. Hallazgos principales
+Aspectos bien modelados
+La estructura principal corresponde razonablemente a E2: la API principal y el hijo principal están separados y ubicados en INTEGRACIÓN.
+La API tiene nombre y versión correctos, y la operación executeTransactionCurrencyExchange está modelada en inglés y camelCase.
+El hijo principal dispone de una asociación de despliegue MCI resuelta por contención directa.
+Las tres figuras de Capa de Arquitectura y los tres Flujos Transaccionales cumplen su nomenclatura.
+Los comandos principales tienen nombres adecuados:
+Validar titularidad.
+Realizar cálculo de recepción de divisas.
+Las relaciones comando-servicio y comando-gestor de colas son bidireccionales y usan las terminaciones esperadas.
+Los dos gestores de colas tienen nombres específicos: CQMGRIBMICORP01 y QMGRIBMI01.
+Incumplimientos prioritarios
+API-003: la tercera sección de la API contiene solamente Entidad. Para una API ubicada en INTEGRACIÓN debería declarar la estructura completa private - entidad.
+API-004: la API fue declarada MCI y private, pero no existe una asociación certificada de una Capa de Arquitectura y un Flujo Transaccional con la API principal.
+SRV-002: el servicio ms-transfer-service-context declara usecase/otherpath, que no representa una única operación funcional y contiene /.
+EXT-001: existen sistemas externos auxiliares que encapsulan componentes no permitidos, particularmente un gestor de colas dentro de Iseries.
+Riesgos pendientes de evidencia
+El evento conectado a la API principal está identificado solo como BPMNEvent. Su subtipo Inicio no está certificado, por lo que el escenario E2 completo no puede aprobarse.
+El dominio EVC Transferencias y nuevos sistemas de pago - EPC Comercio internacional Bancolombia está sin clasificación arquitectónica determinada. Esto impide decidir si corresponde a DOMINIO PRODUCTOR o SISTEMAS EXTERNOS.
+Dos compuertas tienen caminos Sí/No, pero carecen de texto de decisión que permita interpretar las alternativas.
+Algunas relaciones con 0235 - CI8: Calculo Compra Divisas no pueden evaluarse plenamente porque el componente no está certificado como servicio invocado.
+3. Detalle de las 37 reglas
+Estructura y sistemas externos
+1. CNT-001 — Cumple
+Población: patrón estructural candidato E2.
+Evidencia: dominio INTEGRACIÓN, ID lI7ms82nd2~F, con domainRole: INTEGRATION.
+Justificación: para E2 se exige al menos un dominio de Integración y está certificado.
+Dato pendiente: ninguno.
+2. CNT-002 — Cumple
+Población: hijo principal de E2.
+Evidencia: Currency Exchange Transaction Pricing - Currency Receiving, ID TJ7m.cKnR-~v, architecturalType: SERVICIO_HIJO, role: HIJO_PRINCIPAL.
+Justificación: existe un único hijo principal, tiene un texto visible específico y está ubicado en INTEGRACIÓN.
+Dato pendiente: ninguno.
+3. CNT-003 — No verificable
+Población: contenido del dominio INTEGRACIÓN.
+Evidencia: están certificados la API, el hijo, gestores, capas, flujos y eventos BPMN; también existen varias actividades y bloques sin clasificación arquitectónica.
+Justificación: algunos componentes del nivel padre tienen architecturalType: null. Sus posibles categorías podrían ser permitidas o prohibidas, por lo que no puede verificarse la totalidad del contenido.
+Dato pendiente: clasificación arquitectónica de los componentes no tipificados ubicados directamente en INTEGRACIÓN, especialmente los modelos y anotaciones.
+4. CNT-004 — No verificable
+Población: posible Dominio Productor.
+Evidencia: EVC Transferencias y nuevos sistemas de pago - EPC Comercio internacional Bancolombia, ID QiJ5a7VmLyjA, tiene architecturalDomain.status: NO_DETERMINADO.
+Justificación: no puede certificarse si el contenedor es un Dominio Productor ni evaluar su contenido bajo esa modalidad.
+Dato pendiente: clasificación arquitectónica del contenedor QiJ5a7VmLyjA.
+5. CNT-005 — No verificable
+Población: posible dominio de Sistemas Externos.
+Evidencia: el mismo contenedor QiJ5a7VmLyjA carece de rol arquitectónico determinado.
+Justificación: podría corresponder a Sistemas Externos, pero no existe evidencia certificada para afirmarlo o descartarlo.
+Dato pendiente: clasificación del dominio raíz externo.
+6. EXT-001 — No cumple
+Población: COMEX - CIB, Iseries y COMEX - NUBE.
+Evidencia: Iseries, ID hWlX8_0Rgy1S, contiene el componente QMGRIBMI01, certificado como GESTOR_COLAS.
+Justificación: un sistema externo auxiliar puede encapsular API, servicios, pendientes, conceptos, anotaciones y determinadas capas. Un gestor de colas no forma parte del contenido permitido.
+Dato pendiente: ninguno para el incumplimiento identificado.
+7. EXT-002 — No aplica
+Población: auxiliares cuyo nombre contenga EVC, EPC o LDC y encapsulen una API.
+Evidencia: los auxiliares certificados son COMEX - CIB, Iseries y COMEX - NUBE.
+Justificación: ninguno de sus nombres contiene EVC, EPC o LDC.
+Dato pendiente: ninguno.
+8. GW-001 — No verificable
+Población: tres compuertas BPMN operativas.
+Evidencia: ¿Se envia token de sesion? tiene caminos SI/NO coherentes. Las compuertas YEuWdVjBXbtf y _yNWwMRueY9g no tienen texto, pero sus caminos sí están marcados Sí/No.
+Justificación: en dos compuertas existen respuestas sin texto de decisión que permita establecer su significado.
+Dato pendiente: texto de decisión de esas dos compuertas, o eliminación de las etiquetas si realmente son compuertas sin decisión textual.
+API y servicios
+9. API-001 — Cumple
+Población: API principal.
+Evidencia: Currency Exchange Transaction Pricing - Currency Receiving v2.0.0.
+Justificación: contiene producto, separador estructural, nombre funcional en inglés y versión válida de tres segmentos.
+Dato pendiente: ninguno.
+10. API-002 — Cumple
+Población: API principal.
+Evidencia: operación executeTransactionCurrencyExchange.
+Justificación: está en inglés, comienza en minúscula, usa camelCase y no incluye espacios ni caracteres no permitidos.
+Dato pendiente: ninguno.
+11. API-003 — No cumple
+Población: API principal ubicada en INTEGRACIÓN.
+Evidencia: tercera sección Entidad.
+Justificación: falta la estructura tipo - modelo. La declaración de la analista de que la exposición es private no corrige el texto de la figura.
+Dato pendiente: ninguno para el dictamen.
+Corrección: cambiar la tercera sección a private - entidad.
+12. API-004 — No cumple
+Población: API principal declarada MCI y private.
+Evidencia: DECLARADO_POR_ANALISTA; la API no presenta asociaciones en deploymentAssociations.
+Justificación: una API MCI privada necesita Capa de Arquitectura y Flujo Transaccional inequívocamente asociados. Existen capas y flujos en la página, pero ninguno está asociado a la API principal.
+Dato pendiente: ninguno para el incumplimiento; se requiere corregir el modelamiento de asociación.
+13. SRV-001 — Cumple
+Población: servicio invocado ms-transfer-service-context, ID QAhXAUq1OqbJ.
+Evidencia: architecturalType: SERVICIO; relación bidireccional con Validar titularidad.
+Justificación: el nombre es visible, específico y diferente de una plantilla.
+Dato pendiente: ninguno.
+14. SRV-002 — No cumple
+Población: ms-transfer-service-context.
+Evidencia: segunda sección usecase/otherpath.
+Justificación: contiene / y parece representar una ruta o dos segmentos, no una única operación funcional.
+Dato pendiente: ninguno para el dictamen.
+Corrección sugerida: usar una operación única en camelCase, por ejemplo validateOwnership, si esa es realmente la responsabilidad del servicio.
+15. SRV-003 — Cumple
+Población: ms-transfer-service-context.
+Evidencia: tercera sección Utilidad.
+Justificación: corresponde a uno de los modelos permitidos; las diferencias de mayúsculas y minúsculas son válidas.
+Dato pendiente: ninguno.
+16. SRV-004 — Cumple
+Población: hijo principal de E2 declarado MCI.
+Evidencia: asociación resuelta entre:
+Flujo x6OMy7H_BdmL.
+Capa x6OMFCgq99Xl.
+Hijo TJ7m.cKnR-~v.
+Justificación: el JSON registra RESOLVED_BY_DIRECT_CONTAINMENT y vincula el hijo con el flujo y la capa.
+Dato pendiente: ninguno.
+Eventos de integración
+17. EVT-001 — No aplica
+18. EVT-002 — No aplica
+19. EVT-003 — No aplica
+20. EVT-004 — No aplica
+21. EVT-005 — No aplica
+22. EVT-006 — No aplica
+23. EVT-007 — No aplica
+Población: eventos de integración de tipo Aplicación o Empresarial.
+Evidencia: el contenido operativo solo certifica figuras BPMNEvent con architecturalType: EVENTO; no aparecen eventos de integración con las tres secciones, Capa de Tópicos y tópicos p/s.
+Justificación: los eventos BPMN operativos del hijo no deben confundirse con eventos de integración.
+Dato pendiente: ninguno para estas reglas.
+Capas, flujos y escenario
+24. CA-001 — Cumple
+Población: tres Capas de Arquitectura.
+Evidencia: las tres se denominan Capa de Arquitectura - composicion, una vez normalizados los espacios.
+Justificación: el tipo composicion está permitido y aparece en minúsculas y sin tilde.
+Dato pendiente: ninguno.
+25. FT-001 — Cumple
+Población: tres Flujos Transaccionales.
+Evidencia: los tres se denominan Flujo Transaccional - no-monetario.
+Justificación: el tipo no-monetario está expresamente permitido.
+Dato pendiente: ninguno.
+26. E1-001 — No aplica
+Población: escenarios E1.
+Justificación: la API principal y el hijo principal están en INTEGRACIÓN, por lo que la estructura candidata es E2 y no E1.
+Dato pendiente: ninguno.
+27. E2-001 — No verificable
+Población: escenario candidato E2.
+Evidencia: la API y el hijo están separados y ubicados en INTEGRACIÓN; la conexión gT7m.rKo0qu- va de la API al evento iQ7mp2EXtgT- con None → Arrow.
+Justificación: el evento está identificado solamente como BPMNEvent; subtype: null y subtypeStatus: NO_VERIFICABLE. No puede certificarse como evento de Inicio.
+Dato pendiente: certificación gráfica del subtipo BPMN Inicio para iQ7mp2EXtgT-.
+28. E3-001 — No aplica
+Población: escenarios E3.
+Justificación: existe una API principal en INTEGRACIÓN; no se trata de un componente principal y un hijo ubicados en un Dominio Productor.
+Dato pendiente: ninguno.
+Modelos y comandos
+29. MOD-001 — Cumple
+Población: API principal de E2.
+Evidencia: la API está agrupada con:
+Modelo de entrada tQ7mv8VyFaR3, marcado ENTRADA.
+Modelo de salida tQ7mOxCbJC2l, marcado SALIDA.
+Justificación: están identificados ambos modelos obligatorios y asociados estructuralmente con la API mediante el grupo tQ7mnJvOSmqA.
+Dato pendiente: ninguno.
+30. COM-001 — Cumple
+Población: actividades relacionadas con servicios o gestores:
+Validar titularidad.
+Realizar cálculo de recepción de divisas.
+Evidencia: ambas son BPMNActivity y participan en conexiones arquitectónicas.
+Justificación: comienzan con verbos en infinitivo y contienen complementos funcionales específicos.
+Dato pendiente: ninguno.
+31. COM-002 — No aplica
+Población: comandos conectados a API invocadas.
+Justificación: no hay una API invocada certificada relacionada con una actividad candidata a comando.
+Dato pendiente: ninguno.
+32. COM-003 — Cumple
+Población: Validar titularidad y ms-transfer-service-context.
+Evidencia: conexiones cpvWZi_5ig8x y opvWnghNUNCl.
+Justificación: existen los dos sentidos y cada origen emplea CircleOpen, mientras que el destino usa Generalization.
+Dato pendiente: ninguno.
+33. COM-004 — Cumple
+Población: Realizar cálculo de recepción de divisas y CQMGRIBMICORP01.
+Evidencia: conexiones 4Oc~nW0~3TPX y 4Oc~e2KOZVg8.
+Justificación: la relación es bidireccional y conserva las terminaciones exigidas.
+Dato pendiente: ninguno.
+34. COM-005 — No aplica
+Población: comandos conectados directamente con sistemas externos auxiliares.
+Justificación: las conexiones operativas relevantes llegan a componentes internos certificados, no directamente al auxiliar.
+Dato pendiente: ninguno.
+Gestores de colas
+35. MQ-001 — Cumple
+Población: figuras UMLActiveClassBlock.
+Evidencia: CQMGRIBMICORP01 y QMGRIBMI01.
+Justificación: ambos nombres son visibles, específicos y no corresponden a plantillas.
+Dato pendiente: ninguno.
+36. MQ-002 — Cumple
+Población: gestor CQMGRIBMICORP01 ubicado en la estructura de INTEGRACIÓN.
+Evidencia: asociación de despliegue resuelta con:
+Flujo Transaccional - no-monetario, ID 4Oc~UAg.ChZ2.
+Capa de Arquitectura - composicion, ID 4Oc~STvzS7WZ.
+Justificación: la modalidad MCI posee los dos elementos exigidos y la asociación está resuelta por contención directa.
+Dato pendiente: ninguno. QMGRIBMI01 está fuera del dominio de Integración certificado y no genera obligación adicional en esta regla.
+37. MQ-003 — No verificable
+Población: conexiones de gestores con otros gestores o servicios.
+Evidencia: la pareja CQMGRIBMICORP01 ↔ QMGRIBMI01 presenta ambos sentidos y terminaciones válidas. Sin embargo, QMGRIBMI01 también se relaciona con 0235 - CI8: Calculo Compra Divisas, cuyo architecturalType es null.
+Justificación: no puede certificarse si 0235 - CI8 es un servicio invocado y, por tanto, no puede cerrarse toda la población de conexiones del gestor.
+Dato pendiente: clasificación arquitectónica de 0235 - CI8: Calculo Compra Divisas.
+4. Recomendaciones priorizadas
+Prioridad alta
+Corregir la tercera sección de la API
+Actual: Entidad.
+Recomendado: private - entidad.
+Asociar el despliegue MCI directamente con la API principal
+Crear o reutilizar una Capa de Arquitectura - composicion.
+Asociar un Flujo Transaccional - no-monetario.
+La asociación debe quedar ligada inequívocamente a tQ7mFTFbJ1SW, no solo ubicada visualmente cerca.
+Certificar el evento de Inicio
+El evento iQ7mp2EXtgT- debe usar una figura o propiedad que permita reconocer el subtipo BPMN de Inicio.
+Esto permitiría resolver E2-001.
+Corregir la operación del servicio
+Sustituir usecase/otherpath por una única operación funcional.
+Evitar /, espacios, rutas técnicas o múltiples operaciones en la misma sección.
+Prioridad media
+Revisar el contenido de Iseries
+El gestor QMGRIBMI01 no debería estar encapsulado en un sistema externo auxiliar bajo las reglas activas.
+Debe reubicarse en un dominio que permita gestores de colas o replantearse la clasificación del contenedor.
+Clasificar el dominio EVC/EPC
+Definir si QiJ5a7VmLyjA es DOMINIO PRODUCTOR, SISTEMAS EXTERNOS u otra categoría permitida.
+Esta corrección resolvería parte de CNT-004 y CNT-005.
+Completar las preguntas de las compuertas
+Añadir el texto de decisión a YEuWdVjBXbtf y _yNWwMRueY9g.
+Mantener caminos Sí/No únicamente si representan una pregunta binaria.
+Prioridad de limpieza
+Clasificar 0235 - CI8: Calculo Compra Divisas
+Si es servicio invocado, declarar architecturalType: SERVICIO y separar correctamente nombre, operación y modelo.
+Esto permitiría cerrar MQ-003.
+Revisar los bloques operativos sin tipo arquitectónico
+Modelos de entrada y salida.
+Anotaciones.
+Datos de transformación.
+Evitar que una figura BPMN genérica sustituya una clasificación arquitectónica necesaria.
+Conclusión: el blueprint tiene una base E2 sólida y las relaciones operativas principales están bien encaminadas. El mayor riesgo no está en la secuencia funcional, sino en la falta de certificación de algunos tipos, en la asociación de despliegue de la API y en la tercera sección de la API. Corrigiendo esos puntos, el cumplimiento podría mejorar de forma significativa frente al 60 % actual.
+
+PREGUNTAS DEL ANALISTA LUEGO DE LA VALIDACION DEL RESULTADO ENTREGADO
+- en la regla api 004 como no puede certificarse q la api principal tiene capa y flujo a pesar de responder el analista que si esta en MCI, xq la regla se puso como no cumple en lugar de no verificable? hay algo en la regla q te haga confundir?
+
+2. API-004: tienes razón, debía ser “No verificable”
+La clasificación correcta es:
+API-004 — No verificable
+No debía quedar como No cumple.
+¿Qué demuestra tu respuesta?
+Tu declaración demuestra que:
+La API principal es MCI.
+Su exposición es private.
+Eso hace aplicable la obligación: la API debe tener asociadas:
+Una Capa de Arquitectura.
+Un Flujo Transaccional.
+Pero tu respuesta no demuestra por sí sola la asociación gráfica de esas figuras con la API. Según el procedimiento, las declaraciones de la analista pueden determinar la condición MCI y la exposición, pero no sustituyen evidencia de contención o asociación.
+¿Qué contiene el JSON?
+El blueprint sí contiene varias figuras candidatas:
+Capa de Arquitectura - composicion.
+Flujo Transaccional - no-monetario.
+Sin embargo, ninguna asociación de despliegue tiene como componente asociado la API principal Currency Exchange Transaction Pricing - Currency Receiving v2.0.0. Las asociaciones resueltas corresponden al hijo principal y al gestor de colas. También existe una pareja de capa y flujo cuyo componente asociado está pendiente.
+Por tanto, la situación es:
+La obligación está confirmada.
+Existen capa y flujo candidatos en la página.
+No puede demostrarse que pertenezcan a la API.
+Tampoco está certificada su ausencia respecto de la API.
+Esto encaja literalmente en el estado No verificable de API-004:
+Existe una Capa o un Flujo candidato, pero no puede certificarse que esté asociado a la API principal.
+¿Cuándo habría sido “No cumple”?
+API-004 sería No cumple si estuvieran demostradas simultáneamente estas condiciones:
+La API es MCI.
+La API es private.
+El inventario y las asociaciones tienen cobertura suficiente.
+Se demuestra que la API no tiene Capa de Arquitectura, no tiene Flujo Transaccional o alguno está asociado a otro componente.
+Aquí se cumplen los dos primeros puntos, pero no hay evidencia suficiente para afirmar el cuarto como ausencia certificada. Al contrario, existen figuras candidatas sin asociación resuelta.
+¿La regla induce a confusión?
+No realmente. La regla distingue expresamente:
+No cumple: falta un elemento obligatorio y esa ausencia está suficientemente certificada.
+No verificable: existe una capa o flujo candidato, pero no se puede certificar su asociación.
+Mi error fue interpretar:
+“La API no presenta deploymentAssociations”
+como:
+“Está certificada la ausencia de despliegue”.
+Esas afirmaciones no son equivalentes. Un campo sin asociación positiva no demuestra automáticamente ausencia cuando existen candidatos pendientes.
+
+2. Mejora propuesta para API-004
+La regla actual ya contempla el caso, pero deja demasiado cerca dos ideas distintas:
+Que falte una asociación.
+Que la asociación no pueda certificarse.
+Eso facilita interpretar incorrectamente que deploymentAssociations: [] equivale a ausencia demostrada. La mejora debe dejar explícito que:
+La ausencia de evidencia positiva no es evidencia de ausencia.
+Redacción propuesta
+No modificaría el propósito ni la obligación de API-004. Ajustaría principalmente los apartados Evidencia mínima, No cumple y No verificable.
+Evidencia mínima propuesta
+Evidencia mínima: Identificación certificada de la API principal, tipo de exposición obtenido de la tercera sección o declarado por la analista, condición MCI o no MCI declarada por la analista e inventario completo de las Capas de Arquitectura, Flujos Transaccionales y asociaciones de despliegue de la página.
+La declaración de la analista determina la condición MCI y, cuando corresponda, el tipo de exposición, pero no demuestra la existencia, ausencia ni asociación de una Capa de Arquitectura o un Flujo Transaccional.
+Un campo deploymentAssociations ausente, vacío o sin una asociación positiva para la API principal no demuestra por sí solo que la API carezca de los elementos de despliegue exigidos. Para certificar su ausencia se requiere cobertura suficiente del inventario y de las asociaciones, sin capas o flujos candidatos pendientes de atribución.
+Esta adición corrige exactamente el punto que originó el dictamen errado.
+«No cumple» propuesto
+No cumple: La API principal está declarada como MCI, su tipo de exposición está determinado, el inventario de las figuras de despliegue y sus asociaciones tiene cobertura completa, y se demuestra al menos una de las siguientes situaciones:
+Para una API private, no existe una Capa de Arquitectura asociada, no existe un Flujo Transaccional asociado o falta alguno de los dos.
+Para una API partner, no existe una Capa de Arquitectura asociada.
+El elemento requerido existe, pero está certificadamente asociado a otro componente.
+La asociación existente contradice inequívocamente la pertenencia a la API principal.
+Solo puede utilizarse este estado cuando la ausencia o asociación incorrecta esté certificada. La ausencia, nulidad o vaciedad de deploymentAssociations no constituye por sí sola un incumplimiento certificado.
+La frase clave es la última. Evita convertir una carencia de evidencia en un No cumple.
+«No verificable» propuesto
+No verificable: No puede certificarse cuál es la API principal; falta la declaración de su condición MCI cuando esta determina la aplicabilidad; no puede determinarse su tipo de exposición mediante la tercera sección ni mediante una declaración de la analista; el inventario o las asociaciones de despliegue no tienen cobertura suficiente; existe una Capa de Arquitectura o un Flujo Transaccional candidato cuya asociación con la API principal no puede confirmarse ni descartarse; o el campo deploymentAssociations está ausente, vacío o no contiene una asociación para la API, sin evidencia suficiente para certificar la ausencia del elemento requerido.
+Si existen capas o flujos candidatos sin propietario resuelto, prevalece No verificable sobre No cumple, salvo que exista otro incumplimiento certificado e independiente.
+Este párrafo cubre exactamente lo ocurrido en tu blueprint: hay capas y flujos en la página, pero no puede atribuirse uno de cada tipo a la API principal.
+--------------------------------------------------------------------------------------------------------------------------------------------------------------
+BLUEPRINT 2: Copia - MCI - BP - Credit Limit Management - Credit Limits Operation
+
+Registro ambas respuestas como DECLARADO_POR_ANALISTA para la página setCreditLimit: la API principal y el hijo principal son MCI. Con esto cierro aplicabilidad; las declaraciones no sustituyen la evidencia gráfica de asociación.
+Razonado para 8s
+Resultado de la validación
+He registrado las respuestas así:
+API principal: Credit Limit Management - Credit Limits Operations v1.0.0 (IHoFV1A-nxpz) tiene Capa de Despliegue MCI, DECLARADO_POR_ANALISTA.
+Hijo principal: Credit Limits Operations (qoVt-EO_PR2Y) tiene Capa de Despliegue MCI, DECLARADO_POR_ANALISTA.
+La declaración determina qué reglas de despliegue son aplicables, pero no reemplaza la evidencia estructural que debe demostrar la asociación entre el componente, la Capa de Arquitectura y el Flujo Transaccional.
+1. Alcance y controles de integridad
+Archivo evaluado: Copia-MCI-BP-CreditLimitManagement-CreditLimitsOperation-ENRIQUECIDO.
+ Contrato: copilot-factual-v0.4.6.1.
+ Página seleccionada: setCreditLimit, ID 21B5THC7XEuN.
+ Clasificación: MIXED. Se evaluaron 109 componentes operativos y se excluyeron 51 figuras de la leyenda. La página contiene 160 figuras, 43 conexiones y 12 grupos.
+Las páginas Escenarios BDD y la página sin título fueron reconocidas como omitidas por NOT_SELECTED_BY_ANALYST, por lo que no entran en el cálculo.
+Integridad técnica
+Los controles previos no mostraron:
+IDs duplicados.
+Conexiones con extremos inexistentes.
+Incoherencias entre el padre inmediato y la cadena de ancestros.
+Ciclos de contención evidentes.
+Conflictos registrados en issues.
+Por ello, no fue necesario degradar resultados por defectos estructurales del JSON.
+Patrón identificado
+Se identifica un patrón estructural candidato a E2:
+API principal en INTEGRACIÓN: Credit Limit Management - Credit Limits Operations v1.0.0.
+Hijo principal en INTEGRACIÓN: Credit Limits Operations.
+Ambos son componentes estructuralmente separados.
+Existe una conexión None → Arrow desde la API hacia el BPMNEvent qoVtlAH18xe-, contenido en el hijo.
+El evento solo está certificado genéricamente como BPMNEvent; su subtipo Inicio figura como NO_VERIFICABLE. Por eso E2 no puede cerrarse como cumplido.
+2. Evaluación de las 37 reglas
+Estructura y contenedores
+Regla	Población y evidencia	Estado	Justificación y dato pendienteCNT-	Patrón E2; dominio INTEGRACIÓN qoVtjQmMyHG4, con domainRole: INTEGRATION.	Cumple	E2 exige al menos un dominio INTEGRACIÓN y está certificado. No hay dato pendiente.
+CNT-002	Hijo principal Credit Limits Operations (qoVt-EO_PR2Y), rol HIJO_PRINCIPAL, dentro de INTEGRACIÓN.	Cumple	Existe un único hijo principal, tiene nombre específico y está en el dominio exigido para E2.
+CNT-003	Dominio INTEGRACIÓN y sus niveles padre/hijo.	No verificable	La mayoría del contenido operativo está correctamente ubicado, pero existen figuras operativas en el nivel padre con clasificación arquitectónica null, como qoVtyOZa82hC. No puede certificarse que todas pertenezcan exclusivamente a categorías permitidas. Pendiente: clasificar o retirar las figuras operativas sin tipo.
+CNT-004	Contenedor ISERIES (qoVtRhoe0_.L) con dominio NO_DETERMINADO y roles posibles PRODUCER o EXTERNAL_SYSTEM.	No verificable	ISERIES podría ser un DOMINIO PRODUCTOR, pero no tiene una clasificación certificada. Pendiente: definir inequívocamente el rol arquitectónico de ISERIES.
+CNT-005	El mismo contenedor ISERIES es candidato a SISTEMAS EXTERNOS.	No verificable	No puede certificarse si ISERIES corresponde a SISTEMAS EXTERNOS, por lo que tampoco puede validarse su contenido bajo esa modalidad.
+EXT-001	Auxiliares EVC - Datos, Analítica, IA y Blockchain (nKmz-ParQlI4) y BACK ISERIES (CXmzLGnd_m2s).	No verificable	Ambos tienen nombre y contenido, pero EVC encapsula componentes con tipos arquitectónicos null y varios BPMNEvent genéricos. BACK ISERIES contiene un UMLClassBlock cuya clasificación funcional tampoco está certificada. Pendiente: declarar el tipo arquitectónico de los componentes internos.
+EXT-002	Auxiliar cuyo nombre contiene EVC y que encapsula varios UMLClassBlock candidatos a API o servicio.	No verificable	EVC sí está en el nivel padre de INTEGRACIÓN, pero ninguno de sus UMLClassBlock está certificado como architecturalType: API. Pendiente: certificar si alguno es API encapsulada.
+GW-001	Ocho figuras BPMNGateway, varias con caminos etiquetados Sí/No.	No verificable	Los textos de decisión, como “¿Consulta realizada con éxito?”, aparecen en figuras separadas y no en las compuertas. No puede asociarse inequívocamente cada pregunta con su gateway. Además, hay compuertas con caminos etiquetados pero sin texto propio. Pendiente: incorporar el texto de decisión en la compuerta o demostrar su asociación.
+API y servicios
+Regla	Población y evidencia	Estado	Justificación y dato pendienteAPI-001	API principal IHoFV1A-nxpz; primera sección: “Credit Limit Management - Credit Limits Operations v1.0.0”.	Cumple	Presenta producto, separador estructural, nombre funcional en inglés y versión de tres segmentos.
+API-002	Segunda sección: setCreditLimit.	Cumple	Es una operación en inglés, funcional y en formato camelCase.
+API-003	Tercera sección: private - Entidad.	No cumple	El modelo debe estar completamente en minúsculas. Debe cambiarse a private - entidad. La declaración de exposición no corrige esta condición textual.
+API-004	API principal MCI y private; asociación RESOLVED_BY_EXPLICIT_SUPERIOR_GROUP con Capa IHoF4qDopXAc y Flujo IHoFK-SFXBUW.	Cumple	Para una API private MCI se exigen Capa de Arquitectura y Flujo Transaccional. Ambos están asociados inequívocamente mediante el grupo superior IHoFQsUSp8gF.
+SRV-001	UMLClassBlock invocados como Application Data - Homologation, Employee Keys, Customer Information y Customer Commercial Data.	No verificable	Tienen nombres visibles, pero architecturalType y role son null. La inferencia por convención de nombres no certifica por sí sola el rol de servicio invocado. Pendiente: clasificarlos explícitamente como API o servicio.
+SRV-002	Operaciones retrieveData, get/keys, keysByIdentification y retrieveCommercialManagement.	No verificable	No puede determinarse qué componentes son servicios invocados ni si tienen Capa de Despliegue. Además, get/keys no sería camelCase si se confirma que tiene despliegue.
+SRV-003	Tercera sección visible como Entidad en varios UMLClassBlock.	No verificable	El valor sería válido para un servicio, pero la clasificación como servicio invocado no está certificada. El texto “Entidad” por sí solo no demuestra el tipo del componente.
+SRV-004	Hijo principal Credit Limits Operations, escenario E2, declarado MCI.	No cumple	El JSON no contiene una asociación de despliegue resuelta cuyo associatedComponentId sea qoVt-EO_PR2Y. Las Capas y Flujos visibles están asociados a la API principal o quedan pendientes sin componente propietario. Deben asociarse inequívocamente una Capa de Arquitectura y un Flujo Transaccional al hijo principal.
+Eventos de integración
+No hay componentes certificados como eventos de integración de tipo Aplicación o Empresarial. Los 15 componentes con architecturalType: EVENTO son figuras BPMN operativas, no eventos de integración con las tres secciones corporativas.
+Regla	Estado	JustificaciónEVT-001	No aplica	No existe población certificada de eventos de integración.
+EVT-002	No aplica	No existe población certificada de eventos de integración.
+EVT-003	No aplica	No existe evento con tercera sección Tipo - Clasificación.
+EVT-004	No aplica	No existen eventos de integración que requieran Capa de Tópicos.
+EVT-005	No aplica	No hay evento clasificado como Query, Command o Event.
+EVT-006	No aplica	No se identificaron tópicos asociados a eventos de integración.
+EVT-007	No aplica	No existe población de eventos de integración y tópicos sobre la cual evaluar señales.
+Despliegue y escenarios
+Regla	Población y evidencia	Estado	Justificación y dato pendienteCA	Tres figuras certificadas como CAPA.	Cumple	Las tres utilizan “Capa de Arquitectura - composicion”. Tras normalizar espacios, el nombre coincide con el catálogo.
+FT-001	Tres figuras certificadas como FLUJO.	Cumple	Utilizan “Flujo Transaccional - operativo”. Los espacios repetidos se normalizan y operativo es un tipo permitido.
+E1-001	Patrón certificado como candidato E2, no E1.	No aplica	API e hijo principal están ambos en INTEGRACIÓN, no existe hijo principal certificado en DOMINIO PRODUCTOR.
+E2-001	API principal, hijo principal, BPMNEvent qoVtlAH18xe- y conexión qoVtKrBt0bTr.	No verificable	La separación, dominios, sentido y terminaciones cumplen la estructura E2, pero el evento solo está identificado genéricamente como BPMNEvent. Falta certificar que su subtipo sea Inicio.
+E3-001	Patrón certificado como candidato E2.	No aplica	El componente principal y el hijo no están en un mismo DOMINIO PRODUCTOR certificado.
+Modelos y comandos
+Regla	Población y evidencia	Estado	Justificación y dato pendienteMOD-001	API principal y modelos IHoFg.Q2e39F con ENTRADA e IHoF7Ay~xPxU con SALIDA; agrupados con la API en IHoFWgbVBD4q.	Cumple	La API principal E2 tiene un modelo de entrada y uno de salida asociados estructuralmente mediante el grupo explícito.
+COM-001	Actividades relacionadas con invocados o gestor: Consultar información del cliente, Consultar llave CIF, Homologar datos MDM a CIF, Asignar Límite de Endeudamiento, entre otras.	Cumple	Las actividades relacionadas tienen nombres funcionales en español, comienzan con infinitivo y presentan complemento. Se excluyen anotaciones y modelos de datos no conectados como comandos.
+COM-002	Relaciones entre actividades y UMLClassBlock encapsulados en EVC.	No verificable	Las relaciones son bidireccionales y usan CircleOpen/Generalization, pero los UMLClassBlock no están certificados como API invocadas. Pendiente: clasificar cada invocado.
+COM-003	Las mismas relaciones podrían corresponder a servicios invocados.	No verificable	Las conexiones presentan ambos sentidos, pero falta certificar cuáles UMLClassBlock son servicios.
+COM-004	Asignar Límite de Endeudamiento se relaciona con una figura VSMDatacellBlock llamada Gestor de colas MCI, mientras el gestor certificado es CXmzfSqybhIQ.	No verificable	No puede demostrarse que la figura intermedia sea una representación inequívoca del gestor certificado para atribuirle directamente la conexión del comando.
+COM-005	No existen conexiones cuyo extremo gráfico sea directamente EVC o BACK ISERIES sin atribución interna.	No aplica	Las conexiones llegan a componentes encapsulados o a figuras intermedias, no directamente al sistema externo auxiliar.
+Gestor de colas
+Regla	Población y evidencia	Estado	Justificación y dato pendienteMQ-001	Gestor CXmzfSqybhIQ, UMLActiveClassBlock, nombre Gestor de colas MCI.	Cumple	Tiene nombre visible, funcional y específico.
+MQ-002	Gestor ubicado en el nivel padre de INTEGRACIÓN.	No verificable	Existe una Capa y un Flujo candidatos (CXmzM~c~Q5Nz y CXmze~Zx.6ky), pero su asociación está en PENDING_NO_COMMON_SUPERIOR_GROUP y associatedComponentId: null. No puede demostrarse que pertenezcan al gestor.
+MQ-003	Conexiones del gestor con la figura VSMDatacellBlock y con el UMLClassBlock AsignacionLimitesEndeudamientoV1.0.0.	No verificable	Las conexiones tienen ambos sentidos y terminaciones CircleOpen/Generalization, pero el otro gestor, servicio o evento Mensaje no está certificado. El subtipo Mensaje tampoco aparece en la evidencia.
+3. Consolidado
+Estado	CantidadCumple	10
+No cumple	2
+No verificable	15
+No	10
+Total	37
+Porcentaje de cumplimiento
+Se excluyen las 10 reglas No aplica:
+1010+2+15×100=37,04%\frac{10}{10+2+15}\times100 = \mathbf{37,04\%}10+2+1510​×100=37,04%
+El porcentaje es bajo principalmente por falta de certificación explícita, no porque se hayan encontrado muchos incumplimientos. Solo hay dos incumplimientos demostrados; quince reglas permanecen abiertas porque faltan tipos arquitectónicos, asociaciones o subtipos BPMN.
+4. Hallazgos prioritarios
+Prioridad alta: incumplimientos certificados
+API-003: cambiar la tercera sección de la API principal:
+Actual: private - Entidad
+Correcto: private - entidad
+SRV-004: modelar y asociar al hijo principal Credit Limits Operations:
+Una figura Capa de Arquitectura - composicion, experiencia o sistema.
+Un Flujo Transaccional - operativo, monetario, no-monetario o transversal.
+La asociación debe quedar explícita para qoVt-EO_PR2Y, no solo visualmente cercana.
+Prioridad media: evidencia que desbloquea varias reglas
+Clasificar los UMLClassBlock invocados como API o servicio:
+Application Data - Homologation V1.0.0.
+Employee Keys - Information V1.1.1.
+Customer Information - Keys V2.1.0.
+Customer Commercial Data - Information V1.1.3.
+AsignacionLimitesEndeudamientoV1.0.0.
+Esto permitiría cerrar SRV-001 a SRV-003, COM-002, COM-003, EXT-001 y EXT-002.
+Certificar el BPMNEvent inicial qoVtlAH18xe- como evento de Inicio. Esto cerraría E2-001, cuya dirección y terminaciones ya están correctamente representadas.
+Asociar el despliegue del gestor CXmzfSqybhIQ. Actualmente la Capa y el Flujo candidatos están pendientes y sin associatedComponentId.
+Clasificar ISERIES como DOMINIO PRODUCTOR o SISTEMAS EXTERNOS. La ambigüedad afecta simultáneamente CNT-004 y CNT-005.
+Calidad del modelamiento
+Integrar cada pregunta de decisión en su respectiva compuerta BPMN o proporcionar una asociación estructural inequívoca. Actualmente los textos “¿Consulta realizada con éxito?” y similares aparecen como bloques independientes.
+Revisar ortografía y consistencia visible:
+“dsponibel” → disponible.
+“Homolgar” → Homologar.
+“secu ecia” → secuencia.
+“Límite de endudamiento” → Límite de endeudamiento.
+Uniformar “Sí” con tilde en las etiquetas de caminos.
+Dictamen
+El blueprint tiene una estructura base E2 coherente, una API principal bien identificada, despliegue correcto para la API, modelos de entrada/salida asociados y una secuencia operativa extensa. No obstante, todavía no está listo para cierre normativo: debe corregirse API-003 y completar la asociación de despliegue del hijo principal. Después, la mayor ganancia vendrá de sustituir inferencias por clasificaciones arquitectónicas explícitas.
