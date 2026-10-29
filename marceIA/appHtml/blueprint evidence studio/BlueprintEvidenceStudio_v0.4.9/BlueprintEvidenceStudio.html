@@ -20,7 +20,7 @@
 
       <section id="bpmnPanel" class="evidence-panel"><h3>Eventos BPMN con subtipo no certificado</h3><p class="muted">No se infiere Inicio por nombre, posición, forma, cercanía ni texto libre.</p><div id="bpmnSummary" class="notice"></div><div class="table-wrap"><table><thead><tr><th>Página</th><th>ID</th><th>Estado</th><th>customData literal</th><th>Conflictos</th><th>Relación con escenario</th><th>Motivo</th></tr></thead><tbody id="bpmnRows"></tbody></table></div></section>
 
-      <section id="producerPanel" class="evidence-panel"><h3>Dominios productores</h3><p class="muted">Distingue declaración e inferencia estructural; nunca asigna productor o externo por descarte.</p><div class="table-wrap"><table><thead><tr><th>Página</th><th>Dominio efectivo</th><th>Procedencia</th><th>Certeza</th><th>Conflictos</th><th>IDs de sustento</th></tr></thead><tbody id="producerRows"></tbody></table></div></section>
+      <section id="producerPanel" class="evidence-panel"><h3>Dominios productores</h3><p class="muted">Distingue declaración e inferencia estructural; nunca asigna productor o externo por descarte, salvo los dominios sin nombre ni hijo en E1 y E3 (sistemas externos).</p><div class="table-wrap"><table><thead><tr><th>Página</th><th>Dominio efectivo</th><th>Procedencia</th><th>Certeza</th><th>Conflictos</th><th>IDs de sustento</th></tr></thead><tbody id="producerRows"></tbody></table></div></section>
 
       <section id="childPanel" class="evidence-panel"><h3>Contenedores hijo</h3><p class="muted"><code>SERVICIO_HIJO</code>, <code>HIJO_PRINCIPAL</code>, <code>SERVICIO</code> e <code>INVOCADO</code> son conceptos distintos.</p><div class="table-wrap"><table><thead><tr><th>Página</th><th>ID / nombre original</th><th>Tipo</th><th>Rol</th><th>Padre inmediato</th><th>Ancestros</th><th>Figuras directas</th><th>Resolución</th></tr></thead><tbody id="childRows"></tbody></table></div></section>
 
@@ -671,23 +671,37 @@
       const architecturalRoleCandidates = deriveArchitecturalRoleCandidates(page, containment, classifications, connectionData.connections, pageClassification);
       const structuralScenario = identifyStructuralScenario(page, architecturalRoleCandidates, pageClassification);
       if (domainResolution.status === "CONFLICTING_MULTIPLE_PRODUCERS" && !structuralScenario.conflicts.includes(domainResolution.status)) structuralScenario.conflicts.push(domainResolution.status);
-      if (structuralScenario.scenario === "E3" && ["HIPOTESIS", "CONFIRMADO"].includes(structuralScenario.status) && structuralScenario.sourceRootDomainId) {
-        const mark = (x) => {
-          x.roleSource = "E3_ELIMINATION";
+      if (["E1", "E3"].includes(structuralScenario.scenario) && ["HIPOTESIS", "CONFIRMADO"].includes(structuralScenario.status) && structuralScenario.sourceRootDomainId) {
+        const elimination = `${structuralScenario.scenario}_ELIMINATION`, mark = (x) => {
+          x.roleSource = elimination;
           x.roleStatus = "INFERRED_BY_ELIMINATION";
         };
         for (const r of containment.rootContainers.filter((r2) => r2.id !== structuralScenario.sourceRootDomainId && !r2.role && r2.id !== containment.components.find((c) => c.id === structuralScenario.mainChildServiceId)?.architecturalDomainId)) {
           r.domainRole = r.role = "EXTERNAL_SYSTEM";
           mark(r);
-          r.architecturalDomain.roleSource = "E3_ELIMINATION";
+          r.architecturalDomain.roleSource = elimination;
           r.architecturalDomain.status = "INFERRED_BY_ELIMINATION";
           for (const c of containment.components) if (c.architecturalDomainId === r.id && c.domainRole == null) {
             c.domainRole = c.explicitDomainRole = "EXTERNAL_SYSTEM";
             c.possibleDomainRoles = [];
-            c.rootRoleSource = c.evidenceSources.domainRole = "E3_ELIMINATION";
+            c.rootRoleSource = c.evidenceSources.domainRole = elimination;
             c.rootRoleStatus = c.architecturalDomain.status = "INFERRED_BY_ELIMINATION";
-            c.architecturalDomain.roleSource = "E3_ELIMINATION";
+            c.architecturalDomain.roleSource = elimination;
           }
+        }
+        const childRoot = containment.components.find((c) => c.id === structuralScenario.mainChildServiceId)?.rootContainer?.id, legend = new Set(pageClassification.legendShapeIds ?? []), notation = new Set(containment.notationIds ?? []);
+        const unnamed = new Set(containment.structuralRootIds.filter((id) => {
+          const s = containment.byId.get(id);
+          return s?.class === "RectangleContainerBlock" && id !== childRoot && id !== structuralScenario.sourceRootDomainId && !legend.has(id) && !notation.has(id) && containment.components.some((c) => c.rootContainer?.id === id && c.id !== id) && !containment.components.some((c) => c.rootContainer?.id === id && (c.domainRole != null || c.architecturalDomain?.id));
+        }));
+        for (const c of containment.components) if (unnamed.has(c.rootContainer?.id) && c.domainRole == null && c.rootContainer.status === "RESOLVED") {
+          const root = containment.byId.get(c.rootContainer.id);
+          c.domainRole = c.explicitDomainRole = "EXTERNAL_SYSTEM";
+          c.possibleDomainRoles = [];
+          c.rootRoleSource = c.evidenceSources.domainRole = elimination;
+          c.rootRoleStatus = "INFERRED_BY_ELIMINATION";
+          c.architecturalDomain = { id: root.id, name: "", lucidchartClass: root.class, source: "JSON.contains+architectural-container", roleSource: elimination, status: "INFERRED_BY_ELIMINATION", conflicts: [] };
+          c.architecturalDomainId = root.id;
         }
       }
       return {
