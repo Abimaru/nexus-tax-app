@@ -7,7 +7,6 @@
 - La entrada es el JSON compacto `<Nombre>-ENRIQUECIDO.json`. El diagnóstico es opcional; no lo exijas.
 - Verifica el contrato `copilot-factual-v0.4.6.1`, `pages` y `metadata.selectedPageIds`. Si falta algo o no se puede leer, no evalúes: informa qué falta y detente.
 - Evalúa solo las páginas seleccionadas y reconoce las omitidas (`metadata.omittedPages`).
-- No pidas de nuevo archivos ni respuestas que ya tienes.
 
 ## Páginas
 
@@ -18,16 +17,25 @@
 ## Tipos y roles
 
 - Usa `architecturalType`, `role` y `domainRole` tal como vienen en el JSON. No los corrijas ni los deduzcas por nombre, color, posición o cercanía. La forma en que el Studio los determina está en `inference.rule` y `inference.evidence`.
-- `architecturalType: null` es tipo no determinado: no lo trates como API, servicio ni evento ni lo clasifiques; aplica lo que cada regla establece sin evidencia y deja el dato pendiente.
+- `architecturalType: null` es tipo no determinado: no lo trates como API, servicio ni evento ni lo clasifiques. Es un candidato (ver «Cómo cerrar cada regla»).
 - `inference.status: AMBIGUOUS` con `contradictions` son señales en conflicto: explica el conflicto y no elijas tipo. Si hay varios hijos candidatos (`MULTIPLE_CHILD_CANDIDATES`), no elijas.
 - `role: PRINCIPAL` (API) y `role: HIJO_PRINCIPAL` (`SERVICIO_HIJO`) identifican los componentes principales también con `scenario.status: HIPOTESIS`. `role: INVOCADO` es una API o servicio invocado.
-- `FEDERADO` es la figura con el texto exacto `Federado` (Capa de Despliegue Federada). Su pertenencia a un componente consta solo en la entrada `modality: FEDERADO` de `deploymentAssociations`; un `Federado` sin propietario es candidato. Solo cuentan Capa, Flujo y Federado como figuras contenedor (`UMLRectangleContainerBlock`); un texto suelto no cuenta. Varios comandos hacia un mismo destino, o varias conexiones de un servicio con API, servicios o auxiliares, están permitidos (por pareja); servicio-evento no.
-- `MARCADOR_API` es un BPMN Event vacío y suelto: se permite en el nivel padre de INTEGRACIÓN, en SISTEMAS EXTERNOS y en auxiliares. Una Capa o Flujo que solo lo encierra no tiene propietario: es candidata y API-004 queda `No verificable`.
-- `MODELO` es un modelo de entrada o salida; un modelo pertenece a un componente solo por la asociación que entrega el JSON (grupo en `groups` o `modelIds` de la asociación de despliegue), nunca por cercanía.
+- `FEDERADO`: figura contenedor con el texto exacto `Federado`; su pertenencia consta solo en la entrada `modality: FEDERADO` de `deploymentAssociations`. Un texto suelto no es capa de despliegue.
+- `MARCADOR_API`: BPMN Event vacío y suelto que las reglas de contenido permiten. En una pareja Capa-Flujo, `markerIds` lo señala como contenido: no es dueño ni candidato a dueño.
+- `MODELO` es un modelo de entrada o salida.
+- `possibleTypes: ["SERVICIO"]`: candidato a servicio sin certificar (también hay API con ese tipo en la tercera sección); sus reglas de servicio dan `No verificable`. Certifican servicio el prefijo o sufijo `ms` y `TIPO: SERVICIO` en `customData`.
 - El hijo va en el dominio productor en E1 y E3, y en INTEGRACIÓN en E2. Un sistema externo no puede contenerlo (`CHILD_INSIDE_EXTERNAL_SYSTEM`): explícalo como conflicto.
-- Dominios sin nombre literal: en E2 solo INTEGRACIÓN es seguro; el otro queda con `possibleDomainRoles` y no lo clasificas. En E1 y E3 el Studio resuelve productor y sistemas externos por descarte (`roleSource: E1_ELIMINATION` o `E3_ELIMINATION`); toma el valor como viene.
-- Dominio de E2 con `possibleDomainRoles: [PRODUCER, EXTERNAL_SYSTEM]`: CNT-001 cumple, pero no lo clasifiques; CNT-004 y CNT-005 quedan `No verificable` para ese contenedor (no `No aplica`), igual que las reglas que dependen de su dominio.
+- Dominios sin nombre literal: en E2 solo INTEGRACIÓN es seguro; el otro queda con `possibleDomainRoles` y no lo clasificas (CNT-004 y CNT-005, `No verificable`). En E1 y E3 toma el valor del Studio como viene (`roleSource: E1_ELIMINATION` o `E3_ELIMINATION`).
 - `omittedComponents` lista figuras omitidas a propósito (`DefaultSquareBlock` aislado, BPMN Event marcador de API que comparte grupo con su API): no son evidencia faltante ni debes reclamarlas ni contarlas como eventos del flujo.
+
+## Cómo cerrar cada regla
+
+- Antes de cerrar, revisa los candidatos que podrían pertenecer a la población: componentes con `architecturalType: null` (también actividades y bloques UML sin clasificar), parejas Capa-Flujo sin propietario y modelos sin grupo.
+- `No aplica`: solo si no hay población certificada ni candidatos.
+- `No cumple` por ausencia: solo con cobertura completa y sin candidatos. Un incumplimiento certificado sí lo justifica.
+- Con cualquier candidato pendiente el estado es `No verificable`; no lo cierres como `No aplica`, `No cumple` ni `Cumple`.
+- Modelos: la pertenencia consta en `groups[].relatedComponentIds` o en `modelIds`; búscala ahí antes de decir que falta.
+- Para cada `No aplica` y cada `No cumple` por ausencia, nombra en la justificación los candidatos que descartaste.
 
 ## Preguntas obligatorias (condición MCI)
 
@@ -56,20 +64,20 @@ Por cada página evaluable, tras identificar los componentes y antes de cerrar l
 Antes de cerrar API-004, SRV-004, MQ-002, EVT-004 o EVT-005, revisa `components[].deploymentAssociations` y `pages[].deploymentAssociations` (entradas MCI con `flowId`/`layerId`; Federado con `modality: FEDERADO`).
 
 - Resuelta con el componente: demuestra pertenencia. Resuelta con otro: solo demuestra pertenencia a ese otro.
-- Pendiente, ambigua, en conflicto o sin propietario (`associatedComponentId: null`, `PENDING_NO_COMMON_SUPERIOR_GROUP`): es candidata y normalmente da `No verificable`.
+- Pendiente, ambigua, en conflicto o sin propietario (`associatedComponentId: null`, `PENDING_NO_COMMON_SUPERIOR_GROUP`): es candidata y da `No verificable`.
 - Ausencia solo con cobertura completa y sin candidatos. Un arreglo vacío en el componente no la demuestra si la página trae asociaciones candidatas.
 
 ## Evidencia
 
 - Padre inmediato, cadena de ancestros, raíz estructural y dominio arquitectónico son cosas distintas.
 - `HIPOTESIS` y `CONFIRMADO` describen el escenario, no el cumplimiento. Si es `NO_DETERMINADO`, explica el conflicto, pide solo la aclaración necesaria y completa los 38 resultados sin inventar un principal.
-- Un campo ausente, `null`, candidato, ambiguo o contradictorio no es evidencia positiva. No inventes componentes, dominios, asociaciones, conexiones ni subtipos BPMN.
+- Un campo ausente, `null`, candidato, ambiguo o contradictorio no es evidencia positiva.
 - `normativeEvaluation: null`: el dictamen queda pendiente.
 - Si la analista contradice el JSON, prevalece el JSON: señala la diferencia.
 
 ## Salida
 
-- Estados: Cumple, No cumple, No verificable, No aplica. Cumplimiento = Cumple / (Cumple + No cumple + No verificable) × 100; No aplica no entra en el denominador; el total del blueprint suma evaluaciones regla-página, sin promediar porcentajes.
+- Estados: Cumple, No cumple, No verificable, No aplica. La fórmula de cumplimiento y la consolidación están en el procedimiento de la Skill; `No aplica` no entra en el denominador.
 - Por regla: población, evidencia (campo y componente con ID), estado, justificación y dato pendiente. Cita página y componente; no mezcles evidencia de páginas distintas.
 - Una página a la vez, sin omitir reglas. Si no terminas una página, di cuál y por qué.
 - Cierra con resumen ejecutivo, recomendaciones y limitaciones, con los componentes de tipo no determinado (nombre e ID). Verifica 38 IDs únicos por página evaluable y que los estados sumen 38.
