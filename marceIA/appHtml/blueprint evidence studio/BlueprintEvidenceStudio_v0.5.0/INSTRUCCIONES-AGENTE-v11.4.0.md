@@ -1,6 +1,6 @@
-# Instrucciones del agente - validar blueprints v11.3.3
+# Instrucciones del agente - validar blueprints v11.4.0
 
-Úsalas con la Skill `validar-blueprint-integracion` v11.3.3 (37 reglas) y el JSON de Blueprint Evidence Studio 0.5.0 (contrato `copilot-factual-v0.4.6.1`). No definen reglas: reglas, estados, precedencias y métrica están en la Skill.
+Úsalas con la Skill `validar-blueprint-integracion` v11.4.0 (38 reglas) y el JSON de Blueprint Evidence Studio 0.5.0 (contrato `copilot-factual-v0.4.6.1`). No definen reglas: reglas, estados, precedencias y métrica están en la Skill.
 
 ## Antes de evaluar
 
@@ -11,7 +11,7 @@
 
 ## Páginas
 
-- `OPERATIONAL` o `MIXED`: exactamente 37 resultados, uno por regla. En `MIXED`, solo el contenido operativo, sin las figuras de `legendShapeIds`.
+- `OPERATIONAL` o `MIXED`: exactamente 38 resultados, uno por regla. En `MIXED`, solo el contenido operativo, sin las figuras de `legendShapeIds`.
 - `TEMPLATE_OR_LEGEND` o `BDD_OR_REQUIREMENTS`: informa que no es evaluable y su motivo, sin filas ni conteos.
 - `UNRESOLVED`: no emitas dictamen; informa que no pudo clasificarse.
 
@@ -21,12 +21,13 @@
 - `architecturalType: null` es tipo no determinado: no lo trates como API, servicio ni evento ni lo clasifiques; aplica lo que cada regla establece sin evidencia y deja el dato pendiente.
 - `inference.status: AMBIGUOUS` con `contradictions` son señales en conflicto: explica el conflicto y no elijas tipo. Si hay varios hijos candidatos (`MULTIPLE_CHILD_CANDIDATES`), no elijas.
 - `role: PRINCIPAL` (API) y `role: HIJO_PRINCIPAL` (`SERVICIO_HIJO`) identifican los componentes principales también con `scenario.status: HIPOTESIS`. `role: INVOCADO` es una API o servicio invocado.
-- `FEDERADO` es la figura con el texto exacto `Federado` (Capa de Despliegue Federada). Su pertenencia a un componente consta solo en la entrada `modality: FEDERADO` de `deploymentAssociations`; un `Federado` sin propietario es candidato. Solo cuentan Capa, Flujo y Federado como figuras contenedor (`UMLRectangleContainerBlock`); un texto suelto no cuenta.
+- `FEDERADO` es la figura con el texto exacto `Federado` (Capa de Despliegue Federada). Su pertenencia a un componente consta solo en la entrada `modality: FEDERADO` de `deploymentAssociations`; un `Federado` sin propietario es candidato. Solo cuentan Capa, Flujo y Federado como figuras contenedor (`UMLRectangleContainerBlock`); un texto suelto no cuenta. Varios comandos hacia un mismo destino, o varias conexiones de un servicio con API, servicios o auxiliares, están permitidos (por pareja); servicio-evento no.
+- `MARCADOR_API` es un BPMN Event vacío y suelto: se permite en el nivel padre de INTEGRACIÓN, en SISTEMAS EXTERNOS y en auxiliares. Una Capa o Flujo que solo lo encierra no tiene propietario: es candidata y API-004 queda `No verificable`.
 - `MODELO` es un modelo de entrada o salida; un modelo pertenece a un componente solo por la asociación que entrega el JSON (grupo en `groups` o `modelIds` de la asociación de despliegue), nunca por cercanía.
 - El hijo va en el dominio productor en E1 y E3, y en INTEGRACIÓN en E2. Un sistema externo no puede contenerlo (`CHILD_INSIDE_EXTERNAL_SYSTEM`): explícalo como conflicto.
 - Dominios sin nombre literal: en E2 solo INTEGRACIÓN es seguro; el otro queda con `possibleDomainRoles` y no lo clasificas. En E1 y E3 el Studio resuelve productor y sistemas externos por descarte (`roleSource: E1_ELIMINATION` o `E3_ELIMINATION`); toma el valor como viene.
 - Dominio de E2 con `possibleDomainRoles: [PRODUCER, EXTERNAL_SYSTEM]`: CNT-001 cumple, pero no lo clasifiques; CNT-004 y CNT-005 quedan `No verificable` para ese contenedor (no `No aplica`), igual que las reglas que dependen de su dominio.
-- `omittedComponents` lista figuras omitidas a propósito (`DefaultSquareBlock` aislado, BPMN Event marcador de API): no son evidencia faltante ni debes reclamarlas ni contarlas como eventos del flujo.
+- `omittedComponents` lista figuras omitidas a propósito (`DefaultSquareBlock` aislado, BPMN Event marcador de API que comparte grupo con su API): no son evidencia faltante ni debes reclamarlas ni contarlas como eventos del flujo.
 
 ## Preguntas obligatorias (condición MCI)
 
@@ -61,7 +62,7 @@ Antes de cerrar API-004, SRV-004, MQ-002, EVT-004 o EVT-005, revisa `components[
 ## Evidencia
 
 - Padre inmediato, cadena de ancestros, raíz estructural y dominio arquitectónico son cosas distintas.
-- `HIPOTESIS` y `CONFIRMADO` describen el escenario, no el cumplimiento. Si es `NO_DETERMINADO`, explica el conflicto, pide solo la aclaración necesaria y completa los 37 resultados sin inventar un principal.
+- `HIPOTESIS` y `CONFIRMADO` describen el escenario, no el cumplimiento. Si es `NO_DETERMINADO`, explica el conflicto, pide solo la aclaración necesaria y completa los 38 resultados sin inventar un principal.
 - Un campo ausente, `null`, candidato, ambiguo o contradictorio no es evidencia positiva. No inventes componentes, dominios, asociaciones, conexiones ni subtipos BPMN.
 - `normativeEvaluation: null`: el dictamen queda pendiente.
 - Si la analista contradice el JSON, prevalece el JSON: señala la diferencia.
@@ -71,4 +72,4 @@ Antes de cerrar API-004, SRV-004, MQ-002, EVT-004 o EVT-005, revisa `components[
 - Estados: Cumple, No cumple, No verificable, No aplica. Cumplimiento = Cumple / (Cumple + No cumple + No verificable) × 100; No aplica no entra en el denominador; el total del blueprint suma evaluaciones regla-página, sin promediar porcentajes.
 - Por regla: población, evidencia (campo y componente con ID), estado, justificación y dato pendiente. Cita página y componente; no mezcles evidencia de páginas distintas.
 - Una página a la vez, sin omitir reglas. Si no terminas una página, di cuál y por qué.
-- Cierra con resumen ejecutivo, recomendaciones y limitaciones, con los componentes de tipo no determinado (nombre e ID). Verifica 37 IDs únicos por página evaluable y que los estados sumen 37.
+- Cierra con resumen ejecutivo, recomendaciones y limitaciones, con los componentes de tipo no determinado (nombre e ID). Verifica 38 IDs únicos por página evaluable y que los estados sumen 38.
