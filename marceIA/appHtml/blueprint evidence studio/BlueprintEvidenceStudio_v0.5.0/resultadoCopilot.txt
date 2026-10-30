@@ -1,0 +1,322 @@
+El archivo MCI-BP-RealTimePaymentsQRKeysManagement-CommerceKeys-ENRIQUECIDO es legible, usa el contrato requerido copilot-factual-v0.4.6.1 y contiene la página seleccionada updateInformationKey (PGQ7uJCov2oF), clasificada como MIXED. La validación aplicará las 38 reglas únicamente al contenido operativo, excluyendo las figuras de leyenda.
+Antes de cerrar API-004 y SRV-004, necesito registrar estas respuestas obligatorias para la página updateInformationKey:
+¿La API principal“Real Time Payments QR Keys Management - Commerce Keys v1.1.1” (2kV7uK_w2YrK) tiene Capa de Despliegue MCI?
+¿El hijo principal“ms_key_management_spi” (2kV7IvZMMpdu), que representa el servicio principal del escenario, tiene Capa de Despliegue MCI?
+¿Cuál es la exposición de la API principal 2kV7uK_w2YrK: private, public o partner?
+Puedes responder, por ejemplo:
+Plain Text
+1. Sí
+2. No
+3. private
+La tercera pregunta es necesaria porque la sección declarada de la API contiene solamente“Entidad”, pero no identifica la exposición requerida para determinar qué elementos de despliegue exige API-004. Esta declaración no corregirá el contenido textual evaluado por API-003.
+Orígenes
+1. Si 2. No 3. private
+BlueGuard 11.4.0:Razonado para 1min
+Razonado para 1min
+Registré las tres respuestas como DECLARADO_POR_ANALISTA para la página updateInformationKey. Con ellas cerré la evaluación de las 38 reglas activas, excluyendo las figuras de leyenda por tratarse de una página MIXED.
+1. Declaraciones registradas
+ID relacionado	Componente	DeclaraciónAPI-004	API principal 2kV7uK_w2YrK	MCI: Sí
+SRV-004	Hijo principal 2kV7IvZMMpdu	MCI: No
+API-004	API principal 2kV7uK_w2YrK	Exposición: private
+Estas declaraciones determinan la aplicabilidad de las reglas, pero no sustituyen la evidencia de asociación de capas, flujos, conexiones, contención o subtipos BPMN.
+2. Resultado ejecutivo
+Archivo evaluado: MCI-BP-RealTimePaymentsQRKeysManagement-CommerceKeys-ENRIQUECIDO
+ Página: updateInformationKey (PGQ7uJCov2oF)
+ Clasificación: MIXED, evaluando solamente contenido operativo
+ Patrón estructural: candidato E1
+ Estado del escenario: HIPOTESIS
+ Contrato: copilot-factual-v0.4.6.1
+ Problemas de integridad reportados en issues: ninguno.
+1.txt
+Conteo de resultados
+Estado	CantidadCumple	18
+No cumple	5
+No verificable	3
+No aplica	12
+Total	38
+Métrica
+Cumplimiento=1818+5+3×100=69.23%\text{Cumplimiento}= \frac{18}{18+5+3}\times100 =\mathbf{69.23\%}Cumplimiento=18+5+318​×100=69.23%
+Los 12 resultados No aplica se excluyen del denominador.
+3. Hallazgos principales
+Incumplimientos importantes
+API-003: las cuatro API usan Entidad en la tercera sección, pero en INTEGRACIÓN deberían declarar una estructura como private - entidad, public - entidad o partner - entidad.
+API-004: la API principal fue declarada MCI private, por lo que requiere una Capa de Arquitectura y un Flujo Transaccional asociados inequívocamente. No existe una asociación resuelta con la API principal.
+SRV-003: el servicio invocado ms_emit_callback_spi declara Tarea, con mayúscula inicial. El valor admitido es exactamente tarea.
+MOD-001: no se demuestra la asociación completa de modelos de entrada y salida para todos los componentes obligados, especialmente la API principal.
+GW-001: existen compuertas sin texto con caminos que sí contienen respuestas o etiquetas. Esa información parcial no permite validar coherencia de forma completa.
+Incertidumbres relevantes
+E1-001: la estructura corresponde a E1, pero el evento 2kV75tQSJSek solamente está certificado como BPMNEvent; su subtipo Inicio no está demostrado.
+MQ-003: la conexión de Callback recibido con Amazon MQ (Rabbit MQ) depende de que el BPMNEvent esté certificado como subtipo Mensaje.
+GW-001: parte de la evidencia de decisiones y etiquetas es insuficiente para relacionar inequívocamente cada pregunta con sus caminos.
+4. Detalle de las 38 reglas
+A. Estructura y contenedores
+Regla	Población y evidencia	Estado	Justificación y dato pendienteCNT-001	Dominios INTEGRACIÓN (2kV7OrOOQ92a) y NUEVAS EXPERIENCIAS DE PAGO (2kV760DtEoWj), clasificados como INTEGRATION y PRODUCER	Cumple	Para E1 se encuentran los dos dominios obligatorios.
+CNT-002	Hijo principal ms_key_management_spi (2kV7IvZMMpdu), SERVICIO_HIJO, HIJO_PRINCIPAL, en PRODUCER	Cumple	Existe un único hijo principal, con nombre específico y ubicado en el dominio productor.
+CNT-003	Componentes del dominio INTEGRACIÓN y auxiliares contenidos en él	Cumple	API, modelos, auxiliares y capas se encuentran en niveles permitidos. El marcador 2kV74m74UxSM está certificado como MARCADOR_API y se excluye como evento operativo.
+CNT-004	Dominio productor y contenido del hijo principal	Cumple	El nivel padre contiene componentes permitidos y las actividades, compuertas y eventos BPMN operativos están dentro del hijo principal.
+CNT-005	Dominio de SISTEMAS EXTERNOS presente en la página	Cumple	No se identifican componentes operativos prohibidos directamente en ese dominio.
+EXT-001	Tres componentes SISTEMA_EXTERNO_AUXILIAR	Cumple	Tienen nombre y sus componentes encapsulados corresponden a categorías permitidas para su ubicación.
+EXT-002	Auxiliares, incluyendo EVC Galatéa Modernización de Canales / LN Transversales a Canales	Cumple	Los auxiliares EVC que contienen API están ubicados en el nivel padre de INTEGRACIÓN.
+GW-001	11 figuras BPMNGateway y sus caminos	No verificable	Hay compuertas sin texto y caminos con respuestas como Sí, No o Persona natural. Falta evidencia textual suficiente para relacionar todas las etiquetas con la decisión correspondiente.
+B. API y servicios
+Regla	Población y evidencia	Estado	Justificación y dato pendienteAPI-001	API principal 2kV7uK_w2YrK y API invocadas NJV7y6UanEkB, NJV7JcwFjwoy, NJV7KQhfqRl2	Cumple	Los nombres son específicos, están en inglés e incluyen versiones de tres segmentos.
+API-002	Operaciones updateInformationKey y registeredContacts	Cumple	Las operaciones son únicas, específicas, en inglés y usan camelCase.
+API-003	Tercera sección de las cuatro API: Entidad	No cumple	En INTEGRACIÓN se exige tipo - modelo, completamente en minúsculas. Falta private, public o partner, falta el guion estructural y Entidad usa mayúscula. La exposición declarada para API-004 no corrige esta regla.
+API-004	API principal 2kV7uK_w2YrK, declarada MCI y private	No cumple	Una API private MCI requiere Capa de Arquitectura y Flujo Transaccional asociados inequívocamente. components[].deploymentAssociations está vacío para la API principal y no existe asociación resuelta con su ID. La pareja 2kV7k.1oxfJE/2kV7XgCEYt6q está pendiente y su candidato es el marcador 2kV74m74UxSM, no la API principal.
+SRV-001	Servicio invocado ms_emit_callback_spi (kqo9F8sZs24i) en PRODUCER	Cumple	Es un servicio no gestionado y su nombre es visible, funcional y específico.
+SRV-002	Operación callbackSpi del servicio kqo9F8sZs24i	Cumple	La operación es funcional y específica. Al ser un servicio no gestionado, no se exige camelCase estricto, aunque el valor lo cumple.
+SRV-003	Tercera sección Tarea del servicio kqo9F8sZs24i	No cumple	La clasificación debe ser exactamente entidad, utilidad o tarea, en minúsculas.
+SRV-004	Hijo principal 2kV7IvZMMpdu, declarado no MCI; servicio invocado en PRODUCER	Cumple	El hijo declarado no MCI no tiene asociadas Capa de Arquitectura ni Flujo Transaccional. El servicio invocado es no gestionado y queda excluido de la obligación de despliegue.
+SRV-005	Conexiones directas del servicio con API, servicios, auxiliares o eventos	No aplica	La conexión del servicio es con un gestor de colas y se evalúa exclusivamente en MQ-003.
+C. Eventos de integración
+Regla	Población y evidencia	Estado	JustificaciónEVT-001	Eventos de integración Aplicación o Empresarial	No aplica	No hay componentes certificados como eventos de integración. Los componentes EVENTO son figuras BPMNEvent operativas dentro del hijo.
+EVT-002	Operaciones de eventos de integración	No aplica	No existe población certificada.
+EVT-003	Tipo y clasificación de eventos de integración	No aplica	No existe población certificada.
+EVT-004	Capa de Tópicos	No aplica	No hay eventos de integración.
+EVT-005	Cantidad y roles de tópicos	No aplica	No hay eventos de integración ni capas de tópicos asociadas.
+EVT-006	Nombramiento de tópicos	No aplica	No se identifican tópicos asociados a eventos de integración.
+EVT-007	Conexiones de eventos de integración	No aplica	No se identifican eventos de integración ni tópicos p/s.
+D. Despliegue y escenario
+Regla	Población y evidencia	Estado	Justificación y dato pendienteCA-001	Tres figuras certificadas como CAPA	Cumple	Los nombres siguen Capa de Arquitectura - composicion. Los espacios repetidos alrededor del guion se normalizan.
+FT-001	Tres figuras certificadas como FLUJO	Cumple	Los nombres siguen el formato permitido, incluyendo Flujo Transaccional - no-monetario.
+E1-001	API principal 2kV7uK_w2YrK, hijo 2kV7IvZMMpdu, conexión 2kV7IDBZo5ti, evento 2kV75tQSJSek	No verificable	La API está en INTEGRACIÓN, el hijo en PRODUCER y la conexión tiene orientación None -> Arrow. Falta certificar que 2kV75tQSJSek sea un evento BPMN de Inicio.
+E2-001	Patrón E2	No aplica	La API principal y el hijo están en dominios diferentes; la estructura certificada es candidata a E1.
+E3-001	Patrón E3	No aplica	El componente principal es una API ubicada en INTEGRACIÓN, no un componente principal en PRODUCER.
+E. Modelos y comandos
+Regla	Población y evidencia	Estado	Justificación y dato pendienteMOD-001	API principal, tres API invocadas, servicio invocado y siete modelos	No cumple	La API principal no tiene modelos de entrada y salida inequívocamente asociados. Los modelos existen, pero existencia y cercanía no demuestran pertenencia. Las asociaciones de despliegue de las API invocadas también presentan modelIds: [].
+COM-001	Actividades relacionadas con API: Solicitar actualización de información de la llave, Notificar comercio como persona natural y Notificar comercio como persona jurídica	Cumple	Los nombres están en español, comienzan con verbos en infinitivo y tienen complementos específicos.
+COM-002	Tres relaciones comando-API invocada	Cumple	Para cada pareja existen conexiones en ambos sentidos, con CircleOpen en el origen y Generalization en el destino.
+COM-003	Relaciones comando-servicio invocado	No aplica	No se identifican conexiones directas comando-servicio.
+COM-004	Relaciones comando-gestor de colas	No aplica	No se identifica una actividad BPMN conectada directamente con el gestor.
+COM-005	Relaciones comando-auxiliar no atribuibles a componentes encapsulados	No aplica	Las conexiones identificadas terminan en API encapsuladas, por lo que se evalúan en COM-002.
+F. Gestor de colas
+Regla	Población y evidencia	Estado	Justificación y dato pendienteMQ-001	Amazon MQ (Rabbit MQ) (kqo9Dhv1c_V~), UMLActiveClassBlock	Cumple	El gestor tiene un nombre visible, funcional y específico.
+MQ-002	Gestores ubicados en INTEGRACIÓN	No aplica	El gestor está certificado en el dominio PRODUCER. Su asociación Federada kqo9Ky9XXVOY no se evalúa como obligación de MQ-002.
+MQ-003	Servicio ms_emit_callback_spi, gestor Amazon MQ (Rabbit MQ) y BPMNEvent Callback recibido	No verificable	La conexión servicio-gestor desde el servicio hacia el gestor usa terminaciones válidas. Sin embargo, la relación Callback recibido → gestor requiere certificar que el BPMNEvent sea subtipo Mensaje; la identificación genérica como BPMNEvent no es suficiente.
+5. Recomendaciones priorizadas
+Prioridad alta
+Corregir la tercera sección de todas las API
+API principal: usar, según lo declarado, private - entidad.
+API invocadas: definir formalmente la exposición y escribir, por ejemplo, private - entidad, si esa es realmente su clasificación.
+Mantener todo en minúsculas.
+Asociar la Capa de Despliegue a la API principal
+La API principal 2kV7uK_w2YrK fue declarada MCI private.
+Debe tener una Capa de Arquitectura y un Flujo Transaccional inequívocamente asociados.
+No basta con que existan 2kV7k.1oxfJE y 2kV7XgCEYt6q; la asociación debe resolverse con associatedComponentId: "2kV7uK_w2YrK".
+Corregir la clasificación del servicio
+Cambiar Tarea por tarea en ms_emit_callback_spi (kqo9F8sZs24i).
+Asociar modelos de entrada y salida
+Para la API principal deben quedar certificados un modelo de entrada y uno de salida.
+Revisar también las tres API invocadas y el servicio invocado.
+La asociación debe quedar registrada en los grupos o modelIds, no solo representada por cercanía visual.
+Prioridad media
+Certificar el subtipo Inicio
+El evento 2kV75tQSJSek debe quedar identificado explícitamente como BPMN de tipo Inicio para cerrar E1-001.
+Certificar el subtipo Mensaje
+Si Callback recibido es el evento que publica hacia Amazon MQ (Rabbit MQ), debe entregarse como BPMNEvent de subtipo Mensaje.
+Completar el texto de las compuertas
+Para caminos Sí/No, agregar la pregunta correspondiente en la compuerta.
+Para decisiones como Persona natural, incluir etiquetas completas y mutuamente distinguibles en todos los caminos.
+6. Limitaciones
+El escenario permanece como HIPOTESIS; esto no impide evaluar las reglas independientes.
+No se infirieron subtipos BPMN por texto, posición o cercanía.
+Las asociaciones pendientes o visuales no se trataron como pertenencia certificada.
+Se identifican múltiples componentes con architecturalType: null, sobre todo actividades, compuertas y elementos gráficos. No se reclasificaron por su nombre. Solo las actividades con relaciones certificadas se trataron como candidatas a comando.
+Las figuras incluidas en legendShapeIds, los 32 DefaultSquareBlock aislados y los tres API_MARKER_EVENT omitidos por el Studio no se evaluaron como contenido operativo.
+1.txt
+Sin cambiar tu veredicto 1. Para la regla CNT 003, certificaste todos los modelos? pudiste identificar si era entrada o salida? listamelos. 2. En el contenedor de sistemas externos hay BPMNActivity? esas las tienes como permitidas o no permitidas 3. Porque la API 004 esta como no cumple si no pudiste validar que la capa y flujo perteneciera a la api? deberia ser no verificable, que te hizo sacar otro resultado en como esta la regla? 4. Si no pudiste validar q los modelos de entrada y salida petenecen a una api principal o sus invocadas al igual q el servicio, porque las pones como no cumples y no como no verificables? que esta mal en la regla? 5. para la regla com 003, el componente recepcion_callback que es? un api, servicio, evento? si no pudiste garantizar que era xq pones la regla como no aplica y no como no verificado?
+BlueGuard 11.4.0:Razonado para 9s
+Razonado para 9s
+A continuación separo lo que realmente dice la evidencia de lo que concluí en el dictamen anterior, sin modificar formalmente sus estados. En los puntos 3, 4 y 5 identifico inconsistencias de aplicación: el problema no está necesariamente en el texto de la regla, sino en cómo apliqué la precedencia entre No cumple, No verificable y No aplica.
+1. CNT-003: modelos identificados como entrada y salida
+Sí pude certificar que existen siete componentes con architecturalType: MODELO y pude determinar su categoría porque el JSON contiene explícitamente customData.key: ENTRADA o SALIDA.
+No inferí la categoría por el nombre o la ubicación.
+ID	Categoría certificada	Contenido visible resumidoNJV7GBwkfc1c	Entrada	trackingId, notificationMessage, alertParameters, recipientsIdentification
+NJV7V4ZD2.KV	Entrada	trackingId, message, alertParameters, recipientsIdentification, messageData
+2kV7xR--9SsR	Entrada	requestInformation, commerceInformation
+NJV7Mn7SYN2F	Salida	Sin nombre o contenido visible
+2kV7pwxN6Gx5	Salida	status, description
+NJV7kcoxoI6f	Salida	novelty, answerCode, answerDescription
+NJV7k7nDpC_o	Salida	requestInformation, status, description
+Todos están ubicados estructuralmente en el nivel padre de INTEGRACIÓN y, por categoría, son contenido permitido por CNT-003.
+1.txt
+2.txt
+Distinción importante
+CNT-003 solo pregunta si la categoría de componente está permitida en el nivel donde aparece. Por ello:
+Certificar que 2kV7xR--9SsR es un modelo de entrada es suficiente para considerarlo una categoría permitida en el nivel padre de INTEGRACIÓN.
+CNT-003 no necesita demostrar a qué API o servicio pertenece.
+La pertenencia individual del modelo a una API o servicio se evalúa en MOD-001.
+Por eso el resultado Cumple de CNT-003 no depende de resolver las asociaciones de modelos.
+Observación puntual
+El modelo de salida NJV7Mn7SYN2F no tiene contenido visible. Esto no hace que CNT-003 incumpla, porque CNT-003 valida la categoría permitida, no el contenido o nombramiento del modelo. Sí puede afectar otras validaciones si se necesita identificar o asociar inequívocamente ese modelo.
+2. BPMNActivity en SISTEMAS EXTERNOS
+Sí. En el dominio SISTEMAS EXTERNOS (FHG9fvM28wkx) aparecen al menos nueve figuras BPMNActivity operativas:
+ID	Texto visible resumidop.G9CTWYph3H	El producto enviado a actualizar ya se encuentra registrado
+p.G93ki7F9AA	No fue posible procesar la solicitud
+JqH9MnyznUTo	Siempre que el resultado sea exitoso, se devuelve la información
+p.G9TsNdg6-l	La llave enviada no existe
+p.G9GDQJP5Sq	No es posible modificar el tipo de llave
+p.G9~9mRZOtH	La llave ya se encuentra registrada
+p.G9IjapIQiG	No fue posible actualizar la llave
+p.G9rAq3uF9f	El comercio no es titular del producto financiero
+Y~G9qrsOFZyi	Estructura con specversion, type, source, id, etc.
+El JSON las presenta con:
+lucidchartType: BPMNActivity
+architecturalType: null
+domainRole: EXTERNAL_SYSTEM
+También aparece el auxiliar Consumidor (k6G9JJN1wUKe) dentro de SISTEMAS EXTERNOS.
+1.txt
+¿Son permitidas?
+No son contenido permitido directamente en SISTEMAS EXTERNOS.
+CNT-005 permite directamente:
+API
+servicios
+modelos de entrada
+modelos de salida
+pendientes
+conceptos
+sistemas externos auxiliares
+anotaciones
+Y prohíbe expresamente:
+eventos de integración
+gestores de colas
+capas de despliegue
+compuertas
+eventos BPMN operativos
+políticas
+comandos
+Sin embargo, hay que distinguir dos situaciones:
+Si la BPMNActivity está directamente en SISTEMAS EXTERNOS, es una categoría no permitida y CNT-005 debería identificar el incumplimiento.
+Si está contenida en el auxiliar Consumidor, su evaluación corresponde principalmente a EXT-001. Una BPMNActivity tampoco está en la lista de contenido permitido del auxiliar, por lo que sería no permitida allí.
+Problema en mi evaluación anterior
+Mi Cumple para CNT-005 fue demasiado amplio. No consideré correctamente estas BPMNActivity. La frase anterior “no se identifican componentes operativos prohibidos” contradice la evidencia del JSON.
+Sin cambiar formalmente el dictamen como solicitaste, la revisión técnica muestra que ese fundamento no es sostenible. No es un problema de redacción de CNT-005, sino una omisión en mi inventario y aplicación de la regla.
+3. API-004: por qué puse No cumple y por qué la precedencia apunta a No verificable
+La API principal es:
+ID: 2kV7uK_w2YrK
+Declaración: MCI
+Exposición: private
+Por tanto, API-004 exige:
+una Capa de Arquitectura, y
+un Flujo Transaccional,
+ambos inequívocamente asociados a esa API.
+La evidencia de despliegue encontrada fue:
+La API principal tiene components[].deploymentAssociations: [].
+Existe la pareja:
+Capa 2kV7k.1oxfJE
+Flujo 2kV7XgCEYt6q
+La asociación de esa pareja tiene:
+associatedComponentId: null
+status: PENDING_NO_COMMON_SUPERIOR_GROUP
+Además aparece un marcador de API 2kV74m74UxSM.
+1.txt
+Qué me hizo poner No cumple
+Apliqué incorrectamente este razonamiento:
+API private MCI + no hay asociación resuelta con la API principal = ausencia de Capa y Flujo = No cumple.
+Ese salto es incorrecto porque confundí:
+no poder demostrar pertenencia, con
+demostrar ausencia.
+Qué exige realmente API-004
+API-004 solo permite No cumple por ausencia cuando:
+la cobertura está completa;
+no existe asociación resuelta con la API;
+no existen capas, flujos o parejas candidatas que puedan pertenecerle; o
+todos los elementos existentes están certificadamente asociados a otros componentes.
+Aquí sí existe una pareja pendiente y sin propietario. La propia regla dice que:
+associatedComponentId: null,
+un estado pendiente,
+y PENDING_NO_COMMON_SUPERIOR_GROUP
+constituyen evidencia candidata, no ausencia certificada.
+Incluso establece expresamente que una pareja sin propietario produce No verificable.
+Conclusión sobre la aplicación
+Tienes razón en la precedencia. Con esta evidencia, el resultado técnicamente consistente sería No verificable, no No cumple.
+No veo que la regla esté mal escrita. El error estuvo en mi aplicación: no respeté la precedencia de asociaciones candidatas antes de concluir ausencia.
+4. MOD-001: por qué usé No cumple y cuándo corresponde No verificable
+Para MOD-001 sí pude certificar:
+la existencia de siete modelos;
+cuáles son de entrada y cuáles de salida;
+la existencia de la API principal;
+tres API invocadas;
+un servicio invocado.
+Lo que no pude certificar fue la asociación inequívoca de cada modelo con cada componente obligado.
+La regla indica expresamente que un modelo pertenece a un componente únicamente por:
+la asociación estructural entregada por el JSON;
+los grupos correspondientes; o
+los modelIds de la asociación.
+La cercanía visual o la ubicación en el mismo dominio no demuestran pertenencia.
+Por qué puse No cumple
+Mi razonamiento anterior fue:
+Los componentes están obligados a tener modelos; no veo modelos asociados; por tanto, faltan modelos obligatorios.
+Ese razonamiento vuelve a confundir:
+falta de una asociación demostrada, con
+ausencia certificada del modelo obligatorio.
+Cuándo MOD-001 es No cumple
+No cumple sería correcto si la evidencia demostrara, con cobertura completa, alguna de estas situaciones:
+una API carece realmente de modelo de entrada;
+una API carece realmente de modelo de salida;
+el único modelo candidato está resuelto con otro componente;
+la asociación está completa y certifica que el componente no tiene los modelos requeridos.
+Qué ocurre en este blueprint
+Hay varios modelos de entrada y salida en la página, pero no se demuestra inequívocamente su pertenencia a:
+API principal 2kV7uK_w2YrK;
+API invocada NJV7y6UanEkB;
+API invocada NJV7JcwFjwoy;
+API invocada NJV7KQhfqRl2;
+servicio invocado kqo9F8sZs24i.
+Además, las asociaciones de despliegue resueltas de las API invocadas muestran modelIds: []. Un arreglo vacío no necesariamente certifica ausencia si la cobertura de asociaciones de modelos es insuficiente o hay modelos candidatos sin pertenencia demostrable.
+1.txt
+¿Qué está mal en la regla?
+La regla no está mal en este punto. MOD-001 incluye explícitamente como causal de No verificable:
+existen modelos candidatos sin pertenencia demostrable, falta cobertura o no puede certificarse la asociación.
+Por tanto, a menos que se demuestre cobertura completa y ausencia real, lo técnicamente consistente es No verificable.
+El error fue mío: apliqué No cumple sin demostrar previamente la ausencia certificada ni descartar que los siete modelos fueran candidatos pendientes de asignación.
+5. COM-003 y recepcion_callback
+El componente es:
+Nombre: recepcion_callback
+ID: a7G9w.6oE3YF
+lucidchartType: UMLClassBlock
+architecturalType: null
+role: null
+Operación: updateInformationKeyEvent
+Tercera sección: Tarea
+Dominio: EXTERNAL_SYSTEM
+Padre inmediato: auxiliar Consumidor (k6G9JJN1wUKe)
+1.txt
+¿Es API, servicio o evento?
+El JSON no permite garantizar ninguno de los tres.
+No se debe clasificar por:
+su figura UMLClassBlock;
+el nombre recepcion_callback;
+la operación updateInformationKeyEvent;
+la palabra Tarea;
+su ubicación; o
+sus conexiones.
+En consecuencia:
+recepcion_callback es un componente de tipo arquitectónico no determinado.
+Tiene dos conexiones con el componente Notificar al consumidor (vJG97VS~3fGF):
+recepcion_callback → Notificar al consumidor
+Notificar al consumidor → recepcion_callback
+Ambas usan CircleOpen en el origen y Generalization en el destino.
+1.txt
+¿Por qué COM-003 no debería cerrarse como No aplica?
+COM-003 aplica a relaciones entre:
+una BPMNActivity candidata a comando, y
+un componente certificado como servicio invocado.
+El extremo recepcion_callback no está certificado como servicio, pero por su tipo null tampoco puede descartarse como candidato pendiente si la conexión y la estructura lo sitúan dentro de la población posible.
+La regla reserva No aplica para cuando:
+no hay servicios invocados relacionados con actividades candidatas a comando, y
+tampoco existen conexiones pendientes que puedan configurar esa relación.
+Aquí existe una relación bidireccional y uno de sus extremos tiene tipo arquitectónico no determinado. Por ello, no se puede afirmar con seguridad que no exista población.
+Resultado que corresponde según la regla
+La causal de No verificable incluye expresamente:
+no puede certificarse la actividad candidata a comando o el servicio invocado.
+Por tanto, si Notificar al consumidor es una BPMNActivity candidata a comando y recepcion_callback sigue con architecturalType: null, COM-003 debería quedar No verificable, no No aplica.
+Qué estuvo mal
+El problema no está en COM-003. Mi error fue restringir la población únicamente a servicios ya certificados y no mantener como candidato el extremo conectado cuyo tipo arquitectónico está pendiente.
+Conclusión de la revisión
+Punto	ConclusiónCNT-003 y modelos	Los siete modelos están certificados por tipo y por entrada/salida. No hace falta conocer su propietario para CNT-003.
+BPMNActivity en SISTEMAS EXTERNOS	Sí existen y no son una categoría permitida. Mi fundamento de Cumple para CNT-005 omitió esa evidencia.
+API-004	La pareja Capa-Flujo pendiente impide certificar ausencia. La precedencia conduce a No verificable.
+MOD-001	Hay modelos candidatos, pero falta asociación certificada. Sin ausencia demostrada, la regla conduce a No verificable.
+COM-003	recepcion_callback tiene tipo null; no es posible declararlo API, servicio o evento. La relación pendiente impide usar No aplica.
+En síntesis, las reglas API-004, MOD-001 y COM-003 sí contienen las condiciones necesarias para distinguir incertidumbre de incumplimiento o no aplicabilidad. Las inconsistencias surgieron en mi ejecución del procedimiento, especialmente al convertir falta de evidencia en ausencia y al descartar componentes con architecturalType: null.
