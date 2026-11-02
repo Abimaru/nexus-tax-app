@@ -173,3 +173,416 @@ Regla práctica para el validador
 Así se evita el error que ocurrió en el veredicto inicial: propagar un candidato a SRV-005 únicamente porque podía ser servicio, sin considerar que el otro extremo estaba certificado como comando.
 
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Se analizó el blueprint MCI - BP -  [Investment Product Opening] - [Investment] y se tuvo mucha incertidumbre por parte del agente y falsos negativos.
+
+Sin cambiar tu veredicto y revisando lo que dice el JSON necesito que me respondas estas preguntas:
+1. Cual es el contenedor padre EXTERNAL_SYSTEM que observaste? que nombre lleva y q componentes tiene en su interior?
+2.  Encontraste servicios gestionados o todos son no gestionados? Listamelos y dame la explicación de la regla SRV 004.
+3. Cuales son las parejas incompletas que observas para la regla SRV 005 donde se debe conectar un servicio con otro componente? Listamelas para entender tu veredicto en la regla SRV005.
+4. Cuales son los modelos que existen pero a los que no pudiste asociarlos con algo? Porque el veredicto fue no cumple, dame los ejemplos.
+5. Cuales son las conexiones de comandos y apis que no pueden cerrarse en la regla COM 002. Muestrame todas las conexiones bidireccionales o unidireccionales y dime si para cada una esta OK o falta algo.
+6. Igual que el punto 5 muestrame las conexiones pero entre comandos y servicios para entender tu veredicto de la regla COM 003.
+7. Si no hay gestores de colas certificados y tampoco candidatos (MQ 001 a 003), xq la regla esta como no verificable? Que te hizo fallar?
+8. Cuales son las conexiones que existen hasta el sistema auxiliar y no hasta el componente interno para q dieras esa regla com 005 como no verificable?
+
+Sin cambiar tu veredicto y revisando lo que dice el JSON necesito que me respondas estas preguntas:
+1. Cual es el contenedor padre EXTERNAL_SYSTEM que observaste? que nombre lleva y q componentes tiene en su interior?
+2.  Encontraste servicios gestionados o todos son no gestionados? Listamelos y dame la explicación de la regla SRV 004.
+3. Cuales son las parejas incompletas que observas para la regla SRV 005 donde se debe conectar un servicio con otro componente? Listamelas para entender tu veredicto en la regla SRV005.
+4. Cuales son los modelos que existen pero a los que no pudiste asociarlos con algo? Porque el veredicto fue no cumple, dame los ejemplos.
+5. Cuales son las conexiones de comandos y apis que no pueden cerrarse en la regla COM 002. Muestrame todas las conexiones bidireccionales o unidireccionales y dime si para cada una esta OK o falta algo.
+6. Igual que el punto 5 muestrame las conexiones pero entre comandos y servicios para entender tu veredicto de la regla COM 003.
+7. Si no hay gestores de colas certificados y tampoco candidatos (MQ 001 a 003), xq la regla esta como no verificable? Que te hizo fallar?
+8. Cuales son las conexiones que existen hasta el sistema auxiliar y no hasta el componente interno para q dieras esa regla com 005 como no verificable?
+
+BlueGuard 11.5.0
+BlueGuard 11.5.0
+:Razonado para 56s
+Revisé de nuevo el JSON, esta vez recorriendo literalmente components, connections, groups[].relatedComponentIds, deploymentAssociations, padres estructurales y dominios. No puedo mantener sin cambios algunos veredictos de detalle, porque varias afirmaciones de mi respuesta anterior no están respaldadas por el JSON. A continuación separo lo que realmente evidencia el archivo y señalo las correcciones necesarias, sin recalcular todavía todo el consolidado de 38 reglas.1.txt2.txt3.txt
+1. Contenedor padre EXTERNAL_SYSTEM
+Resultado de la revisión
+No existe un contenedor padre certificado con domainRole: EXTERNAL_SYSTEM.
+Los únicos componentes certificados como CONTENEDOR_PADRE son:
+ID	Nombre	domainRole
+AuOS8~68XyoR	INVERSIÓN VIRTUAL	PRODUCER
+AuOSaKrIatFQ	INTEGRACIÓN	INTEGRATION
+AuOSXz0KO0Aq	INTEGRACIÓN	INTEGRATION
+Por tanto, mi afirmación anterior sobre componentes ubicados en un dominio EXTERNAL_SYSTEM fue incorrecta. No puedo darte el nombre ni el contenido de ese contenedor porque no está presente en el JSON.3.txt
+Lo que sí existe son cuatro sistemas externos auxiliares, pero no son contenedores padre EXTERNAL_SYSTEM:
+q6qausdhMwZW: EVC TRANSFERENCIAS Y NUEVOS SISTEMAS DE PAGO
+zVqandkiJupG: EVC Otras Funciones de Apoyo
+AuOSztfb1-A7: EVC DISTRIBUCIÓN A DISTANCIA
+AuOS5jVOtE3x: EVC TRANSFERENCIAS Y NUEVOS SISTEMAS DE PAGO
+Estos auxiliares están bajo dominios INTEGRATION. No convierten el dominio en EXTERNAL_SYSTEM.1.txt2.txt
+Consecuencia
+La regla CNT-005 no debería haberse cerrado como Cumple por contenido de EXTERNAL_SYSTEM. Al no existir ese dominio ni candidatos a ese dominio, corresponde revisar el estado hacia No aplica.
+2. Servicios gestionados y regla SRV-004
+Servicios encontrados
+Todos los servicios certificados están en domainRole: PRODUCER. Por tanto, todos son no gestionados:
+Servicio	ID	Dominio	Padre inmediato	Modalidad
+ms_validación	AuOSh4AQ~34h	PRODUCER	AuOSk5ptei4h	No gestionado
+ms_Notificaciones	AuOS1ulorkZl	PRODUCER	AuOSCdn.1X-D	No gestionado
+Vault Core API	AuOStQKQkx--	PRODUCER	AuOS~MR5zp3_	No gestionado
+ms_validación	ZUqak~b2qdKl	PRODUCER	ZUqavczExY~4	No gestionado
+No encontré ningún servicio invocado ubicado en el nivel padre de INTEGRATION, directamente ni dentro de un auxiliar en ese nivel.3.txt
+Cómo aplica SRV-004
+SRV-004 tiene dos poblaciones distintas:
+Servicios invocados gestionados
+Son servicios ubicados en el nivel padre de INTEGRATION. Deben tener:
+MCI: Capa de Arquitectura más Flujo Transaccional; o
+Federado: figura FEDERADO asociada inequívocamente.
+Hijo principal de E1 o E2
+Depende de la declaración de la analista:
+si se declara MCI, debe tener Capa y Flujo;
+si se declara no MCI, no debe tener asociados Capa ni Flujo.
+En este blueprint:
+no hay servicios invocados gestionados;
+el hijo principal AuOSLT~yhM0g, ms_Apertura Producto, fue declarado por ti como no MCI;
+no encontré una Capa de Arquitectura ni un Flujo Transaccional resueltos con associatedComponentId: "AuOSLT~yhM0g";
+las parejas pendientes están en INTEGRATION, mientras que el hijo está en PRODUCER, por lo que no deben atribuírsele.
+Conclusión corregida de SRV-004
+El estado No verificable que indiqué inicialmente no está sustentado. Con la evidencia del JSON y tu declaración, SRV-004 debe ser Cumple: el hijo fue declarado no MCI y no tiene Capa ni Flujo asociados; no hay servicios gestionados adicionales que evaluar.1.txt2.txt
+3. Parejas incompletas de SRV-005
+Después de agrupar las conexiones por pareja de participantes, no encontré parejas incompletas en la población de SRV-005.
+Todas las relaciones servicio-API tienen los dos sentidos y, en cada conexión:
+origen: CircleOpen;
+destino: Generalization.
+Parejas completas
+Servicio	Otro componente	Servicio → componente	Componente → servicio	Resultado
+ms_Notificaciones AuOS1ulorkZl	Natural Person Bank Correspondence AuOSxug32F.r	AuOSPtejoe1g	AuOSkr1fQu34	OK
+ms_validación ZUqak~b2qdKl	Customer Regulatory Compliance Information zVqa93t6krLl	zVqaSw.c.Xrm	.SvcW8cQUdfG	OK
+ms_validación AuOSh4AQ~34h	Customer Products And Services Management AuOSPxLt1IlY	AuOSItO1gP.Y	AuOSsEiZjH9J	OK
+ms_Notificaciones AuOS1ulorkZl	Legal Person Bank Correspondence AuOSt29wAZ04	AuOSYZr7tpn3	AuOStC~LhZ07	OK
+No hay relaciones servicio-servicio ni conexiones certificadas entre un servicio y un evento dentro de la población de esta regla.3.txt4.py
+Conclusión corregida de SRV-005
+Mi veredicto anterior de No cumple fue incorrecto. La evidencia respalda Cumple.
+4. Modelos existentes y asociaciones de MOD-001
+Aquí sí permanece el problema central del veredicto: MOD-001 exige modelos de entrada y salida inequívocamente asociados con cada:
+API principal;
+API invocada;
+servicio invocado;
+evento de integración en INTEGRATION, según sus roles.
+La pertenencia debe aparecer en groups[].relatedComponentIds o modelIds. Cercanía, mismo auxiliar o mismo contenedor no es asociación suficiente.
+Asociación certificada encontrada
+Para la API principal:
+Componente	Modelo asociado	Tipo	Grupo
+Investment Product Opening - Investment AuOSOle-3nY3	AuOS-7ZvQOKe	Entrada	CuOSS~sdKEnk
+El grupo contiene conjuntamente el ID de la API principal y el ID del modelo. Sin embargo, no encontré un modelo de salida asociado de la misma forma. Por sí sola, esta ausencia ya incumple MOD-001.3.txt
+Modelos existentes sin asociación certificada con un componente sujeto
+Estos modelos existen, pero no aparecen en un grupo que contenga conjuntamente su ID y el ID de una API o servicio sujeto:
+Modelo	ID	Clasificación
+status	AuOS8DS.3L_m	Salida
+requestInformation / status / description	zui9a~eXdRea	Salida
+status / description	KQvcnM2WdWTb	Salida
+inversión / intereses / tasa	cui9cendkhrh	Salida
+customer / identification / number	zVqazd0ydcSF	Entrada
+requestInformation / status / description	2zJ__bd02Xbt	Salida
+trackingId / notificationsMessage	AuOS8yvm5_Dh	Modelo existente sin relación certificada con la API o servicio sujeto
+CstmrPmtStsRpt	AuOSHPd4SVu4	Modelo existente sin relación certificada con la API o servicio sujeto
+También existen modelos dentro de grupos propios o junto a capas/candidatos, pero no junto al componente obligado:
+q6qaY.XFedQ5
+AuOSC1UAqolY
+Jj09JRM~fFZ1
+Te2bqBT8YpXW
+Te2b2LyrGufs
+u0qaK.0ru4Fv
+u0qaum2jt4cq
+Por ejemplo, q6qaY.XFedQ5 está dentro del auxiliar EVC que también contiene una API, pero su grupo solo relaciona el modelo. La ubicación en el mismo auxiliar no demuestra asociación con la API.3.txt
+Componentes obligados sin pareja entrada-salida certificada
+El JSON no presenta una pareja completa de modelos asociada para:
+q6qaRpfneJD3
+AuOSt29wAZ04
+AuOSPxLt1IlY
+AuOSxug32F.r
+zVqa93t6krLl
+3IOSm2eUrnYG
+AuOSh4AQ~34h
+AuOS1ulorkZl
+AuOStQKQkx--
+ZUqak~b2qdKl
+Por esa razón, MOD-001: No cumple sí queda sustentado. El caso más claro es la API principal, que tiene entrada asociada pero no salida asociada.
+5. Conexiones comando-API de COM-002
+Encontré dos parejas comando-API. Las dos están completas.
+Comando	API invocada	Comando → API	API → comando	Evaluación
+Solicitar débito de cuenta para apertura de inversión virtual AuOSZU0pQAe7	Payment Initiation - Credit Transfer3IOSm2eUrnYG	77J_7PXyu71~:CircleOpen → Generalization	l8J_zrgpi8Zb: CircleOpen → Generalization	OK
+Solicitar reverso del débito generado R5qa76B74RDS	Payment Initiation - Credit Transferq6qaRpfneJD3	q6qaZK1JIbJS:CircleOpen → Generalization	q6qaf~T.uwsj: CircleOpen → Generalization	OK
+No encontré una pareja unidireccional ni terminaciones incorrectas en COM-002.4.py
+Conclusión corregida de COM-002
+Mi veredicto anterior de No verificable fue incorrecto. El JSON respalda Cumple.
+6. Conexiones comando-servicio de COM-003
+Encontré cinco parejas comando-servicio. Todas tienen los dos sentidos correctamente modelados.
+Comando	Servicio	Comando → servicio	Servicio → comando	Evaluación
+Crear relación producto aperturado al cliente AuOSbo_DTb1M	ms_validación AuOSh4AQ~34h	AuOS_GewJO27	AuOSBZVorY4q	OK
+Consultar condiciones del cliente KSqacJZIWWSu	ms_validación ZUqak~b2qdKl	KSqaZIm0138i	KSqaE6LPrsgG	OK
+Enviar notificación AuOScdHXK7tK	ms_Notificaciones AuOS1ulorkZl	TmAVf47Ne2AK	bnAVEgXpH69h	OK
+Generar apertura del producto AuOSUkhPH20k	Vault Core API, certificado como servicio AuOStQKQkx--	AuOSqlk8Xylv	AuOSJYnmG8IX	OK
+Enviar notificación AuOSnki1KzlR	ms_Notificaciones AuOS1ulorkZl	AuOSX320t~vJ	AuOSA3vFVc_R	OK
+En las diez conexiones:
+el origen tiene CircleOpen;
+el destino tiene Generalization;
+no falta el retorno;
+no hay conexión duplicada para la misma pareja y sentido.4.py
+Conclusión corregida de COM-003
+Mi estado anterior de No verificable fue incorrecto. Corresponde Cumple.
+7. Gestores de colas y MQ-001 a MQ-003
+Tienes razón en cuestionarlo.
+El inventario trae:
+
+
+gestoresCola: []
+Además:
+no hay componentes certificados como GESTOR_COLAS;
+no hay possibleTypes: ["GESTOR_COLAS"];
+no se encontraron figuras candidatas que incorporen esa población.
+Por tanto:
+Regla	Estado correcto
+MQ-001	No aplica
+MQ-002	No aplica
+MQ-003	No aplica
+En mi tabla detallada final ya aparecían como No aplica, pero en COM-004 escribí incorrectamente que podía existir incertidumbre por un extremo indeterminado. No hay evidencia de candidato a gestor que justifique esa incertidumbre.1.txt3.txt
+Qué me hizo fallar
+Mezclé dos conceptos:
+componentes con architecturalType: null;
+candidatos formales con possibleTypes: ["GESTOR_COLAS"].
+Un componente null no es automáticamente candidato a gestor. Solo debe afectar MQ o COM-004 si el JSON entrega explícitamente la candidatura correspondiente. Eso no sucede aquí.
+Consecuencia para COM-004
+También debe ser No aplica, porque no existen relaciones comando-gestor ni candidatos a gestor.
+8. Conexiones comando-sistema auxiliar de COM-005
+Resultado literal
+No existe ninguna conexión cuya pareja certificada sea COMANDO ↔ SISTEMA_EXTERNO_AUXILIAR.
+Al filtrar todas las conexiones:
+
+
+COM005
+count 0
+Los sistemas externos auxiliares contienen API o modelos, pero las conexiones operativas evaluadas llegan directamente a las API o servicios internos certificados. No encontré una conexión cuyo extremo gráfico sea únicamente alguno de estos auxiliares:
+q6qausdhMwZW
+zVqandkiJupG
+AuOSztfb1-A7
+AuOS5jVOtE3x
+Tampoco existe una conexión pendiente que deje ambiguo si el extremo es el auxiliar o un componente interno.3.txt4.py
+Conclusión corregida de COM-005
+Mi veredicto anterior de No verificable fue incorrecto. Corresponde No aplica.
+Correcciones que exige la evidencia
+Aunque solicitaste no cambiar el veredicto, mantener estos estados después de revisar el JSON produciría un informe inconsistente. Las correcciones puntuales son:
+Regla	Estado anterior	Estado respaldado por el JSON
+CNT-005	Cumple	No aplica
+SRV-004	No verificable	Cumple
+SRV-005	No cumple	Cumple
+COM-002	No verificable	Cumple
+COM-003	No verificable	Cumple
+COM-004	No verificable	No aplica
+COM-005	No verificable	No aplica
+MOD-001	No cumple	Se mantiene No cumple
+MQ-001	No aplica	Se mantiene No aplica
+MQ-002	No aplica	Se mantiene No aplica
+MQ-003	No aplica	Se mantiene No aplica
+La causa fue que mi evaluación anterior no agrupó primero las conexiones por pareja de participantes y no aplicó correctamente la diferencia entre architecturalType: null y un candidato formal en possibleTypes. En la lectura literal del JSON, las parejas de SRV-005, COM-002 y COM-003 sí están completas.
+
+
+
+
+
+1. Que te confundio de la regla o del JSON para haber indicado que existia un contenedor padre sistemas externos?
+2. Que te confunde de la regla SRV 004 para dar ese veredicto incorrecto?
+3. Igualmente que te confundio de la regla SRV 005 o del JSON.
+4. Que te confundio de la regla COM 002 y 003
+BlueGuard 11.5.0
+BlueGuard 11.5.0
+Lo que falló no fue una ambigüedad real del JSON ni una contradicción de las reglas. Fue mi método de lectura inicial: generalicé a partir del escenario E1, mezclé poblaciones de reglas distintas y no consolidé las conexiones por pareja antes de emitir el dictamen. A continuación detallo exactamente cada error.
+1. Por qué indiqué que existía un contenedor padre EXTERNAL_SYSTEM
+Qué me confundió
+Confundí tres conceptos diferentes:
+El patrón E1 permite que existan sistemas externos auxiliares.
+El inventario contiene cuatro componentes clasificados como SISTEMA_EXTERNO_AUXILIAR.
+Un contenedor padre con domainRole: EXTERNAL_SYSTEM.
+Tomé erróneamente la presencia de sistemas externos auxiliares como evidencia de un dominio padre EXTERNAL_SYSTEM. El JSON no respalda esa equivalencia.
+Los auxiliares son:
+q6qausdhMwZW: EVC TRANSFERENCIAS Y NUEVOS SISTEMAS DE PAGO.
+zVqandkiJupG: EVC Otras Funciones de Apoyo.
+AuOSztfb1-A7: EVC DISTRIBUCIÓN A DISTANCIA.
+AuOS5jVOtE3x: EVC TRANSFERENCIAS Y NUEVOS SISTEMAS DE PAGO.1.txt2.txt
+Pero los únicos componentes CONTENEDOR_PADRE son:
+AuOS8~68XyoR, INVERSIÓN VIRTUAL, domainRole: PRODUCER;
+AuOSaKrIatFQ, INTEGRACIÓN, domainRole: INTEGRATION;
+AuOSXz0KO0Aq, INTEGRACIÓN, domainRole: INTEGRATION.3.txt
+Qué debí hacer
+Debí filtrar primero:
+
+
+architecturalType = CONTENEDOR_PADRE
+y luego comprobar literalmente:
+
+
+domainRole = EXTERNAL_SYSTEM
+El resultado habría sido vacío.
+También debí respetar la diferencia entre:
+architecturalType: SISTEMA_EXTERNO_AUXILIAR, que es un componente;
+domainRole: EXTERNAL_SYSTEM, que clasifica un dominio arquitectónico raíz.
+Causa concreta
+Fue una inferencia por semántica del nombre, no por el campo normativo. Eso contradice el procedimiento, que exige usar architecturalType y domainRole exactamente como vienen.
+No hubo nada confuso en la regla CNT-005. El error fue mío al construir una población inexistente.
+2. Por qué interpreté incorrectamente SRV-004
+Qué me confundió
+Mezclé las dos poblaciones independientes de SRV-004:
+Población A: servicios invocados gestionados
+Son únicamente servicios ubicados:
+directamente en el nivel padre de INTEGRATION; o
+dentro de un sistema auxiliar ubicado en ese mismo nivel.
+Estos servicios no requieren una declaración humana de MCI. Su despliegue debe ser MCI o Federado según la evidencia del JSON.
+Población B: hijo principal de E1 o E2
+Para este componente sí se necesita la declaración de la analista:
+declarado MCI: debe tener Capa de Arquitectura y Flujo Transaccional;
+declarado no MCI: no debe tener asociados Capa ni Flujo.
+Error específico cometido
+Vi parejas Capa-Flujo con:
+
+
+associatedComponentId: null
+status: PENDING_NO_COMMON_SUPERIOR_GROUP
+ 
+y apliqué automáticamente la precedencia:
+una asociación pendiente produce No verificable.
+La precedencia es correcta, pero la apliqué sin comprobar primero a cuál población podría pertenecer la asociación.
+Las parejas pendientes estaban en INTEGRATION. El hijo principal AuOSLT~yhM0g, ms_Apertura Producto, está en PRODUCER. Además, tú lo declaraste no MCI. La regla contiene una precisión aplicable a E1: una pareja pendiente ubicada en INTEGRATION no debe atribuirse al hijo ubicado en PRODUCER.1.txt2.txt
+Segundo error
+No clasifiqué anticipadamente la modalidad de los cuatro servicios:
+Servicio	Dominio efectivo
+ms_validación AuOSh4AQ~34h	PRODUCER
+ms_Notificaciones AuOS1ulorkZl	PRODUCER
+Vault Core API AuOStQKQkx--	PRODUCER
+ms_validación ZUqak~b2qdKl	PRODUCER
+Todos son no gestionados y, por tanto, están excluidos de la exigencia de despliegue para servicios invocados en SRV-004.3.txt
+Qué debí hacer
+El orden correcto era:
+Separar servicios invocados del hijo principal.
+Clasificar cada servicio como gestionado o no gestionado por su dominio efectivo.
+Descartar de la población los cuatro servicios no gestionados.
+Evaluar el hijo con tu declaración no MCI.
+Revisar si existe una Capa o Flujo resuelto con el hijo.
+Determinar si las asociaciones pendientes de la página podrían pertenecerle según dominio y ubicación.
+Con ese orden:
+servicios gestionados: ninguno;
+hijo principal: no MCI;
+Capa o Flujo resuelto con el hijo: ninguno;
+parejas pendientes atribuibles al hijo: ninguna.
+Por eso SRV-004 resulta Cumple.
+Causa concreta
+No fue que la regla estuviera confusa. El fallo fue aplicar la precedencia de asociaciones antes de determinar la población y la atribución posible.
+3. Por qué interpreté incorrectamente SRV-005
+Qué me confundió
+Leí las conexiones como registros individuales y observé que cada registro representa un solo sentido. A partir de eso inferí que podía faltar el sentido inverso.
+Por ejemplo, inicialmente podía verse:
+
+
+ms_Notificaciones → Natural Person Bank Correspondence
+y parecer una relación unidireccional si se inspecciona esa conexión en forma aislada.
+Pero en otra entrada del arreglo aparece:
+
+
+Natural Person Bank Correspondence → ms_Notificaciones
+La regla no exige que ambos sentidos estén en un único objeto de conexión. Exige dos objetos entre la misma pareja, uno por cada dirección.
+Error específico cometido
+No agrupé las conexiones por una clave canónica de pareja:
+
+
+{participante A, participante B}
+Antes de decidir si la relación estaba completa.
+Cuando se agrupan correctamente, aparecen cuatro parejas completas:
+AuOS1ulorkZl ↔ AuOSxug32F.r
+ZUqak~b2qdKl ↔ zVqa93t6krLl
+AuOSh4AQ~34h ↔ AuOSPxLt1IlY
+AuOS1ulorkZl ↔ AuOSt29wAZ04
+En cada pareja existen dos conexiones, y cada una usa:
+CircleOpen en el origen;
+Generalization en el destino.4.py
+Segundo error
+Me apoyé demasiado en que connections[].orientation aparecía vacío o no aportaba originId y destinationId en esos registros.
+Sin embargo, para estas conexiones la dirección puede obtenerse del orden de los extremos y sus terminaciones:
+
+
+endpoint1: CircleOpen
+endpoint2: Generalization
+El participante de CircleOpen actúa como origen y el de Generalization como destino. No era necesario declarar incertidumbre solo porque orientation no estuviera enriquecido explícitamente.
+Qué debí hacer
+Para SRV-005, el método correcto era:
+Seleccionar conexiones servicio-API, servicio-servicio y servicio-auxiliar.
+Excluir comando-servicio, porque corresponde a COM-003.
+Excluir servicio-gestor, porque corresponde a MQ-003.
+Agrupar por pareja no ordenada.
+Dentro de cada pareja, verificar:
+conexión A → B;
+conexión B → A;
+CircleOpen en cada origen;
+Generalization en cada destino;
+ausencia de duplicados en el mismo sentido.
+Revisar por separado conexiones servicio-evento prohibidas.
+Con ese procedimiento, SRV-005 es Cumple.
+Causa concreta
+El error fue evaluar líneas individuales, no relaciones completas entre parejas.
+4. Por qué interpreté incorrectamente COM-002 y COM-003
+El problema fue esencialmente el mismo que en SRV-005, con un error adicional de atribución de componentes encapsulados.
+COM-002: comandos con API
+Qué me confundió
+Encontré conexiones comando-API individuales, pero no construí una matriz por pareja para localizar el retorno correspondiente.
+En el JSON aparecen dos parejas:
+Pareja 1
+Comando: AuOSZU0pQAe7, Solicitar débito de cuenta para apertura de inversión virtual.
+API: 3IOSm2eUrnYG, Payment Initiation - Credit Transfer_v1.3.0.
+Conexiones:
+77J_7PXyu71~: comando → API;
+l8J_zrgpi8Zb: API → comando.
+Ambas usan CircleOpen → Generalization.4.py
+Pareja 2
+Comando: R5qa76B74RDS, Solicitar reverso del débito generado.
+API: q6qaRpfneJD3, Payment Initiation - Credit Transfer_v1.3.0.
+Conexiones:
+q6qaZK1JIbJS: comando → API;
+q6qaf~T.uwsj: API → comando.
+También cumplen las terminaciones requeridas.4.py
+Error adicional
+Como algunas API están dentro de sistemas externos auxiliares, consideré indebidamente que quizá la conexión terminaba en el auxiliar.
+Pero los extremos de las conexiones contienen directamente los IDs de las API:
+3IOSm2eUrnYG;
+q6qaRpfneJD3.
+No existe ambigüedad del extremo. La mera contención en un auxiliar no transforma la relación en COM-005.
+Causa de fondo
+Confundí:
+“API contenida en un auxiliar”;
+“conexión que termina en el auxiliar”.
+Solo el segundo caso corresponde potencialmente a COM-005.
+COM-003: comandos con servicios
+Qué me confundió
+Volví a revisar cada conexión aisladamente y no agrupé los retornos por pareja. El JSON contiene cinco pares completos:
+AuOSbo_DTb1M ↔ AuOSh4AQ~34h
+KSqacJZIWWSu ↔ ZUqak~b2qdKl
+AuOScdHXK7tK ↔ AuOS1ulorkZl
+AuOSUkhPH20k ↔ AuOStQKQkx--
+AuOSnki1KzlR ↔ AuOS1ulorkZl
+Cada pareja tiene:
+comando → servicio;
+servicio → comando;
+CircleOpen en el origen;
+Generalization en el destino.4.py
+El caso que más podía inducir al error
+AuOStQKQkx-- se llama Vault Core API, pero el JSON lo certifica como:
+
+
+architecturalType: SERVICIO
+role: INVOCADO
+inference.rule: SERVICE_BY_PRODUCER_DOMAIN
+Por tanto, su relación con el comando Generar apertura del producto pertenece a COM-003, no a COM-002.
+El nombre visible contiene “API”, pero no se permite cambiar el tipo arquitectónico por el nombre.
+Causa concreta
+En COM-003 hubo dos errores metodológicos:
+no agrupar conexiones por pareja y sentido;
+dejar que el nombre Vault Core API compitiera mentalmente con architecturalType: SERVICIO.
+El campo normativo debía prevalecer sin dudas.
+Resumen de las causas raíz
+Error	Causa raíz
+Dominio EXTERNAL_SYSTEM inexistente	Equiparé sistemas externos auxiliares con un dominio padre externo.
+SRV-004 como No verificable	Apliqué asociaciones pendientes antes de determinar población, dominio y posible propietario.
+SRV-005 como No cumple	Evalué conexiones individuales, no parejas bidireccionales consolidadas.
+COM-002 como No verificable	No emparejé los dos sentidos y confundí contención en auxiliar con extremo en auxiliar.
+COM-003 como No verificable	No emparejé los dos sentidos y permití que “API” en el nombre de Vault Core afectara la lectura de su tipo certificado.
+En síntesis, el JSON sí contenía evidencia suficiente. Los falsos negativos surgieron porque no apliqué primero tres normalizaciones indispensables: inventario por tipo certificado, población por regla y conexiones agrupadas por pareja y sentido.
