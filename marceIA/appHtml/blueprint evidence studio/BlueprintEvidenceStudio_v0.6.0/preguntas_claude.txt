@@ -1,21 +1,9 @@
-Preguntas para la analista
-¿Confirma que una conexión con un comando nunca va a SRV-005, aunque el otro extremo sea candidato? ¿Y que un candidato conectado a un gestor solo afecta MQ-003?
-R/ Si, asi deberia ser xq sino voy a evaluar lo mismo en diferentes reglas y eso me afecta las metricas.
+Conteo de modelos.
+    ¿Aplica solo en auxiliares con EVC, EPC o LDC, o en cualquier auxiliar, incluidos los de SISTEMAS EXTERNOS?
+    ¿Cuenta los modelos dentro de sus capas y flujos?
+    Con 2 APIs y solo 1 entrada y 1 salida, ¿se acepta un par compartido, o queda “No verificable”?
+    Con 1 API, 1 entrada y 0 salidas, ¿es “No cumple” por la salida faltante, o “No verificable” si hay otros modelos sueltos en la página?
+    
+Modelos fuera de auxiliares. En Real Time Payments hay 7 modelos directamente en INTEGRACIÓN. ¿Qué convención asocia los modelos de una API fuera de auxiliar y los de un servicio invocado en PRODUCTOR: agrupación, contención u otra?
 
-¿Una línea con un extremo sin conectar, o una línea que nace de otra línea, es una conexión pendiente (No verificable)? ¿O prefiere que el Studio la resuelva siguiendo la línea? En Second Security Factor, ¿cuenta como conexión comando→API? Ese caso se corrige mejor en el diagrama.
-R/ deberia ser una conexion pendiente y la regla quedaria como no verificable.
-
-En Wallet, las figuras de datos (BPMNActivity con campos) no traen ENTRADA/SALIDA. ¿Esa etiqueta es obligatoria? Si lo es, MOD-001 “No cumple” es correcto, pero el informe debe decir que existen figuras sin etiquetar. Si no lo es, ¿qué señal las identifica como modelos?
-R/ para los modelos de entrada y salida si es obligatorio esa etiqueta, asi que estaria ok el mod.
-
-En Investment, el auxiliar “EVC Transferencias” trae 1 API, 1 modelo de entrada y 1 de salida, y ninguno está agrupado con la API. ¿Aceptaría asociarlos por contención cuando el auxiliar tiene una sola API, como en el conteo de marcadores?
-R/ Si se puede hacer algo similar al de conteos seria perfecto. Esto sucede tambien cuando en un axiliar se presentan 2 API y 2 modelos de entrada y 2 de salida pero no se agrupan.
-
-Investment tiene dos contenedores llamados INTEGRACIÓN. Uno tiene la API principal y el otro los 4 auxiliares. ¿Es normal y cómo debe evaluarse CNT-001?
-R/ Si es normal xq INTEGRACION puede repetirse y eso debe estar en la reglas. Entonces igual la regla CNT 001 queda como cumple.
-
-
-PUNTOS A TENER EN CUENTA SEGUN LA analista
-- Revisar que puede estar causando que el agente cambie su veredicto luego de cuestionarlo cuando el mismo afirma que el JSON es claro, no se si hay alguna regla que no sea clara.
-- Las instrucciones a mi parecer son demasiado largas y cada iteracion le aumentas más, entonces no se si se pueda crear un md aparte donde se le aclare como debe proceder y que no se repita en las reglas ni en las instrucciones.
-- Me preocupa que el agente vea contenedores padre donde no los hay, como fue el caso de los sistemas externos donde despues cambio su opinion. Al igual que en el gestor de colas y la conexion la puse como no verificable pero no existian colas.
+Línea pendiente. ¿Una conexión pendiente lleva a “No verificable” todas las reglas de conexión donde pudiera caer (COM-002 a COM-005, SRV-005 y MQ-003), aunque el resto de las parejas esté completo? ¿Y con un incumplimiento certificado en otra pareja, se cita en la justificación y el estado sigue siendo “No verificable”?
