@@ -203,6 +203,7 @@ QUE ME PREOCUPA COMO ANALISTA
 2. Se debe permitir que los auxiliares permitan esos marcadores de api asi esten sueltos, al igual que en el padre de integracion y en sistemas externos como contenedor padre.
 3. Se debe crear la siguiente regla para cerrar aun mas la definicion de apis candidatas:
     - Si existe un componente que no sepas si es api o servicio y se encuentre dentro de un sistema auxiliar que tenga en su nombre alguna de estas palabras: EVC, LDC, EPC se debe clasificar como API invocada.
+    - Si existe un auxiliar de ese estilo y adicional tiene ese componente que no se sabe si es api o servicio y un BPMNEvent q no conecta con nada. Pero adicionalmente la cantidad de BPMNEvent es igual q la cantidad de componentes encapsulados, entonces ese BPMNEvent pertenece a la API y no deberia ponerse en el inventario como un marcador de api independiente. Solo se pone independiente si no me coincide con la cantidad.
     - Los eventos de integracion tambien pueden ir dentro de un auxiliar asi, sin embargo para saber si es un evento sabemos que debe tener en su tipo Aplicacion o Empresarial. O en su defecto que diga NOMBRE EVENTO o EVENTO.
     - Los servicios invocados no deben ir dentro de un auxiliar que contenga alguna de esas palabras. (Dime si esto se contradice con algo definido y con los BP que tengas cargados de prueba)
 4. Creo que algo podriamos hacer con los servicios:
