@@ -1,68 +1,48 @@
+Marcador de API.
+    “Sin conexiones o asociado a una API directamente”: ¿asociado significa una línea al API, o estar dentro del mismo auxiliar?
+    ¿Aplica en cualquier lugar o solo en auxiliares y en INTEGRACIÓN?
+    ¿Un evento sin conexiones dentro del hijo es marcador, o es un evento normal?
 
-Marcadores y conteo (P2). ¿Cuenta solo los bloques UML sin tipo del auxiliar, sin contar modelos, capas, flujos ni notas? ¿Aplica solo a auxiliares EVC/LDC/EPC o a cualquiera?
-R/ Los modelos no tiene ese marcador y no vamos a hacer el conteo para modelos. 
-Las capas o flujos pueden encapsular esos marcadores de API, entonces aqui tambien aplicaria. Sin embargo tambien estarian en integracion
-Y la regla de marcadores y conteo solo aplicaria para auxiliares con EVC/LDC/EPC estrictamente. Puede haber un auxiliar que no contenga estas palabras y tenga una api encapsulada, sin embargo deberia estar en sistemas externos pero no podemos clasificarlos como apis o servicios a menos que el marcador permita hacer esta inferencia estricta.
+Conteo con capas y flujos. Dame un ejemplo de auxiliar con capas o flujos que encapsulen marcadores. ¿Cuenta eventos = bloques UML sin tipo + capas + flujos, o solo bloques UML?
 
+Auxiliar EVC, LDC o EPC en el productor.
+    ¿Los bloques dentro son eventos de integración y no APIs?
+    ¿Entonces P3 y P5 no aplican ahí?
+    ¿Debo corregir EXT-002, hoy “a nivel INTEGRACIÓN”, para admitir el productor?
 
-Prioridad entre reglas. Si un bloque dentro de un auxiliar EVC tiene ms o customData TIPO: SERVICIO, ¿se deja ambiguo (conflicto) o gana alguno?
-R/ Si un bloque dentro del auxiliar EVC/LDC/EPC tiene ms, microservicio, microservice o algo q me indique que es un servicio como customData = SERVICIO, entonces se debe clasificar como SERVICIO el architecturalType.
+Dónde se busca “evento”.
+    ¿Solo en el título (primera sección)?
+    ¿También en Text1 (operación) o en textos sueltos? Los 3 bloques de Real Time con “bancolombia.psf.qr.event.spi” en el productor: ¿evento o servicio?
+    ¿Las palabras aplicación, empresarial, query y command se buscan en la tercera sección? Hoy 4 bloques de Debit Card ya salen certificados por “Empresarial - Event”.
 
-Tercera sección (P4). ¿Acepto “Private-Entidad” sin espacios y con mayúscula para clasificar como API? ¿Y “Privada - Entidad”?
-R/ debes aceptar en tipo cualquiera de las palabras: private, public, partner, privada, publica. Sin importar si es mayusculas o minusculas para clasificarla como API ya que la validacion de escritura se hace en unas de las reglas.
-La clasificacion por modelo de servicio aplica para las palabras: entidad, tarea o utilidad; sin importar si es mayuscula o minuscula.
-En caso de tener ambos, se certifica que es una API. De lo contrario si solo se tiene las palabras entidad, tarea o utilidad no podemos saber si es api o servicio.
+“Nombre Evento”. ¿Es evento de integración certificado, o prospecto? Los 4 casos están en Investment, en una plantilla. Dijiste “más si tenemos capa de tópicos”, lo que sugiere que sin capa sería prospecto.
 
-Dominio productor (P5). ¿Solo el nivel padre y los auxiliares del productor, o también lo que está dentro del hijo? Cuatro bloques “TXN” de Debit están dentro de un hijo del productor.
-R/ Esto solo aplica a nivel del padre y auxiliares dentro del productor ya que dentro del hijo no se permiten eventos de integracion, apis o servicios o gestores de colas.
+Tipos que faltan.
+    ¿Anotación, concepto, pendiente y actividad llevan tipo propio o quedan en null?
+    ¿”Indeterminado” se representa como null con possibleTypes? Es lo que propongo, porque no cambia el contrato.
+    ¿Dejo el valor EVENTO como está, tal como lo lista ella, o lo renombro a EVENTO_BPMN?
 
-Consecuencia de P5. Tablas como “Base de Datos BPAY” o “Almacenamiento Log” pasarían a servicio invocado. SRV-001 a SRV-003 les aplicarían nombre, operación y clasificación, y la mayoría daría “No cumple”. ¿Lo aceptas? ¿Los bloques de políticas de Investment (“politicasAperturaProducto”, “evaluarExcepcionesRestrictivas”, “evaluarRestriccionesCliente”) deben ser servicios?
-R/ Si, clasifiquemoslo como servicios ya que dentro del dominio productor padre no pueden ir APIs y tampoco tiene algo q me indique si es un evento. Si esta en integración y no tenemos la certeza si es api o servicio, entonces si poner q es posible Cualquiera de los dos.
-Solo puedo clasificar algo como evento de integracion si tiene nombre evento, evento en su nomenclatura o si dice: aplicacion, empresarial, event, query o command.
-SISTEMAS EXTERNOS sin regla. recepcion_callback en Consumidor y “PR - Deposit Account Transactions” en Depostitos no entran en P3 ni en P5, porque ahí sí hay APIs. ¿Hay alguna señal para clasificarlos?
-R/ No hay una señal y por eso debemos clasificarlo como indeterminado y puede ser api o servicio.
+Comando.
+    ¿Basta una conexión a un auxiliar o a un evento de integración, o solo a API, servicio o cola?
+    Si el otro extremo es un candidato API o SERVICIO, ¿igual es comando? Propongo que sí.
+    Una actividad sin conexión: ¿null?
 
-Candidatos (P7). ¿possibleTypes: ["API","SERVICIO"] reemplaza a ["SERVICIO"] en todos los casos? ¿Los textos de plantilla (“Nombre Evento”, “Nombre Servicio”, “Clasificación lógica”) son prospectos o se descartan?
-R/El que diga nombre evento clasificarlo como evento de integracion y mas si tenemos como validar que tenga una capa de topicos inequivocamente. En caso diferente si se debe clasificar como API, SERVICIO xq no savemos que es.
+Origen de la conexión.
+    ¿Confirmas esta tabla?
+        COM: comando hacia API, servicio, cola o auxiliar.
+        MQ: gestor hacia gestor o hacia servicio.
+        SRV: servicio hacia servicio o hacia auxiliar.
+    Faltan casos: servicio a cola, hijo a API, API a otro componente y eventos de integración (dijiste que es diferente). ¿Qué regla aplica en cada uno?
+    ¿El origen en una pareja de ida y vuelta es el extremo CircleOpen, y en una línea unidireccional la cola de la flecha?
 
-Eventos (P8). ¿”EVENTO” aplica solo a bloques UML y solo al nombre?
-R/ Si, aplica solo a bloques UML que tengan en su nombre algo relacionado con EVENTO pero debe clasificarse como evento de integracion y no como evento bpmn.
+Roles. El hijo pasa de HIJO_PRINCIPAL a INVOCADO.
+    ¿Un candidato lleva INVOCADO si lo llama el hijo o un comando?
+    ¿Los gestores de cola y los eventos de integración que no son del hijo llevan INVOCADO?
 
-Roles (P9). Para candidatos, ¿basta un rol posible o debe quedar “INVOCADO” certificado? El gestor de colas no tiene rol en las reglas MQ.
-R/ De esto te di respuesta en la parte inicial antes de responder estas preguntas.
+SRV-004 en el escenario 1. Una pareja capa-flujo sin dueño en INTEGRACIÓN no es del hijo. ¿Qué estado doy?
+    ¿”No cumple” para el hijo, que no tiene su propio par?
+    ¿”No aplica”, porque pertenece a un componente que no conocemos?
 
-Cola (P10). ¿Basta con la figura y el nombre “cola(s)”, o quieres también MQ, Kafka y Rabbit?
-R/ Estoy de acuerdo en que si no tiene la figura exacta de colas, se trate como un prospecto de gestor de colas invocada las colas, MQ, Kafka, rabbit.
+Palabras clave. ¿Por palabra completa o por “contiene”? “ms” dentro de “forms” o “items” daría falsos positivos. Propongo palabra completa, sin importar mayúsculas ni tildes.
 
-Auxiliares y niveles (P13 y P14).
-    ¿Un auxiliar en INTEGRACIÓN sin EVC/LDC/EPC es incumplimiento?
-    R/ por el momento no es incumplimiento. Pero un auxiliar con EVC/LDC/EPC puede estar en dominio productor (padre) pero esto aplica para los eventos de tipo aplicacion.
-    ¿Un servicio puede estar en INTEGRACIÓN fuera de un auxiliar?
-    R/ Si puede, esto aplica para servicios gestionados.
-    En Mortgage, las 6 líneas del auxiliar Depostitos, que contiene un candidato a servicio: ¿qué regla las evalúa, COM-003 o COM-005?
-    R/ deberia evaluarse con las reglas COM 005 ya que hay una evidencia de la conexion con el sistema auxiliar y no con lo que esta adentro de ellos.
-Conexiones desde el origen (P15).
-    ¿Sigue exigiéndose la pareja de ida y vuelta, y solo cambia desde dónde se lee?
-    ¿O solo se evalúa la conexión saliente del componente?
-    Si existe únicamente la conexión de retorno, ¿qué regla la evalúa?
-R/ Lo que quise decir es que para las reglas de conexiones entre un comando y una api, o comando y servicio o comando y cola o comando y auxiliar. Todo inicia desde el comando, entonces aqui aplicarian las reglas COM.
-Sin embargo en las conexiones de gestores de colas, se evalua la conexion entre un gestor de colas y otro gestor o gestor a servicio. Entonces aqui todo inicia desde el gestor de colas ya que el comando se evaluó en la regla COM.
-Y por ultimo con la conexion entre un servicio y otros servicios, servicios y auxiliares; el origen es el servicio y no deberia evaluarse lo q ya se hizo en COM.
-Para los eventos de integracion es diferente.
-Y para las unidireccionales tambien deberia prevalecer el origen para determinar si evaluo una regla COM, MQ, EVT, SRV.
-
-
-Compuertas y notas (P16). Si las tipifico como compuerta y anotación, una compuerta en el nivel padre (hay 4 casos) pasaría a “No cumple” en vez de “No verificable”. ¿Está bien?
-R/ cuales son las compuertas a nivel padre que encontraste? las compuertas no son permitidas a nivel padre sino en el hijo. Dame un ejemplo
-
-Excepciones (P17). Dame la lista de reglas donde los candidatos no cuentan. Mi lectura: solo API-004 y SRV-004 (hijo y servicios gestionados).
-R/ Con lo nuevo que se esta proponiendo de poner el componente como invocado o principal en rol, cuales quedaria como candidatos? y alguno quedaria con un rol nulo?
-
-SRV-004 con hijo no MCI. Una pareja Capa-Flujo sin propietario ubicada en INTEGRACIÓN, ¿puede ser del hijo en E1, que está en PRODUCTOR? Si no, no debería mantener ese estado como “No verificable”.
-R/No. Si estoy en el escenario 1 y se dice que el hijo no esta en MCI. Esa capa de despliegue que no se pudo concretar en integracion no debe pertenecer al hijo que esta en el dominio productor. Tendria que pertenecer a otro componente API o colas que no sabemos y que esta en integracion.
-
-Cierre con candidatos. Si hay un incumplimiento certificado y además un candidato pendiente, ¿prevalece “No cumple”? Es lo que dicen los textos de las reglas y lo que corregiría en las instrucciones.
-R/ aclaremos primero cuales quedaria como candidatos con esto nuevo y me das un ejemplo para aclarar esta regla.
-
-Zip de EXT-001. ¿Confirmas que EXT-001 debe seguir permitiendo modelos de entrada y salida (como en tu zip)?
-R/ Si, en los auxiliares esta permitidos las capas de despliegue, apis, servicios, eventos de integracion, modelos de entrada y salida, pendientes, anotaciones, conceptos.
+Cierre con candidatos. ¿Confirmas los tres ejemplos de la sección 2?
