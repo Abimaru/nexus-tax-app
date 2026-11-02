@@ -1,0 +1,175 @@
+Se realizó la prueba con el blueprint MCI - BP -  Real Time Payments QR Keys Management - Commerce Keys y existe un componente llamado recepcion_callback el cual no se sabe si es api o servicio. Esto es correcto, sin embargo las reglas COM 002, COM 003 y SRV 005 quedaron como no verificable.
+El punto es que ese componente recepcion_callback asi sea una api o un servicio igual conecta con un comando, lo cual quiere decir que la regla a aplicar es la COM 002 o 003. La regla SRV 005 deberia haber quedado como No aplica, ya que se evaluó en la de comandos.
+Al preguntarle al agente por esta particularidad en la regla SRV 005 me indicó lo siguiente y quiisera q reforzaramos la regla para q no genere estas ambiguedades:
+
+Sin cambiar tu veredicto respondeme las siguientes dudas:
+1. Si el candidato recepcion_callback se certifica como un servicio. La conexion que el tiene en estos momentos se evaluaria en COM 003 o en SRV 005?
+BlueGuard 11.4.0
+BlueGuard 11.4.0
+Respuesta
+Si recepcion_callback (a7G9w.6oE3YF) se certifica como servicio invocado, su conexión actual con el comando Notificar al consumidor (vJG97VS~3fGF) se evaluaría exclusivamente en COM-003, no en SRV-005.
+Por qué corresponde a COM-003
+La pareja actual es:
+
+
+Notificar al consumidor  ⇄  recepcion_callback
+COMANDO                      SERVICIO INVOCADO
+El blueprint contiene las dos conexiones requeridas:
+Sentido	Terminaciones
+recepcion_callback → Notificar al consumidor	CircleOpen en el servicio y Generalization en el comando
+Notificar al consumidor → recepcion_callback	CircleOpen en el comando y Generalization en el servicio
+Cuando una conexión involucra un comando y un servicio, la precedencia de conexiones obliga a evaluarla en COM-003: Conexión entre comando y servicio invocado. La misma relación no debe volver a evaluarse en otra regla.
+Por qué no corresponde a SRV-005
+SRV-005 evalúa conexiones de un servicio invocado con:
+una API invocada;
+otro servicio invocado;
+un sistema externo auxiliar;
+o un evento.
+Pero excluye expresamente las conexiones con comandos, porque estas se asignan a las reglas COM correspondientes. En este caso, como el otro participante es el comando Notificar al consumidor, la relación queda fuera de SRV-005.
+Efecto sobre las reglas
+Si el tipo se certificara como servicio y la evidencia actual de las conexiones permaneciera igual:
+COM-003: pasaría de No verificable a Cumple, porque están presentes ambos sentidos con CircleOpen en el origen y Generalization en el destino.
+SRV-005: esta pareja no entraría en su población. Si no existen otras conexiones aplicables entre servicios, API, auxiliares o eventos, quedaría No aplica.
+COM-002: recepcion_callback dejaría de afectar esta regla, porque ya no sería candidato a API.
+SRV-001, SRV-002 y SRV-003: sí deberían evaluar el nombre, operación y clasificación de recepcion_callback, respectivamente.
+MOD-001: también debería comprobar sus modelos de entrada y salida, porque sería un servicio invocado.
+Esto no cambia el veredicto emitido, ya que la certificación como servicio todavía es un escenario hipotético.
+
+
+
+
+
+Pero entonces xq la regla SRV 005 queda como no verificable si igual conecta con un comando, y apartir de ahi ya deberia quedar por fuera de la validacion, independiente si es un servicio o una api?
+BlueGuard 11.4.0
+BlueGuard 11.4.0
+Tienes razón. SRV-005 no debería quedar No verificable por esa conexión. Mi explicación anterior mezcló la candidatura del componente con la población específica de la regla.
+Aplicación correcta de la precedencia
+La conexión existente es:
+
+
+Notificar al consumidor ⇄ recepcion_callback
+       COMANDO              API o SERVICIO
+Aunque recepcion_callback tenga possibleTypes: ["API", "SERVICIO"], el otro participante está certificado como COMANDO. Por tanto, cualquiera de las dos resoluciones conduce a una regla COM:
+Tipo futuro de recepcion_callback	Regla que evalúa la conexión
+Se certifica como API invocada	COM-002
+Se certifica como servicio invocado	COM-003
+En ninguno de los dos casos la conexión pertenece a SRV-005.
+Por qué no afecta SRV-005
+SRV-005 evalúa conexiones de un servicio invocado con:
+API invocada;
+otro servicio invocado;
+sistema externo auxiliar;
+evento.
+Pero excluye expresamente las conexiones con comandos. La precedencia indica que toda conexión comando-servicio se evalúa exclusivamente en COM-003.
+La incertidumbre consiste en decidir entre COM-002 y COM-003, no en determinar si la relación podría pertenecer a SRV-005.
+Corrección puntual del veredicto
+Sin modificar el resto del análisis:
+SRV-005 debe quedar No aplica
+Población: no hay conexiones directas certificadas ni candidatas entre un servicio invocado y una API, otro servicio, un auxiliar o un evento.
+Candidato descartado: recepcion_callback (a7G9w.6oE3YF) no incorpora una posible relación para SRV-005, porque su única conexión arquitectónica relevante es con el comando Notificar al consumidor (vJG97VS~3fGF). Esa relación se asignará a COM-002 o COM-003 según el tipo que finalmente se certifique.
+Estado correcto: No aplica.
+COM-002 permanece No verificable
+Si recepcion_callback se certifica como API, la conexión se evalúa en COM-002.
+COM-003 permanece No verificable
+Si recepcion_callback se certifica como servicio, la conexión se evalúa en COM-003.
+Es decir, la candidatura afecta simultáneamente a COM-002 y COM-003 mientras no se resuelva el tipo, pero no afecta SRV-005.
+Impacto numérico corregido
+Este ajuste reclasifica una regla:
+Antes: 11 Cumple, 15 No verificable, 12 No aplica.
+Correcto: 11 Cumple, 14 No verificable, 13 No aplica.
+La métrica cambia porque No aplica se excluye del denominador:
+11
+11
++
+0
++
+14
+×
+100
+=
+44
+%
+11+0+14
+11
+​
+ ×100=44%
+Por tanto, mantengo el sentido general del veredicto, pero corrijo formalmente SRV-005 de No verificable a No aplica y la métrica de 42,3 % a 44 %. Tu observación es válida.
+
+
+
+
+
+Pero entonces tocaria modificar algo en la regla SRV 005 para que si encuentra una conexion entre un comando y un candidato a servicio, no lo evalue aqui sino en la de com 003? o com 003 si es una api?
+BlueGuard 11.4.0
+BlueGuard 11.4.0
+:Razonado para 1s
+No es necesario cambiar el criterio normativo de SRV-005, porque la regla ya excluye expresamente las conexiones con comandos. Lo que conviene reforzar es el procedimiento de asignación de candidatos, para que el validador primero identifique la naturaleza de la relación y después aplique possibleTypes.
+Asignación correcta
+Para esta relación:
+
+
+Notificar al consumidor ⇄ recepcion_callback
+       COMANDO              candidato API/SERVICIO
+la evaluación debe quedar así:
+Tipo finalmente certificado para recepcion_callback	Regla aplicable
+SERVICIO, rol INVOCADO	COM-003
+API, rol INVOCADO	COM-002
+Tipo todavía ambiguo entre API y servicio	COM-002 y COM-003 quedan No verificable
+Cualquiera de los casos anteriores	SRV-005 no evalúa la conexión
+COM-003 nunca evaluaría el caso si se certifica como API. En ese caso corresponde exclusivamente a COM-002.
+Por qué SRV-005 ya debería excluirla
+SRV-005 contempla las conexiones de un servicio invocado con:
+una API invocada;
+otro servicio invocado;
+un sistema externo auxiliar;
+un evento.
+Además, excluye expresamente las conexiones con comandos. El procedimiento también establece la precedencia:
+
+
+Comando con API      → COM-002
+Comando con servicio → COM-003
+Comando con gestor   → COM-004
+Comando con auxiliar → COM-005
+Por tanto, possibleTypes: ["API","SERVICIO"] no significa que el candidato afecte indiscriminadamente todas las reglas de API y servicio relacionadas con conexiones. Primero debe considerarse con quién está conectado.
+En este caso, el participante opuesto está certificado como COMANDO, así que la incertidumbre únicamente consiste en escoger entre:
+
+
+COM-002 o COM-003
+No existe una resolución posible que lleve la conexión a SRV-005.
+¿Conviene modificar algo?
+En SRV-005 como regla normativa
+No es estrictamente necesario. La exclusión ya está escrita:
+Se excluyen las conexiones con comandos, que se evalúan mediante COM-002, COM-003 y COM-005.
+Sin embargo, para evitar que un agente o una implementación aplique de forma demasiado amplia la regla general de candidatos, sí recomendaría agregar una aclaración explícita.
+Texto recomendado para SRV-005
+Podría añadirse al criterio:
+Los componentes candidatos a servicio no forman parte de la población de SRV-005 cuando el participante relacionado está certificado como comando. En ese caso, la relación se asigna exclusivamente a COM-003 si el candidato puede ser servicio, o a COM-002 si también puede ser API. La ambigüedad del tipo afecta las reglas COM correspondientes, pero no convierte la relación en candidata para SRV-005.
+Y en No aplica:
+No aplica cuando las únicas conexiones de servicios o candidatos a servicio son con comandos, gestores de colas u otros participantes asignados exclusivamente a reglas diferentes por la precedencia de conexiones.
+Ajuste más importante en el procedimiento general
+El verdadero punto a reforzar no es solo SRV-005, sino la instrucción general:
+“Un candidato afecta a toda regla cuyo tipo evaluado figure en possibleTypes”.
+Esa frase puede interpretarse de forma demasiado amplia para reglas de conexiones. Debería complementarse con algo como:
+En reglas de conexión, possibleTypes no determina por sí solo la población. Primero se aplica la precedencia según los participantes de la relación. El candidato afecta únicamente las reglas compatibles con todas las posibles resoluciones de su tipo y con el tipo certificado del participante opuesto.
+Aplicado al ejemplo
+Participante A: Notificar al consumidor, certificado como COMANDO.
+Participante B: recepcion_callback, candidato API o SERVICIO.
+Resoluciones posibles:
+comando ↔ API: COM-002;
+comando ↔ servicio: COM-003.
+SRV-005 no aparece en ninguna resolución posible.
+Resultado:
+COM-002: No verificable;
+COM-003: No verificable;
+SRV-005: No aplica, si no existen otras conexiones dentro de su población.
+Regla práctica para el validador
+
+
+1. Identificar los dos participantes.
+2. Aplicar la precedencia de conexiones.
+3. Expandir únicamente los possibleTypes compatibles.
+4. Asignar la relación a las reglas resultantes.
+5. No enviar el candidato a otras reglas de conexión solo porque su tipo posible aparezca en ellas.
+Así se evita el error que ocurrió en el veredicto inicial: propagar un candidato a SRV-005 únicamente porque podía ser servicio, sin considerar que el otro extremo estaba certificado como comando.
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
