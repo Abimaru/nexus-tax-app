@@ -1,0 +1,10 @@
+Preguntas para la analista
+¿Confirma que una conexión con un comando nunca va a SRV-005, aunque el otro extremo sea candidato? ¿Y que un candidato conectado a un gestor solo afecta MQ-003?
+
+¿Una línea con un extremo sin conectar, o una línea que nace de otra línea, es una conexión pendiente (No verificable)? ¿O prefiere que el Studio la resuelva siguiendo la línea? En Second Security Factor, ¿cuenta como conexión comando→API? Ese caso se corrige mejor en el diagrama.
+
+En Wallet, las figuras de datos (BPMNActivity con campos) no traen ENTRADA/SALIDA. ¿Esa etiqueta es obligatoria? Si lo es, MOD-001 “No cumple” es correcto, pero el informe debe decir que existen figuras sin etiquetar. Si no lo es, ¿qué señal las identifica como modelos?
+
+En Investment, el auxiliar “EVC Transferencias” trae 1 API, 1 modelo de entrada y 1 de salida, y ninguno está agrupado con la API. ¿Aceptaría asociarlos por contención cuando el auxiliar tiene una sola API, como en el conteo de marcadores?
+
+Investment tiene dos contenedores llamados INTEGRACIÓN. Uno tiene la API principal y el otro los 4 auxiliares. ¿Es normal y cómo debe evaluarse CNT-001?
