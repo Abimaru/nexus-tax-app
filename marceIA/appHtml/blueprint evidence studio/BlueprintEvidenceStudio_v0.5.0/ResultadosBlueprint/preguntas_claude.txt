@@ -1,0 +1,40 @@
+
+Marcadores y conteo (P2). ¿Cuenta solo los bloques UML sin tipo del auxiliar, sin contar modelos, capas, flujos ni notas? ¿Aplica solo a auxiliares EVC/LDC/EPC o a cualquiera?
+
+Prioridad entre reglas. Si un bloque dentro de un auxiliar EVC tiene ms o customData TIPO: SERVICIO, ¿se deja ambiguo (conflicto) o gana alguno?
+
+Tercera sección (P4). ¿Acepto “Private-Entidad” sin espacios y con mayúscula para clasificar como API? ¿Y “Privada - Entidad”?
+
+Dominio productor (P5). ¿Solo el nivel padre y los auxiliares del productor, o también lo que está dentro del hijo? Cuatro bloques “TXN” de Debit están dentro de un hijo del productor.
+
+Consecuencia de P5. Tablas como “Base de Datos BPAY” o “Almacenamiento Log” pasarían a servicio invocado. SRV-001 a SRV-003 les aplicarían nombre, operación y clasificación, y la mayoría daría “No cumple”. ¿Lo aceptas? ¿Los bloques de políticas de Investment (“politicasAperturaProducto”, “evaluarExcepcionesRestrictivas”, “evaluarRestriccionesCliente”) deben ser servicios?
+
+SISTEMAS EXTERNOS sin regla. recepcion_callback en Consumidor y “PR - Deposit Account Transactions” en Depostitos no entran en P3 ni en P5, porque ahí sí hay APIs. ¿Hay alguna señal para clasificarlos?
+
+Candidatos (P7). ¿possibleTypes: ["API","SERVICIO"] reemplaza a ["SERVICIO"] en todos los casos? ¿Los textos de plantilla (“Nombre Evento”, “Nombre Servicio”, “Clasificación lógica”) son prospectos o se descartan?
+
+Eventos (P8). ¿”EVENTO” aplica solo a bloques UML y solo al nombre?
+
+Roles (P9). Para candidatos, ¿basta un rol posible o debe quedar “INVOCADO” certificado? El gestor de colas no tiene rol en las reglas MQ.
+
+Cola (P10). ¿Basta con la figura y el nombre “cola(s)”, o quieres también MQ, Kafka y Rabbit?
+
+Auxiliares y niveles (P13 y P14).
+    ¿Un auxiliar en INTEGRACIÓN sin EVC/LDC/EPC es incumplimiento?
+    ¿Un servicio puede estar en INTEGRACIÓN fuera de un auxiliar?
+    En Mortgage, las 6 líneas del auxiliar Depostitos, que contiene un candidato a servicio: ¿qué regla las evalúa, COM-003 o COM-005?
+
+Conexiones desde el origen (P15).
+    ¿Sigue exigiéndose la pareja de ida y vuelta, y solo cambia desde dónde se lee?
+    ¿O solo se evalúa la conexión saliente del componente?
+    Si existe únicamente la conexión de retorno, ¿qué regla la evalúa?
+
+Compuertas y notas (P16). Si las tipifico como compuerta y anotación, una compuerta en el nivel padre (hay 4 casos) pasaría a “No cumple” en vez de “No verificable”. ¿Está bien?
+
+Excepciones (P17). Dame la lista de reglas donde los candidatos no cuentan. Mi lectura: solo API-004 y SRV-004 (hijo y servicios gestionados).
+
+SRV-004 con hijo no MCI. Una pareja Capa-Flujo sin propietario ubicada en INTEGRACIÓN, ¿puede ser del hijo en E1, que está en PRODUCTOR? Si no, no debería mantener ese estado como “No verificable”.
+
+Cierre con candidatos. Si hay un incumplimiento certificado y además un candidato pendiente, ¿prevalece “No cumple”? Es lo que dicen los textos de las reglas y lo que corregiría en las instrucciones.
+
+Zip de EXT-001. ¿Confirmas que EXT-001 debe seguir permitiendo modelos de entrada y salida (como en tu zip)?
