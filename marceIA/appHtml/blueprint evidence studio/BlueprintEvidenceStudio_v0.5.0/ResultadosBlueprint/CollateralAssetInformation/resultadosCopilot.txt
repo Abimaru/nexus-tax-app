@@ -205,4 +205,7 @@ QUE ME PREOCUPA COMO ANALISTA
     - Si existe un componente que no sepas si es api o servicio y se encuentre dentro de un sistema auxiliar que tenga en su nombre alguna de estas palabras: EVC, LDC, EPC se debe clasificar como API invocada.
     - Los eventos de integracion tambien pueden ir dentro de un auxiliar asi, sin embargo para saber si es un evento sabemos que debe tener en su tipo Aplicacion o Empresarial. O en su defecto que diga NOMBRE EVENTO o EVENTO.
     - Los servicios invocados no deben ir dentro de un auxiliar que contenga alguna de esas palabras. (Dime si esto se contradice con algo definido y con los BP que tengas cargados de prueba)
-4. Me preocupa que los componentes no tenga el rol de principal o invocado. En que casos no le asignas role?
+4. Creo que algo podriamos hacer con los servicios:
+    - Si existe un componente que no sepas como clasificar si api o servicio y esta contenido en el dominio productor, esto no puede ser una API entonces clasificarlo como servicio invocado.
+    - Si tiene en su nombre la palabra ms o microservicio o microservice o MS, clasificarlo como servicio invocado.
+5. Me preocupa que los componentes no tenga el rol de principal o invocado. En que casos no le asignas role?

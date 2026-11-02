@@ -1,0 +1,189 @@
+Mantengo el veredicto general. Sin embargo, hago una precisión importante: en CNT-004, CNT-005 y EXT-001 mi justificación anterior fue demasiado amplia, porque no todo componente con architecturalType: null genera incertidumbre. Solo la genera cuando sus posibles clasificaciones incluyen categorías permitidas y prohibidas para la ubicación correspondiente.
+1. CNT-004: componentes architecturalType: null en DOMINIO PRODUCTOR
+El componente explícitamente identificado en la evidencia conservada es:
+ID	Nombre visible	Figura	SituaciónllV7hwJeatEP	Desembolso Online	UMLClassBlock	architecturalType: null, ubicado directamente en DOMINIO PRODUCTOR
+¿Por qué genera incertidumbre?
+En el nivel padre de DOMINIO PRODUCTOR:
+Un servicio está permitido.
+Una API está prohibida.
+Un bloque UML sin tipo certificado no puede asumirse como servicio solo por su nombre, figura o ubicación.
+Por tanto, Desembolso Online podría corresponder a una categoría permitida o prohibida. Esto impide cerrar CNT-004 como Cumple.
+Los componentes de tipo MODELO ubicados en PRODUCTOR no provocan esta incertidumbre, porque ya están certificados como modelos, una categoría permitida.
+Dato necesario para cerrar CNT-004
+Para llV7hwJeatEP debe certificarse uno de estos resultados:
+Si es SERVICIO, su ubicación es permitida.
+Si es API, sería un incumplimiento.
+Si corresponde a otra categoría, debe compararse con el catálogo permitido de CNT-004.
+2. CNT-005: componentes architecturalType: null en SISTEMAS EXTERNOS
+Primero, una corrección de redacción: CNT-005 evalúa SISTEMAS EXTERNOS, no DOMINIO PRODUCTOR.
+Entre los componentes sin tipo certificado observados en ese dominio está:
+ID	Nombre visible	Figura	UbicaciónTGV7a~0FEIrF	voidedTransaction	BPMNActivity	Directamente en SISTEMAS EXTERNOS
+TGV7xSqnpEin	Texto estructurado que comienza con account, type, number, customer	BPMNActivity	Directamente en SISTEMAS EXTERNOS
+También aparecen bloques UML sin tipo certificado, algunos dentro de los auxiliares Depostitos. Estos últimos no se evalúan directamente en CNT-005, sino en EXT-001, porque están encapsulados en un sistema externo auxiliar.
+¿Cuál es el caso más relevante?
+TGV7a~0FEIrF, denominado voidedTransaction, es una BPMNActivity directamente ubicada en SISTEMAS EXTERNOS.
+CNT-005 prohíbe directamente en ese dominio:
+comandos;
+eventos BPMN operativos;
+compuertas;
+políticas;
+capas de despliegue;
+gestores de colas.
+Pero una BPMNActivity con architecturalType: null no debe clasificarse automáticamente como comando. Por eso:
+no puede declararse No cumple solo por su figura o texto;
+tampoco puede confirmarse que corresponda a una categoría permitida;
+queda como candidato pendiente que mantiene CNT-005 en No verificable.
+Precisión sobre el veredicto
+El estado No verificable se conserva, pero la justificación correcta debe centrarse en los componentes directamente ubicados en SISTEMAS EXTERNOS. Los componentes encapsulados en Depostitos corresponden a EXT-001 y no deben duplicarse en CNT-005.
+3. EXT-001: componentes no certificados dentro de los auxiliares
+Los dos sistemas externos auxiliares certificados son:
+ID	NombreTGV7KcRR8A72	Depostitos
+TGV7c413VYE-	Depostitos
+Dentro de ellos aparecen bloques UML candidatos a servicio. El caso explícitamente identificado es:
+ID	Nombre visible	Figura	EvidenciaTGV73oE1ZENe	PR - Deposit Account Transactions - Transaction Management	UMLClassBlock	architecturalType: null, possibleTypes: ["SERVICIO"], inference.status: CANDIDATE_NOT_CERTIFIED
+¿Por qué no se considera servicio?
+La tercera sección de un bloque UML puede contener textos como entidad, utilidad o tarea, pero esos valores también pueden aparecer en API. Por eso no certifican por sí mismos que sea un servicio.
+Según el contrato, un servicio se certifica mediante evidencia como:
+prefijo o sufijo ms conforme a la regla de reconocimiento, o
+customData con TIPO: SERVICIO.
+possibleTypes: ["SERVICIO"] significa solamente candidato a servicio, no servicio confirmado.
+¿Por qué afecta EXT-001?
+Un sistema externo auxiliar puede encapsular:
+API;
+servicios;
+pendientes;
+conceptos;
+anotaciones;
+y ciertas categorías adicionales dependiendo de su ubicación.
+Pero un UMLClassBlock con tipo no determinado podría ser una categoría permitida o una no permitida. Mientras no se certifique su tipo, no puede confirmarse que todo el contenido de Depostitos sea válido.
+Por eso EXT-001 se mantiene como No verificable.
+Precisión adicional
+El nombre Depostitos, aunque posiblemente sea un error ortográfico de “Depósitos”, no incumple EXT-001. Esta regla solo exige que el auxiliar tenga un nombre visible y no vacío.
+4. COM-003: por qué se marcó No aplica y no No verificable
+La diferencia está en que COM-003 no se activa solo por la existencia de un candidato a servicio. Se activa cuando hay una relación identificable entre:
+una BPMNActivity candidata a comando; y
+un servicio invocado certificado o un candidato conectado de forma que pueda configurar esa relación.
+En este blueprint:
+existen comandos relacionados con los auxiliares Depostitos;
+las conexiones terminan gráficamente en los auxiliares TGV7KcRR8A72 y TGV7c413VYE-;
+no terminan directamente en TGV73oE1ZENe ni en otro candidato a servicio encapsulado;
+tampoco existe evidencia que atribuya inequívocamente esas conexiones internas a un servicio específico.
+Por eso esas conexiones se evalúan mediante COM-005, como conexiones entre comando y sistema externo auxiliar.
+Ejemplo concreto
+Para comandos como:
+Realizar reintento de la transferencia (kiV7Rvsi7p~t);
+Realizar Pago (kiV7F~oIphv6);
+Realizar reverso de la transacción (kiV7LVjiUl7F);
+los extremos de las conexiones son los auxiliares Depostitos, no el bloque candidato TGV73oE1ZENe.
+Por tanto:
+COM-005 tiene población y puede evaluarse.
+COM-003 no tiene una pareja comando-servicio ni una conexión pendiente que termine en un candidato a servicio.
+En consecuencia, COM-003 = No aplica.
+¿Cuándo sería COM-003 No verificable?
+Sería No verificable en cualquiera de estos casos:
+una conexión termina en TGV73oE1ZENe, pero su condición de servicio no está certificada;
+el extremo gráfico es ambiguo entre el auxiliar y uno de sus servicios internos;
+la conexión parece entrar al auxiliar, pero la evidencia no permite determinar si termina en el auxiliar o en el servicio;
+existe una relación comando-candidato a servicio, pero no se puede certificar el tipo, el sentido o las terminaciones.
+Conclusión de COM-003
+El simple hecho de que exista un candidato possibleTypes: ["SERVICIO"] mantiene SRV-001, SRV-002 y SRV-003 como No verificable, porque esas reglas evalúan directamente a los candidatos a servicio.
+Pero no obliga automáticamente a poner COM-003 en No verificable. Para COM-003 también debe existir una relación identificable o pendiente entre el comando y ese candidato. En el blueprint, las relaciones observadas terminan en los auxiliares y se asignan exclusivamente a COM-005.
+MCI-BP-MortgageLoanDisbursementManagement-DisbursementExecution-ENRIQUECIDO
+TGV7a~0FEIrF no corresponde a un MODELO? y en el json no tiene nada de entrada o salida? 2. Respecto a la regla COM 003 que paso con las conexiones de los comandos: aplicar desembolso. Ellos se evaluaron en que regla y con quien conecta?
+BlueGuard 11.4.0:Razonado para 1s
+Razonado para 1s
+Revisé directamente los componentes, customData, grupos y conexiones del archivo MCI-BP-MortgageLoanDisbursementManagement-DisbursementExecution-ENRIQUECIDO. Hay una corrección importante respecto de mi explicación anterior: TGV7a~0FEIrF pertenece a SISTEMAS EXTERNOS, no a DOMINIO PRODUCTOR, y no está certificado como modelo.
+1. ¿TGV7a~0FEIrF corresponde a un MODELO?
+No según la evidencia literal del JSON. El componente tiene:
+ID: TGV7a~0FEIrF
+Nombre: voidedTransaction
+lucidchartType: BPMNActivity
+architecturalType: null
+customData: []
+inference: null
+structuralParent: SISTEMAS EXTERNOS
+domainRole: EXTERNAL_SYSTEM
+Sin conexiones.
+¿Tiene marca de entrada o salida?
+No. Su arreglo customData está vacío. No tiene:
+JSON
+{"key": "ENTRADA", "value": ""}
+ 
+ni:
+JSON
+{"key": "SALIDA", "value": ""}
+Por eso el JSON no lo certifica como MODELO. El texto voidedTransaction, por sí solo, tampoco permite inferir que sea modelo de entrada o salida.
+Comparación con un modelo certificado
+Por ejemplo, _NR7xDJsp1Wg sí aparece como:
+architecturalType: MODELO
+inference.rule: MODEL_BY_CUSTOMDATA_IO
+customData.key: ENTRADA
+Mientras que llV7Xc~rAlLZ aparece como:
+architecturalType: MODELO
+inference.rule: MODEL_BY_CUSTOMDATA_IO
+customData.key: SALIDA.
+Conclusión
+TGV7a~0FEIrF podría representar visual o funcionalmente alguna estructura, pero el contrato enriquecido no lo certifica como modelo. Normativamente debe mantenerse como tipo no determinado.
+Además, este componente afecta CNT-005, porque está directamente en SISTEMAS EXTERNOS. No corresponde a CNT-004, que evalúa DOMINIO PRODUCTOR.
+2. Conexiones de los comandos “Aplicar desembolso”
+El JSON contiene tres actividades diferentes con nombres relacionados:
+Actividad	ID	Participante conectadoAplicar desembolso Core	kiV7nBxxlocE	Desembolso Online, IDllV7FO~S6D.E
+Aplicar desembolso	kiV7lVtB29XV	Desembolso Online, IDllV7Xwsy_yho
+Aplicar desembolso	3j97W9C1.Fee	Desembolso Online, ID llV7hwJeatEP
+Los tres participantes Desembolso Online están directamente en DOMINIO PRODUCTOR, tienen lucidchartType: UMLClassBlock, pero su architecturalType es null. Tampoco tienen possibleTypes: ["SERVICIO"], customData que los certifique como servicios ni una inferencia de servicio.
+A. Aplicar desembolso Core (kiV7nBxxlocE)
+Tiene dos conexiones con Desembolso Online (llV7FO~S6D.E):
+kiV7MLUWOKU9
+CircleOpen en Aplicar desembolso Core
+Generalization en Desembolso Online
+kiV7Bj9wgv1J
+CircleOpen en Desembolso Online
+Generalization en Aplicar desembolso Core
+Es una pareja bidireccional y las terminaciones corresponden formalmente al patrón de conexiones COM. Sin embargo, llV7FO~S6D.E no está certificado como servicio.
+B. Aplicar desembolso (kiV7lVtB29XV)
+Tiene dos conexiones con Desembolso Online (llV7Xwsy_yho):
+kiV7.wnZSIam
+CircleOpen en Aplicar desembolso
+Generalization en Desembolso Online
+kiV7EKoy_4JX
+CircleOpen en Desembolso Online
+Generalization en Aplicar desembolso
+También es una pareja bidireccional con terminaciones formalmente correctas. Pero llV7Xwsy_yho conserva architecturalType: null.
+C. Aplicar desembolso (3j97W9C1.Fee)
+Tiene dos conexiones con Desembolso Online (llV7hwJeatEP):
+3j97A-sIM~Nv
+CircleOpen en Aplicar desembolso
+Generalization en Desembolso Online
+3j97jdiOpfk7
+CircleOpen en Desembolso Online
+Generalization en Aplicar desembolso
+Nuevamente, la relación es bidireccional y las terminaciones son compatibles con el patrón esperado, pero llV7hwJeatEP no está certificado como servicio.
+¿En qué regla se evaluaron esas conexiones?
+Aquí debo precisar mi evaluación anterior:
+No pueden cerrarse mediante COM-003
+COM-003 requiere una relación entre:
+una actividad candidata a comando; y
+un componente certificado como servicio invocado, o al menos un candidato cuya clasificación pendiente pueda configurar esa relación.
+Los tres Desembolso Online tienen:
+architecturalType: null;
+lucidchartType: UMLClassBlock;
+sin possibleTypes;
+sin regla SERVICE_BY_MS_NAMING;
+sin customData con TIPO: SERVICIO;
+sin role: INVOCADO.
+Por tanto, el JSON no los certifica ni los marca expresamente como candidatos a servicio. No puedo tratarlos como servicios solamente por su figura, nombre, operación o ubicación.
+Tampoco corresponden a COM-005
+COM-005 aplica cuando el extremo es un sistema externo auxiliar. En estas conexiones el extremo es directamente cada bloque Desembolso Online, ubicado en DOMINIO PRODUCTOR. No son los auxiliares Depostitos.
+Tampoco corresponden a COM-002 o COM-004
+No están certificados como API invocadas, por lo que no aplica COM-002.
+No son UMLActiveClassBlock ni gestores de colas certificados, por lo que no aplica COM-004.
+Conclusión sobre COM-003
+Las conexiones de los tres “Aplicar desembolso” no quedaron cubiertas por una regla de conexión COM específica porque el participante Desembolso Online tiene tipo no determinado.
+Manteniendo el veredicto entregado, COM-003 quedó como No aplica porque los bloques Desembolso Online no cumplen la condición de candidato a servicio definida por el contrato. Sin embargo, la justificación correcta debe nombrar explícitamente los candidatos descartados:
+COM-003: No aplica. Existen relaciones bidireccionales entre las actividades Aplicar desembolso Core (kiV7nBxxlocE), Aplicar desembolso (kiV7lVtB29XV) y Aplicar desembolso (3j97W9C1.Fee) con los bloques Desembolso Online (llV7FO~S6D.E, llV7Xwsy_yho y llV7hwJeatEP). Estos bloques tienen architecturalType: null, no tienen possibleTypes: ["SERVICIO"], no están certificados como servicios y no tienen role: INVOCADO. Por ello, las conexiones no ingresan en la población de COM-003.
+Si posteriormente alguno de esos tres bloques se certifica como SERVICIO INVOCADO, entonces COM-003 pasaría a tener población y, con la evidencia actual, sus pares de conexiones parecen satisfacer bidireccionalidad y terminaciones. Esa conclusión solo podría formalizarse después de certificar el tipo y el rol del participante.
+
+QUE ME PREOCUPA COMO ANALISTA 
+1. Deberiamos indicar en una regla, supongo q en ext que solo un sistem auxiliar que contenga las palabras EVC, LDC o EPC debe estar ubicado en INTEGRACION, si se encuentra en otra ubicacion no deberia permitirse. No se si esto afecta EXT y tambien CNT.
+2. Porque los componentes: no se clasificaron como servicio?
+3. Considero que si no puedo determinar si un componente es una api o un servicio, las reglas que validan sus conexiones deberia marcarse como no verificable. Por ejemplo en este blueprint COM003 quedo como no aplica y deberia haberse marcado como no verificable.
