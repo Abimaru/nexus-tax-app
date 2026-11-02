@@ -541,11 +541,72 @@ Aplicar No verificable en SRV-005 y COM-003 sin identificar una pareja participa
 No incorporar automáticamente los UMLActiveClassBlock como gestores certificados.
 Esto indica que el archivo anterior no debería utilizarse como resultado definitivo sin reprocesar el JSON, porque potencialmente cambian al menos CNT-005, SRV-004, SRV-005, COM-003, COM-004 y las reglas MQ.
 
+por que la API Real Time Payments Keys Management v 2.1.0 no la reconociste como api ni como servicio? no esta dentro de tu inventario?
+BlueGuard 11.4.0
+BlueGuard 11.4.0
+:Razonado para 1s
+La API Real Time Payments Keys Management v2.1.0 no apareció en mi inventario porque el inventario que construí fue incompleto. Me concentré en los componentes certificados más visibles del escenario principal y en las API invocadas asociadas a capas resueltas, en lugar de revisar exhaustivamente todos los componentes operativos del JSON.
+Qué debí hacer
+Debí localizar el componente y revisar literalmente estos campos:
+
+
+id
+name
+lucidchartType
+architecturalType
+role
+possibleTypes
+inference.status
+inference.rule
+inference.evidence
+domainRole
+structuralParent
+containerChainIds
+connections
+Su tratamiento correcto depende de esos valores:
+Si tiene architecturalType: API, debía incluirse como API certificada.
+Si tiene architecturalType: SERVICIO, debía incluirse como servicio certificado.
+Si tiene architecturalType: null y possibleTypes: ["SERVICIO"], debía incluirse como candidato a servicio, afectando las reglas SRV-001 a SRV-005.
+Si tiene architecturalType: null sin possibleTypes, no podía clasificarla como API o servicio solo porque el nombre contenga “API” o porque la tercera sección pareciera corresponder a una API.
+Si fue reconocida mediante API_BY_EMPTY_BPMN_EVENT_GROUP, debía tratarse como API según la clasificación entregada por el Studio.
+Si tiene una convención ms o customData con TIPO: SERVICIO, debía tratarse como servicio certificado según la inferencia registrada.
+Por qué no debía desaparecer del inventario
+Aunque el componente tuviera architecturalType: null, debía aparecer en la sección de candidatos pendientes, con su nombre e ID. Las instrucciones exigen revisar los componentes no clasificados antes de cerrar una regla como No aplica, Cumple o No cumple.
+Por tanto, había dos posibilidades y ambas exigían inventariarlo:
+Estaba certificado como API o servicio: debía entrar directamente en la población.
+No estaba certificado: debía aparecer como candidato y posiblemente dejar las reglas relacionadas en No verificable.
+No era correcto omitirlo por completo.
+Posible impacto
+La existencia de Real Time Payments Keys Management v2.1.0 puede afectar:
+API-001, API-002 y API-003, si está certificada como API.
+SRV-001, SRV-002, SRV-003, SRV-004 y SRV-005, si está certificada o es candidata a servicio.
+MOD-001, si tiene obligación de modelos.
+COM-002, si es API invocada relacionada con comandos.
+COM-003, si es servicio invocado relacionado con comandos.
+SRV-005, si es un servicio invocado conectado con API, servicios, auxiliares o eventos.
+Las reglas CNT, de acuerdo con su domainRole, nivel y tipo certificado.
+Respuesta directa
+Sí, debió estar dentro de mi inventario, al menos como componente candidato. No reconocerla como API, servicio o candidata fue un error de completitud del inventario, no una ausencia de información necesariamente atribuible al JSON.
+No puedo decirte honestamente cuál es su clasificación exacta sin volver a leer su registro literal, porque el JSON original ya no está disponible en el espacio de trabajo actual. Si lo adjuntas nuevamente, buscaré exactamente Real Time Payments Keys Management v2.1.0 y te devolveré su registro con:
+ID.
+Clase Lucidchart.
+Tipo arquitectónico.
+Tipo posible.
+Regla de inferencia.
+Rol.
+Dominio.
+Padre estructural.
+Conexiones.
+Reglas impactadas.
+No modificaré los demás componentes ni reinterpretaré su nombre para forzar una clasificación.
+
+
+
 QUE ME PREOCUPA COMO ANALISTA 
 1. No se reconoció el sistema auxiliar consumidor ni lo que contenia por dentro.
 2. El servicio recepcion_callback no fue tenido en cuenta en el inventario ni como servicio ni prospecto de servicio
 3. Quisiera saber cuales son las condiciones para que el HTLM decida si un componente es servicio, api, evento de integracion y cuando lo pone como propecto sin saber que es. Si no sabe que es dberia aplicar para q no sepa si es una api o servicio y no solo uno de ellos.
-4. Me preocupa que el agente no haya tenido en cuenta las colas.
+4. Me preocupa que el agente no haya tenido en cuenta las colas xq hizo un inventario incompleto.
 5. Siento que las reglas que validan las conexiones podria tener algo diferente para su validacion y es que su origen inicie con el componente que estoy evaluando. Por ejemplo:
 - Para los comandos COM, al evaluar las conexiones, deberiamos partir la evaluacion siempre y cuando el comando sea el origen.
 - Para las colas MQ, al evaluar la conexion deberia partir de q la cola sea el origen.
