@@ -1,0 +1,18 @@
+Quiero un prompt para el agente que me permita solicitar el analisis del blueprint que le voy a subir en formato JSON, haga el analisis de las 38 reglas cargadas, realice las preguntas que aplique y luego de analizar me entregue un archivo excel que tenga como encabezados los siguientes campos:
+- Nombre BP: es tal cual como esta en el JSON enriquecido sin el nombre ENRIQUECIDO
+- Operación: es el nombre de la pagina que se esta evaluando
+- Escenario: corresponde a E1, E2 o E3
+- Porcentaje de cumplimiento: corresponde a la metrica de cumplimiento
+- Tipo resultado: siempre tendra el valor Automático
+- Código de la regla: el encabezado no tendra este nombre sino el codigo de la regla. Ej: CNT-001, CNT-002, etc
+
+Para cada registro que evalue el agente me debe entrega la informacion correspondiente de cada encabezado, donde:
+- El valor del campo Nombre BP se mantiene durante todos los registros
+- El valor del campo Operación corresponde a la pagina sobre la cual se está obtiendo el resultado
+- El valor del campo Escenario corresponde al indicado por el agente para dicha pagina
+- El valor del porcentaje de cumplimiento corresponde al % entregado por el agente para dicha pagina
+- Para cada regla se debe mapear el estado entregado por el agente: Cumple, No cumple, No verificable y no aplica
+
+La cantidad de registros que debe entregar el agente en el excel corresponden a la cantidad de paginas a evaluar en el agente. Por ejemplo si el JSON enriquecido tiene 3 paginas: operacion1, operacion2, operacion 3; el excel debe entregarme tres registros con el resultado de la prueba.
+El archivo debe ser para descargar o que me facilite pegar esa informacion en un excel donde vamos a condensar toda la informacion de los BP que analicemos.
+
