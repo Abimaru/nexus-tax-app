@@ -1,0 +1,79 @@
+8Sin modificar tu veredicto, dame la explicacion de la regla SRV 005 en el register y en el retrieve
+BlueGuard 11.8.4
+BlueGuard 11.8.4
+:Razonado para 1s
+Manteniendo exactamente el veredicto anterior, SRV-005 queda “No cumple” en register y en retrieve por la misma causa: el componente certificado como servicio tiene una conexión directa con un EVENTO_BPMN, relación que la regla prohíbe expresamente.
+Qué valida SRV-005
+La regla SRV-005, Conexiones del servicio con API, servicios y auxiliares, permite que un servicio se conecte directamente con:
+una API invocada;
+otro servicio invocado;
+un sistema externo auxiliar.
+Para esas relaciones exige normalmente dos líneas, una en cada sentido, con:
+CircleOpen en el origen;
+Generalization en el destino.
+Sin embargo, la regla establece una prohibición independiente: un servicio no puede conectarse directamente con un evento, ya sea BPMNEvent o evento de integración. La ficha operativa asigna expresamente las parejas EVENTO_BPMN+SERVICIO a SRV-005. skills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/0-reglas-api-servicios.mdskills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/08-fichas.md
+1. SRV-005 en ms_account-register
+Elementos evaluados
+Servicio: ms_account (McTH-KEq.._t), certificado con architecturalType: SERVICIO y role: PRINCIPAL.
+Evento:(sin texto: EVENTO_BPMN) (j8udTx.xj3o3), certificado con architecturalType: EVENTO_BPMN.
+Conexión: línea ms_account → (sin texto: EVENTO_BPMN) (UcTH2VEaKkEm).
+Dirección: desde ms_account (McTH-KEq.._t) hacia(sin texto: EVENTO_BPMN) (j8udTx.xj3o3).
+Terminaciones: None en el servicio y Arrow en el evento.
+Estado de la línea: DECLARED.
+sharepoint
+Por qué es “No cumple”
+La pareja está identificada en el inventario como:
+
+
+EVENTO_BPMN+SERVICIO
+La ficha asigna ese tipo de pareja a SRV-005. La regla no permite una conexión servicio-evento, independientemente de:
+la dirección de la flecha;
+las terminaciones empleadas;
+que exista una sola línea o dos;
+que el evento esté dentro del hijo;
+que la conexión represente visualmente el inicio del escenario. skills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/0-fichas.mdskills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/02-reglas-api-servicios.md
+Tampoco corresponde No verificable, porque para esta relación sí están certificados:
+ambos participantes;
+sus tipos arquitectónicos;
+la dirección;
+las terminaciones;
+el estado completo de la conexión.
+Por eso existe evidencia positiva suficiente para demostrar la relación prohibida.
+Veredicto conservado
+SRV-005: No cumple.
+Justificación: ms_account (McTH-KEq.._t) tiene una conexión directa con(sin texto: EVENTO_BPMN) (j8udTx.xj3o3) mediante línea ms_account → (sin texto: EVENTO_BPMN) (UcTH2VEaKkEm). SRV-005 prohíbe que un servicio se conecte con un evento. skills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/0-reglas-api-servicios.md
+2. SRV-005 en ms_account-retrieve
+Elementos evaluados
+Servicio: ms_account (XaTHXqXxuc.M), certificado con architecturalType: SERVICIO y role: PRINCIPAL.
+Evento:(sin texto: EVENTO_BPMN) (plYknfJxPp7x), certificado con architecturalType: EVENTO_BPMN.
+Conexión: línea ms_account → (sin texto: EVENTO_BPMN) (QbTH-W5~btWA).
+Dirección: desde ms_account (XaTHXqXxuc.M) hacia(sin texto: EVENTO_BPMN) (plYknfJxPp7x).
+Terminaciones: None en el servicio y Arrow en el evento.
+Estado de la línea: DECLARED.
+sharepoint
+Por qué es “No cumple”
+El inventario también clasifica esta relación como:
+
+
+EVENTO_BPMN+SERVICIO
+Por tanto, entra directamente en la población de SRV-005. Como la regla prohíbe la conexión entre un servicio y un evento, la existencia certificada de línea ms_account → (sin texto: EVENTO_BPMN) (QbTH-W5~btWA) constituye un incumplimiento. skills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/0-fichas.md
+De nuevo, no es No verificable porque la conexión no está parcial ni pendiente:
+tiene origen certificado;
+tiene destino certificado;
+los dos participantes están tipados;
+su sentido está determinado;
+sus terminaciones están disponibles;
+figura con estado DECLARED.
+sharepoint
+Veredicto conservado
+SRV-005: No cumple.
+Justificación: ms_account (XaTHXqXxuc.M) tiene una conexión directa con (sin texto: EVENTO_BPMN) (plYknfJxPp7x) mediante línea ms_account → (sin texto: EVENTO_BPMN) (QbTH-W5~btWA). Esta relación está expresamente prohibida por SRV-005. skills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/0-reglas-api-servicios.md
+Diferencia frente a E3-001
+Aunque ambas reglas observan la misma conexión, validan aspectos diferentes:
+Regla	Qué evalúa	Resultado en ambas páginas
+E3-001	Que el componente principal se conecte con el evento BPMN de Inicio del hijo	No verificable, porque el evento solo está certificado como BPMNEvent; su subtipo Inicio es null y NO_VERIFICABLE
+SRV-005	Que un servicio no tenga una conexión directa con un evento	No cumple, porque la pareja EVENTO_BPMN+SERVICIO y la conexión están certificadas
+E3-001 no puede inferir el subtipo Inicio por la posición, el sentido de la línea ni la ubicación dentro del hijo. En cambio, SRV-005 no necesita conocer el subtipo: le basta con que el participante esté certificado genéricamente como EVENTO_BPMN y que esté conectado al servicio. skills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/0-reglas-escenarios.mdskills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/02-reglas-api-servicios.md
+Conclusión
+El incumplimiento no se debe a que falte la línea inversa ni a que las terminaciones sean incorrectas. Se debe a la naturaleza de los participantes: en ambos casos existe una conexión declarada entre un componente certificado como SERVICIO y otro certificado como EVENTO_BPMN, relación prohibida por SRV-005.
+Además, se mantiene la observación del dictamen original: el modelamiento E3 exige conceptualmente una conexión desde el componente principal hacia un evento de Inicio del hijo, mientras SRV-005 prohíbe las conexiones servicio-evento. Esta tensión entre reglas debe revisarse en el catálogo normativo, pero no modifica el estado obtenido con la versión 11.8.4.
