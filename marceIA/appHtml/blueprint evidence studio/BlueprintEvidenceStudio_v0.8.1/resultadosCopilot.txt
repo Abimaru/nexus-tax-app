@@ -1,0 +1,155 @@
+Sin cambiar tu veredicto respondeme las siguientes preguntas:
+1. En la regla EXT 001, las figuras BbYhX5wC83qK, BbYh9Jn1giIJ, BbYhB3wzscAY, BbYhrY_Y2in7 son de que tipo.
+2. En la regla API 004, la api principal no tiene contencion directa de la capa y flujo?
+BlueGuard 11.8.1
+BlueGuard 11.8.1
+:Razonado para 1s
+Sin cambiar el veredicto global anterior, aclaro qué evidencia contiene el JSON para EXT-001 y API-004.
+1. Tipo de las cuatro figuras en EXT-001
+Las cuatro figuras están dentro de EVC DEPÓSITOS Y CUENTAS ESPECIALES (BbYhL8YI5RSO) y tienen:
+lucidchartType: BPMNActivity
+architecturalType: null
+Sin possibleTypes
+Sin inferencia arquitectónica certificada
+Figura	Tipo certificado
+"account" "type", "number" (BbYhX5wC83qK)	Sin tipo arquitectónico determinado
+Modelo de transacción y débito de cuenta (BbYh9Jn1giIJ)	Sin tipo arquitectónico determinado
+Modelo de información de cuenta (BbYhB3wzscAY)	Sin tipo arquitectónico determinado
+Modelo de encabezado, cuenta y transacción (BbYhrY_Y2in7)	Sin tipo arquitectónico determinado
+Por tanto, no están certificadas como MODELO, aunque su contenido textual parezca representar estructuras de datos. Tampoco son candidatas porque no tienen possibleTypes. Según el procedimiento, no se les puede asignar un tipo por su texto, apariencia o ubicación.
+sharepoint
+Implicación para EXT-001
+Aquí debo precisar mi justificación anterior: estas figuras forman parte del contenido del auxiliar, pero su architecturalType es null. Por sí mismas no constituyen evidencia positiva de una categoría permitida.
+Sin cambiar el veredicto que entregué, el detalle correcto es:
+No se pueden llamar modelos certificados.
+No son candidatos tipológicos.
+Son componentes sin clasificación arquitectónica.
+La evaluación estricta de EXT-001 depende de si la cobertura permite considerar suficientemente determinado el contenido del auxiliar. La regla señala que un tipo no determinado puede impedir confirmar que todo el contenido esté permitido.
+Es decir, mi frase anterior de que “todas las categorías arquitectónicas certificadas son permitidas” no describía completamente estas cuatro figuras.
+2. Contención directa de la API principal con la capa y el flujo
+Sí. La API principal Debit Card Issuance - Management v1.0.0 (BbYhlc7qW3sh) tiene una asociación de despliegue resuelta por contención directa con:
+Flujo Transaccional - no - monetario (BbYhlaGlZ0nU)
+Capa de Arquitectura - composición (BbYhRt~utrXk)
+La cadena estructural de la API es:
+
+
+INTEGRACIÓN (BbYhgZhVtuvY)
+└── Flujo Transaccional - no - monetario (BbYhlaGlZ0nU)
+    └── Capa de Arquitectura - composición (BbYhRt~utrXk)
+        └── Debit Card Issuance - Management v1.0.0 (BbYhlc7qW3sh)
+Además, en components[].deploymentAssociations de la API aparece:
+
+
+flowId: BbYhlaGlZ0nU
+layerId: BbYhRt~utrXk
+status: RESOLVED_BY_DIRECT_CONTAINMENT
+source: JSON.contains
+candidateIds: [BbYhlc7qW3sh]
+conflicts: []
+Y la misma asociación aparece en pages[].deploymentAssociations con:
+
+
+associatedComponentId: BbYhlc7qW3sh
+status: RESOLVED_BY_DIRECT_CONTAINMENT
+Por tanto, la evidencia demuestra inequívocamente que el flujo y la capa pertenecen a la API principal.
+sharepoint
+Sobre la asociación pendiente mencionada antes
+También existe otra pareja:
+Flujo Transaccional - no - monetario (BbYhkU8jxa5Y)
+Capa de Arquitectura - composición (BbYh6LkymbOJ)
+Su estado es PENDING_NO_COMMON_SUPERIOR_GROUP y no tiene propietario determinado. Sin embargo, esta es una pareja distinta de la asociación ya resuelta con la API principal.
+sharepoint
+En síntesis: sí hay contención directa y asociación resuelta de la capa y el flujo con la API principal. La pareja pendiente no elimina ni contradice esa evidencia positiva. Esto es especialmente relevante porque la API fue declarada MCI y de exposición private, modalidad que requiere precisamente una Capa de Arquitectura y un Flujo Transaccional asociados.
+
+
+
+
+Orígenes
+
+Entonces cambiarias el veredicto de las reglas EXT 001 y API 004?
+BlueGuard 11.8.1
+BlueGuard 11.8.1
+:Razonado para 1s
+Sí, cambiaría EXT-001, pero mantendría API-004. La diferencia se debe a la prioridad normativa que cada regla asigna a la evidencia pendiente.
+Revisión de los veredictos
+Regla	Veredicto anterior	Veredicto corregido	Decisión
+EXT-001	Cumple	No verificable	Sí cambia
+API-004	No verificable	No verificable	No cambia
+EXT-001: cambia a No verificable
+Las siguientes figuras están contenidas en EVC DEPÓSITOS Y CUENTAS ESPECIALES (BbYhL8YI5RSO):
+"account" "type", "number" (BbYhX5wC83qK)
+La figura de datos de transacción y débito de cuenta (BbYh9Jn1giIJ)
+La figura de información de cuenta (BbYhB3wzscAY)
+La figura de encabezado, cuenta y transacción (BbYhrY_Y2in7)
+Todas tienen:
+
+
+lucidchartType: BPMNActivity
+architecturalType: null
+possibleTypes: ausente
+No son candidatos tipológicos porque no tienen possibleTypes, pero tampoco tienen una clasificación arquitectónica certificada. No pueden considerarse MODELO solo porque su texto represente estructuras de datos.
+La regla EXT-001 exige confirmar que todos los componentes encapsulados sean de categorías permitidas. Su criterio de No verificable incluye expresamente el caso en que:
+“el tipo de un componente no está determinado”.
+Por esa razón, no se puede demostrar que todo el contenido del auxiliar esté permitido.
+Veredicto corregido de EXT-001
+Estado: No verificable
+Población: los cinco sistemas externos auxiliares certificados.
+Evidencia determinante: las cuatro figuras anteriores están contenidas en EVC DEPÓSITOS Y CUENTAS ESPECIALES (BbYhL8YI5RSO), pero tienen architecturalType: null.
+Justificación: no se puede certificar si corresponden a MODELO, concepto, pendiente, anotación u otra categoría permitida o prohibida.
+Dato pendiente: clasificación arquitectónica certificada de las cuatro figuras.
+sharepoint
+API-004: se mantiene No verificable
+La API principal Debit Card Issuance - Management v1.0.0 (BbYhlc7qW3sh) sí tiene una asociación resuelta por contención directa con:
+Flujo Transaccional - no - monetario (BbYhlaGlZ0nU)
+Capa de Arquitectura - composición (BbYhRt~utrXk)
+La asociación tiene:
+
+
+associatedComponentId: BbYhlc7qW3sh
+status: RESOLVED_BY_DIRECT_CONTAINMENT
+source: JSON.contains
+Esto demuestra positivamente que la API principal, declarada MCI y private, tiene la capa y el flujo requeridos.
+sharepoint
+Sin embargo, en la misma página existe otra pareja:
+Flujo Transaccional - no - monetario (BbYhkU8jxa5Y)
+Capa de Arquitectura - composición (BbYh6LkymbOJ)
+con:
+
+
+associatedComponentId: null
+status: PENDING_NO_COMMON_SUPERIOR_GROUP
+La regla API-004 establece expresamente que una Capa, un Flujo o una pareja Capa-Flujo sin propietario determinado constituye una asociación candidata y produce No verificable, incluso si existe otra asociación resuelta con la API principal.
+Por prioridad de estados, la asociación pendiente impide cerrar la regla como Cumple. No contradice la asociación válida, pero mantiene incompleta la cobertura de asociaciones de la página.
+Veredicto confirmado de API-004
+Estado: No verificable
+Evidencia positiva: la API principal tiene Capa de Arquitectura y Flujo Transaccional asociados por contención directa.
+Incertidumbre: existe otra pareja Capa-Flujo sin propietario determinado.
+Dato pendiente: resolver el propietario de Flujo Transaccional - no - monetario (BbYhkU8jxa5Y) y Capa de Arquitectura - composición (BbYh6LkymbOJ).
+sharepoint
+Impacto en la métrica
+El cambio de EXT-001 de Cumple a No verificable modifica el consolidado:
+Estado	Antes	Corregido
+Cumple	13	12
+No cumple	11	11
+No verificable	5	6
+No aplica	9	9
+Total	38	38
+Métrica corregida:
+12
+12
++
+11
++
+6
+×
+100
+=
+41
+,
+4
+%
+12+11+6
+12
+​
+ ×100=41,4%
+Por tanto, el cumplimiento corregido de la página es 41,4 %, manteniendo API-004 como No verificable y corrigiendo EXT-001 a No verificable.
