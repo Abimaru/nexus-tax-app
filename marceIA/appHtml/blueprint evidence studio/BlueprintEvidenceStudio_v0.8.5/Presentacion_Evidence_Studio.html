@@ -1,0 +1,738 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Blueprint Evidence Studio</title>
+<style>
+/* Concepto: presentación a pantalla completa sobre papel milimetrado de plano (blueprint). Cada figura reconocida lleva una etiqueta de evidencia: verde certificado, ámbar candidato, gris sin tipo. */
+:root{
+  --bg:#EDF1F6; --surface:#FFFFFF; --surface2:#F6F8FB; --ink:#0E1A2B; --muted:#4F5F78; --line:#CFD9E5;
+  --accent:#0A6FA3; --accent-soft:#D9ECF7;
+  --ok:#0B7A52; --ok-soft:#D5EFE3;
+  --warn:#9A5A06; --warn-soft:#FAEACF;
+  --none:#566580; --none-soft:#E2E8F0;
+  --bad:#A8352A; --bad-soft:#F7DCD8;
+  --grid:rgba(10,111,163,.07);
+  --shadow:0 1px 2px rgba(14,26,43,.06),0 14px 30px -14px rgba(14,26,43,.22);
+  --display:"New York","Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#08111F; --surface:#0F1C30; --surface2:#132340; --ink:#E7EEF8; --muted:#97A8C0; --line:#223656;
+  --accent:#5DB9F2; --accent-soft:#12324D;
+  --ok:#41D49A; --ok-soft:#0F3A2E;
+  --warn:#F0B158; --warn-soft:#3F2D10;
+  --none:#93A4BD; --none-soft:#1B2C47;
+  --bad:#F08A7E; --bad-soft:#41191A;
+  --grid:rgba(93,185,242,.07);
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 30px -14px rgba(0,0,0,.6);
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#08111F; --surface:#0F1C30; --surface2:#132340; --ink:#E7EEF8; --muted:#97A8C0; --line:#223656;
+  --accent:#5DB9F2; --accent-soft:#12324D;
+  --ok:#41D49A; --ok-soft:#0F3A2E;
+  --warn:#F0B158; --warn-soft:#3F2D10;
+  --none:#93A4BD; --none-soft:#1B2C47;
+  --bad:#F08A7E; --bad-soft:#41191A;
+  --grid:rgba(93,185,242,.07);
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 30px -14px rgba(0,0,0,.6);
+  color-scheme:dark}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;overflow:hidden;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.5;
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:44px 44px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+
+.app{position:relative;height:100%;max-width:1240px;margin:0 auto}
+.progress{position:fixed;left:0;right:0;top:0;height:3px;background:transparent;z-index:20}
+.progress i{display:block;height:100%;width:0;background:var(--accent);transition:width .5s cubic-bezier(.2,.7,.2,1)}
+
+.topbar{position:absolute;inset:0 0 auto 0;height:58px;display:flex;align-items:center;justify-content:space-between;gap:12px;z-index:5}
+.brand{display:flex;align-items:center;gap:10px;font-weight:650;letter-spacing:.01em;font-size:.95rem;min-width:0}
+.brand svg{flex:none}
+.brand span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brand small{font-weight:500;color:var(--muted);margin-left:2px}
+.actions{display:flex;gap:8px;flex:none}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:7px 12px;cursor:pointer;font-size:.85rem;display:inline-flex;align-items:center;gap:6px;transition:border-color .2s,transform .2s}
+.btn:hover{border-color:var(--accent)}
+.btn[aria-pressed="true"]{background:var(--accent);color:var(--surface);border-color:var(--accent)}
+.btn kbd{font-family:var(--mono);font-size:.7rem;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:0 4px}
+.btn[aria-pressed="true"] kbd{color:inherit;border-color:currentColor}
+
+.deck{position:absolute;inset:58px 0 70px 0}
+.slide{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;visibility:hidden;opacity:0;transform:translateX(24px);transition:opacity .45s ease,transform .45s ease,visibility 0s .45s;scrollbar-width:thin}
+.slide.past{transform:translateX(-24px)}
+.slide.active{visibility:visible;opacity:1;transform:none;transition:opacity .45s ease,transform .45s ease}
+.wrap{min-height:100%;display:flex;flex-direction:column;justify-content:center;gap:clamp(14px,2.4vh,26px);padding-block:14px 18px}
+
+.eyebrow{font-family:var(--mono);font-size:.74rem;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:600}
+h1,h2,h3,p{margin:0}
+h1{font-family:var(--display);font-weight:600;font-size:clamp(2.4rem,6vw,4.6rem);line-height:1.02;letter-spacing:-.02em;text-wrap:balance}
+h2{font-family:var(--display);font-weight:600;font-size:clamp(1.7rem,3.5vw,2.85rem);line-height:1.08;letter-spacing:-.015em;text-wrap:balance}
+h3{font-size:1.02rem;font-weight:650;line-height:1.3}
+.lead{font-size:clamp(1rem,1.55vw,1.22rem);color:var(--muted);max-width:64ch}
+.small{font-size:.86rem;color:var(--muted)}
+.mono{font-family:var(--mono)}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:clamp(14px,1.8vw,22px);box-shadow:var(--shadow);min-width:0}
+.grid{display:grid;gap:clamp(10px,1.4vw,18px)}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.split{display:grid;grid-template-columns:1.05fr .95fr;gap:clamp(16px,3vw,44px);align-items:center}
+.split>*{min-width:0}
+
+.pill{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:.72rem;font-weight:600;letter-spacing:.04em;padding:3px 10px;border-radius:999px;border:1px solid;text-transform:uppercase;white-space:nowrap}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.pill.ok{color:var(--ok);background:var(--ok-soft);border-color:var(--ok)}
+.pill.warn{color:var(--warn);background:var(--warn-soft);border-color:var(--warn)}
+.pill.none{color:var(--none);background:var(--none-soft);border-color:var(--none)}
+.pill.bad{color:var(--bad);background:var(--bad-soft);border-color:var(--bad)}
+.pill.acc{color:var(--accent);background:var(--accent-soft);border-color:var(--accent)}
+
+.tip{border-bottom:1.5px dotted var(--accent);cursor:help;color:inherit;font-weight:600}
+#tipbox{position:fixed;z-index:50;max-width:min(320px,calc(100vw - 24px));background:var(--ink);color:var(--bg);font-size:.85rem;line-height:1.4;padding:9px 12px;border-radius:10px;pointer-events:none;opacity:0;transform:translateY(4px);transition:opacity .15s,transform .15s;box-shadow:var(--shadow)}
+#tipbox.on{opacity:1;transform:none}
+
+/* animación de entrada */
+.slide.active .rv{animation:rise .65s cubic-bezier(.2,.7,.2,1) both;animation-delay:calc(var(--i,0)*90ms + 120ms)}
+@keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+
+/* portada */
+.hero-svg{width:100%;height:auto;max-height:52vh;display:block}
+.hero-svg text{font-family:var(--sans);fill:var(--ink)}
+.hero-svg .node{fill:var(--surface);stroke:var(--ink);stroke-width:1.6}
+.hero-svg .node.cand{stroke:var(--warn);stroke-dasharray:6 4}
+.hero-svg .cont{fill:none;stroke:var(--accent);stroke-width:1.4;stroke-dasharray:4 5}
+.hero-svg .ln{fill:none;stroke:var(--muted);stroke-width:1.6;stroke-dasharray:260;stroke-dashoffset:0}
+.slide.active .hero-svg .ln{animation:draw 1.1s ease both;animation-delay:.5s}
+@keyframes draw{from{stroke-dashoffset:260}to{stroke-dashoffset:0}}
+.hero-svg .tag{opacity:1}
+.slide.active .hero-svg .tag{animation:pop .5s cubic-bezier(.3,1.5,.5,1) both}
+.slide.active .hero-svg .t1{animation-delay:1.3s}.slide.active .hero-svg .t2{animation-delay:1.7s}.slide.active .hero-svg .t3{animation-delay:2.1s}
+@keyframes pop{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:none}}
+.hero-svg .tag{transform-box:fill-box;transform-origin:center}
+.hero-svg .okr{fill:var(--ok-soft);stroke:var(--ok)}.hero-svg .okt{fill:var(--ok);font-weight:700}
+.hero-svg .wr{fill:var(--warn-soft);stroke:var(--warn)}.hero-svg .wt{fill:var(--warn);font-weight:700}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+
+/* 60 segundos */
+.big3 .card{display:flex;flex-direction:column;gap:10px}
+.big3 .num{font-family:var(--display);font-size:2.2rem;line-height:1;color:var(--accent)}
+.quote{border-left:3px solid var(--accent);padding:6px 0 6px 16px;font-family:var(--display);font-size:clamp(1.15rem,2vw,1.6rem);line-height:1.3;max-width:60ch}
+
+/* problema */
+.mini{width:100%;height:auto;display:block}
+.mini rect{fill:var(--surface2);stroke:var(--muted);stroke-width:1.4}
+.mini text{font-family:var(--sans);font-size:13px;fill:var(--muted)}
+.mini path{fill:none;stroke:var(--muted);stroke-width:1.4}
+.code{font-family:var(--mono);font-size:clamp(.74rem,1.15vw,.9rem);line-height:1.65;background:var(--ink);color:var(--bg);border-radius:12px;padding:16px 18px;overflow-x:auto;white-space:pre}
+.code .k{opacity:.62}
+.code .hl{background:rgba(93,185,242,.28);border-radius:4px;padding:0 3px}
+.slide.active .code .ln{display:block;animation:rise .5s both;animation-delay:calc(var(--n)*160ms + 500ms)}
+.q{color:var(--warn);font-weight:650}
+.pain{display:flex;gap:12px;align-items:flex-start}
+.pain .ic{flex:none;width:34px;height:34px;border-radius:9px;background:var(--bad-soft);color:var(--bad);display:grid;place-items:center;font-weight:800}
+
+/* flujo */
+.flow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;position:relative}
+.step{position:relative;padding:0 10px}
+.step .dot{width:52px;height:52px;border-radius:14px;background:var(--surface);border:1.5px solid var(--accent);display:grid;place-items:center;color:var(--accent);margin-bottom:12px;box-shadow:var(--shadow);position:relative;z-index:1}
+.step .dot svg{width:26px;height:26px}
+.step::after{content:"";position:absolute;top:26px;left:62px;right:-10px;height:2px;background:repeating-linear-gradient(90deg,var(--accent) 0 8px,transparent 8px 14px);background-size:28px 2px;animation:march 1.2s linear infinite;opacity:.7}
+.step:last-child::after{display:none}
+@keyframes march{to{background-position:28px 0}}
+.step h3{margin-bottom:4px}
+.step p{font-size:.9rem;color:var(--muted)}
+
+/* original vs enriquecido */
+.seg{display:inline-flex;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:4px;gap:4px;align-self:flex-start}
+.seg button{border:0;background:transparent;border-radius:9px;padding:8px 16px;cursor:pointer;font-weight:600;color:var(--muted);transition:background .25s,color .25s}
+.seg button[aria-selected="true"]{background:var(--accent);color:var(--surface)}
+.pane{display:none}
+.pane.on{display:block;animation:rise .45s both}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:9px 16px;align-items:baseline}
+.kv dt{font-family:var(--mono);font-size:.74rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.kv dd{margin:0;font-weight:550}
+.vals li{display:flex;gap:12px;align-items:flex-start}
+.vals{list-style:none;margin:0;padding:0;display:grid;gap:14px}
+.vals .tick{flex:none;width:26px;height:26px;border-radius:50%;background:var(--ok-soft);color:var(--ok);display:grid;place-items:center;font-weight:800;font-size:.85rem;margin-top:1px}
+.vals b{display:block}
+
+/* estados */
+.state{display:flex;flex-direction:column;gap:10px;position:relative;overflow:hidden}
+.state .bar{height:6px;border-radius:4px;background:var(--line);overflow:hidden}
+.state .bar i{display:block;height:100%;width:0;border-radius:4px}
+.slide.active .state .bar i{animation:fill 1.1s .5s cubic-bezier(.2,.7,.2,1) both}
+@keyframes fill{from{width:0}to{width:var(--w)}}
+.gold{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.gold div{border-top:2px solid var(--accent);padding-top:10px;font-size:.92rem}
+.gold b{display:block;margin-bottom:2px}
+
+/* ladder + simulador */
+.ladder{list-style:none;margin:0;padding:0;display:grid;gap:8px;counter-reset:l}
+.ladder li{counter-increment:l;display:grid;grid-template-columns:34px 1fr;gap:12px;padding:11px 14px;border-radius:12px;border:1px solid var(--line);background:var(--surface);transition:border-color .3s,background .3s,transform .3s,box-shadow .3s}
+.ladder li::before{content:counter(l);width:30px;height:30px;border-radius:9px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-family:var(--mono);font-weight:700;font-size:.9rem}
+.ladder li.on{border-color:var(--accent);background:var(--accent-soft);transform:translateX(6px);box-shadow:var(--shadow)}
+.ladder li.on::before{background:var(--accent);color:var(--surface)}
+.ladder b{display:block;font-size:.95rem}
+.ladder span{font-size:.86rem;color:var(--muted)}
+.chipbtn{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:8px 12px;text-align:left;cursor:pointer;font-size:.88rem;transition:border-color .2s,background .2s;min-width:0}
+.chipbtn:hover{border-color:var(--accent)}
+.chipbtn[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.chipbtn small{display:block;color:var(--muted);font-size:.76rem}
+.result{min-height:132px;display:flex;flex-direction:column;gap:8px}
+.result .out{font-family:var(--display);font-size:1.5rem;font-weight:600}
+.sim-list{display:grid;gap:8px}
+
+/* tarjetas de figuras */
+.fig h3{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.fig .glyph{flex:none;width:34px;height:34px;border-radius:9px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center}
+.fig .glyph svg{width:20px;height:20px}
+.fig p{font-size:.9rem;color:var(--muted)}
+.fig p b{color:var(--ink);font-weight:600}
+
+/* reparto */
+.role{display:flex;flex-direction:column;gap:10px}
+.role .who{font-family:var(--display);font-size:1.6rem;font-weight:600;line-height:1.1}
+.role .ana{font-size:.9rem;color:var(--accent);font-weight:600}
+.role ul{margin:0;padding-left:1.1em;font-size:.9rem;color:var(--muted);display:grid;gap:4px}
+.role .nt{color:var(--bad)}
+.arrow{display:grid;place-items:center;color:var(--accent)}
+
+/* resultados */
+.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:var(--shadow)}
+.kpi .v{font-family:var(--display);font-size:clamp(2rem,4vw,3rem);font-weight:600;line-height:1;color:var(--accent);font-variant-numeric:tabular-nums}
+.kpi .l{font-size:.86rem;color:var(--muted);margin-top:6px}
+.tl{list-style:none;margin:0;padding:0 0 0 18px;border-left:2px solid var(--line);display:grid;gap:14px}
+.tl li{position:relative;font-size:.92rem}
+.tl li::before{content:"";position:absolute;left:-25px;top:6px;width:12px;height:12px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+.tl .d{font-family:var(--mono);font-size:.72rem;color:var(--muted);letter-spacing:.06em}
+.tl b{display:block}
+
+/* ruta */
+.lane h3{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.lane ul{margin:0;padding:0;list-style:none;display:grid;gap:9px;font-size:.92rem}
+.lane li{position:relative;padding-left:19px}
+.lane li::before{content:"";position:absolute;left:0;top:.55em;width:9px;height:9px;border-radius:50%;background:var(--accent)}
+.lane.now{border-color:var(--ok)}.lane.now li::before{background:var(--ok)}
+.lane.later li::before{background:var(--none)}
+
+/* nav */
+.nav{position:absolute;inset:auto 0 0 0;height:70px;display:flex;align-items:center;justify-content:space-between;gap:12px;z-index:5}
+.dots{display:flex;gap:6px;align-items:center;flex-wrap:nowrap;overflow:hidden}
+.dots button{width:9px;height:9px;border-radius:50%;border:0;padding:0;background:var(--line);cursor:pointer;transition:width .3s,background .3s;flex:none}
+.dots button.on{width:26px;border-radius:6px;background:var(--accent)}
+.dots button.seen{background:var(--muted)}
+.counter{font-family:var(--mono);font-size:.82rem;color:var(--muted);white-space:nowrap}
+.nbtn{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;border:1px solid var(--line);background:var(--surface);cursor:pointer;transition:border-color .2s,transform .2s}
+.nbtn:hover:not(:disabled){border-color:var(--accent);transform:scale(1.05)}
+.nbtn:disabled{opacity:.35;cursor:default}
+.nbtn.go{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.mid{display:flex;align-items:center;gap:16px;min-width:0}
+.title-now{font-size:.85rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+#notes{position:absolute;left:0;right:0;bottom:76px;z-index:6;background:var(--ink);color:var(--bg);border-radius:14px;padding:14px 18px;font-size:.95rem;line-height:1.5;box-shadow:var(--shadow);transform:translateY(12px);opacity:0;pointer-events:none;transition:opacity .25s,transform .25s}
+#notes.on{opacity:1;transform:none;pointer-events:auto}
+#notes b{font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;opacity:.7;display:block;margin-bottom:4px}
+
+@media (max-width:900px){
+  .split,.g2,.g3,.g4,.kpis{grid-template-columns:1fr}
+  .flow{grid-template-columns:1fr;gap:18px}
+  .step{padding:0 0 0 68px;min-height:52px}
+  .step .dot{position:absolute;left:0;top:0;margin:0}
+  .step::after{left:25px;right:auto;top:56px;bottom:-16px;width:2px;height:auto;background:repeating-linear-gradient(180deg,var(--accent) 0 8px,transparent 8px 14px)}
+  .gold{grid-template-columns:1fr 1fr}
+  .dots{display:none}
+  .title-now{display:none}
+  .hero-svg{max-height:none}
+  .btn .lbl{display:none}
+  .brand small{display:none}
+}
+@media (max-width:520px){.gold{grid-template-columns:1fr}.mid{flex:1;justify-content:center}}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;animation-delay:0s!important;transition-duration:.001ms!important}
+}
+</style>
+
+</head>
+<body>
+<div class="progress" aria-hidden="true"><i id="bar"></i></div>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><rect x="1.5" y="1.5" width="25" height="25" rx="7" fill="var(--accent)"/><path d="M8 14.5l4 4 8-9" fill="none" stroke="var(--surface)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>Blueprint Evidence Studio <small>· Célula de Integración y Datos</small></span>
+    </div>
+    <div class="actions">
+      <button class="btn" id="bNotes" aria-pressed="false" title="Notas del presentador (N)">Notas <kbd>N</kbd></button>
+      <button class="btn" id="bTheme" title="Cambiar entre tema claro y oscuro">Tema</button>
+      <button class="btn" id="bFull" title="Pantalla completa (F)"><span class="lbl">Pantalla completa</span><span aria-hidden="true">⛶</span></button>
+    </div>
+  </header>
+
+  <main class="deck" id="deck">
+
+  <!-- 1 PORTADA -->
+  <section class="slide" data-title="Portada" data-notes="Bienvenida (30 s). Hoy mostramos qué hace el Evidence Studio, por qué importa y hacia dónde va. Sin código: lo que vean en pantalla se explica en lenguaje de negocio. Los subrayados punteados son palabras con explicación: pasen el cursor.">
+    <div class="wrap">
+      <div class="split">
+        <div style="display:grid;gap:18px">
+          <div class="eyebrow rv" style="--i:0">Célula de Integración y Datos</div>
+          <h1 class="rv" style="--i:1">Del dibujo a la evidencia</h1>
+          <p class="lead rv" style="--i:2">Blueprint Evidence Studio lee un diagrama de arquitectura y lo entrega ordenado, con cada figura identificada, para que revisarlo sea rápido, consistente y explicable.</p>
+          <div class="chips rv" style="--i:3">
+            <span class="pill acc">Versión 0.8.3</span>
+            <span class="pill warn">Candidata · en validación</span>
+          </div>
+          <p class="small rv" style="--i:4">Presentación para líderes de negocio, tecnología y analistas SOA · 10 a 12 minutos</p>
+        </div>
+        <svg class="hero-svg rv" style="--i:2" viewBox="0 0 540 360" role="img" aria-label="Tres figuras de un diagrama con su etiqueta: API certificada, servicio certificado y evento candidato">
+          <rect class="cont" x="150" y="160" width="370" height="180" rx="12"/>
+          <text x="166" y="184" font-size="12" style="fill:var(--accent)" font-weight="600" letter-spacing="1">CONTENEDOR HIJO</text>
+          <path class="ln" d="M115 104 C115 160 200 150 250 212"/>
+          <path class="ln" d="M370 212 C430 170 440 150 440 104"/>
+          <rect class="node" x="30" y="40" width="170" height="64" rx="10"/>
+          <text x="115" y="78" text-anchor="middle" font-size="15" font-weight="600">Global Accounts</text>
+          <rect class="node" x="190" y="212" width="190" height="64" rx="10"/>
+          <text x="285" y="250" text-anchor="middle" font-size="15" font-weight="600">ms_account</text>
+          <rect class="node cand" x="355" y="40" width="170" height="64" rx="10"/>
+          <text x="440" y="78" text-anchor="middle" font-size="15" font-weight="600">Nombre Evento</text>
+          <g class="tag t1"><rect class="okr" x="42" y="112" width="146" height="26" rx="13" stroke-width="1.4"/><text class="okt" x="115" y="130" text-anchor="middle" font-size="12">API · certificada</text></g>
+          <g class="tag t2"><rect class="okr" x="205" y="284" width="160" height="26" rx="13" stroke-width="1.4"/><text class="okt" x="285" y="302" text-anchor="middle" font-size="12">SERVICIO · certificado</text></g>
+          <g class="tag t3"><rect class="wr" x="362" y="112" width="156" height="26" rx="13" stroke-width="1.4"/><text class="wt" x="440" y="130" text-anchor="middle" font-size="12">EVENTO · candidato</text></g>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 EN 60 SEGUNDOS -->
+  <section class="slide" data-title="En 60 segundos" data-notes="Si solo queda una diapositiva en la memoria, que sea esta (1 min). Es el resumen que la analista puede repetir: qué es, para qué sirve y por qué da más confianza que usar el archivo original.">
+    <div class="wrap">
+      <div class="eyebrow rv" style="--i:0">En 60 segundos</div>
+      <h2 class="rv" style="--i:1">Un traductor entre el diagrama y el revisor</h2>
+      <div class="grid g3 big3">
+        <div class="card rv" style="--i:2"><div class="num">Qué es</div>
+          <p>Una herramienta que se abre en el navegador. Se le entrega el diagrama dibujado en <span class="tip" tabindex="0" data-tip="Lucidchart es la herramienta donde el equipo dibuja los Blueprints de integración.">Lucidchart</span> y devuelve un archivo en el que cada figura ya está identificada: es una API, es un servicio, es un evento.</p></div>
+        <div class="card rv" style="--i:3"><div class="num">Para qué</div>
+          <p>Para que la revisión de las <b>38 reglas de calidad</b> de arquitectura se haga igual cada vez, más rápido y con una explicación para cada conclusión, sin depender de quién revise ni de cómo dibujó cada equipo.</p></div>
+        <div class="card rv" style="--i:4"><div class="num">Qué valor da</div>
+          <p>El asistente de IA recibe hechos, no suposiciones. Si algo no se puede afirmar con evidencia, el resultado dice <b>«no verificable»</b> en lugar de inventar una respuesta.</p></div>
+      </div>
+      <p class="quote rv" style="--i:5">No le pedimos a la IA que adivine qué es cada figura. Se lo entregamos ya identificado y con su evidencia.</p>
+    </div>
+  </section>
+
+  <!-- 3 PROBLEMA -->
+  <section class="slide" data-title="El punto de partida" data-notes="Explicar el problema (1 min). El archivo original describe cómo se ve el dibujo, no qué significa. Es como recibir un plano solo con coordenadas: no dice cuál es la cocina y cuál el baño.">
+    <div class="wrap">
+      <div class="eyebrow rv" style="--i:0">El punto de partida</div>
+      <h2 class="rv" style="--i:1">El archivo original describe el dibujo, no su significado</h2>
+      <div class="split">
+        <div class="rv" style="--i:2;display:grid;gap:8px">
+          <div class="small"><b>Lo que ve una persona</b></div>
+          <svg class="mini card" viewBox="0 0 420 220" role="img" aria-label="Diagrama con varias cajas conectadas">
+            <rect x="20" y="20" width="120" height="48" rx="8"/><text x="80" y="49" text-anchor="middle">Global Accounts</text>
+            <rect x="250" y="20" width="140" height="48" rx="8"/><text x="320" y="49" text-anchor="middle">Nombre Evento</text>
+            <rect x="130" y="140" width="150" height="56" rx="8"/><text x="205" y="173" text-anchor="middle">ms_account</text>
+            <path d="M80 68 C80 110 160 100 175 140"/><path d="M320 68 C320 110 250 100 235 140"/>
+          </svg>
+          <p class="small">Un diagrama claro, que una persona entrenada interpreta de un vistazo.</p>
+        </div>
+        <div class="rv" style="--i:3;display:grid;gap:8px">
+          <div class="small"><b>Lo que contiene el archivo original</b> <span class="small">(ejemplo ilustrativo)</span></div>
+<div class="code"><span class="ln" style="--n:0">{ <span class="k">"id"</span>: "7f2c…",  <span class="k">"class"</span>: <span class="hl">"UMLClassBlock"</span>,</span><span class="ln" style="--n:1">  <span class="k">"text"</span>: <span class="hl">"ms_account"</span>,</span><span class="ln" style="--n:2">  <span class="k">"x"</span>: 412, <span class="k">"y"</span>: 88, <span class="k">"w"</span>: 240, <span class="k">"h"</span>: 120,</span><span class="ln" style="--n:3">  <span class="k">"customData"</span>: [] }</span><span class="ln q" style="--n:5">  ¿Servicio? ¿API? ¿Evento? El archivo no lo dice.</span></div>
+        </div>
+      </div>
+      <div class="grid g3">
+        <div class="card pain rv" style="--i:4"><div class="ic">1</div><div><h3>Revisión manual lenta</h3><p class="small">38 criterios por cada página de cada Blueprint.</p></div></div>
+        <div class="card pain rv" style="--i:5"><div class="ic">2</div><div><h3>Criterio desigual</h3><p class="small">Dos personas pueden leer el mismo dibujo de forma distinta.</p></div></div>
+        <div class="card pain rv" style="--i:6"><div class="ic">3</div><div><h3>La IA sin contexto adivina</h3><p class="small">Con coordenadas y clases gráficas, tendría que suponer qué es cada figura.</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 QUÉ HACE -->
+  <section class="slide" data-title="Qué hace el Studio" data-notes="Cuatro pasos (1 min). Subrayar que se abre con doble clic, sin instalar nada y sin enviar el diagrama a ningún servidor. El Studio no emite veredictos: solo identifica y ordena.">
+    <div class="wrap">
+      <div class="eyebrow rv" style="--i:0">Qué hace el Evidence Studio</div>
+      <h2 class="rv" style="--i:1">Cuatro pasos, todo en su navegador</h2>
+      <div class="flow rv" style="--i:2">
+        <div class="step"><div class="dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></svg></div>
+          <h3>Cargar</h3><p>Se indica el nombre del Blueprint y se carga el archivo <span class="tip" tabindex="0" data-tip="JSON es un formato de texto con el que Lucidchart guarda el diagrama: una lista de figuras, líneas y sus propiedades.">JSON</span> original exportado de Lucidchart.</p></div>
+        <div class="step"><div class="dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 12l3 3 5-6"/></svg></div>
+          <h3>Elegir páginas</h3><p>Se marcan los escenarios (páginas del diagrama) que se quieren enriquecer.</p></div>
+        <div class="step"><div class="dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="8" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M8 7l8 1M7 8l4 8M17 10l-4 6"/></svg></div>
+          <h3>Reconocer</h3><p>Aplica reglas fijas para saber qué es cada figura, dónde está y con qué se conecta.</p></div>
+        <div class="step"><div class="dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12M7 11l5 5 5-5M4 20h16"/></svg></div>
+          <h3>Entregar</h3><p>Descarga el <b>JSON enriquecido</b>, que se carga en el asistente de IA junto con la Skill.</p></div>
+      </div>
+      <div class="grid g3">
+        <div class="card rv" style="--i:3"><h3>Sin instalación ni red</h3><p class="small">Es un solo archivo HTML. Se abre en el navegador y el diagrama no sale del equipo.</p></div>
+        <div class="card rv" style="--i:4"><h3>Reglas fijas</h3><p class="small">Mismo diagrama, mismo resultado. No hay interpretación libre ni estados de ánimo.</p></div>
+        <div class="card rv" style="--i:5"><h3>No opina</h3><p class="small">Reconoce y ordena. Evaluar si algo cumple o no es trabajo de otra pieza (lámina 9).</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 ORIGINAL VS ENRIQUECIDO -->
+  <section class="slide" data-title="Original vs. enriquecido" data-notes="Esta es la lámina de valor (1,5 min). Pulsar el interruptor para mostrar la misma figura en los dos formatos. Mensaje: el enriquecido agrega significado, contexto, certeza y trazabilidad. Es un ejemplo ilustrativo basado en un caso real de prueba.">
+    <div class="wrap">
+      <div class="eyebrow rv" style="--i:0">El valor del JSON enriquecido</div>
+      <h2 class="rv" style="--i:1">La misma figura, dos lecturas muy distintas</h2>
+      <div class="split">
+        <div class="rv" style="--i:2;display:grid;gap:12px">
+          <div class="seg" role="tablist" aria-label="Formato del archivo">
+            <button role="tab" id="tabOrig" aria-selected="true" aria-controls="pOrig">Archivo original</button>
+            <button role="tab" id="tabEnr" aria-selected="false" aria-controls="pEnr">Archivo enriquecido</button>
+          </div>
+          <div class="card pane on" id="pOrig" role="tabpanel" aria-labelledby="tabOrig">
+            <p class="small" style="margin-bottom:10px">Figura <b>recepcion_callback</b>, tal como la guarda Lucidchart</p>
+            <dl class="kv">
+              <dt>Clase gráfica</dt><dd class="mono">UMLClassBlock</dd>
+              <dt>Texto</dt><dd class="mono">recepcion_callback</dd>
+              <dt>Posición y tamaño</dt><dd class="mono">x 412 · y 88 · 240 × 120</dd>
+              <dt>Qué es</dt><dd><span class="pill none">No dice</span></dd>
+              <dt>Dónde está</dt><dd><span class="pill none">No dice</span></dd>
+              <dt>Qué tan seguro</dt><dd><span class="pill none">No dice</span></dd>
+            </dl>
+          </div>
+          <div class="card pane" id="pEnr" role="tabpanel" aria-labelledby="tabEnr">
+            <p class="small" style="margin-bottom:10px">La misma figura, después del Evidence Studio</p>
+            <dl class="kv">
+              <dt>Nombre</dt><dd class="mono">recepcion_callback</dd>
+              <dt>Tipo</dt><dd><span class="pill ok">Servicio · certificado</span></dd>
+              <dt>Dónde está</dt><dd>Dominio productor, fuera del contenedor hijo</dd>
+              <dt>Por qué</dt><dd>No hay marcador de API en su zona y está en el dominio productor</dd>
+              <dt>Se cita como</dt><dd class="mono">recepcion_callback (id)</dd>
+            </dl>
+          </div>
+          <p class="small">Ejemplo ilustrativo tomado del caso de prueba Real Time Payments.</p>
+        </div>
+        <ul class="vals rv" style="--i:3">
+          <li><span class="tick">✓</span><div><b>Significado en lugar de geometría</b><span class="small">El asistente lee «servicio», no «caja de 240 por 120».</span></div></li>
+          <li><span class="tick">✓</span><div><b>Contexto</b><span class="small">Dónde está la figura y con qué se conecta.</span></div></li>
+          <li><span class="tick">✓</span><div><b>Certeza explícita</b><span class="small">Cada reconocimiento dice si es seguro, probable o desconocido.</span></div></li>
+          <li><span class="tick">✓</span><div><b>Conclusiones trazables</b><span class="small">Cada hallazgo se cita con nombre e identificador de la figura.</span></div></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6 ESTADOS DE CERTEZA -->
+  <section class="slide" data-title="Tres niveles de certeza" data-notes="Principio rector (1 min). Si el Studio no está seguro, lo dice. Un candidato no se trata como un hecho: si hay uno solo entre las figuras que una regla revisa, esa regla queda «no verificable». Es una ventaja: evita falsos «cumple».">
+    <div class="wrap">
+      <div class="eyebrow rv" style="--i:0">Principio rector</div>
+      <h2 class="rv" style="--i:1">Si no hay evidencia, no se inventa</h2>
+      <div class="grid g3">
+        <div class="card state rv" style="--i:2"><span class="pill ok">Certificado</span>
+          <h3>Hay evidencia directa y completa</h3><p class="small">El diagrama trae la señal que exige la regla. El asistente puede apoyarse en ella.</p>
+          <div class="bar"><i style="--w:100%;background:var(--ok)"></i></div></div>
+        <div class="card state rv" style="--i:3"><span class="pill warn">Candidato</span>
+          <h3>Hay indicios, pero falta algo</h3><p class="small">Se anotan los tipos posibles. Ejemplo: «Nombre Evento» es una plantilla sin completar.</p>
+          <div class="bar"><i style="--w:55%;background:var(--warn)"></i></div></div>
+        <div class="card state rv" style="--i:4"><span class="pill none">Sin tipo</span>
+          <h3>No hay base para decidir</h3><p class="small">Notas, conceptos o figuras sin señal. Se dejan sin tipo y no se suponen.</p>
+          <div class="bar"><i style="--w:15%;background:var(--none)"></i></div></div>
+      </div>
+      <div class="card rv" style="--i:5;display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center">
+        <b>Efecto en la revisión:</b>
+        <span>Un solo candidato entre las figuras que revisa una regla deja esa regla en</span> <span class="pill warn">No verificable</span>
+        <span class="small">Los cuatro estados finales de cada regla son: Cumple, No cumple, No verificable y No aplica.</span>
+      </div>
+      <div class="gold rv" style="--i:6">
+        <div><b>Evidencia directa o nada</b>Solo se tipa con lo que está en el archivo.</div>
+        <div><b>Ni color, ni posición</b>Lo visual no certifica nada.</div>
+        <div><b>Duda es candidato</b>Y candidato no se convierte en hecho.</div>
+        <div><b>Todo citable</b>«Nombre (id)» en cada conclusión.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7 REGLAS BLOQUES UML -->
+  <section class="slide" data-title="Reglas: API, servicio, evento" data-notes="Tema central (2 min). Leer la escalera de arriba abajo: el Studio se detiene en la primera señal que aplica. Luego pulsar los ejemplos de la derecha para ver cuál paso se activa. No hace falta explicar cada término: los subrayados tienen ayuda.">
+    <div class="wrap">
+      <div class="eyebrow rv" style="--i:0">Reglas que más pesan · 1 de 2</div>
+      <h2 class="rv" style="--i:1">Cómo decide si un bloque es API, servicio o evento</h2>
+      <div class="split" style="align-items:start">
+        <ol class="ladder rv" style="--i:2" id="ladder">
+          <li><div><b>¿Describe un evento?</b><span>Su <span class="tip" tabindex="0" data-tip="Los bloques UML tienen tres secciones apiladas: título, operación y una tercera con la clasificación del componente.">tercera sección</span> trae tipo (Aplicación o Empresarial) <u>y</u> clasificación (Event, Query o Command) → <b style="display:inline">evento de integración</b>. Con solo una parte: candidato.</span></div></li>
+          <li><div><b>¿Se declara microservicio?</b><span>El nombre empieza o termina en <span class="mono">ms</span>, dice «microservicio», o trae <span class="mono">TIPO: SERVICIO</span> → <b style="display:inline">servicio</b>. Gana sobre cualquier suposición de API.</span></div></li>
+          <li><div><b>¿Tiene marcador de API o exposición?</b><span>Un <span class="tip" tabindex="0" data-tip="Círculo de evento BPMN, vacío, sin texto ni líneas, pegado al bloque. En la notación del equipo señala que ese bloque es una API.">marcador de API</span> agrupado con el bloque, o Public / Private / Partner en la tercera sección → <b style="display:inline">API</b>.</span></div></li>
+          <li><div><b>¿Hay pistas en su zona?</b><span>Se comparan marcadores sueltos y bloques de la misma <span class="tip" tabindex="0" data-tip="Zona del diagrama donde se cuenta: el sistema externo auxiliar, la capa o el flujo, o el nivel del dominio.">zona</span>: coinciden → API; no coinciden → candidato; no hay marcadores → servicio. En el dominio productor nunca se declara API.</span></div></li>
+          <li><div><b>Ninguna señal</b><span>Queda como <b style="display:inline">candidato</b> o sin tipo. No se adivina.</span></div></li>
+        </ol>
+        <div class="rv" style="--i:3;display:grid;gap:12px">
+          <div class="small"><b>Pruébelo:</b> elija una figura y vea qué paso la decide</div>
+          <div class="sim-list" id="simList"></div>
+          <div class="card result" id="simOut" aria-live="polite"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8 OTRAS FIGURAS -->
+  <section class="slide" data-title="Reglas: contenedores y más" data-notes="Segunda parte de las reglas (1,5 min). Recorrer las tarjetas sin entrar al detalle. La idea fuerza: el Studio solo usa señales explícitas del diagrama; lo que no está escrito no se asume. La última tarjeta explica qué se deja fuera a propósito.">
+    <div class="wrap">
+      <div class="eyebrow rv" style="--i:0">Reglas que más pesan · 2 de 2</div>
+      <h2 class="rv" style="--i:1">Contenedores, capas, comandos y lo que se deja fuera</h2>
+      <div class="grid g3">
+        <div class="card fig rv" style="--i:2"><h3><span class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="3"/><rect x="8" y="8" width="8" height="8" rx="2"/></svg></span>Contenedores</h3>
+          <p>Los <b>dominios</b> (Integración, Productor, Sistemas externos) son contenedores padre. El <b>hijo principal</b> es el que señala el escenario y representa el servicio que se documenta. Dentro del hijo no se clasifican API, servicios ni eventos.</p></div>
+        <div class="card fig rv" style="--i:3"><h3><span class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="3" stroke-dasharray="3 3"/><path d="M8 12h8"/></svg></span>Sistema externo auxiliar</h3>
+          <p>Todo <span class="tip" tabindex="0" data-tip="BPMN es una notación estándar para dibujar procesos. Un grupo BPMN agrupa figuras dentro del dibujo.">grupo BPMN</span> dentro de un dominio, tenga o no nombre. Sin nombre, la regla EXT-001 se marca como incumplida.</p></div>
+        <div class="card fig rv" style="--i:4"><h3><span class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M4 12h16M4 17h10"/></svg></span>Capa de tópicos</h3>
+          <p>Un contenedor que contiene <b>directamente</b> un evento de integración certificado. El nombre no la certifica: la certifica lo que contiene. Cada evento queda asociado a su capa.</p></div>
+        <div class="card fig rv" style="--i:5"><h3><span class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="12" r="2.5"/><path d="M8.5 12h7"/></svg></span>Comando y modelo</h3>
+          <p>Una actividad BPMN conectada a una API, servicio, gestor o auxiliar es un <b>comando</b>. Una marcada ENTRADA o SALIDA es un <b>modelo</b>. Si no cumple ninguna, se anota sin tipo y puede dejar una regla no verificable.</p></div>
+        <div class="card fig rv" style="--i:6"><h3><span class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 8h16M4 12h16M4 16h16"/><path d="M17 5l3 3-3 3"/></svg></span>Gestor de colas</h3>
+          <p>Si el nombre menciona cola, MQ, Kafka o Rabbit se propone como <b>candidato</b> a gestor de colas. El nombre sugiere, no certifica.</p></div>
+        <div class="card fig rv" style="--i:7"><h3><span class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M6 6l12 12"/></svg></span>Lo que se deja fuera</h3>
+          <p>La leyenda de notación y los bloques de descripción de API no se exportan: son ruido. Color, posición y tamaño no sirven para tipar. El nombre de una figura es su primer texto no vacío.</p></div>
+      </div>
+      <p class="small rv" style="--i:8">Cada figura recibe además un rol: <b>principal</b> (la API o el servicio que protagoniza el escenario) o <b>invocado</b> (cualquier otro).</p>
+    </div>
+  </section>
+
+  <!-- 9 REPARTO -->
+  <section class="slide" data-title="Quién hace qué" data-notes="Reparto de responsabilidades (1 min). Analogía: el Studio es el topógrafo que mide y etiqueta; la Skill es el reglamento con su inspector; el agente redacta el informe y conversa con la analista. Ninguna pieza hace el trabajo de otra, y por eso se puede auditar cada una.">
+    <div class="wrap">
+      <div class="eyebrow rv" style="--i:0">Quién hace qué</div>
+      <h2 class="rv" style="--i:1">Tres piezas, cada una con una sola responsabilidad</h2>
+      <div class="grid g3">
+        <div class="card role rv" style="--i:2"><div class="who">Studio</div><div class="ana">Como un topógrafo: mide y etiqueta</div>
+          <ul><li>Reconoce figuras y su certeza</li><li>Relaciona contenedores y conexiones</li><li>Entrega el JSON enriquecido</li><li class="nt">No evalúa reglas ni da veredictos</li></ul></div>
+        <div class="card role rv" style="--i:3"><div class="who">Skill</div><div class="ana">Como el reglamento y su inspector</div>
+          <ul><li>Contiene las 38 reglas de la analista</li><li>Define cómo se decide cada estado</li><li>Trae una ficha operativa por regla</li><li class="nt">No reconoce figuras por su cuenta</li></ul></div>
+        <div class="card role rv" style="--i:4"><div class="who">Agente de IA</div><div class="ana">Como quien redacta el informe</div>
+          <ul><li>Hace las preguntas puntuales a la analista</li><li>Cierra cada regla con su justificación</li><li>Cita siempre «Nombre (id)»</li><li class="nt">No corrige tipos ni los infiere por nombre o color</li></ul></div>
+      </div>
+      <div class="card rv" style="--i:5;display:flex;gap:10px 14px;flex-wrap:wrap;align-items:center;justify-content:center">
+        <span class="pill acc">Diagrama</span><span class="arrow">→</span><span class="pill acc">Studio</span><span class="arrow">→</span><span class="pill acc">JSON enriquecido</span><span class="arrow">→</span><span class="pill acc">Skill + Agente</span><span class="arrow">→</span><span class="pill ok">Informe por regla</span>
+      </div>
+      <p class="small rv" style="--i:6">Las respuestas de la analista a las preguntas del agente se registran como «declarado por analista», con la figura y la página a la que corresponden.</p>
+    </div>
+  </section>
+
+  <!-- 10 RESULTADOS -->
+  <section class="slide" data-title="Dónde estamos" data-notes="Estado actual (1,5 min). Ser transparentes: es una versión candidata, aún no estable, y falta la corrida con el Copilot corporativo. Los números salen de la documentación del proyecto. A la derecha se ve cómo el ciclo con la analista mejora la herramienta.">
+    <div class="wrap">
+      <div class="eyebrow rv" style="--i:0">Dónde estamos hoy</div>
+      <h2 class="rv" style="--i:1">Una versión candidata, probada y afinada con la analista</h2>
+      <div class="split" style="align-items:start">
+        <div style="display:grid;gap:12px">
+          <div class="kpis rv" style="--i:2">
+            <div class="kpi"><div class="v" data-count="38">0</div><div class="l">reglas de calidad aplicadas</div></div>
+            <div class="kpi"><div class="v" data-count="132">0</div><div class="l">pruebas automáticas, 0 fallos</div></div>
+            <div class="kpi"><div class="v" data-count="90">0</div><div class="l">páginas reales comparadas en cada cambio</div></div>
+            <div class="kpi"><div class="v" data-count="8">0</div><div class="l">casos listos para Copilot</div></div>
+            <div class="kpi"><div class="v" data-count="13">0</div><div class="l">decisiones de diseño documentadas</div></div>
+            <div class="kpi"><div class="v" data-count="3">0</div><div class="l">entregables: HTML, Skill e instrucciones</div></div>
+          </div>
+          <p class="small rv" style="--i:3">Estado: <b>candidata, no estable</b>. Falta la corrida del paquete con el Copilot corporativo.</p>
+        </div>
+        <div class="rv" style="--i:3">
+          <div class="small" style="margin-bottom:10px"><b>Mejora continua: 2 y 3 de noviembre</b></div>
+          <ul class="tl">
+            <li><span class="d">02/11</span><b>Menos ruido en el archivo</b>La leyenda y las descripciones de API dejan de exportarse.</li>
+            <li><span class="d">02/11</span><b>Capas de tópicos</b>Se certifican por lo que contienen, no por su nombre.</li>
+            <li><span class="d">03/11</span><b>Preguntas más inteligentes</b>La exposición de la API se homologa y solo se pregunta si falta.</li>
+            <li><span class="d">03/11</span><b>Defecto encontrado y corregido</b>El nombre del contenedor hijo salía vacío en 38 páginas. Tras el arreglo, solo cambiaron los campos previstos.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 11 RUTA -->
+  <section class="slide" data-title="A dónde vamos" data-notes="Hoja de ruta (1 min). Hoy: paquete candidato listo. Próximo: validar con Copilot y cerrar los puntos abiertos con la analista. Después: pasar a estable y definir destino y alcance de la distribución. No se comprometen fechas.">
+    <div class="wrap">
+      <div class="eyebrow rv" style="--i:0">A dónde vamos</div>
+      <h2 class="rv" style="--i:1">De candidata a herramienta estable</h2>
+      <div class="grid g3">
+        <div class="card lane now rv" style="--i:2"><h3>Hoy <span class="pill ok">Listo</span></h3>
+          <ul><li>Studio 0.8.3 y Skill 11.8.3, contrato <span class="tip" tabindex="0" data-tip="El contrato es el acuerdo sobre qué campos trae el archivo enriquecido y cómo se llaman, para que Studio, Skill y agente se entiendan.">copilot-factual</span></li><li>Paquete completo para la analista: HTML, Skill de 11 archivos e instrucciones del agente</li><li>8 casos de prueba con guía de qué esperar</li></ul></div>
+        <div class="card lane rv" style="--i:3"><h3>Próximo <span class="pill warn">En curso</span></h3>
+          <ul><li>Corrida con Copilot de tres casos de referencia</li><li>Confirmar con la analista el alcance de una excepción en API-004 sobre SRV-004 y MQ-002</li><li>Medir cuántas páginas cambia la regla EXT-001</li><li>Pruebas completas en un navegador real</li></ul></div>
+        <div class="card lane later rv" style="--i:4"><h3>Después <span class="pill none">Por definir</span></h3>
+          <ul><li>Pasar de candidata a versión estable</li><li>Definir destino y alcance de la distribución</li><li>Controlar versiones del código en un repositorio</li></ul></div>
+      </div>
+      <p class="small rv" style="--i:5">Sin fechas comprometidas: el avance depende de las corridas con la analista y del Copilot corporativo.</p>
+    </div>
+  </section>
+
+  <!-- 12 CIERRE -->
+  <section class="slide" data-title="Cierre" data-notes="Cierre (45 s). Repetir la frase final. Abrir preguntas. Las tres peticiones son una propuesta: ajustarlas según lo que se quiera pedir al grupo.">
+    <div class="wrap">
+      <div class="eyebrow rv" style="--i:0">Cierre</div>
+      <h2 class="rv" style="--i:1">El Studio no opina: entrega evidencia. La decisión sigue siendo de las personas.</h2>
+      <div class="grid g3">
+        <div class="card rv" style="--i:2"><span class="pill acc">Qué logramos</span><p style="margin-top:10px">Un diagrama se vuelve un expediente ordenado, con certeza explícita y cada figura trazable.</p></div>
+        <div class="card rv" style="--i:3"><span class="pill acc">Qué cambia</span><p style="margin-top:10px">La revisión de las 38 reglas deja de depender de la lectura de cada persona y de lo que la IA suponga.</p></div>
+        <div class="card rv" style="--i:4"><span class="pill acc">Qué pedimos</span><p style="margin-top:10px">Apoyo para la corrida con el Copilot corporativo, tiempo de la analista para validar y definir el destino de distribución.</p></div>
+      </div>
+      <p class="small rv" style="--i:5">Preguntas y comentarios. Atajos: ← → para navegar, N para notas, F para pantalla completa.</p>
+    </div>
+  </section>
+
+  </main>
+
+  <div id="notes" role="note"><b>Notas del presentador</b><span id="notesText"></span></div>
+
+  <nav class="nav" aria-label="Navegación de la presentación">
+    <button class="nbtn" id="bPrev" aria-label="Lámina anterior">←</button>
+    <div class="mid"><div class="dots" id="dots"></div><span class="counter" id="counter">01 / 12</span><span class="title-now" id="titleNow"></span></div>
+    <button class="nbtn go" id="bNext" aria-label="Lámina siguiente">→</button>
+  </nav>
+</div>
+<div id="tipbox" role="tooltip"></div>
+
+<script>
+(function(){
+  var slides=[].slice.call(document.querySelectorAll('.slide'));
+  var cur=0, seen={}, userToggled=false, autoT=null;
+  var bar=document.getElementById('bar'), dots=document.getElementById('dots');
+  var counter=document.getElementById('counter'), titleNow=document.getElementById('titleNow');
+  var notes=document.getElementById('notes'), notesText=document.getElementById('notesText');
+  var bPrev=document.getElementById('bPrev'), bNext=document.getElementById('bNext');
+  var pad=function(n){return (n<10?'0':'')+n};
+
+  slides.forEach(function(s,i){
+    var d=document.createElement('button');
+    d.setAttribute('aria-label','Ir a la lámina '+(i+1)+': '+s.dataset.title);
+    d.title=s.dataset.title;
+    d.addEventListener('click',function(){go(i)});
+    dots.appendChild(d);
+  });
+
+  function countUp(el){
+    var to=+el.dataset.count, t0=null, dur=1100;
+    function f(t){ if(!t0)t0=t; var p=Math.min(1,(t-t0)/dur), e=1-Math.pow(1-p,3);
+      el.textContent=Math.round(to*e); if(p<1)requestAnimationFrame(f); }
+    el.textContent='0'; requestAnimationFrame(f);
+  }
+
+  function go(n){
+    n=Math.max(0,Math.min(slides.length-1,n));
+    slides.forEach(function(s,i){
+      s.classList.toggle('active',i===n);
+      s.classList.toggle('past',i<n);
+      s.setAttribute('aria-hidden',i===n?'false':'true');
+      if(i===n)s.scrollTop=0;
+    });
+    cur=n; seen[n]=true;
+    [].forEach.call(dots.children,function(d,i){d.className=(i===n?'on':(seen[i]?'seen':''))});
+    counter.textContent=pad(n+1)+' / '+pad(slides.length);
+    titleNow.textContent=slides[n].dataset.title;
+    bar.style.width=((n+1)/slides.length*100)+'%';
+    bPrev.disabled=n===0; bNext.disabled=n===slides.length-1;
+    notesText.textContent=slides[n].dataset.notes||'';
+    [].forEach.call(slides[n].querySelectorAll('[data-count]'),countUp);
+    clearTimeout(autoT);
+    if(slides[n].dataset.title==='Original vs. enriquecido'&&!userToggled){
+      setPane('orig'); autoT=setTimeout(function(){ if(!userToggled)setPane('enr'); },3200);
+    }
+    try{ history.replaceState(null,'','#l'+(n+1)); }catch(e){}
+  }
+  var next=function(){go(cur+1)}, prev=function(){go(cur-1)};
+  bNext.addEventListener('click',next); bPrev.addEventListener('click',prev);
+
+  document.addEventListener('keydown',function(e){
+    if(e.ctrlKey||e.metaKey||e.altKey)return;
+    var k=e.key;
+    if(k==='ArrowRight'||k==='PageDown'||(k===' '&&!/BUTTON|A/.test(e.target.tagName))){e.preventDefault();next()}
+    else if(k==='ArrowLeft'||k==='PageUp'){e.preventDefault();prev()}
+    else if(k==='Home'){go(0)} else if(k==='End'){go(slides.length-1)}
+    else if(k==='n'||k==='N'){toggleNotes()}
+    else if(k==='f'||k==='F'){fullscreen()}
+  });
+  var tx=null,ty=null;
+  document.getElementById('deck').addEventListener('touchstart',function(e){tx=e.touches[0].clientX;ty=e.touches[0].clientY},{passive:true});
+  document.getElementById('deck').addEventListener('touchend',function(e){
+    if(tx===null)return; var dx=e.changedTouches[0].clientX-tx, dy=e.changedTouches[0].clientY-ty; tx=null;
+    if(Math.abs(dx)>60&&Math.abs(dx)>Math.abs(dy)*1.5){dx<0?next():prev()}
+  },{passive:true});
+
+  /* notas, tema, pantalla completa */
+  var bNotes=document.getElementById('bNotes');
+  function toggleNotes(){var on=!notes.classList.contains('on');notes.classList.toggle('on',on);bNotes.setAttribute('aria-pressed',on)}
+  bNotes.addEventListener('click',toggleNotes);
+  document.getElementById('bTheme').addEventListener('click',function(){
+    var r=document.documentElement, cs=r.getAttribute('data-theme');
+    var dark=cs?cs==='dark':window.matchMedia('(prefers-color-scheme:dark)').matches;
+    r.setAttribute('data-theme',dark?'light':'dark');
+  });
+  function fullscreen(){
+    try{
+      if(document.fullscreenElement){document.exitFullscreen()}
+      else{var p=document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen(); if(p&&p.catch)p.catch(function(){})}
+    }catch(e){}
+  }
+  document.getElementById('bFull').addEventListener('click',fullscreen);
+
+  /* original vs enriquecido */
+  var tabO=document.getElementById('tabOrig'), tabE=document.getElementById('tabEnr');
+  function setPane(w){
+    var o=w==='orig';
+    tabO.setAttribute('aria-selected',o); tabE.setAttribute('aria-selected',!o);
+    document.getElementById('pOrig').classList.toggle('on',o);
+    document.getElementById('pEnr').classList.toggle('on',!o);
+  }
+  tabO.addEventListener('click',function(){userToggled=true;setPane('orig')});
+  tabE.addEventListener('click',function(){userToggled=true;setPane('enr')});
+
+  /* simulador */
+  var ex=[
+    {n:'ms_account',s:'Nombre del bloque',step:1,k:'ok',st:'Servicio · certificado',w:'El nombre empieza con «ms», que declara un microservicio. Esa señal gana sobre cualquier suposición de API.'},
+    {n:'Global Accounts',s:'Con marcador de API pegado',step:2,k:'ok',st:'API · certificada',w:'Tiene agrupado un marcador de API. Es una señal directa.'},
+    {n:'Bloque con «Aplicación» y «Query»',s:'En su tercera sección',step:0,k:'ok',st:'Evento de integración · certificado',w:'La tercera sección trae tipo y clasificación a la vez.'},
+    {n:'Nombre Evento',s:'Plantilla sin completar',step:0,k:'warn',st:'Evento · candidato',w:'Es el título de la plantilla. Falta completar el evento, así que no se certifica y las reglas de eventos quedan no verificables.'},
+    {n:'Bloque sin señales propias',s:'Zona con 2 marcadores y 3 bloques',step:3,k:'warn',st:'API o servicio · candidato',w:'Los marcadores no coinciden con los bloques: no se puede atribuir cuál es cuál, así que se deja como candidato.'}
+  ];
+  var list=document.getElementById('simList'), out=document.getElementById('simOut'), lad=[].slice.call(document.querySelectorAll('#ladder li'));
+  function pick(i){
+    var e=ex[i];
+    [].forEach.call(list.children,function(b,j){b.setAttribute('aria-pressed',j===i)});
+    lad.forEach(function(li,j){li.classList.toggle('on',j===e.step)});
+    out.innerHTML='<span class="pill '+e.k+'">'+e.st+'</span><div class="out"></div><p class="small"></p>';
+    out.querySelector('.out').textContent=e.n;
+    out.querySelector('.small').textContent=e.w+' (Paso '+(e.step+1)+')';
+  }
+  ex.forEach(function(e,i){
+    var b=document.createElement('button'); b.className='chipbtn'; b.type='button';
+    var t=document.createElement('span'); t.textContent=e.n;
+    var s=document.createElement('small'); s.textContent=e.s;
+    b.appendChild(t); b.appendChild(s);
+    b.addEventListener('click',function(){pick(i)});
+    list.appendChild(b);
+  });
+  pick(0);
+
+  /* tooltips */
+  var tb=document.getElementById('tipbox'), tipEl=null;
+  function showTip(el){
+    tipEl=el; tb.textContent=el.getAttribute('data-tip'); tb.classList.add('on');
+    var r=el.getBoundingClientRect(), w=tb.offsetWidth, h=tb.offsetHeight;
+    var x=Math.max(12,Math.min(window.innerWidth-w-12,r.left+r.width/2-w/2));
+    var y=r.top-h-10; if(y<8)y=r.bottom+10;
+    tb.style.left=x+'px'; tb.style.top=y+'px';
+  }
+  function hideTip(){tipEl=null;tb.classList.remove('on')}
+  document.addEventListener('mouseover',function(e){var t=e.target.closest&&e.target.closest('.tip'); if(t)showTip(t); else if(tipEl)hideTip()});
+  document.addEventListener('focusin',function(e){var t=e.target.closest&&e.target.closest('.tip'); if(t)showTip(t)});
+  document.addEventListener('focusout',hideTip);
+  document.addEventListener('click',function(e){var t=e.target.closest&&e.target.closest('.tip'); if(t){tipEl===t?hideTip():showTip(t)} else hideTip()});
+  document.addEventListener('scroll',hideTip,true);
+
+  var h=parseInt((location.hash||'').replace('#l',''),10);
+  go(isNaN(h)?0:h-1);
+})();
+</script>
+</body>
+</html>
