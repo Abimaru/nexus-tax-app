@@ -3,17 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <title>Blueprint Evidence Studio v0.8.3 candidato</title>
+  <title>Blueprint Evidence Studio v0.8.5 candidato</title>
   <style>
     :root{font-family:Inter,Segoe UI,sans-serif;color:#172033;background:#f3f6fa}body{margin:0}header,main,footer{max-width:1180px;margin:auto;padding:24px}header{background:#13213c;color:white;max-width:none}header>div{max-width:1180px;margin:auto}.card{background:white;border:1px solid #d8e0eb;border-radius:12px;padding:20px;margin:18px 0;box-shadow:0 4px 18px #15213a12}.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}label{display:block;font-weight:650;margin:8px 0}input,button{font:inherit}input[type=text],input:not([type]){width:100%;box-sizing:border-box;padding:8px}button{border:0;border-radius:8px;padding:10px 15px;background:#1769aa;color:white;cursor:pointer;margin:4px}button.secondary{background:#46566f}.status{padding:12px;border-radius:8px;background:#e7edf5}.status.error{background:#ffe4e4;color:#8b1515}.metrics{display:flex;gap:12px;flex-wrap:wrap}.metric{background:#eef5ff;padding:12px 16px;border-radius:8px}.muted{color:#647087;font-size:.92rem}.notice{border-left:4px solid #d28b18;background:#fff8e8;padding:10px 12px;margin:10px 0}.evidence-panel{border-top:1px solid #d8e0eb;margin-top:28px;padding-top:18px}.evidence-panel h3{margin-bottom:4px}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;font-size:.9rem}th,td{text-align:left;vertical-align:top;padding:8px;border-bottom:1px solid #e1e6ee}th{background:#f7f9fc;position:sticky;top:0}td code{white-space:pre-wrap;word-break:break-word}.empty{color:#647087;font-style:italic}.badge{display:inline-block;padding:3px 7px;border-radius:999px;background:#e7edf5;font-size:.78rem}.badge.warn{background:#fff0c9;color:#704900}.badge.ok{background:#def5e7;color:#155d34}pre{white-space:pre-wrap;max-height:420px;overflow:auto}@media(max-width:700px){.grid{grid-template-columns:1fr}}@media print{.no-print{display:none}body{background:white}.card{box-shadow:none}th{position:static}}
-  .warning-box{border:3px solid #c2410c;background:#fff4e5;color:#7c2d12;border-radius:12px;padding:16px 20px;margin:18px 0}.warning-box h2{margin:0 0 8px;color:#9a3412}.warning-box h3{margin:14px 0 4px}.warning-box ul{margin:6px 0 0 18px}button:disabled{background:#a9b2c0;cursor:not-allowed}
+  .warning-box{border:3px solid #c2410c;background:#fff4e5;color:#7c2d12;border-radius:12px;padding:16px 20px;margin:18px 0}.notice-box{border:2px solid #a16207;background:#fefce8;color:#713f12;border-radius:12px;padding:12px 18px;margin:14px 0}.notice-box h2{margin:0 0 6px;font-size:1.05em}.notice-box ul{margin:6px 0 0 18px}.warning-box h2{margin:0 0 8px;color:#9a3412}.warning-box h3{margin:14px 0 4px}.warning-box ul{margin:6px 0 0 18px}button:disabled{background:#a9b2c0;cursor:not-allowed}
   </style>
 </head>
 <body>
-  <header><div><h1>Blueprint Evidence Studio v0.8.3 <small>candidato</small></h1><p>Explicación factual y trazabilidad · motor v0.8.3 · contrato v0.4.6.1</p></div></header>
+  <header><div><h1>Blueprint Evidence Studio v0.8.5 <small>candidato</small></h1><p>Explicación factual y trazabilidad · motor v0.8.3 · contrato v0.4.6.1</p></div></header>
   <main>
     <section class="card no-print"><h2>Fuentes</h2><div class="grid"><div><label>Nombre Blueprint *</label><input id="blueprintName" maxlength="180"><label>JSON Lucidchart</label><input id="jsonFile" type="file" accept=".json,application/json"></div><div><div id="pageSelection"></div></div></div><p class="muted">Cargue el JSON de Lucidchart, indique el nombre del Blueprint y elija las páginas que desea enriquecer.</p><button id="analyze">Analizar</button><button id="clear" class="secondary">Limpiar</button></section>
     <div id="status" class="status">Seleccione un JSON.</div>
+    <section id="looseNotice" class="notice-box no-print" role="status" hidden></section>
     <section id="pageWarning" class="warning-box no-print" role="alert" hidden></section>
     <section id="downloads" class="card no-print" hidden><h2>Descargas</h2><div><button id="downloadCopilot">Descargar JSON enriquecido</button><button id="downloadDiagnostic" class="secondary">Descargar diagnóstico</button><button id="print" class="secondary">Imprimir / PDF</button></div><p class="muted">El análisis está abajo, por si desea ver qué se reconoció en cada página.</p></section>
     <section id="results" class="card" hidden>
@@ -32,7 +33,7 @@
       <details><summary>Detalles técnicos</summary><pre id="technical"></pre></details>
     </section>
   </main>
-  <footer>Interfaz candidata v0.8.3 (aviso de páginas no evaluables) · motor v0.8.3 · contrato factual no normativo v0.4.6.1</footer>
+  <footer>Interfaz candidata v0.8.5 (principal de plantilla único, JSON solo con páginas MIXED) · motor v0.8.3 · contrato factual no normativo v0.4.6.1</footer>
   <script>(() => {
   // src/lucidchart.js
   function normalizeDocument(input, sourceName = null) {
@@ -717,20 +718,24 @@
   function classifyPage(page, containment, connections) {
     const legendShapeIds = new Set(containment.notationIds);
     const placeholderShapeIds = page.shapes.filter(isPlaceholderShape).map((x) => x.id);
-    const operationalPathIds = [];
+    const operationalPathIds = [], placeholderPaths = [];
     for (const connection of connections) {
       const orientation = connectionOrientation(connection.raw ?? connection);
       if (orientation.status !== "VERIFIED_BY_TERMINATIONS") continue;
       const source = containment.byId.get(orientation.originId), destination = containment.byId.get(orientation.destinationId);
-      if (shapeKind(source) === "API_OR_SERVICE" && shapeKind(destination) === "BPMN_EVENT" && !containment.notationIds.has(source.id) && !containment.notationIds.has(destination.id) && !isPlaceholderTitle(source)) operationalPathIds.push(connection.id);
+      if (shapeKind(source) === "API_OR_SERVICE" && shapeKind(destination) === "BPMN_EVENT" && !containment.notationIds.has(source.id) && !containment.notationIds.has(destination.id)) (isPlaceholderTitle(source) ? placeholderPaths : operationalPathIds).push({ id: connection.id, originId: source.id });
     }
+    const hasRealApiOrService = page.shapes.some((x) => shapeKind(x) === "API_OR_SERVICE" && !containment.notationIds.has(x.id) && !isPlaceholderShape(x));
+    const uniquePlaceholderMain = !operationalPathIds.length && hasRealApiOrService && new Set(placeholderPaths.map((x) => x.originId)).size === 1;
+    const pathLines = uniquePlaceholderMain ? placeholderPaths : operationalPathIds;
+    operationalPathIds.splice(0, operationalPathIds.length, ...pathLines.map((x) => x.id));
     const containsLegend = legendShapeIds.size > 0;
     const apiOrService = page.shapes.filter((x) => shapeKind(x) === "API_OR_SERVICE" && !containment.notationIds.has(x.id));
     const hasOperationalStructure = operationalPathIds.length > 0;
     const kind = /BDD/i.test(page.title) ? "BDD_OR_REQUIREMENTS" : hasOperationalStructure ? containsLegend ? "MIXED" : "OPERATIONAL" : containsLegend || placeholderShapeIds.length ? "TEMPLATE_OR_LEGEND" : "UNRESOLVED";
     if (!hasOperationalStructure) placeholderShapeIds.forEach((id) => legendShapeIds.add(id));
     const reason = kind === "TEMPLATE_OR_LEGEND" ? templateReason(page, containment, connections, apiOrService) : null;
-    return { kind, ...reason ? { reason: reason.code, reasonDetail: reason.detail } : {}, containsNotationLegend: containment.notationIds.size > 0, legendShapeIds: [...legendShapeIds], placeholderShapeIds, operationalPathIds, evidence: { pageTitle: page.title, shapeCount: page.shapes.length, groupCount: page.groups.length, connectionCount: page.lines.length }, nonNormative: true };
+    return { kind, ...uniquePlaceholderMain ? { placeholderMainAccepted: true } : {}, ...reason ? { reason: reason.code, reasonDetail: reason.detail } : {}, containsNotationLegend: containment.notationIds.size > 0, legendShapeIds: [...legendShapeIds], placeholderShapeIds, operationalPathIds, evidence: { pageTitle: page.title, shapeCount: page.shapes.length, groupCount: page.groups.length, connectionCount: page.lines.length }, nonNormative: true };
   }
   function templateReason(page, containment, connections, apiOrService) {
     const ids = new Set(apiOrService.map((x) => x.id)), isEvent = (id) => shapeKind(containment.byId.get(id)) === "BPMN_EVENT" && !containment.notationIds.has(id);
@@ -751,18 +756,24 @@
     if (unverifiedLines.length) return { code: "API_EVENT_LINE_NOT_VERIFIED", detail };
     return { code: "NO_API_EVENT_LINE", detail };
   }
-  var blockingPages = (result) => (result?.pages ?? []).filter((p) => p.pageClassification?.kind === "TEMPLATE_OR_LEGEND");
+  var EVALUABLE_KINDS = ["MIXED", "OPERATIONAL"];
+  var blockingPages = (result) => (result?.pages ?? []).filter((p) => !EVALUABLE_KINDS.includes(p.pageClassification?.kind));
   function blockingMessage(page) {
-    const c = page.pageClassification ?? {}, reason = c.reason, detail = c.reasonDetail ?? {};
-    const names = new Map((page.components ?? []).map((x) => [x.id, x.name]));
-    const label2 = (id) => `\xAB${names.get(id) || "(sin texto)"} (${id})\xBB`;
-    const fix = "Corrija la conexi\xF3n en Lucidchart, vuelva a exportar el JSON y c\xE1rguelo de nuevo.";
-    if (reason === "TEMPLATE_EMPTY") return { title: `La p\xE1gina \xAB${page.page?.title || "(sin nombre)"}\xBB es una plantilla vac\xEDa`, text: "No tiene ninguna API ni servicio con nombre propio: solo figuras de plantilla o la leyenda de notaci\xF3n. No hay nada que evaluar. Si no es la p\xE1gina que quer\xEDa analizar, desm\xE1rquela y analice de nuevo; si s\xED lo es, mod\xE9lela en Lucidchart, vuelva a exportar el JSON y c\xE1rguelo de nuevo.", hints: [] };
-    if (reason === "PLACEHOLDER_MAIN") return { title: `La p\xE1gina \xAB${page.page?.title || "(sin nombre)"}\xBB tiene la API o el servicio principal con nombre de plantilla`, text: `El componente que sale hacia el evento de Inicio todav\xEDa dice \xABNOMBRE SERVICIO\xBB, \xABNOMBRE API\xBB u otro texto de plantilla. P\xF3ngale su nombre real. ${fix}`, hints: [] };
-    const hints = [];
-    if (detail.unverifiedLineIds?.length) hints.push(`Hay ${detail.unverifiedLineIds.length} l\xEDnea(s) entre una API o servicio y un evento cuyo sentido no se puede verificar (revise que tengan flecha en el evento): ${detail.unverifiedLineIds.join(", ")}.`);
-    if (detail.danglingEventLines?.length) hints.push(`Hay ${detail.danglingEventLines.length} l\xEDnea(s) que llegan a un evento sin estar pegadas a ninguna figura en el origen: ${detail.danglingEventLines.map((x) => `${x.id} \u2192 ${label2(x.eventId)}`).join("; ")}. Si es la l\xEDnea de inicio, pegue su origen a la API o servicio principal.`);
-    return { title: `No se encontr\xF3 la conexi\xF3n del componente principal con el evento de Inicio en \xAB${page.page?.title || "(sin nombre)"}\xBB`, text: `Valide en Lucidchart la conexi\xF3n entre la API o servicio principal y el evento BPMN de Inicio del servicio hijo, donde est\xE1 modelado el flujo: la l\xEDnea debe salir de la API o servicio principal y terminar con flecha en el evento, con los dos extremos pegados a las figuras. ${fix}`, hints };
+    const kind = page.pageClassification?.kind ?? "UNRESOLVED", name = page.page?.title || "(sin nombre)";
+    return { kind, title: `La p\xE1gina \xAB${name}\xBB est\xE1 catalogada como ${kind}`, text: `No se permite generar el JSON porque esta p\xE1gina est\xE1 catalogada como ${kind}. Desm\xE1rquela y analice de nuevo; si necesita evaluarla, valide la p\xE1gina en Lucidchart, exporte el JSON y c\xE1rguelo otra vez.`, hints: [] };
+  }
+  function looseArrowNotices(result) {
+    return (result?.pages ?? []).map((page) => {
+      const names = new Map((page.components ?? []).map((x) => [x.id, x.name]));
+      const lines = (page.connections ?? []).filter((l) => {
+        const a = l.endpoint1 ?? {}, b = l.endpoint2 ?? {};
+        return (!a.connectedTo || !b.connectedTo) && (a.style === "Arrow" || b.style === "Arrow");
+      }).map((l) => {
+        const loose = !l.endpoint1?.connectedTo ? "origen" : "destino", other = loose === "origen" ? l.endpoint2?.connectedTo : l.endpoint1?.connectedTo;
+        return { id: l.id, looseEnd: loose, otherId: other ?? null, otherName: other ? names.get(other) || "(sin texto)" : null };
+      });
+      return { pageTitle: page.page?.title || "(sin nombre)", lines };
+    }).filter((x) => x.lines.length);
   }
 
   // src/exporter.js
@@ -1165,17 +1176,23 @@
   function showBlockers(result) {
     const blocked = blockingPages(result), box = $("pageWarning");
     box.hidden = !blocked.length;
-    box.innerHTML = blocked.length ? "<h2>\u26A0 Revise el Blueprint antes de continuar: hay p\xE1ginas que el Studio no puede evaluar</h2>" + blocked.map((p) => {
+    box.innerHTML = blocked.length ? "<h2>\u26A0 No se genera el JSON: hay p\xE1ginas seleccionadas que no est\xE1n catalogadas como MIXED</h2>" + blocked.map((p) => {
       const m = blockingMessage(p);
       return `<h3>${escapeHtml(m.title)}</h3><p>${escapeHtml(m.text)}</p>${m.hints.length ? `<ul>${m.hints.map((h) => `<li>${escapeHtml(h)}</li>`).join("")}</ul>` : ""}`;
-    }).join("") + "<p><b>Las descargas est\xE1n deshabilitadas</b> hasta que todas las p\xE1ginas seleccionadas queden como MIXED u OPERATIONAL. Tambi\xE9n puede desmarcar la p\xE1gina y analizar de nuevo.</p>" : "";
+    }).join("") + "<p><b>Las descargas est\xE1n deshabilitadas</b> y el JSON no se genera mientras alguna p\xE1gina seleccionada est\xE9 como TEMPLATE_OR_LEGEND, UNRESOLVED o BDD_OR_REQUIREMENTS. Desmarque esas p\xE1ginas y analice de nuevo, o corrija el BP y c\xE1rguelo otra vez.</p>" : "";
     for (const id of ["downloadCopilot", "downloadDiagnostic"]) $(id).disabled = blocked.length > 0;
+  }
+  function showLooseNotice(result) {
+    const notices = looseArrowNotices(result), box = $("looseNotice");
+    box.hidden = !notices.length;
+    box.innerHTML = notices.length ? "<h2>Aviso informativo (no bloquea): hay flechas con un extremo sin conectar</h2><p>En el diagrama pueden verse unidas, pero en el JSON uno de sus extremos no est\xE1 pegado a ninguna figura, por lo que esa conexi\xF3n no cuenta. Si deb\xEDan estar conectadas, pegue el extremo en Lucidchart, vuelva a exportar y cargue de nuevo.</p>" + notices.map((n) => `<h3>${escapeHtml(n.pageTitle)}</h3><ul>${n.lines.map((l) => `<li>L\xEDnea ${escapeHtml(l.id)}: sin figura en el ${l.looseEnd}${l.otherName ? `; el otro extremo est\xE1 en \xAB${escapeHtml(l.otherName)} (${escapeHtml(l.otherId)})\xBB` : ""}.</li>`).join("")}</ul>`).join("") : "";
   }
   function render(result) {
     factual = result;
     $("results").hidden = false;
     $("downloads").hidden = false;
     showBlockers(result);
+    showLooseNotice(result);
     const totals = result.pages.reduce((a, p) => ({ shapes: a.shapes + p.counts.shapes, connections: a.connections + p.counts.connections }), { shapes: 0, connections: 0 });
     $("metrics").innerHTML = `<div class="metric"><b>${result.pages.length}</b><br>P\xE1ginas</div><div class="metric"><b>${totals.shapes}</b><br>Figuras</div><div class="metric"><b>${totals.connections}</b><br>Conexiones</div>`;
     $("pages").innerHTML = result.pages.map((p) => `<tr><td>${escapeHtml(p.page.title)}</td><td>${p.pageClassification.kind}</td><td>${p.scenario.scenario ?? "\u2014"} / ${p.scenario.status}</td><td>${p.counts.shapes}</td><td>${p.counts.connections}</td><td>${p.deploymentAssociations.filter((x) => x.associatedComponentId).length}</td><td>${p.issues.length}</td></tr>`).join("");
@@ -1186,7 +1203,7 @@
     fillRows("childRows", childRows(result), "No hay componentes tipados SERVICIO_HIJO en las p\xE1ginas seleccionadas.", 8);
     fillRows("modelRows", modelRows(result), "No hay figuras con customData ENTRADA/SALIDA en las p\xE1ginas seleccionadas.", 7);
     $("technical").textContent = JSON.stringify(result.pages.map((p) => ({ page: p.page, scenario: p.scenario, components: p.components, deployment: p.deploymentAssociations, warnings: p.issues })), null, 2);
-    status(blockingPages(result).length ? `An\xE1lisis completado con p\xE1ginas no evaluables: revise el aviso naranja. Descargas deshabilitadas.` : `An\xE1lisis visual candidato v0.8.3 completado sobre motor v${VERSION}.`);
+    status(blockingPages(result).length ? `No se genera el JSON: hay p\xE1ginas seleccionadas que no est\xE1n catalogadas como MIXED. Revise el aviso naranja.` : `An\xE1lisis visual candidato v0.8.5 completado sobre motor v${VERSION}.`);
   }
   async function loadPages() {
     const file = $("jsonFile").files[0];
@@ -1217,6 +1234,7 @@
       $("results").hidden = true;
       $("downloads").hidden = true;
       $("pageWarning").hidden = true;
+      $("looseNotice").hidden = true;
     } finally {
       completedGeneration = current;
     }
@@ -1228,6 +1246,7 @@
     $("pageSelection").innerHTML = "";
     $("results").hidden = true;
     $("pageWarning").hidden = true;
+    $("looseNotice").hidden = true;
     for (const id of ["downloadCopilot", "downloadDiagnostic"]) $(id).disabled = false;
     for (const id of ["metrics", "pages", "bpmnRows", "producerRows", "childRows", "modelRows", "bpmnSummary", "technical"]) $(id).innerHTML = "";
     status("Seleccione un JSON.");
@@ -1237,7 +1256,7 @@
   $("downloadCopilot").onclick = () => factual && !blockingPages(factual).length && download(factual, `${factual.metadata.normalizedBlueprintName}-ENRIQUECIDO.json`);
   $("downloadDiagnostic").onclick = () => diagnosticModel && !blockingPages(factual).length && download(diagnosticExport(diagnosticModel), `${factual.metadata.normalizedBlueprintName}-DIAGNOSTICO.json`);
   $("print").onclick = () => window.print();
-  Object.defineProperty(window, "__BES__", { value: { VERSION, UI_VERSION: "0.8.3-candidate-aviso", analyzeFiles, getResult: () => factual, getDiagnostic: () => diagnosticModel ? diagnosticExport(diagnosticModel) : null, getGeneration: () => completedGeneration }, enumerable: false, writable: false, configurable: false });
+  Object.defineProperty(window, "__BES__", { value: { VERSION, UI_VERSION: "0.8.5-candidate-unicidad", analyzeFiles, getResult: () => factual, getDiagnostic: () => diagnosticModel ? diagnosticExport(diagnosticModel) : null, getGeneration: () => completedGeneration }, enumerable: false, writable: false, configurable: false });
 })();
 </script>
 </body>
