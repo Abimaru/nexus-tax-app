@@ -1,0 +1,192 @@
+Informe de validación
+Se registraron las seis respuestas como DECLARADO_POR_ANALISTA, vinculadas a su página y componente: ambas API principales y ambos hijos principales fueron declarados MCI; la exposición declarada fue Private para updatePayDay y private para updateSalesChannel. La homologación permite tratar ambas exposiciones como private únicamente para API-004, sin corregir el texto evaluado por API-003. skills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/0-procedimiento.mdturn1search1
+Página 1: updatePayDay
+Clasificación: MIXED, evaluable.
+Escenario: E2.
+Cumplimiento: 57,9%.
+Conteos: 11 Cumple, 3 No cumple, 5 No verificable y 19 No aplica.
+Cálculo: 11 / (11 + 3 + 5) = 57,9%. skills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/0-procedimiento.md
+Inventario relevante
+API: «Sufi Loan Modification - Management v1.1.0 (TomKdtOM.PkA)». Servicio invocado: «S22 (TomKqgJbYew0)». Hijo principal: «Sufi Loan Modification - Management (TomKDd9f1L4N)». Gestor: «pawsqmgrsufi01 pawsqmgrsufi02 (TomK_Wi1og8k)». Dominios: «INTEGRACIÓN (TomK3UM3wqXY)» e «ISERIES (TomKTtpheDCg)». Capas: «Capa de Arquitectura - composicion (TomK5n7EWAPe)» y «Capa de Arquitectura - composicion (TomK1DemWCJt)». Flujos: «Flujo Transaccional - no-monetario (TomKiCco-~L8)» y «Flujo Transaccional - operativo (TomKzciN~QHr)». Federados: «Federado (hDVLicDD.Ka0)» y «Federado (PFVL1WOfTyWK)». Compuerta: «(sin texto: COMPUERTA) (TomK4oedF0Q1)». No hay eventos de integración, comandos, auxiliares certificados ni candidatos tipados. Existen cuatro conexiones pendientes sin participantes certificados.
+Resultados de las 38 reglas
+CNT-001: Cumple. Población: «INTEGRACIÓN (TomK3UM3wqXY)» e «ISERIES (TomKTtpheDCg)». E2 exige INTEGRACIÓN y PRODUCTOR o SISTEMAS EXTERNOS. El primero está certificado como INTEGRATION y el segundo solo tiene los roles posibles PRODUCER y EXTERNAL_SYSTEM, combinación válida para satisfacer la obligación alternativa de E2. Sin dato pendiente.
+CNT-002: Cumple. Población: «Sufi Loan Modification - Management (TomKDd9f1L4N)». Existe un único hijo principal certificado, tiene nombre específico y está dentro de «INTEGRACIÓN (TomK3UM3wqXY)», ubicación exigida en E2. Sin dato pendiente.
+CNT-003: Cumple. En el nivel padre de «INTEGRACIÓN (TomK3UM3wqXY)» están la API, el modelo de entrada y las capas de despliegue; dentro de «Sufi Loan Modification - Management (TomKDd9f1L4N)» están compuerta, eventos BPMN, actividades y modelo. No hay componentes certificados en categorías prohibidas para su nivel. Sin dato pendiente.
+CNT-004: No verificable. «ISERIES (TomKTtpheDCg)» puede ser PRODUCER o EXTERNAL_SYSTEM. No puede evaluarse con certeza su contenido como DOMINIO PRODUCTOR. Pendiente: clasificación arquitectónica exacta de «ISERIES (TomKTtpheDCg)».
+CNT-005: No verificable. La misma ambigüedad impide determinar si «ISERIES (TomKTtpheDCg)» debe evaluarse como SISTEMAS EXTERNOS. Pendiente: clasificación arquitectónica exacta.
+EXT-001: No aplica. inventory.sistemasExternosAuxiliares está vacío y no existen candidatos a auxiliar.
+EXT-002: No aplica. No existen sistemas externos auxiliares certificados ni candidatos.
+GW-001: No verificable. «(sin texto: COMPUERTA) (TomK4oedF0Q1)» carece de texto, pero sus caminos «línea (sin texto: COMPUERTA) → Homologar Excepciones (TomKig2RqxaB)» y «línea (sin texto: COMPUERTA) → (sin texto: EVENTO_BPMN) (TomK4_Q1I-6X)» tienen etiquetas No y SI. Son respuestas sin pregunta certificada. Pendiente: texto de decisión de la compuerta.
+API-001: Cumple. «Sufi Loan Modification - Management v1.1.0 (TomKdtOM.PkA)» tiene nombres específicos en inglés, separador estructural y versión válida de tres segmentos.
+API-002: Cumple. La operación updatePayDay de «Sufi Loan Modification - Management v1.1.0 (TomKdtOM.PkA)» está en inglés y camelCase.
+API-003: No cumple. La tercera sección de «Sufi Loan Modification - Management v1.1.0 (TomKdtOM.PkA)» contiene Entidad, pero en INTEGRACIÓN debe tener exactamente private, public o partner, seguido de guion y entidad, utilidad o tarea, todo en minúsculas. La exposición declarada no corrige el texto.
+API-004: No verificable. La API fue declarada MCI y su exposición se homologa a private, por lo que requiere Capa de Arquitectura y Flujo Transaccional asociados. La API no tiene asociaciones resueltas y la pareja «Flujo Transaccional - operativo (TomKzciN~QHr)» con «Capa de Arquitectura - composicion (TomK1DemWCJt)» está pendiente y sin propietario. Pendiente: propietario de esa pareja.
+SRV-001: Cumple. «S22 (TomKqgJbYew0)» es un servicio invocado no gestionado, con nombre visible, específico y funcional.
+SRV-002: Cumple. La operación P014 de «S22 (TomKqgJbYew0)» es visible y específica; al ser no gestionado no se exige camelCase.
+SRV-003: No cumple. La tercera sección de «S22 (TomKqgJbYew0)» contiene Tarea, pero se exige exactamente tarea, entidad o utilidad en minúsculas.
+SRV-004: Cumple. El hijo MCI «Sufi Loan Modification - Management (TomKDd9f1L4N)» tiene resueltas «Capa de Arquitectura - composicion (TomK5n7EWAPe)» y «Flujo Transaccional - no-monetario (TomKiCco-~L8)». «S22 (TomKqgJbYew0)» está fuera de INTEGRACIÓN y no agrega obligación gestionada.
+SRV-005: No aplica. No hay parejas API-servicio, servicio-servicio, servicio-auxiliar o evento-servicio asignables a esta regla, ni pendientes con «S22 (TomKqgJbYew0)».
+EVT-001: No aplica. No hay eventos de integración ni candidatos.
+EVT-002: No aplica. No hay eventos de integración ni candidatos.
+EVT-003: No aplica. No hay eventos de integración ni candidatos.
+EVT-004: No aplica. No hay eventos de integración ni candidatos a Capa de Tópicos.
+EVT-005: No aplica. No hay eventos de integración ni Capas de Tópicos.
+EVT-006: No aplica. No existen tópicos asociados a eventos de integración.
+EVT-007: No aplica. No existen eventos de integración ni tópicos con conexiones evaluables.
+CA-001: Cumple. «Capa de Arquitectura - composicion (TomK5n7EWAPe)» y «Capa de Arquitectura - composicion (TomK1DemWCJt)» siguen la estructura y el tipo permitidos.
+FT-001: Cumple. «Flujo Transaccional - operativo (TomKzciN~QHr)» y «Flujo Transaccional - no-monetario (TomKiCco-~L8)» usan nombres y tipos permitidos.
+E1-001: No aplica. El patrón certificado es E2, no E1.
+E2-001: No verificable. «Sufi Loan Modification - Management v1.1.0 (TomKdtOM.PkA)» y «Sufi Loan Modification - Management (TomKDd9f1L4N)» están separados y en INTEGRACIÓN; «línea Sufi Loan Modification - Management v1.1.0 → (sin texto: EVENTO_BPMN) (TomKXMDvpzEH)» tiene sentido y terminaciones correctos. Sin embargo, «(sin texto: EVENTO_BPMN) (TomKam9I6WOr)» no tiene subtipo Inicio certificado. Pendiente: subtipo BPMN.
+E3-001: No aplica. El patrón certificado es E2, no E3.
+MOD-001: No cumple. «Sufi Loan Modification - Management v1.1.0 (TomKdtOM.PkA)» tiene modelo de entrada «pagination…loan…paymentDay (TomKBQmCl.mt)», pero su salida está MISSING_IN_SCOPE. «S22 (TomKqgJbYew0)» carece tanto de entrada como de salida asociadas.
+COM-001: No aplica. No hay comandos certificados ni candidatos.
+COM-002: No aplica. No existen relaciones comando-API invocada ni pendientes con participantes de esos tipos.
+COM-003: No aplica. No existen relaciones comando-servicio invocado ni pendientes con participantes de esos tipos.
+COM-004: No aplica. No existen relaciones comando-gestor ni conexiones pendientes con un gestor identificado.
+COM-005: No aplica. No existen relaciones comando-auxiliar.
+MQ-001: Cumple. «pawsqmgrsufi01 pawsqmgrsufi02 (TomK_Wi1og8k)» está certificado como gestor de colas y tiene nombre específico.
+MQ-002: No aplica. «pawsqmgrsufi01 pawsqmgrsufi02 (TomK_Wi1og8k)» no está certificado en el nivel padre de INTEGRACIÓN.
+MQ-003: No aplica. No existen parejas gestor-servicio, gestor-gestor o evento BPMN-gestor, ni pendientes con el gestor como participante. skills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/0-reglas-estructura.mdskills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/02-reglas-api-servicios.mdskills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/03-reglas-eventos.mdskills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/04-reglas-despliegue.mdskills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/05-reglas-escenarios.mdskills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/06-reglas-modelos-comandos.mdskills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/07-reglas-gestores-colas.mdskills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/08-fichas.md
+Página 2: updateSalesChannel
+Clasificación: MIXED, evaluable.
+Escenario: E2.
+Cumplimiento: 52,4%.
+Conteos: 11 Cumple, 3 No cumple, 7 No verificable y 17 No aplica.
+Cálculo: 11 / (11 + 3 + 7) = 52,4%. skills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/0-procedimiento.md
+Inventario relevante
+API: «Sufi Loan Modification - Management v1.1.0 (7omKk-wna~o1)». Servicio invocado: «S21 (7omKnb2mDJ9r)». Hijo principal: «Sufi Loan Modification - Management (7omK-NfipG4u)». Gestor: «pawsqmgrsufi01 pawsqmgrsufi02 (7omKFiRhJxO4)». Dominios: «INTEGRACIÓN (7omKfzOA94t-)» e «ISERIES (7omK8wvseXro)». Capas: «Capa de Arquitectura - composicion (7omKXsFyYBp~)» y «Capa de Arquitectura - composicion (7omKv2nWo6ii)». Flujos: «Flujo Transaccional - no-monetario (7omKis2vR5Fq)» y «Flujo Transaccional - operativo (7omK6x6cARN8)». Federados: «Federado (UEVLzVAVlaPb)» y «Federado (tGVLOYHEvEvi)». Compuerta: «(sin texto: COMPUERTA) (7omKB7lrqNUW)». No hay eventos de integración, comandos, auxiliares certificados ni candidatos tipados. Hay una conexión pendiente con el gestor y otras tres conexiones pendientes sin participantes certificados.
+Resultados de las 38 reglas
+CNT-001: Cumple. «INTEGRACIÓN (7omKfzOA94t-)» está certificada como INTEGRATION y «ISERIES (7omK8wvseXro)» solo puede ser PRODUCER o EXTERNAL_SYSTEM, combinación suficiente para la obligación alternativa de E2.
+CNT-002: Cumple. «Sufi Loan Modification - Management (7omK-NfipG4u)» es el único hijo principal, tiene nombre específico y está en «INTEGRACIÓN (7omKfzOA94t-)».
+CNT-003: Cumple. El contenido certificado del nivel padre y del hijo en «INTEGRACIÓN (7omKfzOA94t-)» pertenece a las categorías permitidas para sus respectivos niveles.
+CNT-004: No verificable. No puede determinarse si «ISERIES (7omK8wvseXro)» es el DOMINIO PRODUCTOR. Pendiente: clasificación exacta del dominio.
+CNT-005: No verificable. No puede determinarse si «ISERIES (7omK8wvseXro)» es SISTEMAS EXTERNOS. Pendiente: clasificación exacta del dominio.
+EXT-001: No aplica. No hay sistemas externos auxiliares certificados ni candidatos.
+EXT-002: No aplica. No hay sistemas externos auxiliares certificados ni candidatos.
+GW-001: No verificable. «(sin texto: COMPUERTA) (7omKB7lrqNUW)» no tiene pregunta, pero «línea (sin texto: COMPUERTA) → (sin texto: EVENTO_BPMN) (7omKP7MW3IRx)» y «línea (sin texto: COMPUERTA) → Homologar Excepciones (7omK83O7mlG0)» están etiquetadas SI y No. Pendiente: texto de decisión.
+API-001: Cumple. «Sufi Loan Modification - Management v1.1.0 (7omKk-wna~o1)» cumple nombre en inglés, separador y versión.
+API-002: Cumple. updateSalesChannel está en inglés y camelCase.
+API-003: No cumple. La tercera sección contiene Entidad, sin exposición, guion ni modelo en minúsculas. La declaración private no corrige el texto.
+API-004: No verificable. La API fue declarada MCI y private, pero no tiene Capa y Flujo asociados. La pareja «Flujo Transaccional - operativo (7omK6x6cARN8)» con «Capa de Arquitectura - composicion (7omKv2nWo6ii)» está pendiente y sin propietario. Pendiente: propietario de esa pareja.
+SRV-001: Cumple. «S21 (7omKnb2mDJ9r)» es un servicio invocado no gestionado con nombre específico.
+SRV-002: Cumple. La operación P014 de «S21 (7omKnb2mDJ9r)» es visible, funcional y específica.
+SRV-003: No cumple. La tercera sección de «S21 (7omKnb2mDJ9r)» contiene Tarea, no el valor exacto tarea.
+SRV-004: Cumple. «Sufi Loan Modification - Management (7omK-NfipG4u)» fue declarado MCI y tiene asociadas «Capa de Arquitectura - composicion (7omKXsFyYBp~)» y «Flujo Transaccional - no-monetario (7omKis2vR5Fq)».
+SRV-005: No aplica. No hay parejas asignables ni pendientes con «S21 (7omKnb2mDJ9r)».
+EVT-001: No aplica. No hay eventos de integración ni candidatos.
+EVT-002: No aplica. No hay eventos de integración ni candidatos.
+EVT-003: No aplica. No hay eventos de integración ni candidatos.
+EVT-004: No aplica. No hay eventos de integración ni Capas de Tópicos candidatas.
+EVT-005: No aplica. No hay eventos de integración ni Capas de Tópicos.
+EVT-006: No aplica. No existen tópicos asociados.
+EVT-007: No aplica. No existen eventos de integración ni tópicos con conexiones evaluables.
+CA-001: Cumple. «Capa de Arquitectura - composicion (7omKXsFyYBp~)» y «Capa de Arquitectura - composicion (7omKv2nWo6ii)» cumplen la estructura exigida.
+FT-001: Cumple. «Flujo Transaccional - operativo (7omK6x6cARN8)» y «Flujo Transaccional - no-monetario (7omKis2vR5Fq)» cumplen nombre y tipo.
+E1-001: No aplica. El patrón es E2.
+E2-001: No verificable. «línea Sufi Loan Modification - Management v1.1.0 → (sin texto: EVENTO_BPMN) (7omK5qMAnu4_)» tiene sentido y terminaciones correctos, pero «(sin texto: EVENTO_BPMN) (7omK7q9PMVVf)» no tiene subtipo Inicio certificado. Pendiente: subtipo BPMN.
+E3-001: No aplica. El patrón es E2.
+MOD-001: No cumple. «Sufi Loan Modification - Management v1.1.0 (7omKk-wna~o1)» tiene entrada «pagination…loan…channel…branchOffice (7omK5aBHSgmt)», pero carece de salida. «S21 (7omKnb2mDJ9r)» carece de entrada y salida asociadas.
+COM-001: No aplica. No hay comandos certificados ni candidatos.
+COM-002: No aplica. No hay relaciones comando-API ni pendientes de esos participantes.
+COM-003: No aplica. No hay relaciones comando-servicio ni pendientes de esos participantes.
+COM-004: No verificable. «línea pawsqmgrsufi01 pawsqmgrsufi02 → (extremo sin conectar) (7omKKU5gopwM)» es una conexión pendiente con «pawsqmgrsufi01 pawsqmgrsufi02 (7omKFiRhJxO4)». Su extremo faltante podría corresponder a un comando. Pendiente: participante y tipo del extremo no conectado.
+COM-005: No aplica. No hay relaciones comando-auxiliar ni pendientes con auxiliar certificado.
+MQ-001: Cumple. «pawsqmgrsufi01 pawsqmgrsufi02 (7omKFiRhJxO4)» está certificado como gestor y tiene nombre específico.
+MQ-002: No aplica. El gestor no está certificado en el nivel padre de INTEGRACIÓN.
+MQ-003: No verificable. «línea pawsqmgrsufi01 pawsqmgrsufi02 → (extremo sin conectar) (7omKKU5gopwM)» podría configurar una relación del gestor con otro gestor, un servicio o un evento BPMN de tipo Mensaje. Pendiente: identidad, tipo y terminación del participante faltante. skills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/0-reglas-estructura.mdskills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/02-reglas-api-servicios.mdskills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/03-reglas-eventos.mdskills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/04-reglas-despliegue.mdskills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/05-reglas-escenarios.mdskills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/06-reglas-modelos-comandos.mdskills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/07-reglas-gestores-colas.mdskills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/08-fichas.md
+
+Sin cambiar tu veredicto... Si ISERIES es productor, dame el resultado para las reglas CNT 004
+BlueGuard
+BlueGuard
+CNT-004 bajo el supuesto de que ISERIES es PRODUCTOR
+Sin modificar el veredicto original del informe, el resultado hipotético para ambas páginas sería:
+updatePayDay
+Regla: CNT-004
+Población: contenido directo de «ISERIES (TomKTtpheDCg)».
+Evidencia: «Federado (hDVLicDD.Ka0)» y «Federado (PFVL1WOfTyWK)» están contenidos directamente en «ISERIES (TomKTtpheDCg)». Los componentes internos de esas figuras Federado no se evalúan directamente en CNT-004.
+sharepoint
+Resultado hipotético: Cumple
+Justificación: Si «ISERIES (TomKTtpheDCg)» se certifica como DOMINIO PRODUCTOR, su contenido directo corresponde a capas de despliegue Federado, categoría permitida en el nivel padre del DOMINIO PRODUCTOR. No se evidencia contenido directo certificado en una categoría prohibida. skills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/0-reglas-estructura.mdskills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/08-fichas.md
+Dato pendiente bajo el supuesto: ninguno.
+updateSalesChannel
+Regla: CNT-004
+Población: contenido directo de «ISERIES (7omK8wvseXro)».
+Evidencia: «Federado (UEVLzVAVlaPb)» y «Federado (tGVLOYHEvEvi)» están contenidos directamente en «ISERIES (7omK8wvseXro)». Los componentes encapsulados en estas figuras no forman parte del contenido directo evaluado por CNT-004.
+sharepoint
+Resultado hipotético: Cumple
+Justificación: Si «ISERIES (7omK8wvseXro)» se certifica como DOMINIO PRODUCTOR, ambas figuras Federado son capas de despliegue permitidas en su nivel padre. No aparece contenido directo certificado en una categoría prohibida. skills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/0-reglas-estructura.mdskills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/08-fichas.md
+Dato pendiente bajo el supuesto: ninguno.
+Conclusión: al certificar ISERIES como PRODUCTOR, CNT-004 cambiaría de “No verificable” a “Cumple” en las dos páginas. Este es un análisis condicional y no modifica el veredicto original basado en el JSON, donde el rol de ISERIES permanece sin determinar.
+
+
+
+
+Orígenes
+
+donde se evaluan las figuras dentro de federado?
+BlueGuard
+BlueGuard
+¿Dónde se evalúan las figuras dentro de Federado?
+Las figuras contenidas dentro de una capa Federado no se evalúan en CNT-004 como contenido directo del dominio. Se evalúan según el tipo certificado de cada figura y la regla específica aplicable. La ficha de CNT-004 solo toma el contenido directo del contenedor PRODUCTOR y excluye lo encapsulado. skills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/0-fichas.mdskills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/01-reglas-estructura.md
+En este blueprint:
+Figura dentro de Federado	Evaluación
+«pawsqmgrsufi01 pawsqmgrsufi02 (TomK_Wi1og8k)»	MQ-001, por ser gestor de colas certificado. MQ-002 no aplica porque el gestor no está ubicado en el nivel padre de INTEGRACIÓN. Sus conexiones se evaluarían en COM-004 o MQ-003, según el tipo del otro participante. skills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/0-reglas-gestores-colas.mdskills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/08-fichas.md
+«S22 (TomKqgJbYew0)»	SRV-001, SRV-002 y SRV-003, por ser servicio invocado certificado. SRV-004 no le exige despliegue porque está fuera del nivel padre de INTEGRACIÓN. Sus conexiones aplicables se revisarían en SRV-005, COM-003 o MQ-003, según el otro participante. skills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/0-reglas-api-servicios.mdskills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/08-fichas.md
+«pawsqmgrsufi01 pawsqmgrsufi02 (7omKFiRhJxO4)»	MQ-001 para identificación y nombre. La conexión pendiente «línea pawsqmgrsufi01 pawsqmgrsufi02 → (extremo sin conectar) (7omKKU5gopwM)» afecta COM-004 y MQ-003 porque todavía no se conoce el tipo del extremo faltante. skills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/0-reglas-gestores-colas.mdskills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/08-fichas.md
+«S21 (7omKnb2mDJ9r)»	SRV-001, SRV-002 y SRV-003. Las conexiones, si existieran, se asignarían a SRV-005, COM-003 o MQ-003 según la pareja certificada. skills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/0-reglas-api-servicios.mdskills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/08-fichas.md
+Distinción importante
+EXT-001 no evalúa el contenido de una figura Federado. Esa regla se limita a inventory.sistemasExternosAuxiliares, es decir, sistemas externos auxiliares certificados. Una capa «Federado» es una figura de despliegue con architecturalType: FEDERADO, no un sistema externo auxiliar. skills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/0-reglas-estructura.mdskills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/08-fichas.md
+Por tanto, Federado acredita una modalidad de despliegue, pero no reemplaza las reglas funcionales de las figuras que contiene. Cada componente interno sigue evaluándose por su propio inventario y reglas de tipo.
+
+
+
+
+
+Pero entonces para el ejemplo en ninguna parte de las reglas se evalua que las colas esten bien ubicadas? y q dentro del productor puedan ir? al igual que el servicio S21 y S22?
+BlueGuard
+BlueGuard
+:Razonado para 1s
+Sí. Con el catálogo v11.8.5, en este ejemplo queda un vacío de cobertura normativa: se valida el tipo, nombre, operación, clasificación, despliegue y conexiones de las figuras internas, pero no existe una regla que determine expresamente si un gestor de colas o un servicio puede estar contenido dentro de una figura Federado ubicada en PRODUCTOR.
+1. Gestores de colas dentro de Federado
+Para «pawsqmgrsufi01 pawsqmgrsufi02 (TomK_Wi1og8k)» y «pawsqmgrsufi01 pawsqmgrsufi02 (7omKFiRhJxO4)»:
+MQ-001 evalúa que estén identificados como gestores y que tengan un nombre válido. No evalúa su ubicación.
+MQ-002 solo evalúa gestores ubicados en el nivel padre de INTEGRACIÓN. Como estos gestores están encapsulados en «Federado (hDVLicDD.Ka0)» y «Federado (UEVLzVAVlaPb)», y su dominio no está certificado como INTEGRATION, MQ-002 no evalúa si su ubicación es permitida en PRODUCTOR.
+MQ-003 y COM-004 evalúan conexiones, no ubicación.
+EXT-001 sí contiene restricciones de ubicación para gestores encapsulados, pero su población está limitada a sistemasExternosAuxiliares. Una figura con architecturalType: FEDERADO no es un sistema externo auxiliar. Por eso EXT-001 no recibe estas figuras. skills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/0-reglas-estructura.mdskills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/07-reglas-gestores-colas.mdskills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/08-fichas.md
+Por tanto, el resultado correcto es:
+El catálogo actual no valida si es arquitectónicamente válido que esos gestores estén dentro de Federado cuando la figura Federado pertenece a PRODUCTOR.
+No corresponde convertir esa falta de regla en un No cumple de CNT-004, MQ-001 o MQ-002, porque ninguna de ellas establece esa prohibición para este caso.
+2. Servicios S21 y S22 dentro de Federado
+Para «S22 (TomKqgJbYew0)» y «S21 (7omKnb2mDJ9r)»:
+SRV-001 evalúa nombre y modalidad gestionada o no gestionada.
+SRV-002 evalúa la operación.
+SRV-003 evalúa la clasificación de la tercera sección.
+SRV-004 evalúa Capa de Despliegue solo para servicios gestionados ubicados en el nivel padre de INTEGRACIÓN y para el hijo principal declarado MCI.
+SRV-005, COM-003 y MQ-003 evalúan conexiones.
+Ninguna de esas reglas establece que un servicio pueda o no pueda estar contenido dentro de una figura Federado ubicada en PRODUCTOR. skills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/0-reglas-api-servicios.mdskills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/08-fichas.md
+En el JSON, «S22 (TomKqgJbYew0)» está asociado por modalidad Federado a «Federado (PFVL1WOfTyWK)», y «S21 (7omKnb2mDJ9r)» está asociado por modalidad Federado a «Federado (tGVLOYHEvEvi)». Esa asociación certifica su despliegue Federado, pero no determina por sí misma si ese contenido está permitido dentro del dominio PRODUCTOR.
+sharepoint
+3. Por qué CNT-004 no cubre las figuras internas
+La ficha de CNT-004 define como población:
+el contenido directo de los contenedores con domainRole: PRODUCER y, si hay hijo, su contenido.
+En el supuesto de que ISERIES sea PRODUCTOR, su contenido directo es:
+Para updatePayDay: «Federado (hDVLicDD.Ka0)» y «Federado (PFVL1WOfTyWK)».
+Para updateSalesChannel: «Federado (UEVLzVAVlaPb)» y «Federado (tGVLOYHEvEvi)».
+Los gestores y servicios están en un nivel inferior, dentro de esas figuras Federado. Por eso no entran como contenido directo de CNT-004. Además, CNT-004 permite en el nivel padre las capas de despliegue MCI o Federado, pero no define el contenido permitido dentro de una capa Federado. skills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/0-reglas-estructura.mdskills://appCatalog/T_c2f4d8ba-3f92-afaf-2484-7bb2712cdd54/validar-blueprint-integracion/references/08-fichas.md
+Conclusión corregida
+Elemento	¿Se evalúa su calidad individual?	¿Se evalúa que pueda estar dentro de Federado en PRODUCTOR?
+«pawsqmgrsufi01 pawsqmgrsufi02 (TomK_Wi1og8k)»	Sí, mediante MQ-001 y reglas de conexión aplicables	No
+«pawsqmgrsufi01 pawsqmgrsufi02 (7omKFiRhJxO4)»	Sí, mediante MQ-001, COM-004 y MQ-003	No
+«S22 (TomKqgJbYew0)»	Sí, mediante SRV-001, SRV-002, SRV-003, MOD-001 y conexiones aplicables	No
+«S21 (7omKnb2mDJ9r)»	Sí, mediante SRV-001, SRV-002, SRV-003, MOD-001 y conexiones aplicables	No
+Así que tu observación es correcta: CNT-004 puede cumplir bajo el supuesto ISERIES = PRODUCTOR porque las figuras Federado están permitidas en el nivel padre, aunque las reglas actuales no inspeccionen si el contenido interno de esas figuras Federado es válido para PRODUCTOR. Esto debe registrarse como limitación de cobertura del catálogo, no como un cambio arbitrario del estado de una regla existente.
+
+
+
+
+Orígenes
+
+Nov 7
+
+
+Dime estas figuras: TomKq-b3sh9l y 7omKFvg.KVJE, que nombre tienen, que tipo de class tienen y que tipo de figuran son. Ademas si tienen alguna conexion bidireccional.
