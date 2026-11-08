@@ -2,7 +2,7 @@
 
 Uso: adjuntar el `<Nombre>-ENRIQUECIDO.json` al chat del agente (BlueGuard), copiar y pegar el texto de abajo sin cambiarlo y enviar. Responder las preguntas MCI que haga el agente. Al final descargar el Excel (o pegar el bloque de texto en Excel desde A1).
 
-Alineado con: Skill 11.8.6, instrucciones del agente v11.8.6, ejemplo `Ejemplo_ParaPrompt.xlsx` (43 columnas).
+Alineado con: Skill 11.8.7, instrucciones del agente v11.8.7, ejemplo `Ejemplo_ParaPrompt.xlsx` (43 columnas).
 
 ---
 
