@@ -1,0 +1,3114 @@
+{
+  "id": "479cb678-bd12-4db5-8351-52a48c7c0efc",
+  "title": "MCI - BP -  [Mortgage Loan Payment Schedule] - [Amortization  Schedule]",
+  "product": "lucidchart",
+  "pages": [
+    {
+      "id": "KLbWZxhT5HMn",
+      "title": "Escenarios BDD",
+      "index": 0,
+      "items": {
+        "shapes": [
+          {
+            "id": "7_YJ.j7unn2F",
+            "class": "DefaultTableBlock",
+            "textAreas": [
+              {
+                "label": "Cell_0,0",
+                "text": "retrieveAmortizationSchedule"
+              },
+              {
+                "label": "Cell_0,1",
+                "text": ""
+              },
+              {
+                "label": "Cell_0,2",
+                "text": "c"
+              },
+              {
+                "label": "Cell_0,3",
+                "text": ""
+              },
+              {
+                "label": "Cell_0,4",
+                "text": ""
+              },
+              {
+                "label": "Cell_0,5",
+                "text": ""
+              },
+              {
+                "label": "Cell_0,6",
+                "text": ""
+              },
+              {
+                "label": "Cell_1,0",
+                "text": "HTTP RESPONSE  STATUS CODE"
+              },
+              {
+                "label": "Cell_1,1",
+                "text": "NOMBRE EJEMPLO\n(Identificador del ejemplo)"
+              },
+              {
+                "label": "Cell_1,2",
+                "text": "ESCENARIO Todos los escenarios deben ser diferentes"
+              },
+              {
+                "label": "Cell_1,3",
+                "text": "DADO Condiciones del escenario"
+              },
+              {
+                "label": "Cell_1,4",
+                "text": "CUANDO Evento que desencadena la ejecució"
+              },
+              {
+                "label": "Cell_1,5",
+                "text": "ENTONCES Resultado funcional esperado"
+              },
+              {
+                "label": "Cell_1,6",
+                "text": "EXCEPCIÓN DE NEGOCIO  Mensaje que complementa la"
+              },
+              {
+                "label": "Cell_2,0",
+                "text": "200"
+              },
+              {
+                "label": "Cell_2,1",
+                "text": "consultaExitosaPlanDePagos"
+              },
+              {
+                "label": "Cell_2,2",
+                "text": "Consulta exitosa del plan de pagos completo sin filtro de fechas"
+              },
+              {
+                "label": "Cell_2,3",
+                "text": "que existe una obligacion asociada al cliente segun tipo y numero de identificacion\nY la obligacion tiene un plan de pagos vigente\nY no se envia rango de fechas"
+              },
+              {
+                "label": "Cell_2,4",
+                "text": "Se invoca la operacion"
+              },
+              {
+                "label": "Cell_2,5",
+                "text": "el sistema retorna la proyeccion completa de cuotas hasta el vencimiento"
+              },
+              {
+                "label": "Cell_2,6",
+                "text": "Exitoso"
+              },
+              {
+                "label": "Cell_3,0",
+                "text": "200"
+              },
+              {
+                "label": "Cell_3,1",
+                "text": "ConsultaExitosaPorFechas"
+              },
+              {
+                "label": "Cell_3,2",
+                "text": "Consulta del plan filtrando por rango de fechas"
+              },
+              {
+                "label": "Cell_3,3",
+                "text": "que existe una obligacion asociada al cliente\nY se envia un rango de fechas "
+              },
+              {
+                "label": "Cell_3,4",
+                "text": "Se invoca la operacion"
+              },
+              {
+                "label": "Cell_3,5",
+                "text": "el sistema retorna unicamente las cuotas proyectadas dentro del rango indicado"
+              },
+              {
+                "label": "Cell_3,6",
+                "text": "Exitoso"
+              },
+              {
+                "label": "Cell_4,0",
+                "text": "404"
+              },
+              {
+                "label": "Cell_4,1",
+                "text": "NoTieneCuotasPendientes"
+              },
+              {
+                "label": "Cell_4,2",
+                "text": "Obligacion sin plan de pagos disponible"
+              },
+              {
+                "label": "Cell_4,3",
+                "text": "que la obligacion pertenece al cliente\nY no tiene plan de pagos disponible (o ninguna cuota dentro del rango)"
+              },
+              {
+                "label": "Cell_4,4",
+                "text": "Se invoca la operacion"
+              },
+              {
+                "label": "Cell_4,5",
+                "text": "Se retorna una excepcion de negocio "
+              },
+              {
+                "label": "Cell_4,6",
+                "text": "No existen registros que coincidan con los criterios de consulta"
+              },
+              {
+                "label": "Cell_5,0",
+                "text": "404"
+              },
+              {
+                "label": "Cell_5,1",
+                "text": "ObligacionNoAsociadaCliente"
+              },
+              {
+                "label": "Cell_5,2",
+                "text": "La obligación no pertenece al cliente"
+              },
+              {
+                "label": "Cell_5,3",
+                "text": "que existe una obligacion con el numero enviado\npero la obligacion no pertenece al cliente"
+              },
+              {
+                "label": "Cell_5,4",
+                "text": "Se invoca la operacion"
+              },
+              {
+                "label": "Cell_5,5",
+                "text": "Se retorna una excepcion de negocio "
+              },
+              {
+                "label": "Cell_5,6",
+                "text": "La obligación no pertenece al cliente"
+              },
+              {
+                "label": "Cell_6,0",
+                "text": "404"
+              },
+              {
+                "label": "Cell_6,1",
+                "text": "ObligacionNoEncontrada"
+              },
+              {
+                "label": "Cell_6,2",
+                "text": "Obligacion no existe"
+              },
+              {
+                "label": "Cell_6,3",
+                "text": "que no existe ninguna obligacion con el numero indicado asociada al cliente"
+              },
+              {
+                "label": "Cell_6,4",
+                "text": "Se invoca la operacion"
+              },
+              {
+                "label": "Cell_6,5",
+                "text": "Se retorna una excepcion de negocio "
+              },
+              {
+                "label": "Cell_6,6",
+                "text": "Numero de obligacion no existe"
+              },
+              {
+                "label": "Cell_7,0",
+                "text": "400"
+              },
+              {
+                "label": "Cell_7,1",
+                "text": "RangoFechasInvalido"
+              },
+              {
+                "label": "Cell_7,2",
+                "text": "Rango de fechas invalido o mensaje mal formado"
+              },
+              {
+                "label": "Cell_7,3",
+                "text": "que se envia un rango de fechas donde la fecha inicial es posterior a fecha final"
+              },
+              {
+                "label": "Cell_7,4",
+                "text": "Se invoca la operacion"
+              },
+              {
+                "label": "Cell_7,5",
+                "text": "Se retorna una excepcion de negocio "
+              },
+              {
+                "label": "Cell_7,6",
+                "text": "No se encontraron registros en el periodo consultado."
+              },
+              {
+                "label": "Cell_8,0",
+                "text": "403"
+              },
+              {
+                "label": "Cell_8,1",
+                "text": "TokenFallido"
+              },
+              {
+                "label": "Cell_8,2",
+                "text": "Token de autorizacion invalido"
+              },
+              {
+                "label": "Cell_8,3",
+                "text": "que el id-token enviado no es valido"
+              },
+              {
+                "label": "Cell_8,4",
+                "text": "Se invoca la operacion"
+              },
+              {
+                "label": "Cell_8,5",
+                "text": "Se retorna una excepcion de negocio "
+              },
+              {
+                "label": "Cell_8,6",
+                "text": "Validación del Token no válido"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "oYQoZjumg1I2",
+            "class": "VSMDatacellBlock",
+            "textAreas": [
+              {
+                "label": "cell_1",
+                "text": "Producto API: Mortgage Loan Payment Schedule"
+              },
+              {
+                "label": "cell_2",
+                "text": "API: Amortization  Schedule"
+              },
+              {
+                "label": "cell_3",
+                "text": "Versión: 1.0.0"
+              },
+              {
+                "label": "cell_4",
+                "text": "Descripción: Permite consultar el plan de amortización completo de obligaciones hipotecarias, con la proyección de todas las cuotas hasta el vencimiento del crédito, de manera ágil y segura."
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          }
+        ],
+        "lines": [],
+        "groups": [],
+        "layers": []
+      },
+      "customData": [],
+      "linkedData": []
+    },
+    {
+      "id": "VXTN-dCZ_o0U",
+      "title": "Copia de retrieveAmortizationSchedule",
+      "index": 2,
+      "items": {
+        "shapes": [
+          {
+            "id": "N_TNplxyKXz1",
+            "class": "BPMNActivity",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "La obligación no pertenece al cliente"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "VXTNGz6Zwtes",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Evento"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "VXTNLjcPaPU5",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Política"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "VXTNqkL__.C~",
+            "class": "BPMNGroup",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": " "
+              }
+            ],
+            "customData": [],
+            "linkedData": [],
+            "contains": {
+              "shapes": [],
+              "lines": [],
+              "groups": []
+            }
+          },
+          {
+            "id": "VXTNNktUEI7L",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Privada"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "-eUNf-Wl-dUJ",
+            "class": "BPMNActivity",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "chkBelonging{\n\tcust{\n\t\tid{\n\t\t\ttype\n\t\t\tnumber\n\t\t}\n\t}\n\tobligationId\n\tprojectId\n}"
+              }
+            ],
+            "customData": [
+              {
+                "key": "ENTRADA",
+                "value": ""
+              }
+            ],
+            "linkedData": []
+          },
+          {
+            "id": "VXTNjOJHddnM",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Recepción Evento de Señal "
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "VXTNRG~d.WxU",
+            "class": "BPMNEvent",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": ""
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "VXTNOLIZbRyy",
+            "class": "BPMNActivity",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": ""
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "96TNrzJrxmSK",
+            "class": "BPMNActivity",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Validar control de acceso seguro"
+              }
+            ],
+            "customData": [
+              {
+                "key": "SERVICE_TASK",
+                "value": ""
+              }
+            ],
+            "linkedData": []
+          },
+          {
+            "id": "VXTN-3lcrtXp",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Excepción de negocio"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "VXTNaC7LHeZn",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "PR"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "VXTN7z2iLj70",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Concepto"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "VXTNZNtfd5lI",
+            "class": "BPMNEvent",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": ""
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "N-TNkKur9ycg",
+            "class": "BPMNGateway",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "¿Consulta Exitosa?"
+              }
+            ],
+            "customData": [
+              {
+                "key": "EXCLUSIVE",
+                "value": ""
+              }
+            ],
+            "linkedData": []
+          },
+          {
+            "id": "VXTNsgIgWEd8",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Recepción Mensaje Asíncrono "
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "VXTNCi5Qrhth",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Modificación"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "N_TN~VaN4ahb",
+            "class": "BPMNActivity",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "No existen registros que coincidan con los criterios de consulta"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "VXTNObjb8qLK",
+            "class": "BPMNGroup",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": " "
+              }
+            ],
+            "customData": [],
+            "linkedData": [],
+            "contains": {
+              "shapes": [],
+              "lines": [],
+              "groups": []
+            }
+          },
+          {
+            "id": "VXTNX7-6at_4",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Envío Evento de Señal"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "VXTNUKyGHlOd",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": ""
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "VXTNXP4.KfdV",
+            "class": "BPMNGateway",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": ""
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "VXTNsKR~4qaO",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Pública o Partner"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "VXTNFFdBk.kb",
+            "class": "BPMNActivity",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": ""
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "I8TNoNOsp_Wk",
+            "class": "BPMNActivity",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Consultar proyección de pagos"
+              }
+            ],
+            "customData": [
+              {
+                "key": "SERVICE_TASK",
+                "value": ""
+              }
+            ],
+            "linkedData": []
+          },
+          {
+            "id": "jYTN3rDCqmPf",
+            "class": "UMLRectangleContainerBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "INTEGRACIÓN"
+              }
+            ],
+            "customData": [],
+            "linkedData": [],
+            "contains": {
+              "shapes": [
+                "6YTN3GUVNn66",
+                "96TNrzJrxmSK",
+                "F_TNZmbH4sQ7",
+                "I8TNoNOsp_Wk",
+                "JYTNfkFWlKHQ",
+                "JYTNiWsR9t~x",
+                "JYTNnCSNCDYM",
+                "LaUNIr0vQoT_",
+                "N-TNkKur9ycg",
+                "N_TNDiKcTi6O",
+                "N_TNeKmx6Hzv",
+                "N_TNplxyKXz1",
+                "N_TN~VaN4ahb",
+                "e6TN..Feek~z",
+                "g5TNEnwAdQu7",
+                "l8TNSMSuX6qW",
+                "r7TNWfPgFDVa",
+                "x_TNpf.ed7ql",
+                "zYTN9p-DVKwc",
+                "zYTNKYyO0yJ3",
+                "zYTNfnkffNuK",
+                "zYTNk0vsWx-i",
+                "zYTNrIVpbCQ5",
+                "zYTNu6XWL_~z",
+                "~7TNz6uWDp4q"
+              ],
+              "lines": [
+                "C9TNnlogc-KU",
+                "L7TNfmkOMHO9",
+                "NaUN8rHoICX.",
+                "P-TNHZFCdquA",
+                "P6TNejTh-H.n",
+                "P7TN17jW5sUY",
+                "S5TNWuK_C_6I",
+                "g6TNLFrWRHO4",
+                "l_TNL0S_LoFw",
+                "o7TNorLNANPd",
+                "q_TNIezLDc6N",
+                "v5TNeYvfZ028"
+              ],
+              "groups": [
+                "JYTN8yOjJkZ0",
+                "JYTNiI_S-b8a",
+                "x_TNKu3DxBaB",
+                "zYTNLaLgnk5A",
+                "zYTNa4JH83-o",
+                "zYTNhySiJhMr",
+                "zYTNk4oxzbVK",
+                "zYTNuh~pzwIN"
+              ]
+            }
+          },
+          {
+            "id": "x_TNpf.ed7ql",
+            "class": "BPMNEvent",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "FIN"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "-eUNPA~63IrI",
+            "class": "UMLClassBlock",
+            "textAreas": [
+              {
+                "label": "Title",
+                "text": "custCheckBelonging.scr"
+              },
+              {
+                "label": "Text1",
+                "text": "nombreOperacion1"
+              },
+              {
+                "label": "Text2",
+                "text": "Clasificacion"
+              }
+            ],
+            "customData": [
+              {
+                "key": "Tarea",
+                "value": ""
+              },
+              {
+                "key": "Entidad",
+                "value": ""
+              },
+              {
+                "key": "Utilidad",
+                "value": ""
+              }
+            ],
+            "linkedData": []
+          },
+          {
+            "id": "JYTNnCSNCDYM",
+            "class": "UMLRectangleContainerBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Capa de Arquitectura  - composicion"
+              }
+            ],
+            "customData": [
+              {
+                "key": "ARCH_LAYER",
+                "value": ""
+              }
+            ],
+            "linkedData": [],
+            "contains": {
+              "shapes": [
+                "6YTN3GUVNn66",
+                "96TNrzJrxmSK",
+                "F_TNZmbH4sQ7",
+                "I8TNoNOsp_Wk",
+                "LaUNIr0vQoT_",
+                "N-TNkKur9ycg",
+                "N_TNDiKcTi6O",
+                "N_TNeKmx6Hzv",
+                "N_TNplxyKXz1",
+                "N_TN~VaN4ahb",
+                "e6TN..Feek~z",
+                "g5TNEnwAdQu7",
+                "l8TNSMSuX6qW",
+                "r7TNWfPgFDVa",
+                "x_TNpf.ed7ql",
+                "~7TNz6uWDp4q"
+              ],
+              "lines": [
+                "C9TNnlogc-KU",
+                "L7TNfmkOMHO9",
+                "NaUN8rHoICX.",
+                "P-TNHZFCdquA",
+                "P6TNejTh-H.n",
+                "P7TN17jW5sUY",
+                "S5TNWuK_C_6I",
+                "g6TNLFrWRHO4",
+                "l_TNL0S_LoFw",
+                "o7TNorLNANPd",
+                "q_TNIezLDc6N"
+              ],
+              "groups": [
+                "x_TNKu3DxBaB"
+              ]
+            }
+          },
+          {
+            "id": "VXTNeXsJvnPC",
+            "class": "BPMNActivity",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": ""
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "F_TNZmbH4sQ7",
+            "class": "BPMNEvent",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": ""
+              }
+            ],
+            "customData": [
+              {
+                "key": "EXCEPTION",
+                "value": ""
+              }
+            ],
+            "linkedData": []
+          },
+          {
+            "id": "VXTN-Oy9XP66",
+            "class": "BPMNActivity",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": ""
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "VXTNKVpTUFnU",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Compuerta  paralela\nbasada en Eventos"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "JYTNfkFWlKHQ",
+            "class": "RectangleContainerBlock",
+            "textAreas": [
+              {
+                "label": "FloatingTitle",
+                "text": ""
+              },
+              {
+                "label": "Text",
+                "text": "Mortgage Loan Payment Schedule -  Amortization  Schedule"
+              }
+            ],
+            "customData": [
+              {
+                "key": "SERVICE",
+                "value": ""
+              }
+            ],
+            "linkedData": [],
+            "contains": {
+              "shapes": [
+                "6YTN3GUVNn66",
+                "96TNrzJrxmSK",
+                "F_TNZmbH4sQ7",
+                "I8TNoNOsp_Wk",
+                "LaUNIr0vQoT_",
+                "N-TNkKur9ycg",
+                "N_TNDiKcTi6O",
+                "N_TNeKmx6Hzv",
+                "N_TNplxyKXz1",
+                "N_TN~VaN4ahb",
+                "e6TN..Feek~z",
+                "g5TNEnwAdQu7",
+                "l8TNSMSuX6qW",
+                "r7TNWfPgFDVa",
+                "x_TNpf.ed7ql",
+                "~7TNz6uWDp4q"
+              ],
+              "lines": [
+                "C9TNnlogc-KU",
+                "L7TNfmkOMHO9",
+                "NaUN8rHoICX.",
+                "P-TNHZFCdquA",
+                "P6TNejTh-H.n",
+                "P7TN17jW5sUY",
+                "S5TNWuK_C_6I",
+                "g6TNLFrWRHO4",
+                "l_TNL0S_LoFw",
+                "o7TNorLNANPd",
+                "q_TNIezLDc6N"
+              ],
+              "groups": [
+                "x_TNKu3DxBaB"
+              ]
+            }
+          },
+          {
+            "id": "VXTND342CR3z",
+            "class": "BPMNEvent",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": ""
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "zYTNu6XWL_~z",
+            "class": "UMLClassBlock",
+            "textAreas": [
+              {
+                "label": "Title",
+                "text": "Mortgage Loan Payment Schedule -  Amortization  Schedule v1.0.0"
+              },
+              {
+                "label": "Text1",
+                "text": "retrieveAmortizationSchedule"
+              },
+              {
+                "label": "Text2",
+                "text": "Private - Entidad"
+              }
+            ],
+            "customData": [
+              {
+                "key": "Private - Tarea",
+                "value": ""
+              },
+              {
+                "key": "Private - Entidad",
+                "value": ""
+              },
+              {
+                "key": "Private - Utilidad",
+                "value": ""
+              }
+            ],
+            "linkedData": []
+          },
+          {
+            "id": "VXTNlGFAZkd2",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Consulta"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "N_TNeKmx6Hzv",
+            "class": "BPMNActivity",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Numero de obligacion no existe."
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "VXTNdIRv9BZF",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": ""
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "zYTNfnkffNuK",
+            "class": "BPMNActivity",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "owner {\n    identification {\n        identification \n        schemeName \n    }\n}\nloan {\n    identification \n}\nperiod {\n    fromDate \n    toDate \n}\npagination {\n    pageNumber \n    pageSize \n}"
+              }
+            ],
+            "customData": [
+              {
+                "key": "ENTRADA",
+                "value": ""
+              }
+            ],
+            "linkedData": []
+          },
+          {
+            "id": "VXTN2uR3zWX5",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "P"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "nfUN5kDCBf1d",
+            "class": "UMLClassBlock",
+            "textAreas": [
+              {
+                "label": "Title",
+                "text": "Nombre Servicio"
+              },
+              {
+                "label": "Text1",
+                "text": "nombreOperacion1"
+              },
+              {
+                "label": "Text2",
+                "text": "Clasificacion"
+              }
+            ],
+            "customData": [
+              {
+                "key": "Tarea",
+                "value": ""
+              },
+              {
+                "key": "Entidad",
+                "value": ""
+              },
+              {
+                "key": "Utilidad",
+                "value": ""
+              }
+            ],
+            "linkedData": []
+          },
+          {
+            "id": "-eUNMyle2YE8",
+            "class": "BPMNActivity",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "chkBelonging{ \tmsgResponse\n}"
+              }
+            ],
+            "customData": [
+              {
+                "key": "SALIDA",
+                "value": ""
+              }
+            ],
+            "linkedData": []
+          },
+          {
+            "id": "VXTNpk67TOus",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "NOTACIÓN"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "6YTN3GUVNn66",
+            "class": "BPMNActivity",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Homologar datos"
+              }
+            ],
+            "customData": [
+              {
+                "key": "SYSTEM_TASK",
+                "value": ""
+              }
+            ],
+            "linkedData": []
+          },
+          {
+            "id": "zYTN9p-DVKwc",
+            "class": "BPMNEvent",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": ""
+              }
+            ],
+            "customData": [
+              {
+                "key": "API_INDICATOR",
+                "value": ""
+              }
+            ],
+            "linkedData": []
+          },
+          {
+            "id": "VXTNhVp_w7-9",
+            "class": "BPMNActivity",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Pendientes"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "VXTN5p9diydV",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Nuevo"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "VXTNHh7adcmY",
+            "class": "BPMNEvent",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": ""
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "VXTNrDx-NvXH",
+            "class": "BPMNGateway",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": ""
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "r7TNWfPgFDVa",
+            "class": "BPMNGateway",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "¿Cumple con control  \nde acceso seguro?"
+              }
+            ],
+            "customData": [
+              {
+                "key": "EXCLUSIVE",
+                "value": ""
+              }
+            ],
+            "linkedData": []
+          },
+          {
+            "id": "zYTNrIVpbCQ5",
+            "class": "UMLRectangleContainerBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Capa de Arquitectura  - composicion"
+              }
+            ],
+            "customData": [
+              {
+                "key": "ARCH_LAYER",
+                "value": ""
+              }
+            ],
+            "linkedData": [],
+            "contains": {
+              "shapes": [],
+              "lines": [],
+              "groups": [
+                "zYTNk4oxzbVK"
+              ]
+            }
+          },
+          {
+            "id": "N_TNDiKcTi6O",
+            "class": "BPMNActivity",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "No se encontraron registros en el periodo consultado."
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "VXTNKsnWZhwx",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Modelo de Lectura"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "VXTNIvEV5tZu",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Reúso"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "VXTNb86JPz5D",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Agregado"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "VXTN6ntwwX40",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Envio Mensaje Asíncrono "
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "VXTN4KVWQ9KW",
+            "class": "BPMNEvent",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": ""
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "VXTN7iHG-bVs",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Modelo de Salida"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "zYTNk0vsWx-i",
+            "class": "BPMNActivity",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "paymentPlan {\n    currency \n    gracePeriod {\n        term {\n            unit \n            value \n        }\n        startDate \n    }\n    financialRestructuring {\n        principal {\n            amount \n            period {\n                fromDate \n                toDate \n            }\n        }\n        interest {\n            amount \n            period {\n                fromDate \n                toDate \n            }\n        }\n    }\n    installments [\n        {\n            paymentDate \n            amount \n            nextPrincipalBalance \n            breakdown {\n                principal {\n                    amount \n                }\n                interest {\n                    amount \n                }\n                insurance {\n                    amount \n                }\n                otherCharges {\n                    amount \n                }\n                governmentSubsidy {\n                    amount \n                }\n            }\n        }\n    ]\n}\nresponsePagination {\n    totalRecords \n    lastPageIndicator \n}"
+              }
+            ],
+            "customData": [
+              {
+                "key": "SALIDA",
+                "value": ""
+              }
+            ],
+            "linkedData": []
+          },
+          {
+            "id": "VXTNBMsxZI5J",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Pendientes"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "g5TNEnwAdQu7",
+            "class": "BPMNEvent",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": ""
+              }
+            ],
+            "customData": [
+              {
+                "key": "START",
+                "value": ""
+              }
+            ],
+            "linkedData": []
+          },
+          {
+            "id": "e6TN..Feek~z",
+            "class": "BPMNGateway",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "¿Se requiere control \nde acceso seguro?"
+              }
+            ],
+            "customData": [
+              {
+                "key": "EXCLUSIVE",
+                "value": ""
+              }
+            ],
+            "linkedData": []
+          },
+          {
+            "id": "VXTNFcqqRMSn",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": ""
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "zYTNKYyO0yJ3",
+            "class": "UMLRectangleContainerBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Flujo Transaccional - no-monetario"
+              }
+            ],
+            "customData": [
+              {
+                "key": "TXN_FLOW",
+                "value": ""
+              }
+            ],
+            "linkedData": [],
+            "contains": {
+              "shapes": [
+                "zYTNrIVpbCQ5"
+              ],
+              "lines": [],
+              "groups": [
+                "zYTNLaLgnk5A",
+                "zYTNk4oxzbVK"
+              ]
+            }
+          },
+          {
+            "id": "VXTNuQwiAg1S",
+            "class": "BPMNEvent",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": ""
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "VXTNJ_pyWlJN",
+            "class": "BPMNActivity",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": ""
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "VXTNco4MPoDF",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Excepción de negocio"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "VXTNvXdqL1Qf",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Compuerta basada \nen Eventos"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "VXTNBEy~5CEH",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Sistema Externo"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "VXTNVYo6uR0z",
+            "class": "BPMNEvent",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": ""
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "VXTNFNRACn3Q",
+            "class": "BPMNActivity",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": ""
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "~7TNz6uWDp4q",
+            "class": "BPMNEvent",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": ""
+              }
+            ],
+            "customData": [
+              {
+                "key": "EXCEPTION",
+                "value": ""
+              }
+            ],
+            "linkedData": []
+          },
+          {
+            "id": "LaUNIr0vQoT_",
+            "class": "BPMNTextAnnotation",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "El servicio de integración realiza transformación de mensajería entre protocolos REST Y FIX"
+              }
+            ],
+            "customData": [
+              {
+                "key": "NOTES",
+                "value": ""
+              }
+            ],
+            "linkedData": []
+          },
+          {
+            "id": "JYTNiWsR9t~x",
+            "class": "UMLRectangleContainerBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Flujo Transaccional - no-monetario"
+              }
+            ],
+            "customData": [
+              {
+                "key": "TXN_FLOW",
+                "value": ""
+              }
+            ],
+            "linkedData": [],
+            "contains": {
+              "shapes": [
+                "6YTN3GUVNn66",
+                "96TNrzJrxmSK",
+                "F_TNZmbH4sQ7",
+                "I8TNoNOsp_Wk",
+                "JYTNfkFWlKHQ",
+                "JYTNnCSNCDYM",
+                "LaUNIr0vQoT_",
+                "N-TNkKur9ycg",
+                "N_TNDiKcTi6O",
+                "N_TNeKmx6Hzv",
+                "N_TNplxyKXz1",
+                "N_TN~VaN4ahb",
+                "e6TN..Feek~z",
+                "g5TNEnwAdQu7",
+                "l8TNSMSuX6qW",
+                "r7TNWfPgFDVa",
+                "x_TNpf.ed7ql",
+                "~7TNz6uWDp4q"
+              ],
+              "lines": [
+                "C9TNnlogc-KU",
+                "L7TNfmkOMHO9",
+                "NaUN8rHoICX.",
+                "P-TNHZFCdquA",
+                "P6TNejTh-H.n",
+                "P7TN17jW5sUY",
+                "S5TNWuK_C_6I",
+                "g6TNLFrWRHO4",
+                "l_TNL0S_LoFw",
+                "o7TNorLNANPd",
+                "q_TNIezLDc6N"
+              ],
+              "groups": [
+                "JYTN8yOjJkZ0",
+                "JYTNiI_S-b8a",
+                "x_TNKu3DxBaB"
+              ]
+            }
+          },
+          {
+            "id": "l8TNSMSuX6qW",
+            "class": "BPMNActivity",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Validación del Token no válido"
+              }
+            ],
+            "customData": [
+              {
+                "key": "BUSINESS_EXCEPTION",
+                "value": ""
+              }
+            ],
+            "linkedData": []
+          },
+          {
+            "id": "VXTNlrMrlr4x",
+            "class": "VSMDatacellBlock",
+            "textAreas": [
+              {
+                "label": "cell_1",
+                "text": "Descripción Operación: Consulta el plan de amortización completo hasta el vencimiento del crédito, opcionalmente por rango de fechas."
+              },
+              {
+                "label": "cell_2",
+                "text": "Método: POST"
+              },
+              {
+                "label": "cell_3",
+                "text": "Path: mortgage-loan-amortization-schedule"
+              },
+              {
+                "label": "cell_4",
+                "text": "Seguridad:  APIKey"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "VXTNmn2z8Rqp",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Comando / Actividad"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "nfUNOb__x_fG",
+            "class": "BPMNActivity",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "owner {\n    identification {\n        identification \n        schemeName \n    }\n}\nloan {\n    identification \n}\nperiod {\n    fromDate \n    toDate \n}\npagination {\n    pageNumber \n    pageSize \n}"
+              }
+            ],
+            "customData": [
+              {
+                "key": "ENTRADA",
+                "value": ""
+              }
+            ],
+            "linkedData": []
+          },
+          {
+            "id": "VXTN-vm4a2vC",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "API"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "VXTNNudAo3-2",
+            "class": "BPMNActivity",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": ""
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "L.TN-Ltg6Sg5",
+            "class": "UMLRectangleContainerBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "EVC INMOBILIARIO"
+              }
+            ],
+            "customData": [],
+            "linkedData": [],
+            "contains": {
+              "shapes": [
+                "-eUNMyle2YE8",
+                "-eUNPA~63IrI",
+                "-eUNf-Wl-dUJ",
+                "nfUN5kDCBf1d",
+                "nfUNOb__x_fG",
+                "nfUNhi5gHAhk"
+              ],
+              "lines": [],
+              "groups": [
+                "-eUNQOPAblim",
+                "-eUNjixCR_Vc",
+                "nfUNonFPP1Go",
+                "nfUNr7EE9LYl"
+              ]
+            }
+          },
+          {
+            "id": "nfUNhi5gHAhk",
+            "class": "BPMNActivity",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "paymentPlan {\n    currency \n    gracePeriod {\n        term {\n            unit \n            value \n        }\n        startDate \n    }\n    financialRestructuring {\n        principal {\n            amount \n            period {\n                fromDate \n                toDate \n            }\n        }\n        interest {\n            amount \n            period {\n                fromDate \n                toDate \n            }\n        }\n    }\n    installments [\n        {\n            paymentDate \n            amount \n            nextPrincipalBalance \n            breakdown {\n                principal {\n                    amount \n                }\n                interest {\n                    amount \n                }\n                insurance {\n                    amount \n                }\n                otherCharges {\n                    amount \n                }\n                governmentSubsidy {\n                    amount \n                }\n            }\n        }\n    ]\n}\nresponsePagination {\n    totalRecords \n    lastPageIndicator \n}"
+              }
+            ],
+            "customData": [
+              {
+                "key": "SALIDA",
+                "value": ""
+              }
+            ],
+            "linkedData": []
+          },
+          {
+            "id": "VXTNrBLdbBzv",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": ""
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "VXTNAjaji-dF",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": ""
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          }
+        ],
+        "lines": [
+          {
+            "id": "~~TNYLY5eVwL",
+            "endpoint1": {
+              "style": "CircleOpen",
+              "connectedTo": "I8TNoNOsp_Wk"
+            },
+            "endpoint2": {
+              "style": "Generalization",
+              "connectedTo": "nfUN5kDCBf1d"
+            },
+            "textAreas": [
+              {
+                "label": "t0",
+                "text": "Json/XML"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "S5TNWuK_C_6I",
+            "endpoint1": {
+              "style": "None",
+              "connectedTo": "g5TNEnwAdQu7"
+            },
+            "endpoint2": {
+              "style": "Arrow",
+              "connectedTo": "6YTN3GUVNn66"
+            },
+            "textAreas": [],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "q_TNIezLDc6N",
+            "endpoint1": {
+              "style": "None",
+              "connectedTo": "N-TNkKur9ycg"
+            },
+            "endpoint2": {
+              "style": "Arrow",
+              "connectedTo": "x_TNpf.ed7ql"
+            },
+            "textAreas": [
+              {
+                "label": "t0",
+                "text": "Si"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "v5TNeYvfZ028",
+            "endpoint1": {
+              "style": "None",
+              "connectedTo": "zYTNu6XWL_~z"
+            },
+            "endpoint2": {
+              "style": "Arrow",
+              "connectedTo": "g5TNEnwAdQu7"
+            },
+            "textAreas": [],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "L7TNfmkOMHO9",
+            "endpoint1": {
+              "style": "None",
+              "connectedTo": "r7TNWfPgFDVa"
+            },
+            "endpoint2": {
+              "style": "Arrow",
+              "connectedTo": "~7TNz6uWDp4q"
+            },
+            "textAreas": [
+              {
+                "label": "t0",
+                "text": "No"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "P6TNejTh-H.n",
+            "endpoint1": {
+              "style": "None",
+              "connectedTo": "e6TN..Feek~z"
+            },
+            "endpoint2": {
+              "style": "Arrow",
+              "connectedTo": "96TNrzJrxmSK"
+            },
+            "textAreas": [
+              {
+                "label": "t0",
+                "text": "Si"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "g6TNLFrWRHO4",
+            "endpoint1": {
+              "style": "None",
+              "connectedTo": "6YTN3GUVNn66"
+            },
+            "endpoint2": {
+              "style": "Arrow",
+              "connectedTo": "e6TN..Feek~z"
+            },
+            "textAreas": [],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "NaUN8rHoICX.",
+            "endpoint1": {
+              "style": "None",
+              "connectedTo": "LaUNIr0vQoT_"
+            },
+            "endpoint2": {
+              "style": "None",
+              "connectedTo": "~~TNYLY5eVwL"
+            },
+            "textAreas": [],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "o7TNorLNANPd",
+            "endpoint1": {
+              "style": "None",
+              "connectedTo": "96TNrzJrxmSK"
+            },
+            "endpoint2": {
+              "style": "Arrow",
+              "connectedTo": "r7TNWfPgFDVa"
+            },
+            "textAreas": [],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "P7TN17jW5sUY",
+            "endpoint1": {
+              "style": "None",
+              "connectedTo": "r7TNWfPgFDVa"
+            },
+            "endpoint2": {
+              "style": "Arrow",
+              "connectedTo": "I8TNoNOsp_Wk"
+            },
+            "textAreas": [
+              {
+                "label": "t0",
+                "text": "Si"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "C9TNnlogc-KU",
+            "endpoint1": {
+              "style": "None",
+              "connectedTo": "e6TN..Feek~z"
+            },
+            "endpoint2": {
+              "style": "Arrow",
+              "connectedTo": "I8TNoNOsp_Wk"
+            },
+            "textAreas": [
+              {
+                "label": "t0",
+                "text": "No"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "l_TNL0S_LoFw",
+            "endpoint1": {
+              "style": "None",
+              "connectedTo": "N-TNkKur9ycg"
+            },
+            "endpoint2": {
+              "style": "Arrow",
+              "connectedTo": "F_TNZmbH4sQ7"
+            },
+            "textAreas": [
+              {
+                "label": "t0",
+                "text": "No"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "7.TNyhskQKUQ",
+            "endpoint1": {
+              "style": "Generalization",
+              "connectedTo": "96TNrzJrxmSK"
+            },
+            "endpoint2": {
+              "style": "CircleOpen",
+              "connectedTo": "-eUNPA~63IrI"
+            },
+            "textAreas": [],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "P-TNHZFCdquA",
+            "endpoint1": {
+              "style": "None",
+              "connectedTo": "I8TNoNOsp_Wk"
+            },
+            "endpoint2": {
+              "style": "Arrow",
+              "connectedTo": "N-TNkKur9ycg"
+            },
+            "textAreas": [],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "2.TNyTEVVS0X",
+            "endpoint1": {
+              "style": "CircleOpen",
+              "connectedTo": "96TNrzJrxmSK"
+            },
+            "endpoint2": {
+              "style": "Generalization",
+              "connectedTo": "-eUNPA~63IrI"
+            },
+            "textAreas": [],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "~~TNOrf4lV6-",
+            "endpoint1": {
+              "style": "Generalization",
+              "connectedTo": "I8TNoNOsp_Wk"
+            },
+            "endpoint2": {
+              "style": "CircleOpen",
+              "connectedTo": "nfUN5kDCBf1d"
+            },
+            "textAreas": [
+              {
+                "label": "t0",
+                "text": "Json/XML"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          }
+        ],
+        "groups": [
+          {
+            "id": "x_TNKu3DxBaB",
+            "members": [
+              "x_TNpf.ed7ql"
+            ],
+            "customData": [
+              {
+                "key": "END",
+                "value": ""
+              }
+            ],
+            "linkedData": []
+          },
+          {
+            "id": "-eUNQOPAblim",
+            "members": [
+              "-eUNf-Wl-dUJ",
+              "-eUNMyle2YE8"
+            ],
+            "customData": [
+              {
+                "key": "MODEL_GROUP",
+                "value": ""
+              }
+            ],
+            "linkedData": []
+          },
+          {
+            "id": "zYTNa4JH83-o",
+            "members": [
+              "zYTNfnkffNuK",
+              "zYTNk0vsWx-i"
+            ],
+            "customData": [
+              {
+                "key": "MODEL_GROUP",
+                "value": ""
+              }
+            ],
+            "linkedData": []
+          },
+          {
+            "id": "-eUNjixCR_Vc",
+            "members": [
+              "-eUNPA~63IrI",
+              "-eUNQOPAblim"
+            ],
+            "customData": [
+              {
+                "key": "OWN_UMG_SERVICE",
+                "value": ""
+              }
+            ],
+            "linkedData": []
+          },
+          {
+            "id": "nfUNr7EE9LYl",
+            "members": [
+              "nfUNOb__x_fG",
+              "nfUNhi5gHAhk"
+            ],
+            "customData": [
+              {
+                "key": "MODEL_GROUP",
+                "value": ""
+              }
+            ],
+            "linkedData": []
+          },
+          {
+            "id": "zYTNLaLgnk5A",
+            "members": [
+              "zYTNrIVpbCQ5",
+              "zYTNKYyO0yJ3"
+            ],
+            "customData": [
+              {
+                "key": "MCI",
+                "value": ""
+              }
+            ],
+            "linkedData": []
+          },
+          {
+            "id": "WXTNWsK_yzZS",
+            "members": [
+              "VXTNOLIZbRyy",
+              "VXTNFFdBk.kb",
+              "VXTNhVp_w7-9",
+              "VXTNLjcPaPU5",
+              "VXTNKsnWZhwx",
+              "VXTNNudAo3-2",
+              "VXTN-Oy9XP66",
+              "VXTN-3lcrtXp",
+              "VXTN7iHG-bVs",
+              "VXTNqkL__.C~",
+              "VXTNBEy~5CEH",
+              "VXTNb86JPz5D",
+              "VXTNaC7LHeZn",
+              "VXTNIvEV5tZu",
+              "VXTNUKyGHlOd",
+              "VXTNJ_pyWlJN",
+              "VXTNNktUEI7L",
+              "VXTNsKR~4qaO",
+              "VXTNlGFAZkd2",
+              "VXTNmn2z8Rqp",
+              "VXTNObjb8qLK",
+              "VXTNdIRv9BZF",
+              "VXTNsgIgWEd8",
+              "VXTNHh7adcmY",
+              "VXTN4KVWQ9KW",
+              "VXTNpk67TOus",
+              "VXTNZNtfd5lI",
+              "VXTN-vm4a2vC",
+              "VXTN2uR3zWX5",
+              "VXTN5p9diydV",
+              "VXTNAjaji-dF",
+              "VXTNeXsJvnPC",
+              "VXTNCi5Qrhth",
+              "VXTNrBLdbBzv",
+              "VXTNRG~d.WxU",
+              "VXTNGz6Zwtes",
+              "VXTNuQwiAg1S",
+              "VXTNX7-6at_4",
+              "VXTNjOJHddnM",
+              "VXTNXP4.KfdV",
+              "VXTND342CR3z",
+              "VXTN6ntwwX40",
+              "VXTNVYo6uR0z",
+              "VXTNKVpTUFnU",
+              "VXTNvXdqL1Qf",
+              "VXTNco4MPoDF",
+              "VXTNFcqqRMSn",
+              "VXTNrDx-NvXH",
+              "VXTN7z2iLj70",
+              "VXTNFNRACn3Q",
+              "VXTNBMsxZI5J"
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "zYTNk4oxzbVK",
+            "members": [
+              "zYTNu6XWL_~z",
+              "zYTN9p-DVKwc"
+            ],
+            "customData": [
+              {
+                "key": "API",
+                "value": ""
+              }
+            ],
+            "linkedData": []
+          },
+          {
+            "id": "JYTN8yOjJkZ0",
+            "members": [
+              "JYTNnCSNCDYM",
+              "JYTNiWsR9t~x"
+            ],
+            "customData": [
+              {
+                "key": "MCI",
+                "value": ""
+              }
+            ],
+            "linkedData": []
+          },
+          {
+            "id": "nfUNonFPP1Go",
+            "members": [
+              "nfUN5kDCBf1d",
+              "nfUNr7EE9LYl"
+            ],
+            "customData": [
+              {
+                "key": "OWN_UMG_SERVICE",
+                "value": ""
+              }
+            ],
+            "linkedData": []
+          },
+          {
+            "id": "JYTNiI_S-b8a",
+            "members": [
+              "JYTN8yOjJkZ0",
+              "JYTNfkFWlKHQ"
+            ],
+            "customData": [
+              {
+                "key": "SERVICE_MCI",
+                "value": ""
+              }
+            ],
+            "linkedData": []
+          },
+          {
+            "id": "zYTNhySiJhMr",
+            "members": [
+              "zYTNa4JH83-o",
+              "zYTNk4oxzbVK"
+            ],
+            "customData": [
+              {
+                "key": "API",
+                "value": ""
+              }
+            ],
+            "linkedData": []
+          },
+          {
+            "id": "zYTNuh~pzwIN",
+            "members": [
+              "zYTNhySiJhMr",
+              "zYTNLaLgnk5A"
+            ],
+            "customData": [
+              {
+                "key": "OWN_PRIVATE_API_MCI",
+                "value": ""
+              }
+            ],
+            "linkedData": []
+          }
+        ],
+        "layers": []
+      },
+      "customData": [],
+      "linkedData": []
+    },
+    {
+      "id": "5S7mo.81mgSU",
+      "title": " ",
+      "index": 3,
+      "items": {
+        "shapes": [
+          {
+            "id": "5S7m~9ZojkXD",
+            "class": "BPMNGroup",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": " "
+              }
+            ],
+            "customData": [],
+            "linkedData": [],
+            "contains": {
+              "shapes": [],
+              "lines": [],
+              "groups": []
+            }
+          },
+          {
+            "id": "5S7m_dmcVwbg",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Privada"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "5S7m0wdCA-sP",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Agregado"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "5S7mX9d4~y_o",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Excepción de negocio"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "5S7mpZ9wQH71",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Evento"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "5S7ml5Kfe5Wv",
+            "class": "BPMNEvent",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": ""
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "5S7mBcWzN6mY",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": ""
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "5S7m3KN8AkII",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Política"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "5S7miUMHJ9NX",
+            "class": "BPMNActivity",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Modelo de Lectura"
+              }
+            ],
+            "customData": [
+              {
+                "key": "ENTRADA",
+                "value": ""
+              }
+            ],
+            "linkedData": []
+          },
+          {
+            "id": "5S7mn6.Nho5N",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Excepción de negocio"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "5S7mf.LBSg9Q",
+            "class": "BPMNActivity",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": ""
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "5S7mXX83E992",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Reúso"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "5S7mzG_ld6kN",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Comando / Actividad"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "5S7mql1cFvkG",
+            "class": "BPMNActivity",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Modelo Datos Salida"
+              }
+            ],
+            "customData": [
+              {
+                "key": "SALIDA",
+                "value": ""
+              }
+            ],
+            "linkedData": []
+          },
+          {
+            "id": "5S7mpdlZOBp4",
+            "class": "BPMNEvent",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": ""
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "5S7mGm~sphSi",
+            "class": "BPMNActivity",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": ""
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "5S7mxvYBdW6z",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Pendientes"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "5S7mSY5egQX7",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Consulta"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "5S7mx3NCE-Bz",
+            "class": "UMLClassBlock",
+            "textAreas": [
+              {
+                "label": "Title",
+                "text": "Nombre Servicio"
+              },
+              {
+                "label": "Text1",
+                "text": "nombreFuncionalMetodo"
+              },
+              {
+                "label": "Text2",
+                "text": "Clasificación lógica"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "5S7mYUNkmjt8",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": ""
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "5S7mBh_1j.sc",
+            "class": "UMLClassBlock",
+            "textAreas": [
+              {
+                "label": "Title",
+                "text": "Nombre Servicio"
+              },
+              {
+                "label": "Text1",
+                "text": "nombreFuncionalMetodo"
+              },
+              {
+                "label": "Text2",
+                "text": "Clasificación lógica"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "5S7muWUYauQ-",
+            "class": "BPMNActivity",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": ""
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "5S7me1G2F0nw",
+            "class": "BPMNActivity",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Modelo Datos Entrada"
+              }
+            ],
+            "customData": [
+              {
+                "key": "ENTRADA",
+                "value": ""
+              }
+            ],
+            "linkedData": []
+          },
+          {
+            "id": "5S7m8iJxlkwP",
+            "class": "BPMNActivity",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Pendientes"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "5S7m~o12UNz3",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Modelo de Salida"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "5S7mWsiy2wQp",
+            "class": "BPMNActivity",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": ""
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "5S7mt8YiPb9v",
+            "class": "BPMNActivity",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": ""
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "CT7mumnYh7Y0",
+            "class": "BPMNEvent",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": ""
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "5S7mZHLbZmvH",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Sistema Externo"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "5S7mcLPS6Ajs",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "P"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "5S7mrnOgteAf",
+            "class": "BPMNActivity",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Modelo de Salida"
+              }
+            ],
+            "customData": [
+              {
+                "key": "SALIDA",
+                "value": ""
+              }
+            ],
+            "linkedData": []
+          },
+          {
+            "id": "5S7mpwmVgIk0",
+            "class": "BPMNGroup",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Sistema Externo"
+              }
+            ],
+            "customData": [],
+            "linkedData": [],
+            "contains": {
+              "shapes": [
+                "5S7mx3NCE-Bz"
+              ],
+              "lines": [],
+              "groups": [
+                "6S7myjFW70fy"
+              ]
+            }
+          },
+          {
+            "id": "5S7mElVihcFA",
+            "class": "BPMNActivity",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": ""
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "5S7m51DcWbMr",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "NOTACIÓN"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "5S7miKvGj9A7",
+            "class": "BPMNGroup",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": " "
+              }
+            ],
+            "customData": [],
+            "linkedData": [],
+            "contains": {
+              "shapes": [],
+              "lines": [],
+              "groups": []
+            }
+          },
+          {
+            "id": "5S7mK3Xrgbrx",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Nuevo"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "5S7mJPaQb2Tj",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Modelo de Lectura"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "5S7mG_COBi3J",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": ""
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "5S7mnmpyPPqa",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": ""
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "5S7mI-dZvZl0",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Modificación"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "EZQoKP-RPy2W",
+            "class": "VSMDatacellBlock",
+            "textAreas": [
+              {
+                "label": "cell_1",
+                "text": "Descripción Operación:"
+              },
+              {
+                "label": "cell_2",
+                "text": "Método:"
+              },
+              {
+                "label": "cell_3",
+                "text": "Seguridad:"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "5S7m7Xt8gawV",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "PR"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "5S7mkHnCDrkG",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Pública o Partner"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "5S7m~VFzJW9i",
+            "class": "BPMNActivity",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": ""
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "5S7mNjzx8sqE",
+            "class": "BPMNActivity",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Modelo de Salida"
+              }
+            ],
+            "customData": [
+              {
+                "key": "SALIDA",
+                "value": ""
+              }
+            ],
+            "linkedData": []
+          },
+          {
+            "id": "5S7mysVmnhkc",
+            "class": "UMLRectangleContainerBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "DOMINIO PRODUCTOR"
+              }
+            ],
+            "customData": [],
+            "linkedData": [],
+            "contains": {
+              "shapes": [
+                "5S7mBh_1j.sc",
+                "5S7mpO00NqZh",
+                "5S7mr0kxoQ6O",
+                "5S7mrnOgteAf",
+                "CT7mumnYh7Y0"
+              ],
+              "lines": [],
+              "groups": [
+                "6S7m2YjdaJq9"
+              ]
+            }
+          },
+          {
+            "id": "5S7m0BSHJ~mr",
+            "class": "BPMNEvent",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": ""
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "5S7mT.gJDf1y",
+            "class": "UMLClassBlock",
+            "textAreas": [
+              {
+                "label": "Title",
+                "text": "Nombre Servicio"
+              },
+              {
+                "label": "Text1",
+                "text": "nombreFuncionalMetodo"
+              },
+              {
+                "label": "Text2",
+                "text": "Clasificación lógica"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "5S7mr0kxoQ6O",
+            "class": "BPMNActivity",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Modelo de Lectura"
+              }
+            ],
+            "customData": [
+              {
+                "key": "ENTRADA",
+                "value": ""
+              }
+            ],
+            "linkedData": []
+          },
+          {
+            "id": "5S7mlSbENLaC",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "API"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "5S7mQB1b.tSi",
+            "class": "UMLRectangleContainerBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "SISTEMAS EXTERNOS"
+              }
+            ],
+            "customData": [],
+            "linkedData": [],
+            "contains": {
+              "shapes": [
+                "5S7mNjzx8sqE",
+                "5S7miUMHJ9NX",
+                "5S7mpwmVgIk0",
+                "5S7mx3NCE-Bz"
+              ],
+              "lines": [],
+              "groups": [
+                "6S7myjFW70fy"
+              ]
+            }
+          },
+          {
+            "id": "5S7m3ucHDf-8",
+            "class": "UMLRectangleContainerBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "INTEGRACIÓN"
+              }
+            ],
+            "customData": [],
+            "linkedData": [],
+            "contains": {
+              "shapes": [
+                "5S7mT.gJDf1y",
+                "5S7me1G2F0nw",
+                "5S7mql1cFvkG"
+              ],
+              "lines": [],
+              "groups": [
+                "6S7mnX9idMAZ"
+              ]
+            }
+          },
+          {
+            "id": "5S7mpO00NqZh",
+            "class": "RectangleContainerBlock",
+            "textAreas": [
+              {
+                "label": "FloatingTitle",
+                "text": ""
+              },
+              {
+                "label": "Text",
+                "text": "NOMBRE SERVICIO"
+              }
+            ],
+            "customData": [],
+            "linkedData": [],
+            "contains": {
+              "shapes": [
+                "CT7mumnYh7Y0"
+              ],
+              "lines": [],
+              "groups": []
+            }
+          },
+          {
+            "id": "5S7mMfRhoBoP",
+            "class": "DefaultSquareBlock",
+            "textAreas": [
+              {
+                "label": "Text",
+                "text": "Concepto"
+              }
+            ],
+            "customData": [],
+            "linkedData": []
+          }
+        ],
+        "lines": [
+          {
+            "id": "CT7m~s~dsMDg",
+            "endpoint1": {
+              "style": "None",
+              "connectedTo": "5S7mT.gJDf1y"
+            },
+            "endpoint2": {
+              "style": "Arrow",
+              "connectedTo": "CT7mumnYh7Y0"
+            },
+            "textAreas": [],
+            "customData": [],
+            "linkedData": []
+          }
+        ],
+        "groups": [
+          {
+            "id": "6S7myjFW70fy",
+            "members": [
+              "5S7mx3NCE-Bz"
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "6S7mnX9idMAZ",
+            "members": [
+              "5S7me1G2F0nw",
+              "5S7mT.gJDf1y",
+              "5S7mql1cFvkG"
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "6S7m2YjdaJq9",
+            "members": [
+              "5S7mBh_1j.sc"
+            ],
+            "customData": [],
+            "linkedData": []
+          },
+          {
+            "id": "6S7mugqSp5mc",
+            "members": [
+              "5S7mYUNkmjt8",
+              "5S7mXX83E992",
+              "5S7mf.LBSg9Q",
+              "5S7mK3Xrgbrx",
+              "5S7mnmpyPPqa",
+              "5S7mI-dZvZl0",
+              "5S7mWsiy2wQp",
+              "5S7mBcWzN6mY",
+              "5S7m0BSHJ~mr",
+              "5S7mpZ9wQH71",
+              "5S7mpdlZOBp4",
+              "5S7mkHnCDrkG",
+              "5S7miKvGj9A7",
+              "5S7mZHLbZmvH",
+              "5S7m0wdCA-sP",
+              "5S7m_dmcVwbg",
+              "5S7m8iJxlkwP",
+              "5S7m~9ZojkXD",
+              "5S7mxvYBdW6z",
+              "5S7mt8YiPb9v",
+              "5S7mX9d4~y_o",
+              "5S7m~VFzJW9i",
+              "5S7m3KN8AkII",
+              "5S7m~o12UNz3",
+              "5S7mJPaQb2Tj",
+              "5S7muWUYauQ-",
+              "5S7mn6.Nho5N",
+              "5S7mMfRhoBoP",
+              "5S7mElVihcFA",
+              "5S7mGm~sphSi",
+              "5S7mSY5egQX7",
+              "5S7mzG_ld6kN",
+              "5S7mcLPS6Ajs",
+              "5S7mG_COBi3J",
+              "5S7mlSbENLaC",
+              "5S7ml5Kfe5Wv",
+              "5S7m7Xt8gawV",
+              "5S7m51DcWbMr"
+            ],
+            "customData": [],
+            "linkedData": []
+          }
+        ],
+        "layers": []
+      },
+      "customData": [],
+      "linkedData": []
+    }
+  ],
+  "data": {
+    "collections": []
+  },
+  "accountId": 151474344
+}
