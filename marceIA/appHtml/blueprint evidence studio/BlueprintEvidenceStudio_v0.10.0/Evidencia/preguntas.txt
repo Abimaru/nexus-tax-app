@@ -1,0 +1,1 @@
+El servicio cuyo nombre es: consultar_marcacion_gmf_cuenta_sti, si tiene una capa de topicos asociada (topic_layer). Dame la razon del xq el agente dice que la capaTopicos es null?
