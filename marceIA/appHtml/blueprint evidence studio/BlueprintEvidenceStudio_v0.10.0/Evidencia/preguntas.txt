@@ -1,1 +1,21 @@
-El servicio cuyo nombre es: consultar_marcacion_gmf_cuenta_sti, si tiene una capa de topicos asociada (topic_layer). Dame la razon del xq el agente dice que la capaTopicos es null?
+Para el blueprint que te subo tenemos las siguientes figuras y relaciones:
+
+** Figuras**
+topico	HAIPqK7ZLLm9
+servicio	HAIPbohcXUjO
+lectura	HAIPdCwvru.d
+salida	HAIP07ggO9dM
+	
+	
+** Grupos**	
+OWN_UMG_MQ_SERVICE	HAIPI0z9P75l
+topico	HAIPqK7ZLLm9
+SERVICE	HAIPPXWOtSn5
+	
+
+SERVICE	HAIPPXWOtSn5
+servicio	HAIPbohcXUjO
+lectura	HAIPdCwvru.d
+salida	HAIP07ggO9dM
+
+Con esto podemos ver que el servicio (grupo = HAIPPXWOtSn5, figura = HAIPbohcXUjO) si está dentro de una capa de topico HAIPqK7ZLLm9. Entonces podrias obtener la relacion? y hay alguna diferencia con el anterior blueprint?
