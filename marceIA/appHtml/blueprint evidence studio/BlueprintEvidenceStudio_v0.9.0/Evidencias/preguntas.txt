@@ -1,0 +1,18 @@
+Quisiera que hicieramos los siguientes cambios en el HTML para mi entrega de mañana:
+- Dejar el nombre principal de Blueprint Evidence Studio
+- Omitir los textos: "v0.9.0-nueva.1 candidato" y "Explicación factual y trazabilidad · motor v0.9.0-nueva.1 · contrato v0.4.6.1"
+- El texto de "Explicación factual y trazabilidad · motor v0.9.0-nueva.1 · contrato v0.4.6.1" reemplazarlo por Del dibujo a la evidencia
+Blueprint Evidence Studio lee un diagrama de arquitectura y lo entrega ordenado, con cada figura identificada, para que revisarlo sea rápido, consistente y explicable.
+- Adicional que pequeño tenga la version en algun lado.
+- Quisiera que las páginas de Escenarios BDD y las paginas que se llamen explicitamente TEMPLATE_OR_LEGEND, no sean visibles para el analista y por ende no pueda seleccionarla. Solo le aparezca las paginas operativas o mixed.
+- Me parece bien de informar la linea o la conexion que hace falta sin embargo me gustaria que indicara cual es el extremo que si conecta para que sea mas facil identificar y corregir ya que actualmente estas mencionado solo el ID de la figura y no otra caracteristica como compuerta exclusiva con x descripcion, excepcion, comando con esta descripcion, etc.
+
+
+Adicionalmente necesito que me ayudes con las reglas para que:
+- Cuando el agente esté entregando un detalle de lo realizado y mencione el escenario, no lo indique como E1, E2 y E3 ya que el analista se pierde. Se debe indicar:
+    E1 (API directo al backend)
+    E2 (API con servicio de integración)
+    E3 (Servicio no gestionado)
+- Se debe ajustar la regla para que no sea estricto y acepte vacios en la tercera seccion de las apis y servicios que estan ubicados en SISTEMAS EXTERNOS.
+- Quiero incluir una regla en servicios SRV para validar que si corresponde a un servicio consumido por colas (tiene el prefijo MQ en su figura) se valide que tenga la capa de topicos y que esté escrito el o los topicos que corresponda y que no sean de plantilla.
+ 
